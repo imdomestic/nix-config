@@ -30,6 +30,7 @@ in {
       aliases.tug = ["bookmark" "move" "--from" "heads(::@- & bookmarks())" "--to" "@-"];
       ui = {
         paginate = "never";
+        default-command = "log";
       };
       user = {
         email = "hnkhgn@icloud.com";
