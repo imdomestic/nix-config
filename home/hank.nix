@@ -32,8 +32,13 @@ in {
         rebase-all = ["rebase" "-s" "all:roots(trunk()..mutable())" "-d" "trunk()"];
       };
       ui = {
+        diff.format = "git";
         paginate = "never";
         default-command = "log";
+      };
+      revset-aliases = {
+        at = "@";
+        "user(x)" = "author(x) | committer(x)";
       };
       user = {
         email = "hnkhgn@icloud.com";
