@@ -27,7 +27,10 @@ in {
   programs.jujutsu = {
     enable = true;
     settings = {
-      aliases.tug = ["bookmark" "move" "--from" "heads(::@- & bookmarks())" "--to" "@-"];
+      aliases = {
+        tug = ["bookmark" "move" "--from" "heads(::@- & bookmarks())" "--to" "@-"];
+        rebase-all = ["rebase" "-s" "all:roots(trunk()..mutable())" "-d" "trunk()"];
+      };
       ui = {
         paginate = "never";
         default-command = "log";
