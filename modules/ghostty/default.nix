@@ -1,7 +1,17 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  hostname,
+  ...
+}: let
+  isLinux = hostname != "m3max" && hostname != "hackintosh";
+in {
   programs.ghostty = {
     enable = true;
-    package = pkgs.ghostty-bin;
+    package =
+      if isLinux then
+        pkgs.ghostty
+      else
+        pkgs.ghostty-darwin;
     # enableZshIntegration = true;
     installBatSyntax = true;
     themes = {
@@ -33,9 +43,9 @@
     };
     settings = {
       theme = "kanso";
-      font-size = 15;
+      font-size = if isLinux then 11.5 else 15;
       window-decoration = true;
-      font-family = "RecMonoLinear Nerd Font Mono";
+      font-family = if isLinux then "Recursive" else "RecMonoLinear Nerd Font Mono";
       background-opacity = 0.85;
       background-blur-radius = 20;
       macos-option-as-alt = true;
@@ -57,7 +67,6 @@
     };
   };
 }
-
 ##==default_keybindings (Darwin has Super instead of C):
 # reset font              C-0
 # smaller/bigger font     C-'-/+'
