@@ -8,10 +8,9 @@ in {
   programs.ghostty = {
     enable = true;
     package =
-      if isLinux then
-        pkgs.ghostty
-      else
-        pkgs.ghostty-darwin;
+      if isLinux
+      then pkgs.ghostty
+      else pkgs.ghostty-bin;
     # enableZshIntegration = true;
     installBatSyntax = true;
     themes = {
@@ -43,9 +42,15 @@ in {
     };
     settings = {
       theme = "kanso";
-      font-size = if isLinux then 11.5 else 15;
+      font-size =
+        if isLinux
+        then 11.5
+        else 15;
       window-decoration = true;
-      font-family = if isLinux then "Recursive" else "RecMonoLinear Nerd Font Mono";
+      font-family =
+        if isLinux
+        then "Recursive"
+        else "RecMonoLinear Nerd Font Mono";
       background-opacity = 0.85;
       background-blur-radius = 20;
       macos-option-as-alt = true;
