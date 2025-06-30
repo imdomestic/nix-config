@@ -27,6 +27,11 @@
     sqlite-interactive
     tree-sitter
     stack
+    imagemagick
+    fd
+    mermaid-cli
+    tectonic
+    texliveTeTeX
 
     # utils
     hyperfine
