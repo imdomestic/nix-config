@@ -33,7 +33,7 @@
     tectonic
     texliveTeTeX
     codex
-    gemini-cli
+    # gemini-cli
 
     # utils
     hyperfine
