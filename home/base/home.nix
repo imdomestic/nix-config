@@ -32,6 +32,8 @@
     mermaid-cli
     tectonic
     texliveTeTeX
+    codex
+    gemini-cli
 
     # utils
     hyperfine
