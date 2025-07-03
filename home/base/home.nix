@@ -33,6 +33,7 @@
     tectonic
     texliveTeTeX
     codex
+    wasmtime
     # gemini-cli
 
     # utils
