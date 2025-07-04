@@ -7,7 +7,6 @@
 }: let
   lib = pkgs.lib;
 in {
-  imports = [inputs.hyprpanel.homeManagerModules.hyprpanel];
   programs.hyprpanel = {
     enable = hostname == "7540u" || hostname == "b660";
     settings = {

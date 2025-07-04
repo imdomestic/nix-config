@@ -14,7 +14,6 @@
 
   nixpkgs = {
     overlays = [
-      inputs.hyprpanel.overlay
       inputs.nur.overlays.default
     ];
     config = {

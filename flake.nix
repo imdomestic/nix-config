@@ -59,7 +59,6 @@
     };
 
     walker.url = "github:abenz1267/walker";
-    hyprpanel.url = "github:Jas-SinghFSU/HyprPanel";
 
     daeuniverse.url = "github:daeuniverse/flake.nix";
     vscode-server.url = "github:nix-community/nixos-vscode-server";
@@ -156,7 +155,6 @@
       pkgs = import inputs.nixpkgs {
         system = "x86_64-linux";
         overlays = [
-          inputs.hyprpanel.overlay
           inputs.nur.overlays.default
         ];
       };
