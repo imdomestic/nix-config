@@ -32,7 +32,6 @@
     mermaid-cli
     tectonic
     texliveTeTeX
-    codex
     wasmtime
     # gemini-cli
 
