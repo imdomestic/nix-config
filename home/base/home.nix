@@ -31,7 +31,7 @@
     fd
     mermaid-cli
     tectonic
-    texliveTeTeX
+    # texliveTeTeX
     wasmtime
     # gemini-cli
 

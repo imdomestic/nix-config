@@ -20,7 +20,6 @@ then {
     vscode
     # code-cursor
     obs-studio
-    warp-terminal
     qq
     vlc
     wezterm

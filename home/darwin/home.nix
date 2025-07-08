@@ -6,7 +6,6 @@
   home.packages = with pkgs; [
     swiftlint
     raycast
-    warp-terminal
     jdk
     wezterm
     spotify
