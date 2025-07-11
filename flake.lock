@@ -496,11 +496,11 @@
     "kvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1752025765,
-        "narHash": "sha256-bWE4vzxfM0znZC/MlnpEcSkkiqnJisvRTcb8ZQT7Xl8=",
+        "lastModified": 1752134985,
+        "narHash": "sha256-r8fwzfVXluZKVFRgE2aECfuL53IdL0yRlPNgT8s9QDE=",
         "owner": "HCHogan",
         "repo": "kvim",
-        "rev": "7690d4c150ee87f23468df70c9238123840355e4",
+        "rev": "0c3b530ddb36aecad42a05696b1d5cd9e9e8059b",
         "type": "github"
       },
       "original": {
@@ -1547,11 +1547,11 @@
     "zsh-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1750926121,
-        "narHash": "sha256-GVePOBxixynnX/cYwX43bZi4RDe7KgGoBCAFYoFDm0o=",
+        "lastModified": 1752141612,
+        "narHash": "sha256-cyafEUY/Eqc2PZnD1JZcQic/pp5HkVxRLLNxiC5narg=",
         "owner": "HCHogan",
         "repo": "zsh",
-        "rev": "a47b0ab8f2cf32d6132e6391f1e6efe7b6b5c662",
+        "rev": "39f46f1d417a6167a83d8f7df61893aa69e9df9c",
         "type": "github"
       },
       "original": {

@@ -12,6 +12,7 @@
     yaml-language-server
     typescript-language-server
     astro-language-server
+    tailwindcss-language-server
     vscode-langservers-extracted
     typstyle
     marksman
@@ -34,6 +35,7 @@
     # texliveTeTeX
     wasmtime
     # gemini-cli
+    git-filter-repo
 
     # utils
     hyperfine
