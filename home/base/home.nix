@@ -34,7 +34,7 @@
     tectonic
     # texliveTeTeX
     wasmtime
-    # gemini-cli
+    gemini-cli
     git-filter-repo
 
     # utils
