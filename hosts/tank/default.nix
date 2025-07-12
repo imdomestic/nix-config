@@ -54,24 +54,22 @@
   services.xserver.enable = true;
 
   # Enable the GNOME Desktop Environment.
-  services.xserver.displayManager.gdm.enable = false;
-  services.xserver.desktopManager.gnome.enable = false;
-
-  services.xserver.desktopManager.xfce.enable = true;
+  services.displayManager.gdm.enable = true;
+  services.desktopManager.gnome.enable = true;
 
   services.xrdp.enable = true;
   services.xrdp.defaultWindowManager = "xfce4-session";
   services.xrdp.openFirewall = true;
 
-  services.cockpit = {
-    enable = true;
-    openFirewall = true;
-    settings = {
-      WebService = {
-        AllowUnencrypted = true;
-      };
-    };
-  };
+  # services.cockpit = {
+  #   enable = true;
+  #   openFirewall = true;
+  #   settings = {
+  #     WebService = {
+  #       AllowUnencrypted = true;
+  #     };
+  #   };
+  # };
 
   services.samba = {
     package = pkgs.samba4Full;
@@ -128,11 +126,11 @@
 
   services.spice-vdagentd.enable = true;
 
-  services.ollama = {
-    enable = true;
-    acceleration = "rocm";
-    rocmOverrideGfx = "10.3.0";
-  };
+  # services.ollama = {
+  #   enable = true;
+  #   acceleration = "rocm";
+  #   rocmOverrideGfx = "10.3.0";
+  # };
 
   hardware.graphics = {
     enable = true;
@@ -231,36 +229,33 @@
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
   services.vscode-server.enable = true;
-  services.homepage-dashboard = {
-    enable = true;
-  };
-  services.thymis-controller = {
-    enable = true;
-    system-binfmt-aarch64-enable = true; # enables emulation of aarch64 binaries, default is true on x86_64, needed for building aarch64 images on x86_64
-    system-binfmt-x86_64-enable = false; # enables emulation of x86_64 binaries, default is false
-    recommended-nix-gc-settings-enable = true; # enables recommended Nix garbage collection settings, default is true
-    # repo-path = "/var/lib/thymis/repository"; # directory where the controller will store the repository holding the project
-    # database-url = "sqlite:////var/lib/thymis/thymis.sqlite"; # URL of the database
-    base-url = "https://my-thymis-controller/"; # base URL of the controller, how it will be accessed from the outside
-    agent-access-url = "https://my-thymis-controller/"; # URL of the controller to be used by the agents
-    auth-basic = true; # whether to enable authentication using a basic username/password
-    auth-basic-username = "admin"; # username for basic authentication
-    auth-basic-password-file = "/var/lib/thymis/auth-basic-password"; # file containing the password for basic authentication
-    # content will be automatically generated if it does not exist
-    listen-host = "0.0.0.0"; # host on which the controller listens for incoming connections
-    listen-port = 8000; # port on which the controller listens for incoming connections
-    nginx-vhost-enable = true; # whether to enable the Nginx virtual host
-    nginx-vhost-name = "thymis"; # name of the Nginx virtual host
-  };
+  # services.thymis-controller = {
+  #   enable = true;
+  #   system-binfmt-aarch64-enable = true; # enables emulation of aarch64 binaries, default is true on x86_64, needed for building aarch64 images on x86_64
+  #   system-binfmt-x86_64-enable = false; # enables emulation of x86_64 binaries, default is false
+  #   recommended-nix-gc-settings-enable = true; # enables recommended Nix garbage collection settings, default is true
+  #   # repo-path = "/var/lib/thymis/repository"; # directory where the controller will store the repository holding the project
+  #   # database-url = "sqlite:////var/lib/thymis/thymis.sqlite"; # URL of the database
+  #   base-url = "https://my-thymis-controller/"; # base URL of the controller, how it will be accessed from the outside
+  #   agent-access-url = "https://my-thymis-controller/"; # URL of the controller to be used by the agents
+  #   auth-basic = true; # whether to enable authentication using a basic username/password
+  #   auth-basic-username = "admin"; # username for basic authentication
+  #   auth-basic-password-file = "/var/lib/thymis/auth-basic-password"; # file containing the password for basic authentication
+  #   # content will be automatically generated if it does not exist
+  #   listen-host = "0.0.0.0"; # host on which the controller listens for incoming connections
+  #   listen-port = 8000; # port on which the controller listens for incoming connections
+  #   nginx-vhost-enable = true; # whether to enable the Nginx virtual host
+  #   nginx-vhost-name = "thymis"; # name of the Nginx virtual host
+  # };
   # Configure the Nginx virtual host
-  services.nginx = {
-    enable = true;
-    virtualHosts."thymis" = {
-      serverName = "my-thymis-controller";
-      enableACME = false;
-      forceSSL = false;
-    };
-  };
+  # services.nginx = {
+  #   enable = true;
+  #   virtualHosts."thymis" = {
+  #     serverName = "my-thymis-controller";
+  #     enableACME = false;
+  #     forceSSL = false;
+  #   };
+  # };
 
   systemd.services.ddns-go = {
     enable = true;
@@ -292,7 +287,7 @@
   networking.interfaces.br0.useDHCP = true;
   networking.bridges = {
     "br0" = {
-      interfaces = ["enp6s0"];
+      interfaces = ["enp4s0"];
     };
   };
   systemd.enableEmergencyMode = false;

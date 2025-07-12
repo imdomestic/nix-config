@@ -112,7 +112,7 @@
           system = "x86_64-linux";
           extraModules = [
             inputs.vscode-server.nixosModules.default
-            inputs.thymis.nixosModules.thymis-controller
+            inputs.chaotic.nixosModules.default
           ];
         }
         {
