@@ -17,7 +17,6 @@ then {
     telegram-desktop
     wkhtmltopdf
     minicom
-    vscode
     # code-cursor
     obs-studio
     qq

@@ -27,7 +27,6 @@
     sqlite
     sqlite-interactive
     tree-sitter
-    stack
     imagemagick
     fd
     mermaid-cli
