@@ -249,7 +249,7 @@ in {
     };
     extraConfig = ''
       device {
-          name = elan0676:00-04f3:3195-touchpad
+          name = syna8019:00-06cb:ce68-touchpad
           sensitivity = -0
           natural_scroll = true
       }
