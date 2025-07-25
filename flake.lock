@@ -496,11 +496,11 @@
     "kvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1752241107,
-        "narHash": "sha256-JvDdopjLVrd5EwgAMQGJ75oUopzCiszRNgD/a3CtWM0=",
+        "lastModified": 1753460857,
+        "narHash": "sha256-CC6YNoqyWAjlCo8HJrrtHJ0z8vQoJiWE4+heopXnS+E=",
         "owner": "HCHogan",
         "repo": "kvim",
-        "rev": "25cd63e048b376728a803f190ebd34348de22b37",
+        "rev": "30122ce250ee5a17e49ee5e61b169f7d6413179c",
         "type": "github"
       },
       "original": {
