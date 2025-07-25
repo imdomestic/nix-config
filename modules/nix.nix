@@ -27,11 +27,11 @@
 
   nix.settings = {
     substituters = [
+      "https://mirrors.ustc.edu.cn/nix-channels/store"
       "https://cache.garnix.io"
       "https://cache.iog.io"
       "https://hyprland.cachix.org"
-      "https://cache.nixos.org"
-      "https://mirrors.ustc.edu.cn/nix-channels/store"
+      "https://mirror.sjtu.edu.cn/nix-channels/store"
     ];
     trusted-public-keys = [
       "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
