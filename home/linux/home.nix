@@ -72,6 +72,7 @@
     usbutils # lsusb
 
     sourcekit-lsp
+    edid-decode
   ];
 
   catppuccin.gtk = {
