@@ -32,7 +32,7 @@ in {
         rebase-all = ["rebase" "-s" "all:roots(trunk()..mutable())" "-d" "trunk()"];
       };
       ui = {
-        diff.format = "git";
+        diff.format = ":git";
         paginate = "never";
         default-command = "log";
       };
