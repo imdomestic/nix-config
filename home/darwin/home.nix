@@ -8,10 +8,10 @@
     raycast
     jdk
     wezterm
-    spotify
-    discord
-    harper
-    emacs
+    # spotify
+    # discord
+    # harper
+    # emacs
   ];
 
   programs.direnv = {
