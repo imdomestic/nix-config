@@ -6,6 +6,8 @@
 
   home.packages = with pkgs; [
     # neovim dependencies
+    wget
+    curl
     typst
     tinymist
     taplo
