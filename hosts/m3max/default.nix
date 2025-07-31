@@ -1,5 +1,6 @@
 {
   inputs,
+  pkgs,
   hostname,
   ...
 }: {
@@ -46,4 +47,5 @@
       "equinox"
     ];
   };
+
 }
