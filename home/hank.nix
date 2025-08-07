@@ -76,9 +76,10 @@ in {
     };
   };
 
-  home.file.".zshenv".text = ''
-    ZDOTDIR=$HOME/.config/zsh
-  '';
+  # home.file.".zshenv".source = ../modules/zsh/.zshenv;
+  home.sessionVariables = {
+    ZDOTDIR = "/Users/hank/.config/zsh";
+  };
 
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../fonts/Recursive-Italic.ttf;
