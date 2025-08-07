@@ -50,7 +50,9 @@
   };
 
   services.postgresql = {
-    enable = true;
+    enable = false;
+    enableTCPIP = true;
+    package = pkgs.postgresql_17;
     authentication = pkgs.lib.mkOverride 10 ''
       #type database  DBuser  auth-method
       local all       all     trust
