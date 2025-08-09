@@ -37,6 +37,7 @@
     wasmtime
     gemini-cli
     git-filter-repo
+    duckdb
 
     # utils
     hyperfine
