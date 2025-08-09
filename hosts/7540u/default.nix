@@ -145,6 +145,16 @@
     enableSSHSupport = true;
   };
 
+  services.postgresql = {
+    enable = true;
+    enableTCPIP = true;
+    package = pkgs.postgresql_17;
+    authentication = pkgs.lib.mkOverride 10 ''
+      #type database  DBuser  auth-method
+      local all       all     trust
+    '';
+  };
+
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
   services.vscode-server.enable = true;
@@ -207,6 +217,7 @@
     gnomeExtensions.forge
 
     inputs.zen-browser.packages."${system}".default
+    google-chrome
   ];
 
   # networking.firewall.allowedTCPPorts = [ ... ];

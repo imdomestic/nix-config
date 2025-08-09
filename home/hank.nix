@@ -78,7 +78,7 @@ in {
 
   # home.file.".zshenv".source = ../modules/zsh/.zshenv;
   home.sessionVariables = {
-    ZDOTDIR = "/Users/hank/.config/zsh";
+    ZDOTDIR = if lib.hasInfix "darwin" system then "/Users/hank/.config/zsh" else "/home/hank/.config/zsh";
   };
 
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../fonts/Recursive-Bold.ttf;

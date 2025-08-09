@@ -75,12 +75,12 @@
     edid-decode
   ];
 
-  catppuccin.gtk = {
-    enable = true;
-    accent = "lavender";
-    icon.enable = true;
-    icon.accent = "lavender";
-  };
+  # catppuccin.gtk = {
+  #   enable = true;
+  #   accent = "lavender";
+  #   icon.enable = true;
+  #   icon.accent = "lavender";
+  # };
   catppuccin.yazi.enable = true;
   catppuccin.zellij.enable = true;
   catppuccin.btop.enable = true;

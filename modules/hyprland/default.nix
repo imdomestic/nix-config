@@ -257,6 +257,7 @@ in {
           name = ninjutso-ninjutso-sora-v2-mouse
           sensitivity = -0.9
       }
+      # windowrule = noblur,class:^(?!(ghostty|kitty))
     '';
   };
 }
