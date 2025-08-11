@@ -57,5 +57,6 @@
       #type database  DBuser  auth-method
       local all       all     trust
     '';
+    settings.timezone = "UTC";
   };
 }

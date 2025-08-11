@@ -36,8 +36,11 @@
     # texliveTeTeX
     wasmtime
     gemini-cli
+    codex
     git-filter-repo
     duckdb
+    pgcli
+    usql
 
     # utils
     hyperfine
