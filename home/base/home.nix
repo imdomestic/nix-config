@@ -39,6 +39,7 @@
     codex
     git-filter-repo
     duckdb
+    pgloader
     pgcli
     usql
 
