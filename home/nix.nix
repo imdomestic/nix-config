@@ -46,6 +46,7 @@ in {
 
   xdg.configFile = {
     nvim.source = inputs.kvim.outPath;
+    hvim.source = inputs.hvim.outPath;
     zsh.source = inputs.zsh-config.outPath;
     neofetch = {
       source = ../modules/neofetch;
@@ -56,9 +57,10 @@ in {
     };
   };
 
-  home.file.".zshenv".text = ''
-    ZDOTDIR=$HOME/.config/zsh
-  '';
+  home.sessionVariables = {
+    ZDOTDIR = if lib.hasInfix "darwin" system then "/Users/nix/.config/zsh" else "/home/nix/.config/zsh";
+  };
+
 
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../fonts/Recursive-Italic.ttf;

@@ -1,6 +1,5 @@
 {
   pkgs,
-  inputs,
   ...
 }: {
   imports = [
@@ -34,7 +33,7 @@
     timeout = 1;
   };
 
-  boot.kernelPackages = pkgs.linuxKernel.packages.linux_6_13;
+  boot.kernelPackages = pkgs.linuxPackages;
   boot.kernelParams = [
     "console=tty0"
     "earlycon=uart8250,mmio32,0xfe660000"
@@ -67,8 +66,8 @@
   powerManagement.cpuFreqGovernor = "schedutil";
   # networking.useDHCP =  true;
 
-  services.xserver.displayManager.gdm.enable = false;
-  services.xserver.desktopManager.gnome.enable = false;
+  # services.xserver.displayManager.gdm.enable = false;
+  # services.xserver.desktopManager.gnome.enable = false;
   networking.firewall.enable = false;
   networking.networkmanager.enable = true;
 
@@ -127,6 +126,12 @@
     ports = [ 22 2200 ];
   };
 
+  # default port 8388
+  services.shadowsocks = {
+    enable = true;
+    password = "nix";
+  };
+
   i18n = {
     defaultLocale = "en_GB.UTF-8";
   };
@@ -163,6 +168,17 @@
         Name = "wan0";
       };
     };
+  };
+
+  services.cloudflare-dyndns = {
+    enable = true;
+    domains = [ "nix-wuxi.linwhite.top" ];
+    apiTokenFile = "/var/lib/cf-ddns/api-token";
+    ipv4 = true;       # 有公网 IPv4 就开
+    ipv6 = true;       # 有公网 IPv6 就开
+    proxied = true;   # 需要“橙云”就开；纯直连可设为 false
+    # interval = "5m"; # 默认5分钟，如需改频率再加
+    # create = true;   # 如域名记录还没建，想让程序自动创建就打开（若报未知选项就删掉）
   };
 
   programs.zsh.enable = true;
