@@ -174,7 +174,7 @@
     enable = true;
     domains = [ "nix-wuxi.linwhite.top" ];
     apiTokenFile = "/var/lib/cf-ddns/api-token";
-    ipv4 = true;       # 有公网 IPv4 就开
+    ipv4 = false;       # 有公网 IPv4 就开
     ipv6 = true;       # 有公网 IPv6 就开
     proxied = true;   # 需要“橙云”就开；纯直连可设为 false
     # interval = "5m"; # 默认5分钟，如需改频率再加
@@ -185,5 +185,7 @@
 
   nixpkgs.hostPlatform = "aarch64-linux";
   system.stateVersion = "24.11";
+
+  networking.hostName = "r5sjp";
 
 }
