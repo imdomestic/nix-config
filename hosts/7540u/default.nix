@@ -16,6 +16,11 @@
     ../../modules/catppuccin
   ];
 
+  boot.binfmt = {
+    emulatedSystems = ["aarch64-linux"];
+    preferStaticEmulators = true;
+  };
+
   nix.settings.system-features = [
     "gccarch-x86-64-v4"
   ];
