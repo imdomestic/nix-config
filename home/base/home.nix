@@ -28,8 +28,8 @@
     alejandra
     neovide
     nodejs_22
-    sqlite
-    sqlite-interactive
+    # sqlite
+    # sqlite-interactive
     tree-sitter
     imagemagick
     fd
@@ -73,7 +73,6 @@
     bat
 
     jujutsu
-    lazyjj
   ];
   programs.zsh.enable = true;
 
