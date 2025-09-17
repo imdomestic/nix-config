@@ -4,7 +4,7 @@ add_newline = false
 
 # Sets user-defined palette
 # Palettes must be defined _after_ this line
-# palette = "catppuccin_mocha"
+palette = "catppuccin_mocha"
 
 # Starship modules
 [character]
