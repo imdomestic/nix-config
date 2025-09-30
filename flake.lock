@@ -1576,11 +1576,11 @@
     "zsh-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1753534394,
-        "narHash": "sha256-pTyHT7ioEVEdrgGRpDa2jKem+wBoMcKH3U9KhFrR3xU=",
+        "lastModified": 1759231838,
+        "narHash": "sha256-cKmqAwqDBguoHY+PBVsTsXQc105J42G4/WZa7PsJdSQ=",
         "owner": "HCHogan",
         "repo": "zsh",
-        "rev": "c611f25ebb2a9a925af649979ead5732c9f8c9d6",
+        "rev": "4a911e11ffc354cbef25c508a33ea15277566ca7",
         "type": "github"
       },
       "original": {
