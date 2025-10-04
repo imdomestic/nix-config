@@ -54,6 +54,7 @@ in {
       background-opacity = 0.85;
       background-blur-radius = 20;
       macos-option-as-alt = true;
+      macos-titlebar-style = "tabs";
       shell-integration = "detect";
       auto-update = "off";
       cursor-style = "bar";
