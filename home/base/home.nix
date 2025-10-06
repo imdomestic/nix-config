@@ -6,6 +6,8 @@
 
   home.packages = with pkgs; [
     # neovim dependencies
+    lua51Packages.lua
+    lua51Packages.luarocks
     wget
     curl
     typst
