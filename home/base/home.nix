@@ -8,6 +8,9 @@
     # neovim dependencies
     lua51Packages.lua
     lua51Packages.luarocks
+    ruff
+    uv
+    basedpyright
     wget
     curl
     typst
