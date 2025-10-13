@@ -1,7 +1,5 @@
+{pkgs, ...}:
 {
-  pkgs,
-  ...
-}: {
   imports = [
     ../../modules/mihomo
   ];
@@ -123,7 +121,7 @@
 
   services.openssh = {
     enable = true;
-    ports = [ 22 2200 ];
+    ports = [22 2200];
   };
 
   # default port 8388
@@ -172,11 +170,11 @@
 
   services.cloudflare-dyndns = {
     enable = true;
-    domains = [ "nix-wuxi.linwhite.top" ];
+    domains = ["nix-wuxi.linwhite.top"];
     apiTokenFile = "/var/lib/cf-ddns/api-token";
-    ipv4 = false;       # 有公网 IPv4 就开
-    ipv6 = true;       # 有公网 IPv6 就开
-    proxied = true;   # 需要“橙云”就开；纯直连可设为 false
+    ipv4 = false; # 有公网 IPv4 就开
+    ipv6 = true; # 有公网 IPv6 就开
+    proxied = true; # 需要“橙云”就开；纯直连可设为 false
     # interval = "5m"; # 默认5分钟，如需改频率再加
     # create = true;   # 如域名记录还没建，想让程序自动创建就打开（若报未知选项就删掉）
   };
@@ -187,5 +185,10 @@
   system.stateVersion = "24.11";
 
   networking.hostName = "r5sjp";
-
+  networking.wg-quick.interfaces = {
+    wg0 = {
+      configFile = "/home/nix/wireguard/wg0.conf";
+      autostart = true;
+    };
+  };
 }
