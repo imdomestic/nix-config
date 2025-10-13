@@ -1551,11 +1551,11 @@
     "zsh-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1759231838,
-        "narHash": "sha256-cKmqAwqDBguoHY+PBVsTsXQc105J42G4/WZa7PsJdSQ=",
+        "lastModified": 1760171216,
+        "narHash": "sha256-bhKJJ7PgiaPHxpCID1kEVloXGUa8njT63dGLCCyN91s=",
         "owner": "HCHogan",
         "repo": "zsh",
-        "rev": "4a911e11ffc354cbef25c508a33ea15277566ca7",
+        "rev": "7fa72f2829fed7dc0c6982c59a83535a44c609c6",
         "type": "github"
       },
       "original": {
