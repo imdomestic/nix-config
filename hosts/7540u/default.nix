@@ -229,5 +229,12 @@
   # networking.firewall.allowedUDPPorts = [ ... ];
   networking.firewall.enable = false;
 
+  networking.wg-quick.interfaces = {
+    wg0 = {
+      configFile = "/home/hank/Documents/wg0.conf";
+      autostart = true;
+    };
+  };
+
   system.stateVersion = "24.11"; # Did you read the comment?
 }
