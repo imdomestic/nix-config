@@ -59,6 +59,7 @@
     ripgrep-all
     tokei
     mprocs
+    wireguard-tools
 
     pandoc
     fastfetch
