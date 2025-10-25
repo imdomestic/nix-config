@@ -20,8 +20,10 @@ in {
 
   programs.git = {
     enable = true;
-    userName = "Hank Hogan";
-    userEmail = "ysh2291939848@outlook.com";
+    settings = {
+      user.name = "Hank Hogan";
+      user.email = "ysh2291939848@outlook.com";
+    };
   };
 
   programs.jujutsu = {
@@ -78,7 +80,10 @@ in {
 
   # home.file.".zshenv".source = ../modules/zsh/.zshenv;
   home.sessionVariables = {
-    ZDOTDIR = if lib.hasInfix "darwin" system then "/Users/hank/.config/zsh" else "/home/hank/.config/zsh";
+    ZDOTDIR =
+      if lib.hasInfix "darwin" system
+      then "/Users/hank/.config/zsh"
+      else "/home/hank/.config/zsh";
   };
 
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../fonts/Recursive-Bold.ttf;
