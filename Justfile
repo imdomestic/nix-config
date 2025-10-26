@@ -1,14 +1,14 @@
 rebuild:
-  nixos-rebuild switch --flake . --use-remote-sudo
+  nixos-rebuild switch --flake . --sudo
 
 darwin:
   darwin-rebuild switch --flake . switch
 
 debug:
-  nixos-rebuild switch --flake . --use-remote-sudo --show-trace --verbose
+  nixos-rebuild switch --flake . --sudo --show-trace --verbose
 
 deploy:
-  nixos-rebuild switch --flake .#rpi4 --use-remote-sudo --target-host nix@rpi4.sanuki.cn --build-host localhost
+  nixos-rebuild switch --flake .#rpi4 --sudo --target-host nix@rpi4.sanuki.cn --build-host localhost
 
 up:
   nix flake update

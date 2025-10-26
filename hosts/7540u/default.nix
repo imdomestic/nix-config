@@ -50,12 +50,14 @@
 
   services.blueman.enable = true;
 
-  services.desktopManager.cosmic.enable = true;
-  services.desktopManager.cosmic.xwayland.enable = true;
-  services.desktopManager.plasma6.enable = true;
+  # services.desktopManager.cosmic.enable = true;
+  # services.desktopManager.cosmic.xwayland.enable = true;
+  # services.desktopManager.plasma6.enable = false;
   services.desktopManager.gnome.enable = true;
-
-  services.displayManager.cosmic-greeter.enable = true;
+  services.displayManager.gdm = {
+    enable = true;
+  };
+  # services.displayManager.cosmic-greeter.enable = true;
 
   services.power-profiles-daemon.enable = false;
   services.scx.enable = true;
