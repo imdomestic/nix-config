@@ -49,6 +49,8 @@
     # pgloader
     pgcli
     usql
+    gnumake
+    gcc
 
     # utils
     hyperfine

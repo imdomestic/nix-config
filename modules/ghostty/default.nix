@@ -8,11 +8,13 @@ in {
   programs.ghostty = {
     enable = true;
     package =
-      if isLinux
+      if hostname == "home"
+      then null
+      else if isLinux
       then pkgs.ghostty
       else pkgs.ghostty-bin;
     # enableZshIntegration = true;
-    installBatSyntax = true;
+    # installBatSyntax = false;
     themes = {
       kanso = {
         background = "#090E13";
