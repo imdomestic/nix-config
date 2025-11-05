@@ -83,7 +83,10 @@
 
     jujutsu
   ];
-  programs.zsh.enable = true;
+  programs.zsh = {
+    enable = true;
+    # dotDir = ".config/zsh";
+  };
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;

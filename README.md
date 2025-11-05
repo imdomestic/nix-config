@@ -1,15 +1,15 @@
 # ❄️ nix-config
 
-Declarative NixOS, nix-darwin, and Home Manager configuration designed for multi-host and multi-user workflows.
+Declarative NixOS, nix-darwin, and Home Manager setup with a single flake that scales from servers to laptops—and even standalone HM installs on other distros.
 
 ## ✨ Highlights
 
-- 🧩 Flake-based entry point with a clean separation between **system** and **Home Manager** layers.
-- 🖥️ Hosts for Linux (x86_64/aarch64) and macOS (`aarch64-darwin`, `x86_64-darwin`).
-- 👥 Per-user overrides with shared profiles so teams can reuse common pieces without pulling extra packages.
-- 🪟 Role-aware profiles (e.g. `desktop`, `server`, `virtualisation`) assembled per host.
-- 🏠 Host-aware Home Manager outputs exposed as `homeConfigurations."hosts/<host>/<user>"`.
-- 🧰 Shared module library for services (e.g. `mihomo`, `vfio`) and desktop components.
+- 🧩 Flake entry point that keeps **system** and **Home Manager** layers cleanly separated.
+- 🖥️ Host registry covering Linux (x86_64/aarch64) and macOS (`aarch64-darwin`, `x86_64-darwin`), plus Home Manager–only machines.
+- 👥 Shared profiles + per-user overrides so you can reuse core pieces without shipping unwanted packages.
+- 🪟 Role-driven profiles (`desktop`, `server`, `virtualisation`, …) that compose into each host.
+- 🏠 HM outputs exposed as `homeConfigurations."hosts/<host>/<user>"`, ideal for non-NixOS distros.
+- 🧰 Reusable module library for services (mihomo, vfio, …) and desktop tooling (Hyprland, Kitty, Starship, …).
 
 ## 📁 Layout
 
@@ -37,19 +37,19 @@ Declarative NixOS, nix-darwin, and Home Manager configuration designed for multi
 
 ## 🚀 Usage
 
-Activate a system or home configuration using flake references.
+Pick the target you want to activate and feed it to the flake.
 
 ```bash
-# NixOS / nix-darwin host
+# NixOS hosts
 sudo nixos-rebuild switch --flake .#tank
-# or
+# macOS
 darwin-rebuild switch --flake .#m3max
 
-# Home Manager for a host/user pair
-home-manager switch --flake .#"hosts/H610/hank"
+# Standalone Home Manager (any distro)
+home-manager switch --flake .#"hosts/aarch64-headless/hank"
 ```
 
-> 🔁 Every host entry is defined in `nixos/hosts/<name>/default.nix`, where you can select shared profiles, external modules, and user-specific overrides.
+> 🔁 Every host entry lives in `nixos/hosts/<name>/default.nix`. There you pick shared profiles, external modules, and user-specific overrides. Set `kind = "home"` for HM-only targets.
 
 ## 📄 License
 
