@@ -35,10 +35,10 @@ let
       darwinHome = "/Users/${name}";
       defaultAttrs =
         {
-          isNormalUser =
-            if overrides ? isNormalUser
-            then overrides.isNormalUser
-            else !isDarwin;
+          # isNormalUser =
+          #   if overrides ? isNormalUser
+          #   then overrides.isNormalUser
+          #   else !isDarwin;
           description =
             if overrides ? description
             then overrides.description
