@@ -1,0 +1,15 @@
+{ inputs }:
+let
+  callHost = name: import (./. + "/${name}") { inherit inputs; };
+in {
+  H610 = callHost "H610";
+  b660 = callHost "b660";
+  "7540u" = callHost "7540u";
+  tank = callHost "tank";
+  r5s = callHost "r5s";
+  rpi4 = callHost "rpi4";
+  wsl = callHost "wsl";
+  m3max = callHost "m3max";
+  hackintosh = callHost "hackintosh";
+  "aarch64-headless" = callHost "aarch64-headless";
+}

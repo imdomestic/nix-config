@@ -11,6 +11,11 @@
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
+    nixos-wsl = {
+      url = "github:nix-community/NixOS-WSL";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # home manager for managing user config
     home-manager = {
       url = "github:nix-community/home-manager/master";
@@ -68,107 +73,14 @@
     niri.url = "github:sodiboo/niri-flake";
   };
 
-  outputs = inputs
-  : let
-    mkConfigurations = (import ./lib/mkConfigurations.nix) {inherit inputs;};
-    mkHomeConfigurations = (import ./lib/mkHomeConfigurations.nix) {inherit inputs;};
-    sys = mkConfigurations {
-      configurations = [
-        {
-          hostname = "H610";
-          usernames = ["hank" "genisys"];
-          system = "x86_64-linux";
-          extraModules = [
-            inputs.daeuniverse.nixosModules.dae
-            inputs.daeuniverse.nixosModules.daed
-            inputs.vscode-server.nixosModules.default
-            inputs.steam-servers.nixosModules.default
-          ];
-        }
-        {
-          hostname = "b660";
-          usernames = ["hank"];
-          system = "x86_64-linux";
-          extraModules = [
-            inputs.catppuccin.nixosModules.catppuccin
-            inputs.vscode-server.nixosModules.default
-          ];
-        }
-        {
-          hostname = "7540u";
-          usernames = ["hank"];
-          system = "x86_64-linux";
-          extraModules = [
-            inputs.nixos-hardware.nixosModules.lenovo-thinkpad-t14s-amd-gen4
-            inputs.daeuniverse.nixosModules.dae
-            inputs.daeuniverse.nixosModules.daed
-            inputs.catppuccin.nixosModules.catppuccin
-            inputs.vscode-server.nixosModules.default
-            inputs.chaotic.nixosModules.default
-            inputs.niri.nixosModules.niri
-          ];
-        }
-        {
-          hostname = "tank";
-          usernames = ["hank" "fendada" "linwhite" "genisys"];
-          system = "x86_64-linux";
-          extraModules = [
-            inputs.vscode-server.nixosModules.default
-            inputs.chaotic.nixosModules.default
-          ];
-        }
-        {
-          hostname = "r5s";
-          usernames = ["nix"];
-          system = "aarch64-linux";
-          extraModules = [
-            # inputs.nixos-hardware.nixosModules.friendlyarm-nanopi-r5s
-          ];
-        }
-        {
-          hostname = "m3max";
-          usernames = ["hank"];
-          system = "aarch64-darwin";
-        }
-        {
-          hostname = "hackintosh";
-          usernames = ["hank"];
-          system = "x86_64-darwin";
-        }
-        {
-          hostname = "rpi4";
-          usernames = ["nix"];
-          system = "aarch64-linux";
-        }
-        {
-          hostname = "wsl";
-          usernames = ["hank"];
-          system = "x86_64-linux";
-        }
-      ];
+  outputs = inputs@{ self, ... }:
+    let
+      hosts = import ./nixos/hosts { inherit inputs; };
+      systems = (import ./lib/mkConfigurations.nix { inherit inputs; }) { inherit hosts; };
+      homes = (import ./lib/mkHomeConfigurations.nix { inherit inputs; }) { inherit hosts; };
+    in {
+      inherit (systems) nixosConfigurations darwinConfigurations;
+      homeConfigurations = homes;
+      hosts = hosts;
     };
-    hm = mkHomeConfigurations {
-      usernames = ["hank" "nix"];
-    };
-  in {
-    nixosConfigurations = sys.nixosConfigurations;
-    darwinConfigurations = sys.darwinConfigurations;
-    homeConfigurations."hank" = inputs.home-manager.lib.homeManagerConfiguration {
-      pkgs = import inputs.nixpkgs {
-        system = "x86_64-linux";
-        overlays = [
-          inputs.nur.overlays.default
-        ];
-      };
-      modules = [
-        (import ./home/hank.nix {username = "hank";})
-      ];
-      extraSpecialArgs = {
-        inherit inputs;
-        usernames = ["hank"];
-        system = "x86_64-linux";
-        hostname = "home";
-      };
-    };
-  };
 }

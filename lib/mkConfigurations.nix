@@ -1,55 +1,64 @@
-{inputs}: {configurations}: let
-  nixpkgs = inputs.nixpkgs;
-  listToAttrs = builtins.listToAttrs;
-  hasInfix = nixpkgs.lib.hasInfix;
-  mapConfigurations = builtins.map (
-    config: {
-      name = config.hostname;
-      value = mkConfiguration config;
-    }
-  );
-  mkConfiguration = {
-    usernames,
-    hostname,
-    system,
-    extraModules ? [],
-  }: let
-    lib =
-      if hasInfix "darwin" system
-      then inputs.nix-darwin.lib.darwinSystem
-      else inputs.nixpkgs.lib.nixosSystem;
-    home-manager =
-      if hasInfix "darwin" system
-      then inputs.home-manager.darwinModules.home-manager
-      else inputs.home-manager.nixosModules.home-manager;
-    specialArgs = {inherit inputs usernames system hostname;};
+{ inputs }:
+{ hosts }:
+let
+  lib = inputs.nixpkgs.lib;
+
+  mkSpecialArgs = hostName: host: let
+    hostUsers = host.users or {};
+    usernames = if host ? usernames then host.usernames else builtins.attrNames hostUsers;
   in
-    lib {
-      inherit specialArgs;
-      modules =
-        [
-          ./../modules/system.nix
-          ./../modules/nix.nix
-          ./../hosts/${hostname}
-          home-manager
-          {
-            home-manager.useGlobalPkgs = true;
-            home-manager.useUserPackages = true;
-            home-manager.extraSpecialArgs = specialArgs;
-            home-manager.users = nixpkgs.lib.genAttrs usernames (
-              username: {
-                imports = [
-                  (import ./../home/${username}.nix {inherit username;})
-                ];
-              }
-            );
-          }
-        ]
-        ++ extraModules;
-    };
-  nixosConfigurationList = builtins.filter (c: hasInfix "linux" c.system) configurations;
-  darwinConfigurationList = builtins.filter (c: hasInfix "darwin" c.system) configurations;
+    {
+      inherit inputs hostName hostUsers usernames;
+      hostname = hostName;
+      hostRoles = host.roles or [];
+      system = host.system;
+      host = host;
+    }
+    // (host.extraSpecialArgs or {});
+
+  mkModules = host:
+    let
+      system = host.system or (throw "Host ${host} must define a system");
+      isDarwin = lib.hasInfix "darwin" system;
+      enableHomeManager =
+        if host ? withHomeManager
+        then host.withHomeManager
+        else true;
+      homeManagerModule =
+        if enableHomeManager then
+          if isDarwin then
+            inputs.home-manager.darwinModules.home-manager
+          else
+            inputs.home-manager.nixosModules.home-manager
+        else
+          null;
+    in
+      lib.unique (
+        (host.profiles or [])
+        ++ (host.modules or [])
+        ++ (host.hardwareModules or [])
+        ++ (host.externalModules or [])
+        ++ (host.extraModules or [])
+        ++ lib.optional (homeManagerModule != null) homeManagerModule
+      );
+
+  mkSystem = hostName: host:
+    let
+      system = host.system or (throw "Host ${hostName} must define a system");
+      isDarwin = lib.hasInfix "darwin" system;
+      builder = if isDarwin then inputs.nix-darwin.lib.darwinSystem else inputs.nixpkgs.lib.nixosSystem;
+    in
+      builder {
+        inherit system;
+        modules = mkModules host;
+        specialArgs = mkSpecialArgs hostName host;
+      };
+
+  hostList = lib.mapAttrsToList (name: value: { inherit name value; }) hosts;
+  systemHosts = lib.filter (h: (h.value.kind or "system") != "home") hostList;
+  linuxHosts = lib.filter (h: lib.hasInfix "linux" h.value.system) systemHosts;
+  darwinHosts = lib.filter (h: lib.hasInfix "darwin" h.value.system) systemHosts;
 in {
-  nixosConfigurations = listToAttrs (mapConfigurations nixosConfigurationList);
-  darwinConfigurations = listToAttrs (mapConfigurations darwinConfigurationList);
+  nixosConfigurations = lib.listToAttrs (lib.map (h: { name = h.name; value = mkSystem h.name h.value; }) linuxHosts);
+  darwinConfigurations = lib.listToAttrs (lib.map (h: { name = h.name; value = mkSystem h.name h.value; }) darwinHosts);
 }

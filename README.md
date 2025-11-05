@@ -1,60 +1,55 @@
-# ❄️ nix-config (AI-generated readme)
+# ❄️ nix-config
 
-> A modular, multi-user, multi-host Nix and Home Manager setup
+Declarative NixOS, nix-darwin, and Home Manager configuration designed for multi-host and multi-user workflows.
 
-## ✨ Features
+## ✨ Highlights
 
-* 🧩 **Flake-based** declarative configuration
-* 👥 **Multi-user** support (e.g., `hank`, `fendada`, `linwhite`, etc.)
-* 🖥️ **Multi-host** setup: `b660`, `tank`, `7540u`, `rpi4`, `hackintosh`, `m3max`, `wsl`, and more
-* 🏠 **Home Manager** for Linux and macOS (`darwin`)
-* ⚙️ **Modular architecture** under `modules/` for easy reuse
-* 🌈 Custom theming with `Catppuccin`, wallpapers, and `Neofetch` art
-* 🖱️ Wayland-ready desktop environment: `Hyprland`, `Waybar`, `Tofi`, `fcitx5`
-* 💻 Dev-friendly tools: `Vim`, `Helix`, `Kitty`, `Ghostty`, `Starship`
-* 🔧 Power-user utilities: `vfio`, `virtualisation`, `grub`, keyboard remapping via `keyd`
+- 🧩 Flake-based entry point with a clean separation between **system** and **Home Manager** layers.
+- 🖥️ Hosts for Linux (x86_64/aarch64) and macOS (`aarch64-darwin`, `x86_64-darwin`).
+- 👥 Per-user overrides with shared profiles so teams can reuse common pieces without pulling extra packages.
+- 🪟 Role-aware profiles (e.g. `desktop`, `server`, `virtualisation`) assembled per host.
+- 🏠 Host-aware Home Manager outputs exposed as `homeConfigurations."hosts/<host>/<user>"`.
+- 🧰 Shared module library for services (e.g. `mihomo`, `vfio`) and desktop components.
 
-## 📁 Structure Overview
+## 📁 Layout
 
 ```text
 .
-├── flake.nix                # Flake entry point
-├── flake.lock               # Locked dependencies
-├── Justfile                 # Command shortcuts (build/run tasks)
-├── lib/                     # mkConfigurations, mkHomeConfigurations
-├── modules/                 # Reusable Nix + Home Manager modules
-├── hosts/                   # Per-host NixOS configs (hardware + system)
-├── home/                    # Per-user Home Manager configs (base/linux/darwin)
-├── wallpapers/              # Custom wallpapers
-└── fonts/                   # Custom font files (e.g., Recursive)
+├── flake.nix
+├── lib/
+│   ├── mkConfigurations.nix      # Builds nixos/darwin systems from host metadata
+│   └── mkHomeConfigurations.nix  # Builds per-host Home Manager configs
+├── nixos/
+│   ├── hosts/<name>/system.nix   # Host-specific NixOS/nix-darwin modules
+│   ├── hosts/<name>/hardware-configuration.nix
+│   ├── hosts/default.nix         # Host registry
+│   ├── modules/                  # System-level reusable modules (nix, users, fcitx5…)
+│   └── profiles/                 # Base/desktop/server/virtualisation profiles
+├── darwin/
+│   └── profiles/                 # macOS-specific base profile(s)
+├── home/
+│   ├── modules/                  # Home Manager modules (hyprland, kitty, starship…)
+│   ├── profiles/                 # Shared HM profiles (core, dev, gui/linux, gui/darwin)
+│   └── users/<name>/default.nix  # User-specific adjustments
+├── fonts/
+└── wallpapers/
 ```
 
 ## 🚀 Usage
 
-Clone the repo and activate a host or user config with flakes:
+Activate a system or home configuration using flake references.
 
 ```bash
-git clone https://github.com/your-username/nix-config
-cd nix-config
-```
-
-### 🧑‍💻 For system (NixOS):
-
-```bash
+# NixOS / nix-darwin host
 sudo nixos-rebuild switch --flake .#tank
+# or
+darwin-rebuild switch --flake .#m3max
+
+# Home Manager for a host/user pair
+home-manager switch --flake .#"hosts/H610/hank"
 ```
 
-### 🏠 For Home Manager:
-
-```bash
-home-manager switch --flake .#hank@linux
-```
-
-*Replace `tank` or `hank@linux` with your actual host/user target.*
-
-## 📸 Screenshots
-
-*Add screenshots of your setup (Waybar, Neofetch, Hyprland, etc.) here*
+> 🔁 Every host entry is defined in `nixos/hosts/<name>/default.nix`, where you can select shared profiles, external modules, and user-specific overrides.
 
 ## 📄 License
 

@@ -1,22 +1,44 @@
-rebuild:
-  nixos-rebuild switch --flake . --sudo
+set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-darwin:
-  darwin-rebuild switch --flake . switch
+substituters := "https://mirrors.ustc.edu.cn/nix-channels/store https://cache.nixos.org"
 
-debug:
-  nixos-rebuild switch --flake . --sudo --show-trace --verbose
+default:
+  @just --list
 
-deploy:
-  nixos-rebuild switch --flake .#rpi4 --sudo --target-host nix@rpi4.sanuki.cn --build-host localhost
+# -------- System rebuild helpers --------
+switch host:
+  sudo nixos-rebuild switch --flake .#"{{host}}"
+
+darwin host:
+  darwin-rebuild switch --flake .#"{{host}}"
+
+debug host:
+  sudo nixos-rebuild switch --flake .#"{{host}}" --show-trace --verbose
+
+deploy host='rpi4' target='nix@rpi4.sanuki.cn':
+  sudo nixos-rebuild switch --flake .#"{{host}}" --target-host {{target}} --build-host localhost
+
+# -------- Home Manager helpers --------
+hm host user:
+  home-manager switch --flake .#"hosts/{{host}}/{{user}}"
+
+hm-dry host user:
+  home-manager switch --flake .#"hosts/{{host}}/{{user}}" --dry-run
+
+# -------- Flake & tooling --------
+check:
+  nix flake check --option substituters '{{substituters}}'
+
+check-trace:
+  nix --show-trace flake check --option substituters '{{substituters}}'
 
 up:
   nix flake update
 
 # Update specific input
-# usage: make upp i=home-manager
-upp:
-  nix flake update $(i)
+# usage: just upp home-manager
+upp input:
+  nix flake update {{input}}
 
 history:
   nix profile history --profile /nix/var/nix/profiles/system
@@ -26,7 +48,7 @@ repl:
 
 clean:
   # remove all generations older than 7 days
-  sudo nix profile wipe-history --profile /nix/var/nix/profiles/system  --older-than 7d
+  sudo nix profile wipe-history --profile /nix/var/nix/profiles/system --older-than 7d
 
 gc:
   # garbage collect all unused nix store entries

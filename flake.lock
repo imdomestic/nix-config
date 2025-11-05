@@ -126,6 +126,22 @@
     "flake-compat": {
       "flake": false,
       "locked": {
+        "lastModified": 1761588595,
+        "narHash": "sha256-XKUZz9zewJNUj46b4AJdiRZJAvSZ0Dqj2BNfXvFlJC4=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "f387cd2afec9419c8ee37694406ca490c3f34ee5",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
+    "flake-compat_2": {
+      "flake": false,
+      "locked": {
         "lastModified": 1696426674,
         "narHash": "sha256-kvjfFW7WAETZlt09AgDn1MrtKzP7t90Vf7vypd3OL1U=",
         "owner": "edolstra",
@@ -139,7 +155,7 @@
         "type": "github"
       }
     },
-    "flake-compat_2": {
+    "flake-compat_3": {
       "flake": false,
       "locked": {
         "lastModified": 1733328505,
@@ -521,11 +537,11 @@
     "kvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1760957541,
-        "narHash": "sha256-5QsJiCXfghuBLHc8/PHzqNYOaFb1fqeDXqFFRkx1DwY=",
+        "lastModified": 1762168838,
+        "narHash": "sha256-levAgPn4X2h7sVyYM8x8whzs92YVuTGV9cyJR6BkM8g=",
         "owner": "HCHogan",
         "repo": "kvim",
-        "rev": "df5b9aa6fb8c32a86d32a57f330ddf20ae8a2bed",
+        "rev": "08a976f453a98ec98bef168575e0a175fed81b90",
         "type": "github"
       },
       "original": {
@@ -642,7 +658,7 @@
     },
     "nix": {
       "inputs": {
-        "flake-compat": "flake-compat_2",
+        "flake-compat": "flake-compat_3",
         "flake-parts": "flake-parts_4",
         "git-hooks-nix": "git-hooks-nix",
         "nixpkgs": "nixpkgs_7",
@@ -794,6 +810,27 @@
       "original": {
         "owner": "NixOS",
         "repo": "nixos-hardware",
+        "type": "github"
+      }
+    },
+    "nixos-wsl": {
+      "inputs": {
+        "flake-compat": "flake-compat",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1762251193,
+        "narHash": "sha256-CmSddz8e2kM+ITbYutluhKZyXXwI9Sg2lf7XXSvc8oY=",
+        "owner": "nix-community",
+        "repo": "NixOS-WSL",
+        "rev": "e001844d4553aef268f97b32d3a825b6370eed91",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-community",
+        "repo": "NixOS-WSL",
         "type": "github"
       }
     },
@@ -1130,7 +1167,7 @@
     },
     "pre-commit-hooks": {
       "inputs": {
-        "flake-compat": "flake-compat",
+        "flake-compat": "flake-compat_2",
         "flake-utils": "flake-utils_2",
         "gitignore": "gitignore",
         "nixpkgs": [
@@ -1194,6 +1231,7 @@
         "niri": "niri",
         "nix-darwin": "nix-darwin",
         "nixos-hardware": "nixos-hardware",
+        "nixos-wsl": "nixos-wsl",
         "nixpkgs": "nixpkgs_5",
         "nur": "nur",
         "steam-servers": "steam-servers",
