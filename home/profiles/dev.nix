@@ -51,7 +51,9 @@
     pgcli
     usql
     gnumake
-    gcc
+    gh
+    zellij
+    # gcc
 
     # utils
     hyperfine
