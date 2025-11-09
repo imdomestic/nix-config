@@ -4,7 +4,7 @@
     spice
     spice-gtk
     spice-protocol
-    win-virtio
+    virtio-win
     win-spice
     dive
     # podman-tui

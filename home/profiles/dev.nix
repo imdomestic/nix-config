@@ -7,6 +7,7 @@
 
   home.packages = with pkgs; [
     # neovim dependencies
+    zoxide
     lua51Packages.lua
     lua51Packages.luarocks
     ruff

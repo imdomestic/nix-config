@@ -8,7 +8,7 @@
   lib = pkgs.lib;
 in {
   programs.hyprpanel = {
-    enable = hostname == "7540u" || hostname == "b660";
+    enable = hostname == "7540u" || hostname == "b650";
     settings = {
       layout = {
         "bar.layouts" = {
@@ -86,7 +86,7 @@ in {
         then [
           "DP-2,/home/hank/wallpapers/nixos-blue-4k.png"
         ]
-        else if hostname == "b660"
+        else if hostname == "b650"
         then [
           "DP-2,/home/hank/wallpapers/nixos-blue-4k.png"
         ]
@@ -159,7 +159,7 @@ in {
         then [
           "DP-2,3440x1440@144,0x0,1"
         ]
-        else if hostname == "b660"
+        else if hostname == "b650"
         then [
           "DP-2,3840x2160@240,0x0,1.5"
         ]
@@ -175,7 +175,7 @@ in {
           "fcitx5 -d"
         ]
         ++ (
-          if (hostname == "b660" || hostname == "7540u")
+          if (hostname == "b650" || hostname == "7540u")
           then ["hyprpanel"]
           else []
         );
@@ -238,7 +238,7 @@ in {
             9)
         )
         ++ (
-          if (hostname == "b660" || hostname == "7540u")
+          if (hostname == "b650" || hostname == "7540u")
           then [
             "$mod, A, exec, walker"
           ]
