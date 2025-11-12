@@ -35,10 +35,6 @@ let
       darwinHome = "/Users/${name}";
       defaultAttrs =
         {
-          isNormalUser =
-            if overrides ? isNormalUser
-            then overrides.isNormalUser
-            else !isDarwin;
           description =
             if overrides ? description
             then overrides.description
@@ -49,6 +45,10 @@ let
             else pkgs.zsh;
         }
         // lib.optionalAttrs (!isDarwin) {
+          isNormalUser =
+            if overrides ? isNormalUser
+            then overrides.isNormalUser
+            else true;
           extraGroups = explicitGroups;
           home =
             if overrides ? home && lib.isString overrides.home
