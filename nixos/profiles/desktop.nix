@@ -6,10 +6,9 @@
   ];
 
   # Core desktop expectations
-  services.xserver = {
-    enable = lib.mkDefault true;
-    displayManager.gdm.enable = lib.mkDefault false;
-    desktopManager.gnome.enable = lib.mkDefault false;
+  services = {
+    displayManager.gdm.enable = lib.mkDefault true;
+    desktopManager.gnome.enable = lib.mkDefault true;
   };
 
   services.pipewire = {
@@ -23,7 +22,7 @@
   hardware = {
     bluetooth.enable = lib.mkDefault true;
     # pulseaudio.enable = lib.mkDefault false;
-    opengl.enable = lib.mkDefault true;
+    graphics.enable = lib.mkDefault true;
   };
 
   programs = {
