@@ -1,5 +1,8 @@
-{ pkgs, lib, ... }:
 {
+  pkgs,
+  lib,
+  ...
+}: {
   imports = [
     ../modules/vim
     ../modules/helix
@@ -70,7 +73,6 @@
     pandoc
     fastfetch
     neofetch
-    yazi
     ripgrep
     jq
     yq-go
@@ -86,6 +88,22 @@
 
     jujutsu
   ];
+
+  programs.yazi = {
+    enable = true;
+    settings = {
+      theme = {
+        flavor = {
+          dark = "kanso-ink";
+          light = "kanso-pearl";
+        };
+      };
+    };
+    flavors = {
+      kanso-ink = ../modules/yazi/kanso-ink.yazi;
+      kanso-pearl = ../modules/yazi/kanso-pearl.yazi;
+    };
+  };
   programs.zsh = {
     enable = true;
     # dotDir = ".config/zsh";
