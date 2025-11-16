@@ -1235,6 +1235,7 @@
         "nixpkgs": "nixpkgs_5",
         "nur": "nur",
         "steam-servers": "steam-servers",
+        "system-manager": "system-manager",
         "thymis": "thymis",
         "vscode-server": "vscode-server",
         "walker": "walker",
@@ -1425,6 +1426,26 @@
       "original": {
         "owner": "scottbot95",
         "repo": "nix-steam-servers",
+        "type": "github"
+      }
+    },
+    "system-manager": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1762982120,
+        "narHash": "sha256-ab/YEG7gobBrwatyoE6xYNBzNBhmOhX52veM+RICw6g=",
+        "owner": "numtide",
+        "repo": "system-manager",
+        "rev": "b0660c2fc9a2da9488d0a5ce05a55d48d823d4e8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "numtide",
+        "repo": "system-manager",
         "type": "github"
       }
     },

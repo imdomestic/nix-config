@@ -7,6 +7,14 @@ in {
   kind = "home";
   roles = ["server"];
 
+  systemManager = {
+    enable = true;
+    modules = [
+      ../../modules/nix.nix
+      ./system-manager.nix
+    ];
+  };
+
   users = {
     hank = {
       home = {

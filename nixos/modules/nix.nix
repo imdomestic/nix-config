@@ -5,12 +5,12 @@
   ...
 }: {
   nix.settings.trusted-users = usernames;
-  nix.optimise.automatic = true;
+  # nix.optimise.automatic = true;
 
-  nix.gc = {
-    automatic = true;
-    options = "--delete-older-than 1w";
-  };
+  # nix.gc = {
+  #   automatic = true;
+  #   options = "--delete-older-than 1w";
+  # };
 
   nixpkgs = {
     overlays = [

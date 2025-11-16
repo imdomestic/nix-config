@@ -22,6 +22,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    system-manager = {
+      url = "github:numtide/system-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     zen-browser = {
       url = "github:0xc000022070/zen-browser-flake";
     };
@@ -78,9 +83,11 @@
       hosts = import ./nixos/hosts { inherit inputs; };
       systems = (import ./lib/mkConfigurations.nix { inherit inputs; }) { inherit hosts; };
       homes = (import ./lib/mkHomeConfigurations.nix { inherit inputs; }) { inherit hosts; };
+      systemManagers = (import ./lib/mkSystemManagerConfigurations.nix { inherit inputs; }) { inherit hosts; };
     in {
       inherit (systems) nixosConfigurations darwinConfigurations;
       homeConfigurations = homes;
+      systemConfigs = systemManagers;
       hosts = hosts;
     };
 }

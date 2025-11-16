@@ -9,6 +9,7 @@ Declarative NixOS, nix-darwin, and Home Manager setup with a single flake that s
 - 👥 Shared profiles + per-user overrides so you can reuse core pieces without shipping unwanted packages.
 - 🪟 Role-driven profiles (`desktop`, `server`, `virtualisation`, …) that compose into each host.
 - 🏠 HM outputs exposed as `homeConfigurations."hosts/<host>/<user>"`, ideal for non-NixOS distros.
+- ⚙️ System Manager outputs as `systemConfigs.<system>.<host>` (plus aliases under `systemConfigs.<host>` and `systemConfigs.hosts.<host>`) for declarative services on non-NixOS Linux boxes.
 - 🧰 Reusable module library for services (mihomo, vfio, …) and desktop tooling (Hyprland, Kitty, Starship, …).
 
 ## 📁 Layout
@@ -17,8 +18,9 @@ Declarative NixOS, nix-darwin, and Home Manager setup with a single flake that s
 .
 ├── flake.nix
 ├── lib/
-│   ├── mkConfigurations.nix      # Builds nixos/darwin systems from host metadata
-│   └── mkHomeConfigurations.nix  # Builds per-host Home Manager configs
+│   ├── mkConfigurations.nix           # Builds nixos/darwin systems from host metadata
+│   ├── mkHomeConfigurations.nix       # Builds per-host Home Manager configs
+│   └── mkSystemManagerConfigurations.nix  # Builds system-manager profiles for Linux hosts
 ├── nixos/
 │   ├── hosts/<name>/system.nix   # Host-specific NixOS/nix-darwin modules
 │   ├── hosts/<name>/hardware-configuration.nix
@@ -47,9 +49,12 @@ darwin-rebuild switch --flake .#m3max
 
 # Standalone Home Manager (any distro)
 home-manager switch --flake .#"hosts/aarch64-headless/hank"
+
+# System-managed services on non-NixOS Linux
+sudo system-manager switch --flake .#aarch64-headless
 ```
 
-> 🔁 Every host entry lives in `nixos/hosts/<name>/default.nix`. There you pick shared profiles, external modules, and user-specific overrides. Set `kind = "home"` for HM-only targets.
+> 🔁 Every host entry lives in `nixos/hosts/<name>/default.nix`. There you pick shared profiles, external modules, and user-specific overrides. Set `kind = "home"` for HM-only targets and `systemManager.enable = true` when you also want declarative services via system-manager (exposed as `systemConfigs.<system>.<host>` / `systemConfigs.<host>` / `systemConfigs.hosts.<host>`).
 
 ## 📄 License
 
