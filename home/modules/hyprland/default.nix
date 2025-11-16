@@ -104,7 +104,6 @@ in {
     grimblast
     wl-clipboard
     playerctl
-    hyprpanel
   ];
   wayland.windowManager.hyprland.systemd.variables = ["--all"];
   wayland.windowManager.hyprland = {
@@ -173,12 +172,12 @@ in {
         [
           "hyprctl setcursor \"Vanilla-DMZ\" 24"
           "fcitx5 -d"
-        ]
-        ++ (
-          if (hostname == "b650" || hostname == "7540u")
-          then ["hyprpanel"]
-          else []
-        );
+        ];
+        # ++ (
+        #   if (hostname == "b650" || hostname == "7540u")
+        #   then ["hyprpanel"]
+        #   else []
+        # );
       # l -> do stuff even when locked
       # e -> repeats when key is held
       bindle = [

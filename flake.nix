@@ -68,6 +68,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    quickshell = {
+      url = "github:outfoxxed/quickshell";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    noctalia = {
+      url = "github:noctalia-dev/noctalia-shell";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.quickshell.follows = "quickshell"; # Use same quickshell version
+    };
+
     walker.url = "github:abenz1267/walker";
 
     daeuniverse.url = "github:daeuniverse/flake.nix";
@@ -78,16 +89,15 @@
     niri.url = "github:sodiboo/niri-flake";
   };
 
-  outputs = inputs@{ self, ... }:
-    let
-      hosts = import ./nixos/hosts { inherit inputs; };
-      systems = (import ./lib/mkConfigurations.nix { inherit inputs; }) { inherit hosts; };
-      homes = (import ./lib/mkHomeConfigurations.nix { inherit inputs; }) { inherit hosts; };
-      systemManagers = (import ./lib/mkSystemManagerConfigurations.nix { inherit inputs; }) { inherit hosts; };
-    in {
-      inherit (systems) nixosConfigurations darwinConfigurations;
-      homeConfigurations = homes;
-      systemConfigs = systemManagers;
-      hosts = hosts;
-    };
+  outputs = inputs @ {self, ...}: let
+    hosts = import ./nixos/hosts {inherit inputs;};
+    systems = (import ./lib/mkConfigurations.nix {inherit inputs;}) {inherit hosts;};
+    homes = (import ./lib/mkHomeConfigurations.nix {inherit inputs;}) {inherit hosts;};
+    systemManagers = (import ./lib/mkSystemManagerConfigurations.nix {inherit inputs;}) {inherit hosts;};
+  in {
+    inherit (systems) nixosConfigurations darwinConfigurations;
+    homeConfigurations = homes;
+    systemConfigs = systemManagers;
+    hosts = hosts;
+  };
 }

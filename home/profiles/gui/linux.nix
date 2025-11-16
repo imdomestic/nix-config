@@ -5,14 +5,16 @@
 }: {
   imports =
     [
-      ../../modules/hyprland
+      # ../../modules/hyprland
       ../../modules/walker
       ../../modules/tofi
       inputs.walker.homeManagerModules.default
       inputs.catppuccin.homeModules.catppuccin
+      inputs.noctalia.homeModules.default
       ../../modules/kitty
       ../../modules/ghostty
       ../../modules/gui
+      ../../modules/noctalia
     ];
     # ++ pkgs.lib.optional (hostname == "b660") [../../modules/gui];
 

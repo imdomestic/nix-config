@@ -78,7 +78,7 @@
 
   # Enable the GNOME Desktop Environment.
   services.displayManager.gdm.enable = true;
-  services.desktopManager.gnome.enable = false;
+  services.desktopManager.gnome.enable = true;
 
   # services.desktopManager.cosmic.enable = true;
   services.flatpak.enable = true;
@@ -185,10 +185,15 @@
     inputs.zen-browser.packages."${system}".default
     google-chrome
 
+    inputs.noctalia.packages.${system}.default
+
     # pkgsCross.riscv64.gcc14
   ];
 
   programs = {
+    niri = {
+      enable = true;
+    };
     gamescope = {
       enable = true;
       capSysNice = true;
