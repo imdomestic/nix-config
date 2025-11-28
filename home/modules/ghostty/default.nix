@@ -4,12 +4,13 @@
   ...
 }: let
   isLinux = hostname != "m3max" && hostname != "hackintosh";
+  isHome = hostname == "aarch64-headless" || hostname == "x86_64-headless";
 in {
   programs.ghostty = {
     enable = true;
     package =
-      if hostname == "home"
-      then null
+      if isHome
+      then pkgs.emptyDirectory
       else if isLinux
       then pkgs.ghostty
       else pkgs.ghostty-bin;

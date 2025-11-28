@@ -12,5 +12,6 @@ in {
   wsl = callHost "wsl";
   m3max = callHost "m3max";
   hackintosh = callHost "hackintosh";
+  x86_64-headless = callHost "x86_64-headless";
   "aarch64-headless" = callHost "aarch64-headless";
 }

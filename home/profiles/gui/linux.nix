@@ -11,6 +11,7 @@
       inputs.walker.homeManagerModules.default
       inputs.catppuccin.homeModules.catppuccin
       inputs.noctalia.homeModules.default
+      inputs.niri.homeModules.niri
       ../../modules/kitty
       ../../modules/ghostty
       ../../modules/gui
@@ -73,7 +74,7 @@
     pciutils # lspci
     usbutils # lsusb
 
-    sourcekit-lsp
+    # sourcekit-lsp
     edid-decode
   ];
 
