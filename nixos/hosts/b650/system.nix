@@ -37,8 +37,8 @@
   time.timeZone = "Hongkong";
 
   # Configure network proxy if necessary
-  networking.proxy.default = "http://127.0.0.1:7890";
-  networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+  # networking.proxy.default = "http://127.0.0.1:7890";
+  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   nixpkgs.config.rocmSupport = true;
 
@@ -88,17 +88,17 @@
   };
 
   xdg.portal.wlr.enable = true;
-  programs = {
-    hyprland = {
-      enable = true;
-      withUWSM = true;
-    };
-    # waybar.enable = true;
-    hyprlock.enable = true;
-    # thunar.enable = true;
-    virt-manager.enable = true;
-    xwayland.enable = true;
-  };
+  # programs = {
+  #   hyprland = {
+  #     enable = true;
+  #     withUWSM = true;
+  #   };
+  #   # waybar.enable = true;
+  #   hyprlock.enable = true;
+  #   # thunar.enable = true;
+  #   virt-manager.enable = true;
+  #   xwayland.enable = true;
+  # };
 
   services.spice-vdagentd.enable = true;
   services.blueman.enable = true;
@@ -160,7 +160,6 @@
     starship
     zsh
     brightnessctl
-    waybar
     nwg-dock-hyprland
     duf
     gnumake
@@ -191,9 +190,9 @@
   ];
 
   programs = {
-    niri = {
-      enable = true;
-    };
+    # niri = {
+    #   enable = true;
+    # };
     gamescope = {
       enable = true;
       capSysNice = true;
