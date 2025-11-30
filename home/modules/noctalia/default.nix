@@ -97,10 +97,10 @@ output "DP-2" {
     // for the resolution.
     // If the mode is omitted altogether or is invalid, niri will pick one automatically.
     // Run `niri msg outputs` while inside a niri instance to list all outputs and their modes.
-    mode "1920x1080@240.000"
+    mode "3840x2160@240.000"
 
     // You can use integer or fractional scale, for example use 1.5 for 150% scale.
-    scale 1
+    scale 1.5
 
     // Transform allows to rotate the output counter-clockwise, valid values are:
     // normal, 90, 180, 270, flipped, flipped-90, flipped-180 and flipped-270.
@@ -626,7 +626,7 @@ binds {
 '';
   };
   programs.noctalia-shell = {
-    enable = true;
+    enable = false;
     systemd.enable = true;
     settings = {
       settingsVersion = 21;
