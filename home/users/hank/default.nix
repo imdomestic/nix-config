@@ -68,6 +68,13 @@
       else "/home/hank/.config/zsh";
   };
 
+  programs.nh = {
+    enable = true;
+    clean.enable = false;
+    clean.extraArgs = "--keep-since 4d --keep 3";
+    flake = "/home/hank/.config/nix-config";
+  };
+
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../../../fonts/Recursive-Italic.ttf;
   home.file.".local/share/fonts/Recursive-Regular.ttf".source = ../../../fonts/Recursive-Regular.ttf;
