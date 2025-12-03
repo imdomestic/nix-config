@@ -8,6 +8,7 @@
     raycast
     jdk
     wezterm
+    sioyek
     # spotify
     # discord
     # harper
