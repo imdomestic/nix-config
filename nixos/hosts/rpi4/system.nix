@@ -10,7 +10,7 @@
   imports = [
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
-    ../../modules/mihomo
+    # ../../modules/mihomo
     ../../modules/tuigreet
     ../../modules/keyd
   ];
@@ -19,29 +19,18 @@
   boot.loader.grub.enable = false;
   # Enables the generation of /boot/extlinux/extlinux.conf
   boot.loader.generic-extlinux-compatible.enable = true;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
   networking.hostName = "rpi4"; # Define your hostname.
   networking.networkmanager.enable = true; # Easiest to use and most distros use this by default.
 
   # Set your time zone.
-  time.timeZone = "Hongkong";
+  time.timeZone = "Asia/Shanghai";
 
-  networking.proxy.default = "http://127.0.0.1:7890";
-  networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+  # networking.proxy.default = "http://127.0.0.1:7890";
+  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   i18n.defaultLocale = "en_US.UTF-8";
-
-  programs = {
-    hyprland = {
-      enable = true;
-      withUWSM = true;
-    };
-    xwayland.enable = true;
-  };
-  services.pipewire = {
-    enable = true;
-    pulse.enable = true;
-  };
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.hank = {
@@ -50,16 +39,6 @@
     packages = with pkgs; [
       tree
     ];
-  };
-
-  users.users.nix = {
-    isNormalUser = true;
-    description = "nix";
-    extraGroups = [
-      "networkmanager"
-      "wheel"
-    ];
-    password = "nix";
   };
 
   security.sudo.wheelNeedsPassword = false;
@@ -86,7 +65,7 @@
 
   services.openssh.enable = true;
   systemd.services.ddns-go = {
-    enable = true;
+    enable = false;
     description = "Simple and easy to use DDNS. Automatically update domain name resolution to public IP (Support Aliyun, Tencent Cloud, Dnspod, Cloudflare, Callback, Huawei Cloud, Baidu Cloud, Porkbun, GoDaddy...)";
 
     wants = ["network.target"];

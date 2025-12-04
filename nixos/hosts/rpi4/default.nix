@@ -6,11 +6,12 @@ let
 in {
   system = "aarch64-linux";
   kind = "nixos";
-  roles = ["desktop" "gui"];
+  roles = ["server"];
 
   profiles = with nixosProfiles; [
     base
-    desktop
+    server
+    # desktop
   ];
 
   modules = [
@@ -24,23 +25,23 @@ in {
         profiles = with homeProfiles; [
           core
           dev
-          gui.linux
+          # gui.linux
         ];
         modules = [
           userModules.hank.module
         ];
       };
     };
-    nix = {
-      home = {
-        profiles = with homeProfiles; [
-          core
-          gui.linux
-        ];
-        modules = [
-          userModules.nix.module
-        ];
-      };
-    };
+    # nix = {
+    #   home = {
+    #     profiles = with homeProfiles; [
+    #       core
+    #       gui.linux
+    #     ];
+    #     modules = [
+    #       userModules.nix.module
+    #     ];
+    #   };
+    # };
   };
 }
