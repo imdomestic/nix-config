@@ -49,19 +49,11 @@
     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     neovim
     wget
-    starship
-    grim
-    wl-clipboard
-    mako
-    gcc
-    ripgrep
-    tree-sitter
-    nodejs_22
-    chromium
-    ddns-go
   ];
 
   programs.zsh.enable = true;
+
+  services.pipewire.enable = true;
 
   services.openssh.enable = true;
   systemd.services.ddns-go = {
