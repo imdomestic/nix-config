@@ -19,13 +19,19 @@ in {
     ./hardware-configuration.nix
   ];
 
+  externalModules = [
+    inputs.daeuniverse.nixosModules.dae
+    inputs.daeuniverse.nixosModules.daed
+    # inputs.niri.nixosModules.niri
+  ];
+
   users = {
     hank = {
       home = {
         profiles = with homeProfiles; [
           core
           dev
-          # gui.linux
+          gui.linux
         ];
         modules = [
           userModules.hank.module

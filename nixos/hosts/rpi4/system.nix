@@ -11,6 +11,7 @@
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
     # ../../modules/mihomo
+    ../../modules/dae
     ../../modules/tuigreet
     ../../modules/keyd
   ];
@@ -21,15 +22,116 @@
   boot.loader.generic-extlinux-compatible.enable = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  networking.hostName = "rpi4"; # Define your hostname.
-  networking.networkmanager.enable = true; # Easiest to use and most distros use this by default.
+  networking = {
+    hostName = "rpi4"; # Define your hostname.
+    networkmanager.enable = false; # Easiest to use and most distros use this by default.
+    useDHCP = false;
+    useNetworkd = true;
+    nftables.enable = true;
+    firewall = {
+      enable = true;
+      # 信任 LAN 口，方便调试
+      trustedInterfaces = ["br-lan"];
+      # 必须关闭 rpfilter (反向路径过滤)，否则 dae 的透明代理可能会被丢包
+      checkReversePath = false;
+    };
+  };
+
+  # --- 2. 内核参数 (路由器的自我修养) ---
+  boot.kernel.sysctl = {
+    # 开启 IPv4/IPv6 转发
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
+    # 稍微优化一下 BBR (可选)
+    "net.core.default_qdisc" = "fq";
+    "net.ipv4.tcp_congestion_control" = "bbr";
+  };
+
+  # --- 3. Systemd-networkd 配置 (DHCP & RA) ---
+  systemd.network = {
+    enable = true;
+
+    # bridge
+    netdevs."10-br-lan" = {
+      netdevConfig = {
+        Kind = "bridge";
+        Name = "br-lan";
+      };
+    };
+
+    # LAN
+    networks."20-lan-uplink" = {
+      matchConfig.Name = "end0";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    # WAN, DHCP
+    networks."20-wan-uplink" = {
+      matchConfig.Name = "enp1s0u2";
+      networkConfig = {
+        DHCP = "yes";
+        IPv6AcceptRA = true;
+      };
+      linkConfig.RequiredForOnline = "routable";
+    };
+
+    networks."30-br-lan" = {
+      matchConfig.Name = "br-lan";
+      networkConfig = {
+        Address = "192.168.20.1/24";
+        # DHCPv4 Server
+        DHCPServer = true;
+        # IPv4 NAT
+        IPMasquerade = "ipv4";
+        # IPv6 RA (SLAAC)
+        IPv6SendRA = true;
+        DHCPPrefixDelegation = true;
+      };
+      linkConfig = {
+        # or "routable" with IP addresses configured
+        RequiredForOnline = "no"; # carrier
+      };
+
+      dhcpServerConfig = {
+        PoolOffset = 100;
+        PoolSize = 100;
+        EmitDNS = true;
+        DNS = ["192.168.20.1"]; # 告诉客户端 DNS 找我 (然后被 dae 劫持)
+      };
+
+      # SLAAC
+      ipv6SendRAConfig = {
+        Managed = false; # no DHCPv6
+        OtherInformation = false;
+        EmitDNS = true; # send DNS with RA
+      };
+    };
+  };
+
+  services.dnsmasq.enable = false;
+  services.resolved = {
+    enable = true;
+    # 宿主机也走 dae 的代理（如果需要）
+    # 或者直接填 223.5.5.5 防止 dae 挂了宿主机没网
+  };
+
+  services.desktopManager.gnome.enable = true;
+
+
+  programs = {
+    niri = {
+      package = pkgs.niri;
+      enable = true;
+    };
+    firefox.enable = true;
+  };
 
   # Set your time zone.
   time.timeZone = "Asia/Shanghai";
 
-  networking.proxy.default = "http://192.168.1.25:7890";
-  networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
+  # networking.proxy.default = "http://192.168.1.25:7890";
+  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   i18n.defaultLocale = "en_US.UTF-8";
 
@@ -50,6 +152,7 @@
     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     neovim
     wget
+    gcc
   ];
 
   programs.zsh.enable = true;
@@ -76,6 +179,5 @@
     wantedBy = ["multi-user.target"];
   };
 
-  networking.firewall.enable = false;
   system.stateVersion = "25.05"; # Did you read the comment?
 }
