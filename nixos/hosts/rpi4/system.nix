@@ -117,8 +117,18 @@
     # 或者直接填 223.5.5.5 防止 dae 挂了宿主机没网
   };
 
-  services.desktopManager.gnome.enable = true;
+  services.cockpit = {
+    enable = true;
+    port = 9090;
+    openFirewall = true; # Please see the comments section
+    settings = {
+      WebService = {
+        AllowUnencrypted = true;
+      };
+    };
+  };
 
+  services.desktopManager.gnome.enable = true;
 
   programs = {
     niri = {
