@@ -63,6 +63,11 @@
       flake = false;
     };
 
+    wg-config = {
+      url = "git+ssh://git@github.com/imdomestic/wgconfigs";
+      flake = false;
+    };
+
     nur = {
       url = "github:nix-community/NUR";
       inputs.nixpkgs.follows = "nixpkgs";

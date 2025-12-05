@@ -44,11 +44,11 @@
     "dae-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1764933093,
-        "narHash": "sha256-Zd2ZGA0gM1CmvlAt2MHUg9jDdtPAL0R1e3dkXeqQGhw=",
+        "lastModified": 1764950770,
+        "narHash": "sha256-xpWOLO3K2/7waEjHz9PUDTFy+ojl1mTXSnERxRPGh08=",
         "ref": "refs/heads/main",
-        "rev": "2236d4c57180f6d0470d77e05c5aaa282495d4c6",
-        "revCount": 12,
+        "rev": "350c96905d7e24c103ffb838a6f58a4f2b3a75c4",
+        "revCount": 13,
         "type": "git",
         "url": "ssh://git@github.com/HCHogan/dae"
       },
@@ -1282,6 +1282,7 @@
         "vscode-server": "vscode-server",
         "walker": "walker",
         "wezterm-config": "wezterm-config",
+        "wg-config": "wg-config",
         "zen-browser": "zen-browser",
         "zsh-config": "zsh-config"
       }
@@ -1717,6 +1718,22 @@
         "owner": "HCHogan",
         "repo": "wezterm",
         "type": "github"
+      }
+    },
+    "wg-config": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1760957059,
+        "narHash": "sha256-/PUf9Tvc68ANhKajO0YwoTdppTN6C7ATzs1xqQs7oK4=",
+        "ref": "refs/heads/main",
+        "rev": "b1ff834782d39fd24110d967aceb8d22039062e9",
+        "revCount": 2,
+        "type": "git",
+        "url": "ssh://git@github.com/imdomestic/wgconfigs"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@github.com/imdomestic/wgconfigs"
       }
     },
     "xwayland-satellite-stable": {

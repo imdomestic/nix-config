@@ -2,6 +2,7 @@
 # your system. Help is available in the configuration.nix(5) man page, on
 # https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 {
+  inputs,
   config,
   lib,
   pkgs,
@@ -34,6 +35,12 @@
       trustedInterfaces = ["br-lan"];
       # 必须关闭 rpfilter (反向路径过滤)，否则 dae 的透明代理可能会被丢包
       checkReversePath = false;
+    };
+    wg-quick.interfaces = {
+      wg0 = {
+        configFile = "${inputs.wg-config.outPath}/client_00005.conf";
+        autostart = true;
+      };
     };
   };
 
@@ -111,11 +118,7 @@
   };
 
   services.dnsmasq.enable = false;
-  services.resolved = {
-    enable = true;
-    # 宿主机也走 dae 的代理（如果需要）
-    # 或者直接填 223.5.5.5 防止 dae 挂了宿主机没网
-  };
+  services.resolved.enable = true;
 
   services.cockpit = {
     enable = true;
