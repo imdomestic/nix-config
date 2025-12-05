@@ -72,6 +72,7 @@
       networkConfig = {
         DHCP = "yes";
         IPv6AcceptRA = true;
+        IPMasquerade = "ipv4";
       };
       linkConfig.RequiredForOnline = "routable";
     };
@@ -83,7 +84,7 @@
         # DHCPv4 Server
         DHCPServer = true;
         # IPv4 NAT
-        IPMasquerade = "ipv4";
+        # IPMasquerade = "ipv4";
         # IPv6 RA (SLAAC)
         IPv6SendRA = true;
         DHCPPrefixDelegation = true;
