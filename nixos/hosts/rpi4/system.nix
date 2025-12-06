@@ -119,6 +119,7 @@
 
   services.dnsmasq.enable = false;
   services.resolved.enable = true;
+  services.irqbalance.enable = true;
 
   services.cockpit = {
     enable = true;
