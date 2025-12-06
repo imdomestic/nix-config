@@ -12,12 +12,11 @@
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    ../../modules/dae
+    # ../../modules/dae
     ../../modules/tuigreet
     ../../modules/keyd
   ];
 
-  # Use the extlinux boot loader. (NixOS wants to enable GRUB by default)
   boot.loader.grub.enable = false;
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -87,7 +86,7 @@
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
       networkConfig = {
-        Address = "192.168.20.1/24";
+        Address = "192.168.21.1/24";
         # DHCPv4 Server
         DHCPServer = true;
         # IPv4 NAT
