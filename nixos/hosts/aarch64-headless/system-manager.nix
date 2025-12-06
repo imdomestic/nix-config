@@ -6,6 +6,7 @@
     systemPackages = with pkgs; [
       neovim
       ripgrep
+      nerdctl
     ];
   };
 
