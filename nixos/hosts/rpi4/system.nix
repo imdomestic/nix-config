@@ -120,6 +120,10 @@
   services.dnsmasq.enable = false;
   services.resolved.enable = true;
   services.irqbalance.enable = true;
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="8156", ATTR{power/control}="on"
+  '';
+  boot.kernelParams = [ "usbcore.autosuspend=-1" ];
 
   services.cockpit = {
     enable = true;
