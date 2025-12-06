@@ -22,6 +22,7 @@ in {
   externalModules = [
     inputs.daeuniverse.nixosModules.dae
     inputs.daeuniverse.nixosModules.daed
+    inputs.nixos-hardware.nixosModules.raspberry-pi-4
     # inputs.niri.nixosModules.niri
   ];
 
