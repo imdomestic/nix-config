@@ -21,7 +21,7 @@
   boot.loader.grub.enable = false;
   # Enables the generation of /boot/extlinux/extlinux.conf
   boot.loader.generic-extlinux-compatible.enable = true;
-  # boot.kernelPackages = pkgs.linuxPackages_rpi4;
+  boot.kernelPackages = pkgs.linuxPackages_rpi4;
 
   networking = {
     hostName = "rpi4"; # Define your hostname.
@@ -123,17 +123,25 @@
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="8156", ATTR{power/control}="on"
   '';
-  boot.kernelParams = [ "usbcore.autosuspend=-1" ];
+  boot.kernelParams = ["usbcore.autosuspend=-1"];
 
   services.cockpit = {
     enable = true;
     port = 9090;
     openFirewall = true; # Please see the comments section
+    allowed-origins = ["*"];
     settings = {
       WebService = {
         AllowUnencrypted = true;
       };
     };
+  };
+
+  services.prometheus.exporters.node = {
+    enable = true;
+    openFirewall = true;
+    enabledCollectors = ["systemd" "netdev" "netstat"];
+    port = 9100;
   };
 
   services.desktopManager.gnome.enable = true;
