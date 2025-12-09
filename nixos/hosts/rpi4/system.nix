@@ -44,12 +44,17 @@
     };
   };
 
-  # --- 2. 内核参数 (路由器的自我修养) ---
+  # interfaces.enp1s0u2 = {
+  #   pppoe = {
+  #     enable = true;
+  #     user = "";
+  #     password = "837145";
+  #   };
+  # };
+
   boot.kernel.sysctl = {
-    # 开启 IPv4/IPv6 转发
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
-    # 稍微优化一下 BBR (可选)
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
   };
@@ -87,6 +92,41 @@
         UseDelegatedPrefix = true;
       };
     };
+
+    # # WAN, PPPOE
+    # networks."20-wan-phy" = {
+    #   matchConfig.Name = "enp1s0u2";
+    #   linkConfig.RequiredForOnline = "no";
+    #   networkConfig = {
+    #     # 只要链路层通了就行，不要在此处做 DHCP
+    #     LinkLocalAddressing = "no"; 
+    #     KeepConfiguration = "yes"; # 保持 pppd 可能做的更改（虽然 pppd 主要是建新口）
+    #   };
+    # };
+    #
+    # networks."25-wan-ppp" = {
+    #   matchConfig.Name = "ppp0"; # pppd 默认创建的接口名
+    #
+    #   networkConfig = {
+    #     # 在这个接口上做 NAT (MASQUERADE)
+    #     IPMasquerade = "ipv4";
+    #
+    #     # 开启 IPv6 接收
+    #     IPv6AcceptRA = true;
+    #
+    #     # 关键：TCP MSS Clamping，防止网页打不开
+    #     # 因为 PPPoE 头部有 8 字节开销，MTU 通常是 1492
+    #     TCPMSSClamp = true;
+    #   };
+    #
+    #   linkConfig.RequiredForOnline = "routable";
+    #
+    #   # IPv6 前缀代理请求 (向 ISP 要 IPv6)
+    #   dhcpV6Config = {
+    #     PrefixDelegationHint = "::/60";
+    #     UseDelegatedPrefix = true;
+    #   };
+    # };
 
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
