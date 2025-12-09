@@ -28,19 +28,33 @@
     networkmanager.enable = false; # Easiest to use and most distros use this by default.
     useDHCP = false;
     useNetworkd = true;
-    nftables.enable = true;
+    nftables = {
+      enable = true;
+      tables.mss-clamping = {
+        name = "mss-clamping";
+        enable = true;
+        family = "inet";
+        content = ''
+          chain postrouting {
+            type filter hook forward priority 0; policy accept;
+
+            # IPv4：PPPoE MTU 1400 → MSS 1360
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
+
+            # IPv6：PPPoE MTU 1400 → MSS 1340
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
+          }
+        '';
+      };
+    };
     firewall = {
       enable = true;
       # 信任 LAN 口，方便调试
-      trustedInterfaces = ["br-lan"];
+      # trustedInterfaces = ["br-lan"];
       # DHCPv6 rx
-      interfaces."ppp0".allowedUDPPorts = [ 546 ];
+      interfaces."ppp0".allowedUDPPorts = [546];
       # 必须关闭 rpfilter (反向路径过滤)，否则 dae 的透明代理可能会被丢包
       checkReversePath = false;
-      extraForwardRules = ''
-        # TCP MSS Clamping: 将 TCP 包的大小限制在 PMTU 范围内
-        ip protocol tcp tcp flags syn tcp option maxseg size set rt mtu
-      '';
     };
     wg-quick.interfaces = {
       wg0 = {
@@ -87,8 +101,8 @@
           ipv6cp-use-ipaddr
 
           # MTU 设置 (PPPoE 标准)
-          mtu 1492
-          mru 1492
+          mtu 1400
+          mru 1400
         '';
       };
     };
@@ -150,7 +164,10 @@
         IPv6AcceptRA = true;
         DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
       };
-      linkConfig.RequiredForOnline = "carrier";
+      linkConfig = {
+        RequiredForOnline = "carrier";
+        MTUBytes = 1400;
+      };
       dhcpV6Config = {
         WithoutRA = "solicit";
         PrefixDelegationHint = "::/60";
@@ -193,7 +210,15 @@
   };
 
   services.dnsmasq.enable = false;
-  services.resolved.enable = true;
+  services.resolved = {
+    enable = true;
+    fallbackDns = ["223.5.5.5"];
+    extraConfig = ''
+      DNSStubListener=yes
+      DNSStubListenerExtra=192.168.20.1
+      DNSStubListenerExtra=::
+    '';
+  };
   services.irqbalance.enable = true;
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="8156", ATTR{power/control}="on"
