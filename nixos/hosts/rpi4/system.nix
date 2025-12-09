@@ -33,8 +33,14 @@
       enable = true;
       # 信任 LAN 口，方便调试
       trustedInterfaces = ["br-lan"];
+      # DHCPv6 rx
+      interfaces."ppp0".allowedUDPPorts = [ 546 ];
       # 必须关闭 rpfilter (反向路径过滤)，否则 dae 的透明代理可能会被丢包
       checkReversePath = false;
+      extraForwardRules = ''
+        # TCP MSS Clamping: 将 TCP 包的大小限制在 PMTU 范围内
+        ip protocol tcp tcp flags syn tcp option maxseg size set rt mtu
+      '';
     };
     wg-quick.interfaces = {
       wg0 = {
@@ -44,19 +50,48 @@
     };
   };
 
-  # interfaces.enp1s0u2 = {
-  #   pppoe = {
-  #     enable = true;
-  #     user = "";
-  #     password = "837145";
-  #   };
-  # };
-
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
+  };
+
+  services.pppd = {
+    enable = true;
+    peers = {
+      # 定义拨号连接名称，接口将是 ppp0
+      chinamobile = {
+        autostart = true;
+        enable = true;
+        config = ''
+          plugin pppoe.so enp1s0u2
+          user "19551998351"
+          password "837145"
+
+          # usepeerdns
+
+          # 关键参数
+          defaultroute    # 自动添加默认路由
+          persist         # 断线重连
+          maxfail 0       # 无限次重试
+          holdoff 5       # 重试间隔
+          noipdefault
+          noauth
+          hide-password
+          lcp-echo-interval 30
+          lcp-echo-failure 20
+          lcp-echo-adaptive
+
+          +ipv6
+          ipv6cp-use-ipaddr
+
+          # MTU 设置 (PPPoE 标准)
+          mtu 1492
+          mru 1492
+        '';
+      };
+    };
   };
 
   # --- 3. Systemd-networkd 配置 (DHCP & RA) ---
@@ -79,54 +114,49 @@
     };
 
     # WAN, DHCP
-    networks."20-wan-uplink" = {
-      matchConfig.Name = "enp1s0u2";
-      networkConfig = {
-        DHCP = "yes";
-        IPv6AcceptRA = true;
-        # IPMasquerade = "ipv4";
-      };
-      linkConfig.RequiredForOnline = "routable";
-      dhcpV6Config = {
-        PrefixDelegationHint = "::/60";
-        UseDelegatedPrefix = true;
-      };
-    };
-
-    # # WAN, PPPOE
-    # networks."20-wan-phy" = {
+    # networks."20-wan-uplink" = {
     #   matchConfig.Name = "enp1s0u2";
-    #   linkConfig.RequiredForOnline = "no";
     #   networkConfig = {
-    #     # 只要链路层通了就行，不要在此处做 DHCP
-    #     LinkLocalAddressing = "no"; 
-    #     KeepConfiguration = "yes"; # 保持 pppd 可能做的更改（虽然 pppd 主要是建新口）
-    #   };
-    # };
-    #
-    # networks."25-wan-ppp" = {
-    #   matchConfig.Name = "ppp0"; # pppd 默认创建的接口名
-    #
-    #   networkConfig = {
-    #     # 在这个接口上做 NAT (MASQUERADE)
-    #     IPMasquerade = "ipv4";
-    #
-    #     # 开启 IPv6 接收
+    #     DHCP = "yes";
     #     IPv6AcceptRA = true;
-    #
-    #     # 关键：TCP MSS Clamping，防止网页打不开
-    #     # 因为 PPPoE 头部有 8 字节开销，MTU 通常是 1492
-    #     TCPMSSClamp = true;
+    #     # IPMasquerade = "ipv4";
     #   };
-    #
     #   linkConfig.RequiredForOnline = "routable";
-    #
-    #   # IPv6 前缀代理请求 (向 ISP 要 IPv6)
     #   dhcpV6Config = {
     #     PrefixDelegationHint = "::/60";
     #     UseDelegatedPrefix = true;
     #   };
     # };
+
+    networks."20-wan-uplink" = {
+      matchConfig.Name = "enp1s0u2";
+      # 只需要链路层启动即可
+      linkConfig.RequiredForOnline = "no";
+      networkConfig = {
+        # 必须禁用链路本地地址，防止干扰
+        LinkLocalAddressing = "no";
+        DHCP = "no";
+        # 这里不需要 IPMasquerade 了，因为它是物理载体
+      };
+    };
+
+    networks."25-wan-ppp" = {
+      matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
+      networkConfig = {
+        # 在这里开启 NAT (IPMasquerade)
+        # IPMasquerade = "ipv4";
+
+        # IPv6 配置 (PPPoE 也能获取 IPv6)
+        IPv6AcceptRA = true;
+        DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
+      };
+      linkConfig.RequiredForOnline = "carrier";
+      dhcpV6Config = {
+        WithoutRA = "solicit";
+        PrefixDelegationHint = "::/60";
+        UseDelegatedPrefix = true;
+      };
+    };
 
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
