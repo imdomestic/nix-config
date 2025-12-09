@@ -82,6 +82,10 @@
         # IPMasquerade = "ipv4";
       };
       linkConfig.RequiredForOnline = "routable";
+      dhcpV6Config = {
+        PrefixDelegationHint = "::/60";
+        UseDelegatedPrefix = true;
+      };
     };
 
     networks."30-br-lan" = {
@@ -94,6 +98,7 @@
         IPMasquerade = "ipv4";
         # IPv6 RA (SLAAC)
         IPv6SendRA = true;
+        IPv6AcceptRA = false;
         DHCPPrefixDelegation = true;
       };
       linkConfig = {
@@ -124,6 +129,12 @@
     ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="8156", ATTR{power/control}="on"
   '';
   boot.kernelParams = ["usbcore.autosuspend=-1"];
+
+  # services.tailscale = {
+  #   enable = true;
+  #   openFirewall = true;
+  #   extraUpFlags = ["--accept-dns=false" "--login-server https://sh.imdomestic.com:8443"];
+  # }
 
   services.cockpit = {
     enable = true;
