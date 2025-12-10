@@ -44,11 +44,11 @@
     "dae-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1764950770,
-        "narHash": "sha256-xpWOLO3K2/7waEjHz9PUDTFy+ojl1mTXSnERxRPGh08=",
+        "lastModified": 1765308048,
+        "narHash": "sha256-qcpPdR484RikBjLOV3AWLnR++6fR0UCqioaKXKBAn48=",
         "ref": "refs/heads/main",
-        "rev": "350c96905d7e24c103ffb838a6f58a4f2b3a75c4",
-        "revCount": 13,
+        "rev": "ecf270e918ba3b4507bc5cd42c6235c6885884d8",
+        "revCount": 17,
         "type": "git",
         "url": "ssh://git@github.com/HCHogan/dae"
       },
