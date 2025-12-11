@@ -15,4 +15,5 @@ in {
   x86_64-headless = callHost "x86_64-headless";
   "aarch64-headless" = callHost "aarch64-headless";
   n100 = callHost "n100";
+  r6s = callHost "r6s";
 }
