@@ -16,4 +16,5 @@ in {
   "aarch64-headless" = callHost "aarch64-headless";
   n100 = callHost "n100";
   r6s = callHost "r6s";
+  aarch64-wsl = callHost "aarch64-wsl";
 }
