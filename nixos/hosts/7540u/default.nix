@@ -26,7 +26,6 @@ in {
     inputs.catppuccin.nixosModules.catppuccin
     inputs.vscode-server.nixosModules.default
     inputs.chaotic.nixosModules.default
-    inputs.niri.nixosModules.niri
   ];
 
   users = {

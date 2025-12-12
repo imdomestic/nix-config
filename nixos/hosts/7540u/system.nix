@@ -103,6 +103,10 @@
 
   xdg.portal.wlr.enable = true;
   programs = {
+    niri = {
+      package = pkgs.niri;
+      enable = true;
+    };
     hyprland = {
       enable = true;
       withUWSM = true;

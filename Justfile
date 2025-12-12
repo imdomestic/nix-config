@@ -7,16 +7,13 @@ default:
 
 # -------- System rebuild helpers --------
 switch host:
-  sudo nixos-rebuild switch --flake .#"{{host}}"
+  nixos-rebuild --sudo switch --flake .#"{{host}}"
 
 darwin host:
   darwin-rebuild switch --flake .#"{{host}}"
 
 debug host:
-  sudo nixos-rebuild switch --flake .#"{{host}}" --show-trace --verbose
-
-deploy host='rpi4' target='nix@rpi4.sanuki.cn':
-  sudo nixos-rebuild switch --flake .#"{{host}}" --target-host {{target}} --build-host localhost
+  nixos-rebuild --sudo switch --flake .#"{{host}}" --show-trace --verbose
 
 # -------- Home Manager helpers --------
 hm host user:
