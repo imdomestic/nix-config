@@ -23,6 +23,27 @@
   security.sudo.wheelNeedsPassword = false;
   programs.zsh.enable = true;
 
+  environment.systemPackages = with pkgs; [
+    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    wget
+    neovim
+    git
+    gcc
+    starship
+    zsh
+    duf
+    gnumake
+    flex
+    bison
+    elfutils
+    libelf
+    pkg-config
+    bat
+    just
+
+    # pkgsCross.riscv64.gcc14
+  ];
+
   # This value determines the NixOS release from which the default
   # settings for stateful data, like file locations and database versions
   # on your system were taken. It's perfectly fine and recommended to leave
