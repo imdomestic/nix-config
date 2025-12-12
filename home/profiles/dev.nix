@@ -88,6 +88,7 @@
     bat
 
     jujutsu
+    deploy-rs
   ];
 
   programs.yazi = {

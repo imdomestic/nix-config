@@ -1,5 +1,23 @@
 {
   description = "Hank's nix configuration for both NixOS & macOS";
+
+  outputs = inputs @ {self, ...}: let
+    hosts = import ./nixos/hosts {inherit inputs;};
+    systems = (import ./lib/mkConfigurations.nix {inherit inputs;}) {inherit hosts;};
+    homes = (import ./lib/mkHomeConfigurations.nix {inherit inputs;}) {inherit hosts;};
+    systemManagers = (import ./lib/mkSystemManagerConfigurations.nix {inherit inputs;}) {inherit hosts;};
+    deployNodes = (import ./lib/mkDeployNodes.nix {inherit inputs;}) {
+      inherit hosts;
+      inherit (systems) nixosConfigurations;
+    };
+  in {
+    inherit (systems) nixosConfigurations darwinConfigurations;
+    homeConfigurations = homes;
+    systemConfigs = systemManagers;
+    hosts = hosts;
+    deploy.nodes = deployNodes;
+  };
+
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -92,17 +110,5 @@
     steam-servers.url = "github:scottbot95/nix-steam-servers";
     chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable"; # IMPORTANT
     niri.url = "github:sodiboo/niri-flake";
-  };
-
-  outputs = inputs @ {self, ...}: let
-    hosts = import ./nixos/hosts {inherit inputs;};
-    systems = (import ./lib/mkConfigurations.nix {inherit inputs;}) {inherit hosts;};
-    homes = (import ./lib/mkHomeConfigurations.nix {inherit inputs;}) {inherit hosts;};
-    systemManagers = (import ./lib/mkSystemManagerConfigurations.nix {inherit inputs;}) {inherit hosts;};
-  in {
-    inherit (systems) nixosConfigurations darwinConfigurations;
-    homeConfigurations = homes;
-    systemConfigs = systemManagers;
-    hosts = hosts;
   };
 }
