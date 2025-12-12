@@ -22,6 +22,8 @@ in {
   externalModules = [
     inputs.vscode-server.nixosModules.default
     inputs.chaotic.nixosModules.default
+    inputs.daeuniverse.nixosModules.dae
+    inputs.daeuniverse.nixosModules.daed
   ];
 
   users = {
