@@ -2,7 +2,43 @@
   pkgs,
   inputs,
   ...
-}: {
+}: let
+  ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+    dnsconf:
+        - name: ""
+          ipv4:
+            enable: false
+            gettype: url
+            url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
+            netinterface: br0
+            cmd: ""
+            domains:
+                - ""
+          ipv6:
+            enable: true
+            gettype: netInterface
+            url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
+            netinterface: br-lan
+            cmd: ""
+            ipv6reg: '@2'
+            domains:
+                - tank.sanuki.cn
+          dns:
+            name: cloudflare
+            id: ""
+            secret: REMOVED_SECRET_CLOUDFLARE_API_TOKEN_44979882ce1a6a2c
+          ttl: ""
+    user:
+        username: genisys
+        password: REMOVED_SECRET_DDNS_BCRYPT_PASSWORD_HASH_fd4a24725221f5a3
+    webhook:
+        webhookurl: ""
+        webhookrequestbody: ""
+        webhookheaders: ""
+    notallowwanaccess: false
+    lang: zh
+  '';
+in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/mihomo
@@ -16,27 +52,71 @@
     "dm-raid" # e.g. when you are configuring raid1 via: `lvconvert -m1 /dev/pool/home`
     "dm-cache-default" # when using volumes set up with lvmcache
   ];
-  boot.supportedFilesystems = ["xfs"];
+  boot.supportedFilesystems = ["xfs" "bcachefs"];
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  fileSystems."/mnt/storage" = {
-    device = "/dev/vg1/lv_storage";
-    fsType = "xfs";
-    options = [
-      "defaults"
-      # "rw"
-      # "group=wheel"
-    ];
-    # postMount = ''
-    #   chown root:wheel /mnt/storage
-    #   chmod 2775 /mnt/storage
-    # '';
-  };
+  # fileSystems."/mnt/storage" = {
+  #   device = "/dev/vg1/lv_storage";
+  #   fsType = "xfs";
+  #   options = [
+  #     "defaults"
+  #     # "rw"
+  #     # "group=wheel"
+  #   ];
+  #   # postMount = ''
+  #   #   chown root:wheel /mnt/storage
+  #   #   chmod 2775 /mnt/storage
+  #   # '';
+  # };
 
   services.lvm.boot.thin.enable = true; # when using thin provisioning or caching
   services.lvm.enable = true;
 
-  networking.hostName = "tank"; # Define your hostname.
-  networking.networkmanager.enable = true; # Easiest to use and most distros use this by default.
+  networking = {
+    hostName = "tank"; # Define your hostname.
+    networkmanager.enable = false; # Easiest to use and most distros use this by default.
+    useDHCP = false;
+    useNetworkd = true;
+    nftables.enable = true;
+    firewall = {
+      enable = false;
+      trustedInterfaces = ["enp4s0" "br-lan"];
+      checkReversePath = false;
+    };
+    wg-quick.interfaces = {
+      wg0 = {
+        configFile = "${inputs.wg-config.outPath}/client_00065.conf";
+        autostart = true;
+      };
+    };
+  };
+
+  systemd.network = {
+    enable = true;
+    netdevs."10-br-lan" = {
+      netdevConfig = {
+        Kind = "bridge";
+        Name = "br-lan";
+      };
+    };
+
+    networks."20-lan-uplink" = {
+      matchConfig.Name = "enp4s0";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    networks."30-br-lan" = {
+      matchConfig.Name = "br-lan";
+      networkConfig = {
+        DHCP = "yes";
+        IPv6AcceptRA = true;
+      };
+      linkConfig = {
+        RequiredForOnline = "routable";
+      };
+    };
+  };
 
   # Set your time zone.
   time.timeZone = "Hongkong";
@@ -68,41 +148,41 @@
   #   };
   # };
 
-  services.samba = {
-    package = pkgs.samba4Full;
-    enable = true;
-    securityType = "user";
-    openFirewall = true;
-    settings.public = {
-      path = "/mnt/storage/share";
-      writable = "true";
-      comment = "Hello World!";
-      extraConfig = ''
-        server smb encrypt = required
-        server min protocol = SMB3_00
-      '';
-    };
-  };
+  # services.samba = {
+  #   package = pkgs.samba4Full;
+  #   enable = true;
+  #   securityType = "user";
+  #   openFirewall = true;
+  #   settings.public = {
+  #     path = "/mnt/storage/share";
+  #     writable = "true";
+  #     comment = "Hello World!";
+  #     extraConfig = ''
+  #       server smb encrypt = required
+  #       server min protocol = SMB3_00
+  #     '';
+  #   };
+  # };
 
-  services.jellyfin = {
-    enable = true;
-    openFirewall = true;
-  };
+  # services.jellyfin = {
+  #   enable = true;
+  #   openFirewall = true;
+  # };
 
-  services.avahi = {
-    publish.enable = true;
-    publish.userServices = true;
-    # ^^ Needed to allow samba to automatically register mDNS records (without the need for an `extraServiceFile`
-    nssmdns4 = true;
-    # ^^ Not one hundred percent sure if this is needed- if it aint broke, don't fix it
-    enable = true;
-    openFirewall = true;
-  };
+  # services.avahi = {
+  #   publish.enable = true;
+  #   publish.userServices = true;
+  #   # ^^ Needed to allow samba to automatically register mDNS records (without the need for an `extraServiceFile`
+  #   nssmdns4 = true;
+  #   # ^^ Not one hundred percent sure if this is needed- if it aint broke, don't fix it
+  #   enable = true;
+  #   openFirewall = true;
+  # };
 
-  services.samba-wsdd = {
-    enable = true;
-    openFirewall = true;
-  };
+  # services.samba-wsdd = {
+  #   enable = true;
+  #   openFirewall = true;
+  # };
 
   programs.zsh = {
     enable = true;
@@ -188,7 +268,7 @@
     spice
     spice-gtk
     spice-protocol
-    win-virtio
+    virtio-win
     win-spice
     adwaita-icon-theme
     radeontop
@@ -213,81 +293,26 @@
       ]))
   ];
 
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
-
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
   services.openssh.enable = true;
   services.vscode-server.enable = true;
-  # services.thymis-controller = {
-  #   enable = true;
-  #   system-binfmt-aarch64-enable = true; # enables emulation of aarch64 binaries, default is true on x86_64, needed for building aarch64 images on x86_64
-  #   system-binfmt-x86_64-enable = false; # enables emulation of x86_64 binaries, default is false
-  #   recommended-nix-gc-settings-enable = true; # enables recommended Nix garbage collection settings, default is true
-  #   # repo-path = "/var/lib/thymis/repository"; # directory where the controller will store the repository holding the project
-  #   # database-url = "sqlite:////var/lib/thymis/thymis.sqlite"; # URL of the database
-  #   base-url = "https://my-thymis-controller/"; # base URL of the controller, how it will be accessed from the outside
-  #   agent-access-url = "https://my-thymis-controller/"; # URL of the controller to be used by the agents
-  #   auth-basic = true; # whether to enable authentication using a basic username/password
-  #   auth-basic-username = "admin"; # username for basic authentication
-  #   auth-basic-password-file = "/var/lib/thymis/auth-basic-password"; # file containing the password for basic authentication
-  #   # content will be automatically generated if it does not exist
-  #   listen-host = "0.0.0.0"; # host on which the controller listens for incoming connections
-  #   listen-port = 8000; # port on which the controller listens for incoming connections
-  #   nginx-vhost-enable = true; # whether to enable the Nginx virtual host
-  #   nginx-vhost-name = "thymis"; # name of the Nginx virtual host
-  # };
-  # Configure the Nginx virtual host
-  # services.nginx = {
-  #   enable = true;
-  #   virtualHosts."thymis" = {
-  #     serverName = "my-thymis-controller";
-  #     enableACME = false;
-  #     forceSSL = false;
-  #   };
-  # };
 
   systemd.services.ddns-go = {
     enable = true;
-    description = "Simple and easy to use DDNS. Automatically update domain name resolution to public IP (Support Aliyun, Tencent Cloud, Dnspod, Cloudflare, Callback, Huawei Cloud, Baidu Cloud, Porkbun, GoDaddy...)";
+    description = "ddns";
 
-    wants = ["network.target"];
+    wants = ["network-online.target"];
     after = ["network-online.target"];
 
     serviceConfig = {
-      StartLimitInterval = 5;
-      StartLimitBurst = 10;
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go \"-l\" \":9876\" \"-f\" \"300\" \"-cacheTimes\" \"5\" \"-c\" \"/home/genisys/.ddns_go_config.yaml\"";
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
       Restart = "always";
-      RestartSec = 120;
-      EnvironmentFile = "-/etc/sysconfig/ddns-go";
-    };
-
-    wantedBy = ["multi-user.target"];
-  };
-
-  # Open ports in the firewall.
-  # networking.firewall.allowedTCPPorts = [ ... ];
-  # networking.firewall.allowedUDPPorts = [ ... ];
-  # Or disable the firewall altogether.
-  networking.firewall.enable = false;
-
-  networking.useDHCP = false;
-  # networking.interfaces.enp6s0.useDHCP = true;
-  networking.interfaces.br0.useDHCP = true;
-  networking.bridges = {
-    "br0" = {
-      interfaces = ["enp4s0"];
+      RestartSec = 5;
     };
   };
+
   systemd.enableEmergencyMode = false;
+  systemd.watchdog.runtimeTime = "60s";
+  systemd.watchdog.rebootTime = "60s";
 
   system.stateVersion = "24.11"; # Did you read the comment?
 }
