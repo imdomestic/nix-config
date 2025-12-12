@@ -186,10 +186,6 @@ in {
   # Set your time zone.
   time.timeZone = "Hongkong";
 
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://127.0.0.1:7890";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
   nixpkgs.config.rocmSupport = true;
 
   # Enable the X11 windowing system.
@@ -224,11 +220,6 @@ in {
   #   # ^^ Needed to allow samba to automatically register mDNS records (without the need for an `extraServiceFile`
   #   nssmdns4 = true;
   #   # ^^ Not one hundred percent sure if this is needed- if it aint broke, don't fix it
-  #   enable = true;
-  #   openFirewall = true;
-  # };
-
-  # services.samba-wsdd = {
   #   enable = true;
   #   openFirewall = true;
   # };
@@ -282,8 +273,6 @@ in {
     pulse.enable = true;
   };
 
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
   environment.systemPackages = with pkgs; [
     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     wget
@@ -344,6 +333,8 @@ in {
 
   services.openssh.enable = true;
   services.vscode-server.enable = true;
+
+  services.iperf3.enable = true;
 
   systemd.services.ddns-go = {
     enable = true;
