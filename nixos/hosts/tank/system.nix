@@ -55,22 +55,32 @@ in {
   boot.supportedFilesystems = ["xfs" "bcachefs"];
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  # fileSystems."/mnt/storage" = {
-  #   device = "/dev/vg1/lv_storage";
-  #   fsType = "xfs";
-  #   options = [
-  #     "defaults"
-  #     # "rw"
-  #     # "group=wheel"
-  #   ];
-  #   # postMount = ''
-  #   #   chown root:wheel /mnt/storage
-  #   #   chmod 2775 /mnt/storage
-  #   # '';
-  # };
+  fileSystems."/data" = {
+    device = "UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1";
+    fsType = "bcachefs";
+    options = ["defaults" "nofail" "compression=zstd" "noatime"];
+  };
 
-  services.lvm.boot.thin.enable = true; # when using thin provisioning or caching
-  services.lvm.enable = true;
+  systemd = {
+    tmpfiles.rules = [
+      "d     /data/builds     0777 root  root  -" # 编译目录，给所有人写权限方便
+      "d     /data/services   0755 root  root  -"
+      "d     /data/nas        0755 hank  users -" # 网盘目录归你的用户
+      "d     /data/nas/public 0775 hank  users -"
+    ];
+    services.nix-daemon.environment.TMPDIR = "/data/builds";
+  };
+
+  services.filebrowser = {
+    enable = true;
+    user = "hank";
+    settings = {
+      address = "0.0.0.0";
+      port = 8080;
+      root = "/data/nas/public";
+      database = "/var/lib/filebrowser/filebrowser.db";
+    };
+  };
 
   networking = {
     hostName = "tank"; # Define your hostname.
@@ -145,22 +155,6 @@ in {
   #     WebService = {
   #       AllowUnencrypted = true;
   #     };
-  #   };
-  # };
-
-  # services.samba = {
-  #   package = pkgs.samba4Full;
-  #   enable = true;
-  #   securityType = "user";
-  #   openFirewall = true;
-  #   settings.public = {
-  #     path = "/mnt/storage/share";
-  #     writable = "true";
-  #     comment = "Hello World!";
-  #     extraConfig = ''
-  #       server smb encrypt = required
-  #       server min protocol = SMB3_00
-  #     '';
   #   };
   # };
 
