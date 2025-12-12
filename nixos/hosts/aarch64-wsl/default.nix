@@ -1,17 +1,21 @@
 {inputs}: let
+  nixosProfiles = import ../../profiles/default.nix;
   homeProfiles = import ../../../home/profiles/default.nix;
   userModules = import ../../../home/users/default.nix {inherit inputs;};
 in {
   system = "aarch64-linux";
-  kind = "home";
+  kind = "nixos";
   roles = ["server"];
 
-  systemManager = {
-    enable = true;
-    modules = [
-      ./system.nix
-    ];
-  };
+  profiles = with nixosProfiles; [
+    base
+    server
+    # desktop
+  ];
+
+  modules = [
+    ./system.nix
+  ];
 
   externalModules = [
     # inputs.daeuniverse.nixosModules.dae
