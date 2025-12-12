@@ -73,13 +73,67 @@ in {
 
   services.filebrowser = {
     enable = true;
-    user = "hank";
+    user = "hank"; # FileBrowser 以 hank 身份运行
+    group = "users";
+    openFirewall = true;
     settings = {
       address = "0.0.0.0";
       port = 8080;
-      root = "/data/nas/public";
+      root = "/data/nas";
       database = "/var/lib/filebrowser/filebrowser.db";
+      log = "/var/log/filebrowser.log";
     };
+  };
+
+  services.samba = {
+    enable = true;
+    openFirewall = true;
+
+    settings = {
+      global = {
+        "workgroup" = "WORKGROUP";
+        "server string" = "NixOS NAS";
+        "netbios name" = "nixos-nas";
+        "security" = "user";
+        "min protocol" = "SMB2_10";
+
+        "fruit:metadata" = "stream";
+        "fruit:model" = "MacSamba";
+        "fruit:posix_rename" = "yes";
+        "fruit:veto_appledouble" = "no";
+        "fruit:nfs_aces" = "no";
+        "fruit:wipe_intentionally_left_blank_rfork" = "yes";
+        "fruit:delete_empty_adfiles" = "yes";
+      };
+
+      public = {
+        "path" = "/data/nas/public";
+        "browseable" = "yes";
+        "read only" = "no";
+        "guest ok" = "yes";
+        "create mask" = "0664";
+        "directory mask" = "0775";
+        "force user" = "hank";
+        "force group" = "users";
+      };
+
+      home_hank = {
+        "path" = "/data/nas";
+        "browseable" = "yes";
+        "read only" = "no";
+        "guest ok" = "no";
+        "valid users" = "hank";
+        "create mask" = "0644";
+        "directory mask" = "0755";
+        "force user" = "hank";
+        "force group" = "users";
+      };
+    };
+  };
+
+  services.samba-wsdd = {
+    enable = true;
+    openFirewall = true;
   };
 
   networking = {
