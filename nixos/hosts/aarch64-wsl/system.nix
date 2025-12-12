@@ -16,6 +16,7 @@
 
   wsl.enable = true;
   wsl.defaultUser = "hank";
+  networking.hostName = "x1-26-100";
 
   users.users.hank = {
     isNormalUser = true;
