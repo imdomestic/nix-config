@@ -329,7 +329,16 @@ in {
         pandas
         requests
       ]))
+
+    steam-run
+    steamcmd
   ];
+
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
+    dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
+  };
 
   services.openssh.enable = true;
   services.vscode-server.enable = true;
