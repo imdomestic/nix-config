@@ -11,7 +11,11 @@
 }: {
   wsl.enable = true;
   wsl.defaultUser = "hank";
-  networking.hostName = "x1-26-100";
+  networking.hostName = "aarch64-wsl";
+
+  # Configure network proxy if necessary
+  networking.proxy.default = "http://127.0.0.1:7897";
+  networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   users.users.hank = {
     isNormalUser = true;

@@ -90,6 +90,39 @@
 
     jujutsu
     deploy-rs
+
+    # archives
+    zip
+    xz
+    unzip
+    p7zip
+
+    # networking
+    mtr
+    iperf3
+    dnsutils
+    ldns
+    aria2
+    socat
+    nmap
+    ipcalc
+
+    #misc
+    cowsay
+    file
+    which
+    tree
+    gnused
+    gnutar
+    gawk
+    zstd
+    gnupg
+    tree-sitter
+    zinit
+
+    # qol
+    comma
+    nix-output-monitor
   ];
 
   programs.yazi = {

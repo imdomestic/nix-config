@@ -30,34 +30,6 @@
   home.sessionVariables.NIXOS_OZONE_WL = "1";
 
   home.packages = with pkgs; [
-    # archives
-    zip
-    xz
-    unzip
-    p7zip
-
-    # networking
-    mtr
-    iperf3
-    dnsutils
-    ldns
-    aria2
-    socat
-    nmap
-    ipcalc
-
-    #misc
-    cowsay
-    file
-    which
-    tree
-    gnused
-    gnutar
-    gawk
-    zstd
-    gnupg
-    tree-sitter
-    zinit
 
     # monitor
     iotop
