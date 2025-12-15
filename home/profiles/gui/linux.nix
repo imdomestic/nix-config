@@ -3,21 +3,20 @@
   inputs,
   ...
 }: {
-  imports =
-    [
-      # ../../modules/hyprland
-      ../../modules/walker
-      ../../modules/tofi
-      inputs.walker.homeManagerModules.default
-      inputs.catppuccin.homeModules.catppuccin
-      inputs.noctalia.homeModules.default
-      inputs.niri.homeModules.niri
-      ../../modules/kitty
-      ../../modules/ghostty
-      ../../modules/gui
-      ../../modules/noctalia
-    ];
-    # ++ pkgs.lib.optional (hostname == "b660") [../../modules/gui];
+  imports = [
+    # ../../modules/hyprland
+    ../../modules/walker
+    ../../modules/tofi
+    inputs.walker.homeManagerModules.default
+    inputs.catppuccin.homeModules.catppuccin
+    inputs.noctalia.homeModules.default
+    inputs.niri.homeModules.niri
+    ../../modules/kitty
+    ../../modules/ghostty
+    ../../modules/gui
+    ../../modules/noctalia
+  ];
+  # ++ pkgs.lib.optional (hostname == "b660") [../../modules/gui];
 
   # use qemu system session
   # dconf.settings = {
@@ -30,7 +29,6 @@
   home.sessionVariables.NIXOS_OZONE_WL = "1";
 
   home.packages = with pkgs; [
-
     # monitor
     iotop
     iftop

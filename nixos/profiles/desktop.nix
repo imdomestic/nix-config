@@ -1,5 +1,4 @@
-{ lib, ... }:
-{
+{lib, ...}: {
   imports = [
     ../modules/nerdfonts
     ../modules/fcitx5

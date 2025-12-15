@@ -1,5 +1,11 @@
-{ lib, inputs, username, system, pkgs, ... }:
 {
+  lib,
+  inputs,
+  username,
+  system,
+  pkgs,
+  ...
+}: {
   programs.git = {
     enable = true;
     settings = {

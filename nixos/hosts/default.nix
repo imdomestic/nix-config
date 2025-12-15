@@ -1,6 +1,5 @@
-{ inputs }:
-let
-  callHost = name: import (./. + "/${name}") { inherit inputs; };
+{inputs}: let
+  callHost = name: import (./. + "/${name}") {inherit inputs;};
 in {
   H610 = callHost "H610";
   b650 = callHost "b650";

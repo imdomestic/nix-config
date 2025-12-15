@@ -1,8 +1,7 @@
-{ inputs }:
-let
+{inputs}: let
   nixosProfiles = import ../../profiles/default.nix;
   homeProfiles = import ../../../home/profiles/default.nix;
-  userModules = import ../../../home/users/default.nix { inherit inputs; };
+  userModules = import ../../../home/users/default.nix {inherit inputs;};
 in {
   system = "aarch64-linux";
   kind = "nixos";

@@ -1,5 +1,11 @@
-{ lib, inputs, system, pkgs, username, ... }:
 {
+  lib,
+  inputs,
+  system,
+  pkgs,
+  username,
+  ...
+}: {
   home.packages = with pkgs; [
     lua-language-server
     nil
@@ -42,9 +48,11 @@
   };
 
   home.sessionVariables = {
-    ZDOTDIR = if lib.hasInfix "darwin" system then "/Users/nix/.config/zsh" else "/home/nix/.config/zsh";
+    ZDOTDIR =
+      if lib.hasInfix "darwin" system
+      then "/Users/nix/.config/zsh"
+      else "/home/nix/.config/zsh";
   };
-
 
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../../../fonts/Recursive-Italic.ttf;

@@ -1,7 +1,11 @@
-{hostname, pkgs, ...}: {
+{
+  hostname,
+  pkgs,
+  ...
+}: {
   programs.walker = {
     package = pkgs.walker;
-    enable = (hostname == "b660" || hostname == "7540u");
+    enable = hostname == "b660" || hostname == "7540u";
     runAsService = true;
 
     # All options from the config.json can be used here.

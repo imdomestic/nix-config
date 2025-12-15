@@ -1,5 +1,4 @@
-{ inputs }:
-{
+{inputs}: {
   hank = {
     module = import ./hank/default.nix;
   };

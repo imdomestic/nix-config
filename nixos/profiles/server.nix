@@ -1,5 +1,4 @@
-{ lib, ... }:
-{
+{lib, ...}: {
   services = {
     xserver.enable = lib.mkDefault false;
     printing.enable = lib.mkDefault false;

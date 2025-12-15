@@ -168,16 +168,15 @@ in {
         ]
         else [
         ];
-      exec-once =
-        [
-          "hyprctl setcursor \"Vanilla-DMZ\" 24"
-          "fcitx5 -d"
-        ];
-        # ++ (
-        #   if (hostname == "b650" || hostname == "7540u")
-        #   then ["hyprpanel"]
-        #   else []
-        # );
+      exec-once = [
+        "hyprctl setcursor \"Vanilla-DMZ\" 24"
+        "fcitx5 -d"
+      ];
+      # ++ (
+      #   if (hostname == "b650" || hostname == "7540u")
+      #   then ["hyprpanel"]
+      #   else []
+      # );
       # l -> do stuff even when locked
       # e -> repeats when key is held
       bindle = [

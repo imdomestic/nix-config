@@ -1,7 +1,6 @@
-{ inputs }:
-let
+{inputs}: let
   homeProfiles = import ../../../home/profiles/default.nix;
-  userModules = import ../../../home/users/default.nix { inherit inputs; };
+  userModules = import ../../../home/users/default.nix {inherit inputs;};
 in {
   system = "x86_64-linux";
   kind = "home";
@@ -34,4 +33,3 @@ in {
     };
   };
 }
-

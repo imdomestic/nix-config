@@ -55,7 +55,7 @@ in {
   ];
   boot.supportedFilesystems = ["xfs" "bcachefs"];
   boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+  boot.binfmt.emulatedSystems = ["aarch64-linux"];
 
   fileSystems."/data" = {
     device = "UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1";
@@ -224,6 +224,21 @@ in {
   #   enable = true;
   #   openFirewall = true;
   # };
+
+  # for cs2 dedicated server
+  services.mysql = {
+    package = pkgs.mariadb;
+    enable = true;
+    ensureDatabases = ["cs2"];
+    ensureUsers = [
+      {
+        name = "cs2";
+        ensurePermissions = {
+          "*.*" = "ALL PRIVILEGES";
+        };
+      }
+    ];
+  };
 
   programs.zsh = {
     enable = true;
