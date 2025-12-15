@@ -50,6 +50,7 @@
         Name = "br-lan";
       };
     };
+
     networks."20-lan-uplink" = {
       matchConfig.Name = "ens5";
       networkConfig.Bridge = "br-lan";
@@ -62,7 +63,9 @@
         DHCP = "yes";
         IPv6AcceptRA = true;
       };
-      linkConfig.RequiredForOnline = "carrier";
+      linkConfig = {
+        RequiredForOnline = "routable";
+      };
     };
   };
 
