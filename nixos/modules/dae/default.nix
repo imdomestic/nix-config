@@ -9,10 +9,4 @@
     config = builtins.readFile "${inputs.dae-config.outPath}/config.dae";
     assets = with pkgs; [v2ray-geoip v2ray-domain-list-community];
   };
-
-  services.daed = {
-    enable = false;
-    # package = pkgs.daed;
-    # listen = "0.0.0.0:2023";
-  };
 }

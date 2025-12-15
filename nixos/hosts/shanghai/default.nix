@@ -19,8 +19,6 @@ in {
   ];
 
   externalModules = [
-    inputs.daeuniverse.nixosModules.dae
-    inputs.daeuniverse.nixosModules.daed
     # inputs.niri.nixosModules.niri
   ];
 

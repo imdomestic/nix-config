@@ -20,8 +20,6 @@ in {
   ];
 
   externalModules = [
-    inputs.daeuniverse.nixosModules.dae
-    inputs.daeuniverse.nixosModules.daed
     inputs.vscode-server.nixosModules.default
     inputs.steam-servers.nixosModules.default
   ];
