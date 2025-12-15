@@ -416,11 +416,11 @@
     "kvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1765538206,
-        "narHash": "sha256-ljrXUQveMqwqkkqGuCgv9zUm+7wZ0y/Znd/GsuU4jFs=",
+        "lastModified": 1765808699,
+        "narHash": "sha256-44itBPCSnY7FbSHWRer/x7whpF58aVQI7wtRk4blaC4=",
         "ref": "refs/heads/main",
-        "rev": "54765858c03227cac401d78832e68552e1265bf8",
-        "revCount": 493,
+        "rev": "0a63afaef99b657e782265f1912a61f8efb5f5c6",
+        "revCount": 494,
         "type": "git",
         "url": "ssh://git@github.com/HCHogan/kvim"
       },
