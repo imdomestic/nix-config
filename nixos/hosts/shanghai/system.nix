@@ -12,6 +12,12 @@
   boot.loader.grub.useOSProber = false;
   boot.tmp.cleanOnBoot = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernel.sysctl = {
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
+    "net.core.default_qdisc" = "fq";
+    "net.ipv4.tcp_congestion_control" = "bbr";
+  };
   zramSwap.enable = true;
 
   users.users.root.openssh.authorizedKeys.keys = [
