@@ -51,8 +51,8 @@
           chain prerouting {
             type nat hook prerouting priority -100; policy accept;
 
-            iifname "br-lan" tcp dport 27015 dnat to 10.0.0.66:27015
-            iifname "br-lan" udp dport 27015 dnat to 10.0.0.66:27015
+            iifname "br-lan" tcp dport 27015 dnat ip to 10.0.0.66:27015
+            iifname "br-lan" udp dport 27015 dnat ip to 10.0.0.66:27015
           }
 
           chain postrouting {
