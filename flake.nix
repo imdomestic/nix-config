@@ -50,17 +50,17 @@
     };
 
     kvim = {
-      url = "github:HCHogan/kvim";
+      url = "git+ssh://git@github.com/HCHogan/kvim";
       flake = false;
     };
 
     hvim = {
-      url = "github:HCHogan/hvim";
+      url = "git@ssh://git@github.com/HCHogan/hvim";
       flake = false;
     };
 
     wezterm-config = {
-      url = "github:HCHogan/wezterm";
+      url = "git+ssh://git@github.com/HCHogan/wezterm";
       flake = false;
     };
 
@@ -68,8 +68,6 @@
       url = "github:HCHogan/zsh";
       flake = false;
     };
-
-    catppuccin.url = "github:catppuccin/nix";
 
     dae-config = {
       url = "git+ssh://git@github.com/HCHogan/dae";
@@ -85,6 +83,8 @@
       url = "git+ssh://git@github.com/imdomestic/wgconfigs";
       flake = false;
     };
+
+    catppuccin.url = "github:catppuccin/nix";
 
     nur = {
       url = "github:nix-community/NUR";
