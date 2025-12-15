@@ -23,7 +23,6 @@ in {
     inputs.nixos-hardware.nixosModules.lenovo-thinkpad-t14s-amd-gen4
     inputs.catppuccin.nixosModules.catppuccin
     inputs.vscode-server.nixosModules.default
-    inputs.chaotic.nixosModules.default
   ];
 
   users = {

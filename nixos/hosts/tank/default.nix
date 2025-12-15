@@ -23,7 +23,6 @@ in {
 
   externalModules = [
     inputs.vscode-server.nixosModules.default
-    inputs.chaotic.nixosModules.default
   ];
 
   users = {

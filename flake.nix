@@ -107,7 +107,6 @@
     vscode-server.url = "github:nix-community/nixos-vscode-server";
     thymis.url = "github:Thymis-io/thymis/v0.3";
     steam-servers.url = "github:scottbot95/nix-steam-servers";
-    chaotic.url = "github:chaotic-cx/nyx/nyxpkgs-unstable"; # IMPORTANT
     niri.url = "github:sodiboo/niri-flake";
   };
 }
