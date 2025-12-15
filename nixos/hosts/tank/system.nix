@@ -55,6 +55,7 @@ in {
   ];
   boot.supportedFilesystems = ["xfs" "bcachefs"];
   boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
 
   fileSystems."/data" = {
     device = "UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1";
@@ -274,6 +275,7 @@ in {
   };
 
   environment.systemPackages = with pkgs; [
+    cachix
     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     wget
     neovim
