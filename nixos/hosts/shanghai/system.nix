@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{inputs, pkgs, ...}: {
   imports = [
     ./hardware-configuration.nix
     ../../modules/dae
@@ -39,6 +39,12 @@
     useDHCP = false;
     nftables = {
       enable = true;
+    };
+    wg-quick.interfaces = {
+      wg0 = {
+        configFile = "${inputs.wg-config.outPath}/server.conf";
+        autostart = true;
+      };
     };
   };
 
