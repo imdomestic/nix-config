@@ -1,4 +1,8 @@
-{inputs, pkgs, ...}: {
+{
+  inputs,
+  pkgs,
+  ...
+}: {
   imports = [
     ./hardware-configuration.nix
     ../../modules/dae
@@ -39,6 +43,26 @@
     useDHCP = false;
     nftables = {
       enable = true;
+      tables.cs2 = {
+        name = "cs2";
+        enable = true;
+        family = "inet";
+        content = ''
+          chain prerouting {
+            type nat hook prerouting priority -100; policy accept;
+
+            iifname "br-lan" tcp dport 27015 dnat to 10.0.0.66:27015
+            iifname "br-lan" udp dport 27015 dnat to 10.0.0.66:27015
+          }
+
+          chain postrouting {
+            type nat hook postrouting priority 100; policy accept;
+
+            oifname "wg0" ip daddr 10.0.0.66 tcp dport 27015 masquerade
+            oifname "wg0" ip daddr 10.0.0.66 udp dport 27015 masquerade
+          }
+        '';
+      };
     };
     wg-quick.interfaces = {
       wg0 = {
@@ -78,7 +102,9 @@
   services.qemuGuest.enable = true;
 
   services.iperf3.enable = true;
-  services.openssh.enable = true;
+  services.openssh = {
+    enable = true;
+  };
   services.openssh.openFirewall = true;
   services.openssh.settings = {
     PasswordAuthentication = true;
