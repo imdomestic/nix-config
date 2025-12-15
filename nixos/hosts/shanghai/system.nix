@@ -11,6 +11,7 @@
   boot.loader.grub.enable = true;
   boot.loader.grub.useOSProber = false;
   boot.tmp.cleanOnBoot = true;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   zramSwap.enable = true;
 
   users.users.root.openssh.authorizedKeys.keys = [
@@ -25,14 +26,44 @@
     ];
   };
 
-  networking.useNetworkd = true;
-  systemd.network.enable = true;
-  networking.useDHCP = false;
-  networking.interfaces.ens5.useDHCP = true;
+  networking = {
+    firewall.enable = false;
+    networkmanager.enable = false;
+    useNetworkd = true;
+    useDHCP = false;
+    nftables = {
+      enable = true;
+    };
+  };
+
+  systemd.network = {
+    enable = true;
+    netdevs."10-br-lan" = {
+      netdevConfig = {
+        Kind = "bridge";
+        Name = "br-lan";
+      };
+    };
+    networks."20-lan-uplink" = {
+      matchConfig.Name = "ens5";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    networks."30-br-lan" = {
+      matchConfig.Name = "br-lan";
+      networkConfig = {
+        DHCP = "yes";
+        IPv6AcceptRA = true;
+      };
+      linkConfig.RequiredForOnline = "carrier";
+    };
+  };
 
   services.resolved.enable = true;
   services.qemuGuest.enable = true;
 
+  services.iperf3.enable = true;
   services.openssh.enable = true;
   services.openssh.openFirewall = true;
   services.openssh.settings = {
@@ -40,12 +71,14 @@
     PermitRootLogin = "yes";
   };
 
+  security.sudo.wheelNeedsPassword = false;
+
   environment.systemPackages = with pkgs; [
     git
     neovim
     fzf
   ];
-  environment.pathsToLink = [ "/share/applications" "/share/xdg-desktop-portal" ];
+  environment.pathsToLink = ["/share/applications" "/share/xdg-desktop-portal"];
 
   programs.zsh.enable = true;
   system.stateVersion = "25.11";
