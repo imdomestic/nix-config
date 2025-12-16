@@ -144,10 +144,6 @@ in {
       '';
     };
   };
-  systemd.services.caddy.preStart = ''
-    chmod 644 ${certFile}
-    chmod 644 ${keyFile}
-  '';
 
   services.resolved.enable = true;
   services.qemuGuest.enable = true;
