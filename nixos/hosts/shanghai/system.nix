@@ -116,9 +116,10 @@ in {
         region_name = "Shanghai Aliyun";
         stun_listen_addr = "0.0.0.0:3478";
       };
-      dns_config = {
+      dns = {
         base_domain = "inner.imdomestic.com";
-        nameservers = ["223.5.5.5" "1.1.1.1"];
+        magic_dns = true;
+        nameservers = [];
       };
       ip_prefixes = ["100.64.0.0/10"];
     };
