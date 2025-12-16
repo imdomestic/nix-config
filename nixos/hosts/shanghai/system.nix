@@ -120,6 +120,7 @@ in {
         base_domain = "inner.imdomestic.com";
         magic_dns = true;
         nameservers = {};
+        override_local_dns = false;
       };
       ip_prefixes = ["100.64.0.0/10"];
     };
