@@ -119,7 +119,7 @@ in {
       dns = {
         base_domain = "inner.imdomestic.com";
         magic_dns = true;
-        nameservers = [];
+        nameservers = {};
       };
       ip_prefixes = ["100.64.0.0/10"];
     };
