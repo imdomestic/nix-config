@@ -59,7 +59,8 @@
     gnumake
     gh
     zellij
-    # gcc
+    gcc
+    lazygit
 
     # utils
     hyperfine
