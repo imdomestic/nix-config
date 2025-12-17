@@ -5,7 +5,7 @@
 }: {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/mihomo
+    # ../../modules/mihomo
     # ../../modules/grub
     # ../../modules/tuigreet
     ../../modules/keyd
@@ -30,15 +30,56 @@
   #   options kvm ignore_msrs=1
   # '';
 
-  networking.hostName = "b650"; # Define your hostname.
-  networking.networkmanager.enable = true; # Easiest to use and most distros use this by default.
-
-  # Set your time zone.
-  time.timeZone = "Hongkong";
-
+  networking = {
+    hostName = "b650"; # Define your hostname.
+    networkmanager.enable = false; # Easiest to use and most distros use this by default.
+    useDHCP = false;
+    useNetworkd = true;
+    nftables.enable = true;
+    firewall = {
+      enable = false;
+      trustedInterfaces = ["eno1" "br-lan"];
+      checkReversePath = false;
+    };
+    wg-quick.interfaces = {
+      wg0 = {
+        configFile = "${inputs.wg-config.outPath}/client_00067.conf";
+        autostart = true;
+      };
+    };
+  };
   # Configure network proxy if necessary
-  networking.proxy.default = "http://127.0.0.1:7890";
-  networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+  # networking.proxy.default = "http://127.0.0.1:7890";
+  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
+
+  systemd.network = {
+    enable = true;
+    netdevs."10-br-lan" = {
+      netdevConfig = {
+        Kind = "bridge";
+        Name = "br-lan";
+      };
+    };
+
+    networks."20-lan-uplink" = {
+      matchConfig.Name = "eno1";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    networks."30-br-lan" = {
+      matchConfig.Name = "br-lan";
+      networkConfig = {
+        DHCP = "yes";
+        IPv6AcceptRA = true;
+      };
+      linkConfig = {
+        RequiredForOnline = "routable";
+      };
+    };
+  };
+
+  time.timeZone = "Hongkong";
 
   nixpkgs.config.rocmSupport = true;
 
@@ -73,41 +114,15 @@
     SUBSYSTEM=="vfio", OWNER="root", GROUP="kvm"
   '';
 
-  # Enable the X11 windowing system.
   services.xserver.enable = true;
-
-  # Enable the GNOME Desktop Environment.
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
 
-  # services.desktopManager.cosmic.enable = true;
   services.flatpak.enable = true;
-
-  programs.zsh = {
-    enable = true;
-  };
-
-  xdg.portal.wlr.enable = true;
-  # programs = {
-  #   hyprland = {
-  #     enable = true;
-  #     withUWSM = true;
-  #   };
-  #   # waybar.enable = true;
-  #   hyprlock.enable = true;
-  #   # thunar.enable = true;
-  #   virt-manager.enable = true;
-  #   xwayland.enable = true;
-  # };
-
   services.spice-vdagentd.enable = true;
   services.blueman.enable = true;
 
-  # services.cockpit = {
-  #   enable = true;
-  #   openFirewall = true;
-  #   port = 9091;
-  # };
+  xdg.portal.wlr.enable = true;
 
   # services.ollama = {
   #   enable = true;
@@ -119,13 +134,6 @@
   # services.llama-cpp = {
   #   enable = true;
   # };
-
-  hardware.graphics = {
-    enable = true;
-    extraPackages = with pkgs; [
-      rocmPackages.clr.icd
-    ];
-  };
 
   environment = {
     variables = {
@@ -146,11 +154,11 @@
     pulse.enable = true;
   };
 
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
   environment.systemPackages = with pkgs; [
     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     wget
+    firefox
+    google-chrome
     neovim
     git
     gcc
@@ -159,8 +167,6 @@
     qemu
     starship
     zsh
-    brightnessctl
-    nwg-dock-hyprland
     duf
     gnumake
     flex
@@ -171,22 +177,15 @@
     clapper
     bat
     just
-    mihomo
-    hmcl
 
     adwaita-icon-theme
     radeontop
     corectrl
-    # daed
     ddns-go
     btop-rocm
 
     inputs.zen-browser.packages."${system}".default
-    google-chrome
-
     inputs.noctalia.packages.${system}.default
-
-    # pkgsCross.riscv64.gcc14
   ];
 
   programs = {
@@ -205,35 +204,10 @@
       dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
       localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
     };
+    zsh.enable = true;
   };
-  hardware.xone.enable = true;
 
-  # Some programs need SUID wrappers, can be configured further or are
-  # started in user sessions.
-  # programs.mtr.enable = true;
-  # programs.gnupg.agent = {
-  #   enable = true;
-  #   enableSSHSupport = true;
-  # };
-
-  # List services that you want to enable:
-
-  # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
-  networking.firewall.enable = false;
-
-  # networking.useDHCP = true;
-  # networking.interfaces.enp6s0.useDHCP = true;
-  # networking.interfaces.br0.useDHCP = true;
-  # networking.bridges = {
-  #  "br0" = {
-  #    interfaces = ["eno1"];
-  #  };
-  # };
-  # Copy the NixOS configuration file and link it from the resulting system
-  # (/run/current-system/configuration.nix). This is useful in case you
-  # accidentally delete configuration.nix.
-  # system.copySystemConfiguration = true;
   system.stateVersion = "24.11"; # Did you read the comment?
 }

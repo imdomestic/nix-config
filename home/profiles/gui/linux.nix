@@ -18,6 +18,8 @@
   ];
   # ++ pkgs.lib.optional (hostname == "b660") [../../modules/gui];
 
+  programs.fuzzel.enable = true;
+
   # use qemu system session
   # dconf.settings = {
   #   "org/virt-manager/virt-manager/connections" = {

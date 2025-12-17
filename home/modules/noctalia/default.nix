@@ -167,10 +167,6 @@ in {
         # behind windows. That is, they will show up through semitransparent windows.
         # This is because windows using client-side decorations can have an arbitrary shape.
         #
-        # If you don't like that, you should uncomment `prefer-no-csd` below.
-        # Niri will draw focus ring and border *around* windows that agree to omit their
-        # client-side decorations.
-        #
         # Alternatively, you can override it with a window rule called
         # `draw-border-with-background`.
 
@@ -403,7 +399,7 @@ in {
         # hotkey-overlay-title is technically a prop on the bind,
         # usually passed as arguments to the action or sibling props in Nix settings.
         "Mod+Return" = {action.spawn = "ghostty";}; # hotkey-overlay-title not strictly standard in all nix modules yet, ignoring to keep it clean or add as sibling prop if supported
-        "Mod+A" = {action.spawn = "walker";};
+        "Mod+A" = {action.spawn = "fuzzel";};
         "Super+Alt+L" = {action.spawn = "swaylock";};
 
         # Use spawn-sh to run a shell command. Do this if you need pipes, multiple commands, etc.
