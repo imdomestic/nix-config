@@ -61,6 +61,7 @@
     zellij
     gcc
     lazygit
+    elan
 
     # utils
     hyperfine
