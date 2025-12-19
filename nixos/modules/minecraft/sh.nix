@@ -11,7 +11,7 @@ in {
       openFirewall = false;
 
       # secret 文件：用 txt 生成最省事（nix-minecraft 支持 txt 自动生成）:contentReference[oaicite:15]{index=15}
-      symlinks."forwarding.secret.txt" = pkgs.writeText "forwarding.secret.txt" forwardingSecret;
+      symlinks."forwarding.secret" = pkgs.writeText "forwarding.secret" forwardingSecret;
 
       # velocity.toml：关键几项写上即可
       files."velocity.toml".value = {
@@ -22,14 +22,16 @@ in {
         online-mode = true;
 
         player-info-forwarding-mode = "modern";
-        forwarding-secret-file = "forwarding.secret.txt";
+        forwarding-secret-file = "forwarding.secret";
 
-        announce-forge = true;
+        # announce-forge = true;
 
         servers = {
           smp = "10.0.0.66:25566";
         };
         try = ["smp"];
+
+        "forced-hosts" = {};
       };
     };
   };
