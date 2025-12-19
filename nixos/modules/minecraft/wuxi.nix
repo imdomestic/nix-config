@@ -1,7 +1,11 @@
 # wuxi-mc.nix
-{ lib, pkgs, inputs, ... }:
-let
-  forwardingSecret = "hbhbhb";
+{
+  lib,
+  pkgs,
+  inputs,
+  ...
+}: let
+  forwardingSecret = ["hbhbhb"];
 
   mcVersion = "1.21.1";
   serverVersion = lib.replaceStrings ["."] ["_"] "fabric-${mcVersion}";
@@ -49,4 +53,3 @@ in {
     };
   };
 }
-

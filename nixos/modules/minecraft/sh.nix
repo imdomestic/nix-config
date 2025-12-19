@@ -1,6 +1,5 @@
-{ pkgs, ... }:
-let
-  forwardingSecret = "hbhbhb";
+{pkgs, ...}: let
+  forwardingSecret = ["hbhbhb"];
 in {
   services.minecraft-servers = {
     enable = true;
@@ -30,9 +29,8 @@ in {
         servers = {
           smp = "10.0.0.66:25566";
         };
-        try = [ "smp" ];
+        try = ["smp"];
       };
     };
   };
 }
-
