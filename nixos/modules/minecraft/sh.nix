@@ -28,8 +28,8 @@ in {
 
         servers = {
           smp = "10.0.0.66:25566";
+          try = ["smp"];
         };
-        try = ["smp"];
 
         "forced-hosts" = {};
       };
