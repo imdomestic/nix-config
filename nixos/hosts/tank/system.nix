@@ -46,6 +46,7 @@ in {
     ../../modules/grub
     ../../modules/tuigreet
     ../../modules/keyd
+    ../../modules/minecraft/wuxi.nix
   ];
 
   boot.initrd.kernelModules = [
