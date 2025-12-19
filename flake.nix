@@ -102,6 +102,10 @@
       inputs.quickshell.follows = "quickshell"; # Use same quickshell version
     };
 
+    inputs = {
+      nix-minecraft.url = "github:Infinidoge/nix-minecraft";
+    };
+
     walker.url = "github:abenz1267/walker";
 
     vscode-server.url = "github:nix-community/nixos-vscode-server";

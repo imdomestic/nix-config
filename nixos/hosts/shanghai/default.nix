@@ -20,6 +20,7 @@ in {
 
   externalModules = [
     # inputs.niri.nixosModules.niri
+    inputs.nix-minecraft.nixosModules.minecraft-servers
   ];
 
   users = {

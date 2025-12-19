@@ -15,6 +15,7 @@
   nixpkgs = {
     overlays = [
       inputs.nur.overlays.default
+      inputs.nix-minecraft.overlay
       # inputs.niri.overlays.niri
     ];
     config = {

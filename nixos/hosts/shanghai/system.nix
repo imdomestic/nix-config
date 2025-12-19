@@ -158,6 +158,30 @@ in {
     PermitRootLogin = "yes";
   };
 
+  services.minecraft-servers = {
+    enable = true;
+    eula = true;
+    servers.proxy = {
+      enable = true;
+      package = pkgs.velocityServers.velocity;
+      jvmOpts = "-Xms1G -Xmx1G -XX:+UseG1GC";
+      files."velocity.toml".value = {
+        bind = "0.0.0.0:25565";
+        player-info-forwarding-mode = "modern"; # 开启 Modern 转发
+        forwarding-secret-file = "forwarding.secret"; # 指向密钥文件
+
+        servers = {
+          lobby = "10.0.0.2:25566";
+          survival = "10.0.0.2:25567";
+        };
+        forced-hosts = {
+          "mc.yourdomain.com" = ["lobby"];
+        };
+      };
+      files."forwarding.secret".text = "YOUR_SUPER_SECRET_STRING_HERE";
+    };
+  };
+
   security.sudo.wheelNeedsPassword = false;
 
   environment.systemPackages = with pkgs; [
