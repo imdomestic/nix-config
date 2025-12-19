@@ -18,6 +18,11 @@ in {
         sha256 = "sha256-VAlqr/sa4899o9NI1ckgpHIXWuwsnbm4lBYZDWyQnms=";
       };
 
+      symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
+        url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
+        sha256 = "";
+      };
+
       # velocity.toml：关键几项写上即可
       files."velocity.toml".value = {
         config-version = "2.7"; # 默认配置里有这个字段 :contentReference[oaicite:16]{index=16}

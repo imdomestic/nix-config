@@ -8,7 +8,6 @@
   services.minecraft-servers = {
     enable = true;
     eula = true;
-    dataDir = "/data/nas/public/minecraft";
 
     servers.lobby = {
       enable = true;
@@ -20,6 +19,9 @@
         allow-nether = false; # 大厅通常不需要地狱
         generate-structures = false;
         spawn-protection = 999; # 保护出生点
+        enable-rcon = true;
+        "rcon.passwd" = "hbhbhb";
+        "rcon.port" = 25578;
       };
       jvmOpts = "-Xms2G -Xmx4G";
       files."config/paper-global.yml".value = {
@@ -42,6 +44,9 @@
         server-port = 25566;
         online-mode = false;
         motd = "SMP 1.21.1";
+        enable-rcon = true;
+        "rcon.passwd" = "hbhbhb";
+        "rcon.port" = 25576;
       };
 
       symlinks.mods = pkgs.linkFarmFromDrvs "mods" (builtins.attrValues {
@@ -72,6 +77,9 @@
         server-port = 25567;
         online-mode = false;
         motd = "SpeedRun 1.21.22";
+        enable-rcon = true;
+        "rcon.passwd" = "hbhbhb";
+        "rcon.port" = 25577;
       };
 
       symlinks.mods = pkgs.linkFarmFromDrvs "mods" (builtins.attrValues {
