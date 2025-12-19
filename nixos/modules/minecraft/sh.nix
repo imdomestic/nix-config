@@ -19,7 +19,7 @@ in {
         bind = "0.0.0.0:25565";
         motd = "My Velocity Proxy";
         show-max-players = 100;
-        online-mode = false;
+        online-mode = true;
 
         player-info-forwarding-mode = "modern";
         forwarding-secret-file = "forwarding.secret.txt";
