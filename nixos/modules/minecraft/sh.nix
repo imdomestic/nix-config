@@ -15,7 +15,7 @@ in {
 
       symlinks."plugins/ViaVerion.jar" = pkgs.fetchurl {
         url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.6.0/ViaVersion-5.6.0.jar";
-        sha256 = "";
+        sha256 = "sha256-VAlqr/sa4899o9NI1ckgpHIXWuwsnbm4lBYZDWyQnms=";
       };
 
       # velocity.toml：关键几项写上即可
