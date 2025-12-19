@@ -5,7 +5,7 @@
   inputs,
   ...
 }: let
-  forwardingSecret = ["hbhbhb"];
+  forwardingSecret = "hbhbhb";
 
   mcVersion = "1.21.1";
   serverVersion = lib.replaceStrings ["."] ["_"] "fabric-${mcVersion}";
@@ -35,21 +35,17 @@ in {
         motd = "Wuxi Fabric SMP (behind Velocity)";
       };
 
-      # mods 目录：symlink 一个 folder 进去（linkFarmFromDrvs 是常用写法）:contentReference[oaicite:8]{index=8}
       symlinks.mods = pkgs.linkFarmFromDrvs "mods" (builtins.attrValues {
         FabricAPI = fabricApi;
         FabricProxyLite = fabricProxyLite;
       });
 
-      # FabricProxy-Lite 配置：写 secret 即可（toml 可用 .value 自动生成）:contentReference[oaicite:9]{index=9}
       files."config/FabricProxy-Lite.toml".value = {
         secret = forwardingSecret;
         disconnectMessage = "Please connect via the proxy (Velocity).";
-        # 其它 hack* 先不动，默认值就行（需要再开）
       };
 
       jvmOpts = "-Xms4G -Xmx12G";
-      openFirewall = false; # 我们手动只放 wg0（见下面）
     };
   };
 }
