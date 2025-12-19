@@ -102,9 +102,7 @@
       inputs.quickshell.follows = "quickshell"; # Use same quickshell version
     };
 
-    inputs = {
-      nix-minecraft.url = "github:Infinidoge/nix-minecraft";
-    };
+    nix-minecraft.url = "github:Infinidoge/nix-minecraft";
 
     walker.url = "github:abenz1267/walker";
 
