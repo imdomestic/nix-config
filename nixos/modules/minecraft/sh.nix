@@ -18,6 +18,11 @@ in {
         sha256 = "sha256-VAlqr/sa4899o9NI1ckgpHIXWuwsnbm4lBYZDWyQnms=";
       };
 
+      symlinks."plugins/ViaBackwards.jar" = pkgs.fetchurl {
+        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.6.0/ViaBackwards-5.6.0.jar";
+        sha256 = "";
+      };
+
       symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
         url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
         sha256 = "";
