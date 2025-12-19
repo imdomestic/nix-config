@@ -11,7 +11,7 @@ in {
       openFirewall = false;
 
       # secret 文件：用 txt 生成最省事（nix-minecraft 支持 txt 自动生成）:contentReference[oaicite:15]{index=15}
-      files."forwarding.secret.txt".value = forwardingSecret;
+      symlinks."forwarding.secret.txt" = pkgs.writeText "forwarding.secret.txt" forwardingSecret;
 
       # velocity.toml：关键几项写上即可
       files."velocity.toml".value = {
