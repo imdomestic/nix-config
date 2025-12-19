@@ -12,7 +12,7 @@
 
     servers.lobby = {
       enable = true;
-      package = inputs.nix-minecraft.packages.${pkgs.system}.paperServers.paper-1_21_11;
+      package = pkgs.paperServers.paper-1_21_11;
       serverProperties = {
         server-port = 25568;
         server-ip = "10.0.0.66"; # 只监听 WireGuard 内网
