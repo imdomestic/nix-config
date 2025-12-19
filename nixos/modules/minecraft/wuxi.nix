@@ -8,6 +8,30 @@
   services.minecraft-servers = {
     enable = true;
     eula = true;
+    dataDir = "/data/nas/public/minecraft";
+
+    servers.lobby = {
+      enable = true;
+      package = inputs.nix-minecraft.packages.${pkgs.system}.paperServers.paper-1_21_11;
+      serverProperties = {
+        server-port = 25568;
+        server-ip = "10.0.0.66"; # 只监听 WireGuard 内网
+        online-mode = false; # 必须关闭，交给 Velocity 处理
+        allow-nether = false; # 大厅通常不需要地狱
+        generate-structures = false;
+        spawn-protection = 999; # 保护出生点
+      };
+      jvmOpts = "-Xms2G -Xmx4G";
+      files."config/paper-global.yml".value = {
+        proxies = {
+          velocity = {
+            enabled = true;
+            # online-mode = true;
+            secret = "hbhbhb";
+          };
+        };
+      };
+    };
 
     servers.survival = {
       enable = true;

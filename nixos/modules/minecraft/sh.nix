@@ -29,7 +29,8 @@ in {
         servers = {
           smp = "10.0.0.66:25566";
           speedrun = "10.0.0.66:25567";
-          try = ["speedrun"];
+          lobby = "10.0.0.66:25568";
+          try = ["lobby"];
         };
 
         "forced-hosts" = {};
