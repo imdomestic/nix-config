@@ -25,7 +25,7 @@ in {
 
       symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
         url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
-        sha256 = "";
+        sha256 = "sha256-EZ4g5MfPcORMOfvbNCkKD2XNDIi1iIztOoZtERRS8cc=";
       };
 
       # velocity.toml：关键几项写上即可
