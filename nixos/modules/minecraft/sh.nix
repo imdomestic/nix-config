@@ -33,6 +33,11 @@ in {
         sha256 = "sha256-fFemScOUhnLL7zWjuqj3OwRqxQnqj/pu4wCIkNNvLBc=";
       };
 
+      symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
+        sha256 = "";
+      };
+
       # velocity.toml：关键几项写上即可
       files."velocity.toml".value = {
         config-version = "2.7"; # 默认配置里有这个字段 :contentReference[oaicite:16]{index=16}
@@ -76,6 +81,19 @@ in {
             };
           };
           messaging-service = "pluginmsg";
+        };
+      };
+
+      files."plugins/SkinsRestorer/Config.yml" = {
+        format = pkgs.formats.yaml {};
+        value = {
+          Storage = {
+            Type = "postgresql";
+            Address = "10.0.0.66:5432";
+            Database = "luckperms";
+            Username = "minecraft";
+            Password = "hbhbhb";
+          };
         };
       };
 

@@ -11,7 +11,7 @@
 
     servers.lobby = {
       enable = true;
-      package = pkgs.paperServers.paper-1_21_11;
+      package = pkgs.paperServers.paper-1_21_8;
       serverProperties = {
         server-port = 25568;
         server-ip = "10.0.0.66"; # 只监听 WireGuard 内网
@@ -30,12 +30,51 @@
         sha256 = "sha256-asG+JVgKKxyKnS/eYATV3Ilpn/R+La3nfHszG8pgIGE=";
       };
 
+      symlinks."plugins/EssentialsX.jar" = pkgs.fetchurl {
+        url = "https://github.com/EssentialsX/Essentials/releases/download/2.21.2/EssentialsX-2.21.2.jar";
+        sha256 = "sha256-C3WQJvAvPFR8MohvNmbbPB+Uz/c+FBrlZIMT/Q0L38Y=";
+      };
+
+      symlinks."plugins/EssentialsXSpawn.jar" = pkgs.fetchurl {
+        url = "https://github.com/EssentialsX/Essentials/releases/download/2.21.2/EssentialsXSpawn-2.21.2.jar";
+        sha256 = "sha256-CnobRGh7bZ2E+vQkNgsuBKKr9FDi2ZmPJ7K6RwZ0a4Y=";
+      };
+      symlinks."plugins/EssentialsXGeoIP.jar" = pkgs.fetchurl {
+        url = "https://github.com/EssentialsX/Essentials/releases/download/2.21.2/EssentialsXGeoIP-2.21.2.jar";
+        sha256 = "sha256-i/nLVFZmYIbZNmCpCRrLV7TqOgTF4K2XARt9/Rrd6FU=";
+      };
+      symlinks."plugins/VaultUnlocked.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/ayRaM8J7/versions/hWDrazHd/VaultUnlocked-2.17.0.jar";
+        sha256 = "sha256-feIkNsA49QBg8qpOpfSv01MCDkViiN6gOJahGrqhy4c=";
+      };
+      symlinks."plugins/PlaceholderAPI.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/lKEzGugV/versions/sn9LYZkM/PlaceholderAPI-2.11.7.jar";
+        sha256 = "sha256-9aTqcYuqq2EYz+jzmD6jpWYK8e6FcjYBgqPRttvy610=";
+      };
+      symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
+        sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
+      };
+
       files."config/paper-global.yml".value = {
         proxies = {
           velocity = {
             enabled = true;
             # online-mode = true;
             secret = "hbhbhb";
+          };
+        };
+      };
+
+      files."plugins/SkinsRestorer/Config.yml" = {
+        format = pkgs.formats.yaml {};
+        value = {
+          Storage = {
+            Type = "postgresql";
+            Address = "10.0.0.66:5432";
+            Database = "luckperms";
+            Username = "minecraft";
+            Password = "hbhbhb";
           };
         };
       };
@@ -103,7 +142,7 @@
         server-ip = "10.0.0.66";
         server-port = 25567;
         online-mode = false;
-        motd = "SpeedRun 1.21.22";
+        motd = "SpeedRun 1.21.11";
         enable-rcon = true;
         "rcon.password" = "hbhbhb";
         "rcon.port" = 25577;
@@ -121,6 +160,10 @@
         "mods/LuckPerms.jar" = pkgs.fetchurl {
           url = "https://download.luckperms.net/1610/fabric/LuckPerms-Fabric-5.5.21.jar";
           sha256 = "sha256-mNsvmLvat0o2x06LQuX18V5pkQUfSipV9N2rShDOEwQ=";
+        };
+        "mods/Lithium.jar" = pkgs.fetchurl {
+          url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/4DdLmtyz/lithium-fabric-0.21.1%2Bmc1.21.11.jar";
+          sha256 = "sha256-bPXo/SctwzIGa2XLXC6KFrmfueg92Hu5upxZU+LPUw4=";
         };
       };
 
