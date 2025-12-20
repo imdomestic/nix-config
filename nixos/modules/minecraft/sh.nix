@@ -40,7 +40,7 @@ in {
 
       symlinks."plugins/TAB.jar" = pkgs.fetchurl {
         url = "https://cdn.modrinth.com/data/gG7VFbG0/versions/lhpBZZBR/TAB%20v5.4.0.jar";
-        sha256 = "";
+        sha256 = "sha256-hwHDVkEf2VECt/OSa+FKy146XLqqRNLX2ymOMN/WI9I=";
       };
 
       # velocity.toml：关键几项写上即可
