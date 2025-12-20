@@ -56,8 +56,8 @@
         sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
       };
       symlinks."plugins/TAB-Bridge.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/zAXDHU47/TAB-Bridge%20v6.1.8.jar";
-        sha256 = "sha256-f1z7RLN+KwTChHkrovtL5vbn80qHu03eteoPUqLnXWM=";
+        url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/cOXgQQKY/TAB-Bridge%20v6.2.0.jar";
+        sha256 = "sha256-7L2IOopc3SOQ7fnCQbVVJTB1vWc9NQcXgt+kMn82BnE=";
       };
 
       files."config/paper-global.yml".value = {
