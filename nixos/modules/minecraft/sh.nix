@@ -35,7 +35,7 @@ in {
 
       symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
         url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
-        sha256 = "";
+        sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
       };
 
       # velocity.toml：关键几项写上即可
