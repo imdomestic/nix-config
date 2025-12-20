@@ -51,7 +51,7 @@ in {
 
       symlinks."plugins/VelocityScoreboardAPI.jar" = pkgs.fetchurl {
         url = "https://github.com/NEZNAMY/VelocityScoreboardAPI/releases/download/1.1.6/VelocityScoreboardAPI.v1.1.6.jar";
-        sha256 = "";
+        sha256 = "sha256-QXglwvheLu+hmgFvMCAaDKks5seO6z483wMp1Vnky68=";
       };
 
       # velocity.toml：关键几项写上即可
