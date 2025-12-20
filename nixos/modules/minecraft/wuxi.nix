@@ -25,12 +25,10 @@
       };
       jvmOpts = "-Xms2G -Xmx4G";
 
-      symlinks.mods = pkgs.linkFarmFromDrvs "mods" (builtins.attrValues {
-        LuckPerms = pkgs.fetchurl {
-          url = "https://download.luckperms.net/1610/bukkit/loader/LuckPerms-Bukkit-5.5.21.jar";
-          sha256 = "";
-        };
-      });
+      symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
+        url = "https://download.luckperms.net/1610/bukkit/loader/LuckPerms-Bukkit-5.5.21.jar";
+        sha256 = "sha256-asG+JVgKKxyKnS/eYATV3Ilpn/R+La3nfHszG8pgIGE=";
+      };
 
       files."config/paper-global.yml".value = {
         proxies = {
@@ -42,19 +40,22 @@
         };
       };
 
-      files."plugins/luckperms/luckperms.conf".value = {
-        server = "lobby";
-        storage-method = "postgresql";
-        data = {
-          address = "10.0.0.66:5432";
-          database = "luckperms";
-          username = "minecraft";
-          password = "hbhbhb";
-          pool-settings = {
-            maximum-pool-size = 10;
+      files."plugins/LuckPerms/config.yml" = {
+        format = pkgs.formats.yaml {};
+        value = {
+          server = "lobby";
+          storage-method = "postgresql";
+          data = {
+            address = "10.0.0.66:5432";
+            database = "luckperms";
+            username = "minecraft";
+            password = "hbhbhb";
+            pool-settings = {
+              maximum-pool-size = 10;
+            };
           };
+          messaging-service = "pluginmsg";
         };
-        messaging-service = "pluginmsg";
       };
     };
 
@@ -116,7 +117,7 @@
         };
         LuckPerms = pkgs.fetchurl {
           url = "https://download.luckperms.net/1610/fabric/LuckPerms-Fabric-5.5.21.jar";
-          sha256 = "";
+          sha256 = "sha256-mNsvmLvat0o2x06LQuX18V5pkQUfSipV9N2rShDOEwQ=";
         };
       });
 
@@ -125,22 +126,25 @@
         disconnectMessage = "Please connect via the proxy (Velocity).";
       };
 
-      files."plugins/luckperms/luckperms.conf".value = {
-        server = "speedrun";
-        storage-method = "postgresql";
-        data = {
-          address = "10.0.0.66:5432";
-          database = "luckperms";
-          username = "minecraft";
-          password = "hbhbhb";
-          pool-settings = {
-            maximum-pool-size = 10;
+      files."luckperms-data/luckperms.conf" = {
+        format = pkgs.formats.json {};
+        value = {
+          server = "speedrun";
+          storage-method = "postgresql";
+          data = {
+            address = "10.0.0.66:5432";
+            database = "luckperms";
+            username = "minecraft";
+            password = "hbhbhb";
+            pool-settings = {
+              maximum-pool-size = 10;
+            };
           };
+          messaging-service = "pluginmsg";
         };
-        messaging-service = "pluginmsg";
       };
 
-      jvmOpts = "-Xms4G -Xmx8G";
+      jvmOpts = "-Xms4G -Xmx8G -Dluckperms.base-directory=/srv/minecraft/speedrun/luckperms-data -Dluckperms.libs-directory=/srv/minecraft/speedrun/luckperms-data/libs";
     };
   };
 }

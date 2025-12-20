@@ -51,20 +51,25 @@ in {
         "forced-hosts" = {};
       };
 
-      files."plugins/luckperms/luckperms.conf".value = {
-        server = "proxy";
-        storage-method = "postgresql";
-        data = {
-          address = "10.0.0.66:5432";
-          database = "luckperms";
-          username = "minecraft";
-          password = "hbhbhb";
-          pool-settings = {
-            maximum-pool-size = 10;
+      files."plugins/LuckPerms/config.conf" = {
+        format = pkgs.formats.json {};
+        value = {
+          server = "proxy";
+          storage-method = "postgresql";
+          data = {
+            address = "10.0.0.66:5432";
+            database = "luckperms";
+            username = "minecraft";
+            password = "hbhbhb";
+            pool-settings = {
+              maximum-pool-size = 10;
+            };
           };
+          messaging-service = "pluginmsg";
         };
-        messaging-service = "pluginmsg";
       };
+
+      jvmOpts = "-Dluckperms.base-directory=plugins/LuckPerms";
     };
   };
 }
