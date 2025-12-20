@@ -136,6 +136,7 @@
           storage-method = "postgresql";
           allow-invalid-usernames = true;
           use-server-uuid-cache = false;
+          skip-username-check-on-login = true;
           unloaded-user-action = "warn";
           data = {
             address = "10.0.0.66:5432";
