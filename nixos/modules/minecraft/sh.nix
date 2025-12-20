@@ -11,12 +11,6 @@ in {
       package = pkgs.velocityServers.velocity; # 最新 velocity :contentReference[oaicite:14]{index=14}
       openFirewall = false;
 
-      serverProperties = {
-        enable-rcon = true;
-        "rcon.password" = "hbhbhb";
-        "rcon.port" = 25575;
-      };
-
       symlinks."forwarding.secret" = secretFile;
 
       symlinks."plugins/ViaVerion.jar" = pkgs.fetchurl {
@@ -52,6 +46,21 @@ in {
       symlinks."plugins/VelocityScoreboardAPI.jar" = pkgs.fetchurl {
         url = "https://github.com/NEZNAMY/VelocityScoreboardAPI/releases/download/1.1.6/VelocityScoreboardAPI.v1.1.6.jar";
         sha256 = "sha256-QXglwvheLu+hmgFvMCAaDKks5seO6z483wMp1Vnky68=";
+      };
+
+      symlinks."plugins/Velocircon.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/KkmSfl3v/versions/fSM522rY/Velocircon-1.0.5.jar";
+        sha256 = "";
+      };
+
+      files."plugins/Velocircon/rcon.yml" = {
+        format = pkgs.formats.yaml {};
+        value = {
+          enable = true;
+          host = "0.0.0.0";
+          port = "25575";
+          password = "hbhbhb";
+        };
       };
 
       # velocity.toml：关键几项写上即可

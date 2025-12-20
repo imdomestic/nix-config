@@ -39,10 +39,6 @@
         url = "https://github.com/EssentialsX/Essentials/releases/download/2.21.2/EssentialsXSpawn-2.21.2.jar";
         sha256 = "sha256-CnobRGh7bZ2E+vQkNgsuBKKr9FDi2ZmPJ7K6RwZ0a4Y=";
       };
-      symlinks."plugins/EssentialsXGeoIP.jar" = pkgs.fetchurl {
-        url = "https://github.com/EssentialsX/Essentials/releases/download/2.21.2/EssentialsXGeoIP-2.21.2.jar";
-        sha256 = "sha256-i/nLVFZmYIbZNmCpCRrLV7TqOgTF4K2XARt9/Rrd6FU=";
-      };
       symlinks."plugins/VaultUnlocked.jar" = pkgs.fetchurl {
         url = "https://cdn.modrinth.com/data/ayRaM8J7/versions/hWDrazHd/VaultUnlocked-2.17.0.jar";
         sha256 = "sha256-feIkNsA49QBg8qpOpfSv01MCDkViiN6gOJahGrqhy4c=";
