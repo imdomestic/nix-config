@@ -49,7 +49,9 @@ in {
           try = ["lobby"];
         };
 
-        "forced-hosts" = {};
+        "forced-hosts" = {
+          "duel.imdomestic.com" = ["duel"];
+        };
       };
 
       files."plugins/LuckPerms/config.conf" = {
