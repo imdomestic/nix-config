@@ -24,6 +24,14 @@
         "rcon.port" = 25578;
       };
       jvmOpts = "-Xms2G -Xmx4G";
+
+      symlinks.mods = pkgs.linkFarmFromDrvs "mods" (builtins.attrValues {
+        LuckPerms = pkgs.fetchurl {
+          url = "https://download.luckperms.net/1610/bukkit/loader/LuckPerms-Bukkit-5.5.21.jar";
+          sha256 = "";
+        };
+      });
+
       files."config/paper-global.yml".value = {
         proxies = {
           velocity = {
@@ -32,6 +40,21 @@
             secret = "hbhbhb";
           };
         };
+      };
+
+      files."plugins/luckperms/luckperms.conf".value = {
+        server = "lobby";
+        storage-method = "postgresql";
+        data = {
+          address = "10.0.0.66:5432";
+          database = "luckperms";
+          username = "minecraft";
+          password = "hbhbhb";
+          pool-settings = {
+            maximum-pool-size = 10;
+          };
+        };
+        messaging-service = "pluginmsg";
       };
     };
 
@@ -91,11 +114,30 @@
           url = "https://cdn.modrinth.com/data/8dI2tmqs/versions/nR8AIdvx/FabricProxy-Lite-2.11.0.jar";
           sha512 = "c2e1d9279f6f19a561f934b846540b28a033586b4b419b9c1aa27ac43ffc8fad2ce60e212a15406e5fa3907ff5ecbe5af7a5edb183a9ee6737a41e464aec1375";
         };
+        LuckPerms = pkgs.fetchurl {
+          url = "https://download.luckperms.net/1610/fabric/LuckPerms-Fabric-5.5.21.jar";
+          sha256 = "";
+        };
       });
 
       files."config/FabricProxy-Lite.toml".value = {
         secret = "hbhbhb";
         disconnectMessage = "Please connect via the proxy (Velocity).";
+      };
+
+      files."plugins/luckperms/luckperms.conf".value = {
+        server = "speedrun";
+        storage-method = "postgresql";
+        data = {
+          address = "10.0.0.66:5432";
+          database = "luckperms";
+          username = "minecraft";
+          password = "hbhbhb";
+          pool-settings = {
+            maximum-pool-size = 10;
+          };
+        };
+        messaging-service = "pluginmsg";
       };
 
       jvmOpts = "-Xms4G -Xmx8G";

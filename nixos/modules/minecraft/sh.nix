@@ -23,10 +23,10 @@ in {
         sha256 = "sha256-osVDte0mpTDCH6osoY+EEm3N/t4prsd6OuAhK3x5E6Y=";
       };
 
-      # symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
-      #   url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
-      #   sha256 = "";
-      # };
+      symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
+        url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
+        sha256 = "";
+      };
 
       # velocity.toml：关键几项写上即可
       files."velocity.toml".value = {
@@ -49,6 +49,21 @@ in {
         };
 
         "forced-hosts" = {};
+      };
+
+      files."plugins/luckperms/luckperms.conf".value = {
+        server = "proxy";
+        storage-method = "postgresql";
+        data = {
+          address = "10.0.0.66:5432";
+          database = "luckperms";
+          username = "minecraft";
+          password = "hbhbhb";
+          pool-settings = {
+            maximum-pool-size = 10;
+          };
+        };
+        messaging-service = "pluginmsg";
       };
     };
   };

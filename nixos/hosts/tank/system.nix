@@ -1,5 +1,6 @@
 {
   pkgs,
+  lib,
   inputs,
   ...
 }: let
@@ -239,6 +240,25 @@ in {
         };
       }
     ];
+  };
+
+  # for luckperms
+  services.postgresql = {
+    enable = true;
+    ensureDatabases = ["luckperms" "minecraft"];
+    enableTCPIP = true;
+    ensureUsers = [
+      {
+        name = "minecraft";
+        ensureDBOwnership = true;
+      }
+    ];
+    authentication = pkgs.lib.mkForce ''
+      # TYPE  DATABASE        USER            ADDRESS                 METHOD
+      local   all             all                                     trust
+      host    luckperms       minecraft       127.0.0.1/32            md5
+      host    luckperms       minecraft       10.0.0.0/24             md5
+    '';
   };
 
   programs.zsh = {
