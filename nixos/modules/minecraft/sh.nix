@@ -56,6 +56,8 @@ in {
         value = {
           server = "proxy";
           storage-method = "postgresql";
+          allow-invalid-usernames = true;
+          use-server-uuid-cache = false;
           data = {
             address = "10.0.0.66:5432";
             database = "luckperms";

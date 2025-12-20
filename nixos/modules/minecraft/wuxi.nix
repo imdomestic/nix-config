@@ -20,7 +20,7 @@
         generate-structures = false;
         spawn-protection = 999; # 保护出生点
         enable-rcon = true;
-        "rcon.passwd" = "hbhbhb";
+        "rcon.password" = "hbhbhb";
         "rcon.port" = 25578;
       };
       jvmOpts = "-Xms2G -Xmx4G";
@@ -45,6 +45,8 @@
         value = {
           server = "lobby";
           storage-method = "postgresql";
+          allow-invalid-usernames = true;
+          use-server-uuid-cache = false;
           data = {
             address = "10.0.0.66:5432";
             database = "luckperms";
@@ -69,7 +71,7 @@
         online-mode = false;
         motd = "SMP 1.21.1";
         enable-rcon = true;
-        "rcon.passwd" = "hbhbhb";
+        "rcon.password" = "hbhbhb";
         "rcon.port" = 25576;
       };
 
@@ -102,7 +104,7 @@
         online-mode = false;
         motd = "SpeedRun 1.21.22";
         enable-rcon = true;
-        "rcon.passwd" = "hbhbhb";
+        "rcon.password" = "hbhbhb";
         "rcon.port" = 25577;
       };
 
@@ -131,6 +133,8 @@
         value = {
           server = "speedrun";
           storage-method = "postgresql";
+          allow-invalid-usernames = true;
+          use-server-uuid-cache = false;
           data = {
             address = "10.0.0.66:5432";
             database = "luckperms";
