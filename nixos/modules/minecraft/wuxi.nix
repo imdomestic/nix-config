@@ -62,7 +62,7 @@
     };
 
     servers.survival = {
-      enable = true;
+      enable = false;
       package = pkgs.fabricServers.fabric-1_21_1;
 
       serverProperties = {

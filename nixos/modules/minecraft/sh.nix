@@ -42,7 +42,7 @@ in {
         # announce-forge = true;
 
         servers = {
-          smp = "10.0.0.66:25566";
+          # smp = "10.0.0.66:25566";
           speedrun = "10.0.0.66:25567";
           lobby = "10.0.0.66:25568";
           try = ["lobby"];
