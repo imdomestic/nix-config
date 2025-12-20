@@ -1,5 +1,6 @@
 {pkgs, ...}: let
-  forwardingSecret = ["hbhbhb"];
+  forwardingSecret = "hbhbhb";
+  secretFile = pkgs.runCommand "forwarding.secret" {} "echo -n '${forwardingSecret}' > $out";
 in {
   services.minecraft-servers = {
     enable = true;
@@ -10,8 +11,7 @@ in {
       package = pkgs.velocityServers.velocity; # 最新 velocity :contentReference[oaicite:14]{index=14}
       openFirewall = false;
 
-      # secret 文件：用 txt 生成最省事（nix-minecraft 支持 txt 自动生成）:contentReference[oaicite:15]{index=15}
-      symlinks."forwarding.secret" = pkgs.writeText "forwarding.secret" forwardingSecret;
+      symlinks."forwarding.secret" = secretFile;
 
       symlinks."plugins/ViaVerion.jar" = pkgs.fetchurl {
         url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.6.0/ViaVersion-5.6.0.jar";

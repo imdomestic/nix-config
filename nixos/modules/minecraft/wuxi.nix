@@ -47,6 +47,7 @@
           storage-method = "postgresql";
           allow-invalid-usernames = true;
           use-server-uuid-cache = false;
+          unloaded-user-action = "warn";
           data = {
             address = "10.0.0.66:5432";
             database = "luckperms";
@@ -135,6 +136,7 @@
           storage-method = "postgresql";
           allow-invalid-usernames = true;
           use-server-uuid-cache = false;
+          unloaded-user-action = "warn";
           data = {
             address = "10.0.0.66:5432";
             database = "luckperms";
