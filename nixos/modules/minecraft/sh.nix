@@ -20,13 +20,13 @@ in {
 
       symlinks."plugins/ViaBackwards.jar" = pkgs.fetchurl {
         url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.6.0/ViaBackwards-5.6.0.jar";
-        sha256 = "";
+        sha256 = "sha256-osVDte0mpTDCH6osoY+EEm3N/t4prsd6OuAhK3x5E6Y=";
       };
 
-      symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
-        url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
-        sha256 = "";
-      };
+      # symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
+      #   url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
+      #   sha256 = "";
+      # };
 
       # velocity.toml：关键几项写上即可
       files."velocity.toml".value = {
