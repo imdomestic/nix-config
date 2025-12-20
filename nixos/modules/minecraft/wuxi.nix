@@ -153,5 +153,64 @@
 
       jvmOpts = "-Xms4G -Xmx8G -Dluckperms.base-directory=config/luckperms";
     };
+
+    servers.duel = let
+      modpackSource = "/srv/minecraft/duel";
+      customForgePackage = pkgs.writeShellScriptBin "minecraft-server" ''
+        exec ${pkgs.temurin-bin-17}/bin/java \
+          @user_jvm_args.txt \
+          @libraries/net/minecraftforge/forge/1.18.2-40.2.21/unix_args.txt \
+          "$@"
+      '';
+    in {
+      enable = false;
+      package = customForgePackage;
+      serverProperties = {
+        server-ip = "10.0.0.66";
+        server-port = 25569;
+        online-mode = false;
+        motd = "Forge 1.18.2 Duel Pack";
+        enable-rcon = true;
+        "rcon.password" = "hbhbhb";
+        "rcon.port" = 25579;
+      };
+
+      symlinks = {
+        "mods" = "${modpackSource}/mods";
+        "config" = "${modpackSource}/config";
+        "defaultconfigs" = "${modpackSource}/defaultconfigs";
+        "kubejs" = "${modpackSource}/kubejs";
+        "scripts" = "${modpackSource}/scripts";
+        "local" = "${modpackSource}/local";
+        "patchouli_books" = "${modpackSource}/patchouli_books";
+        "fancymenu_data" = "${modpackSource}/fancymenu_data";
+        "custom trades" = "${modpackSource}/'custom trades'";
+        "Ocean_Towers" = "${modpackSource}/Ocean_Towers";
+        "Land_Towers" = "${modpackSource}/Land_Towers";
+
+        "mods/LuckPerms-Forge.jar" = pkgs.fetchurl {
+          url = "https://download.luckperms.net/1610/forge/loader/LuckPerms-Forge-5.5.21.jar";
+          sha256 = "sha256-F8URU+EkhENm65ygohaGfdvTs8N9JUDQ5IeXfDxm+mM=";
+        };
+      };
+
+      files."config/luckperms/luckperms.conf" = {
+        format = pkgs.formats.json {};
+        value = {
+          server = "modpack";
+          storage-method = "postgresql";
+          online-mode = false;
+          allow-invalid-usernames = true;
+          data = {
+            address = "10.0.0.66:5432";
+            database = "luckperms";
+            username = "minecraft";
+            password = "hbhbhb";
+          };
+          messaging-service = "pluginmsg";
+        };
+      };
+      jvmOpts = "-Xms6G -Xmx12G -Dluckperms.base-directory=config/luckperms";
+    };
   };
 }
