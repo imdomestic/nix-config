@@ -55,6 +55,10 @@
         url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
         sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
       };
+      symlinks."plugins/TAB-Bridge.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/zAXDHU47/TAB-Bridge%20v6.1.8.jar";
+        sha256 = "";
+      };
 
       files."config/paper-global.yml".value = {
         proxies = {
@@ -164,6 +168,10 @@
         "mods/Lithium.jar" = pkgs.fetchurl {
           url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/4DdLmtyz/lithium-fabric-0.21.1%2Bmc1.21.11.jar";
           sha256 = "sha256-bPXo/SctwzIGa2XLXC6KFrmfueg92Hu5upxZU+LPUw4=";
+        };
+        "mods/TAB-Bridge" = pkgs.fetchurl {
+          url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/zAXDHU47/TAB-Bridge%20v6.1.8.jar";
+          sha256 = "";
         };
       };
 
