@@ -57,7 +57,7 @@
       };
       symlinks."plugins/TAB-Bridge.jar" = pkgs.fetchurl {
         url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/zAXDHU47/TAB-Bridge%20v6.1.8.jar";
-        sha256 = "";
+        sha256 = "sha256-f1z7RLN+KwTChHkrovtL5vbn80qHu03eteoPUqLnXWM=";
       };
 
       files."config/paper-global.yml".value = {
