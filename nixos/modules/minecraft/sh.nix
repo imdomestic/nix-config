@@ -28,6 +28,11 @@ in {
         sha256 = "sha256-EZ4g5MfPcORMOfvbNCkKD2XNDIi1iIztOoZtERRS8cc=";
       };
 
+      symlinks."plugins/Ambassador.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/cOj6YqJM/versions/YeQbhgna/Ambassador-Velocity-1.4.5-all.jar";
+        sha256 = "sha256-fFemScOUhnLL7zWjuqj3OwRqxQnqj/pu4wCIkNNvLBc=";
+      };
+
       # velocity.toml：关键几项写上即可
       files."velocity.toml".value = {
         config-version = "2.7"; # 默认配置里有这个字段 :contentReference[oaicite:16]{index=16}
