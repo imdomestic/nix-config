@@ -33,7 +33,7 @@ in {
         config-version = "2.7"; # 默认配置里有这个字段 :contentReference[oaicite:16]{index=16}
         bind = "0.0.0.0:25565";
         motd = "My Velocity Proxy";
-        show-max-players = 100;
+        show-max-players = 100000;
         online-mode = true;
 
         player-info-forwarding-mode = "modern";
