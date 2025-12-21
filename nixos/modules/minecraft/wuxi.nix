@@ -11,7 +11,7 @@
 
     servers.lobby = {
       enable = true;
-      package = pkgs.paperServers.paper-1_21_8;
+      package = pkgs.paperServers.paper-1_21_1;
       serverProperties = {
         server-port = 25568;
         server-ip = "10.0.0.66"; # 只监听 WireGuard 内网
@@ -55,6 +55,12 @@
         url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/cOXgQQKY/TAB-Bridge%20v6.2.0.jar";
         sha256 = "sha256-7L2IOopc3SOQ7fnCQbVVJTB1vWc9NQcXgt+kMn82BnE=";
       };
+
+      # files."spigot.yml".value = {
+      #   settings = {
+      #     bungeecord = true;
+      #   };
+      # };
 
       files."config/paper-global.yml".value = {
         proxies = {
