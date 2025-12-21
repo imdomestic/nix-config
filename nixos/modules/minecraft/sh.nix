@@ -53,6 +53,11 @@ in {
         sha256 = "sha256-atXQb3DEPRNDzFq9XUrhUcmGth3GTXvlt95mqWs7fsA=";
       };
 
+      symlinks."plugins/CMIV.jar" = pkgs.fetchurl {
+        url = "https://www.zrips.net/cmiv/download.php?file=CMIV-1.0.2.3.jar";
+        sha256 = "";
+      };
+
       files."plugins/Velocircon/rcon.yml" = {
         format = pkgs.formats.yaml {};
         value = {

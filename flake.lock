@@ -1598,11 +1598,11 @@
     "wg-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1760957059,
-        "narHash": "sha256-/PUf9Tvc68ANhKajO0YwoTdppTN6C7ATzs1xqQs7oK4=",
+        "lastModified": 1766318190,
+        "narHash": "sha256-dg/9f0vT7M2heYjdSpGSU+aYfVwXqEo91Gw5MvFOpJw=",
         "ref": "refs/heads/main",
-        "rev": "b1ff834782d39fd24110d967aceb8d22039062e9",
-        "revCount": 2,
+        "rev": "122ecd2c010a6c7076cbe9395aecae4b697c69a1",
+        "revCount": 4,
         "type": "git",
         "url": "ssh://git@github.com/imdomestic/wgconfigs"
       },
