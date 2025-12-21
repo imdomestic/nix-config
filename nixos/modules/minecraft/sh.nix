@@ -55,7 +55,7 @@ in {
 
       symlinks."plugins/CMIV.jar" = pkgs.fetchurl {
         url = "https://www.zrips.net/cmiv/download.php?file=CMIV-1.0.2.3.jar";
-        sha256 = "";
+        sha256 = "sha256-fr2zRVNK/aX8OioT3ezKdNyWxpdBXO2epPciQYaNkyc=";
       };
 
       files."plugins/Velocircon/rcon.yml" = {
@@ -85,7 +85,7 @@ in {
           # smp = "10.0.0.66:25566";
           speedrun = "10.0.0.66:25567";
           lobby = "10.0.0.66:25568";
-          duel = "b450.imdomestic.com:25569";
+          duel = "10.0.0.71:25569";
           snk = "10.0.0.66:25570";
           try = ["lobby"];
         };
