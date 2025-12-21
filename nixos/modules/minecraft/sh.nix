@@ -50,7 +50,7 @@ in {
 
       symlinks."plugins/Velocircon.jar" = pkgs.fetchurl {
         url = "https://cdn.modrinth.com/data/KkmSfl3v/versions/fSM522rY/Velocircon-1.0.5.jar";
-        sha256 = "";
+        sha256 = "sha256-atXQb3DEPRNDzFq9XUrhUcmGth3GTXvlt95mqWs7fsA=";
       };
 
       files."plugins/Velocircon/rcon.yml" = {
@@ -81,11 +81,13 @@ in {
           speedrun = "10.0.0.66:25567";
           lobby = "10.0.0.66:25568";
           duel = "10.0.0.66:25569";
+          snk = "10.0.0.66:25570";
           try = ["lobby"];
         };
 
         "forced-hosts" = {
           "duel.imdomestic.com" = ["duel"];
+          "snk.imdomestic.com" = ["snk"];
         };
       };
 
