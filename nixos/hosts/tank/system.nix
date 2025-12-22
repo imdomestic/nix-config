@@ -267,6 +267,18 @@ in {
     '';
   };
 
+  services.k3s = {
+    enable = true;
+    role = "agent";
+    token = "hbhbhb";
+    serverAddr = "https://10.0.0.1:6443";
+    extraFlags = [
+      "--node-ip=10.0.0.66"
+      "--node-external-ip=10.0.0.66"
+      "--flannel-iface=wg0"
+    ];
+  };
+
   programs.zsh = {
     enable = true;
   };

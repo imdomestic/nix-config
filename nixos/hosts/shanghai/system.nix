@@ -159,6 +159,21 @@ in {
     PermitRootLogin = "yes";
   };
 
+  services.k3s = {
+    enable = true;
+    role = "server";
+    token = "hbhbhb";
+    clusterInit = true;
+    extraFlags = [
+      "--node-ip=10.0.0.1"
+      "--node-external-ip=10.0.0.1"
+      "--bind-address=10.0.0.1"
+      "--advertise-address=10.0.0.1"
+      "--flannel-iface=wg0"
+      "--disable traefik"
+    ];
+  };
+
   security.sudo.wheelNeedsPassword = false;
 
   environment.systemPackages = with pkgs; [
