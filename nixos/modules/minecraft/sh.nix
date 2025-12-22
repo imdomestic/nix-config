@@ -74,6 +74,7 @@ in {
         bind = "0.0.0.0:25565";
         motd = "Velocity Proxy";
         show-max-players = 100000;
+        force-key-authentication = false;
         online-mode = false;
 
         player-info-forwarding-mode = "modern";

@@ -227,14 +227,20 @@ in {
   #   openFirewall = true;
   # };
 
-  # for cs2 dedicated server
+  # for cs2 dedicated server and cmi
   services.mysql = {
     package = pkgs.mariadb;
     enable = true;
-    ensureDatabases = ["cs2"];
+    ensureDatabases = ["cs2" "minecraft"];
     ensureUsers = [
       {
         name = "cs2";
+        ensurePermissions = {
+          "*.*" = "ALL PRIVILEGES";
+        };
+      }
+      {
+        name = "mc_user";
         ensurePermissions = {
           "*.*" = "ALL PRIVILEGES";
         };
