@@ -172,6 +172,47 @@ in {
       "--flannel-iface=wg0"
       "--disable traefik"
     ];
+    manifests = {
+      lobby-pv = {
+        content = {
+          apiVersion = "v1";
+          kind = "PersistentVolume";
+        };
+        metadata.name = "lobby-data-pv";
+        spec = {
+          capacity.storage = "50Gi";
+          volumeMode = "Filesystem";
+          accessModes = ["ReadWriteOnce"];
+          persistentVolumeReclaimPolicy = "Retain";
+          storageClassName = "local-storage";
+          local.path = "/data/nas/public/Downloads/lobby";
+          nodeAffinity.required.nodeSelectorTerms = [
+            {
+              matchExpressions = [
+                {
+                  key = "kubernetes.io/hostname";
+                  operator = "In";
+                  values = ["tank"];
+                }
+              ];
+            }
+          ];
+        };
+      };
+
+      lobby-pvc = {
+        content = {
+          apiVersion = "v1";
+          kind = "PersistentVolumeClaim";
+          metadata.name = "lobby-data-pvc";
+          spec = {
+            accessModes = ["ReadWriteOnce"];
+            storageClassName = "local-storage";
+            resources.requests.storage = "50Gi";
+          };
+        };
+      };
+    };
   };
 
   security.sudo.wheelNeedsPassword = false;
