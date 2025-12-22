@@ -12,7 +12,9 @@
     # neovim dependencies
     codesnap
     nerdctl
+    kubectl
     k9s
+    kubernetes-helm
     zoxide
     lua51Packages.lua
     lua51Packages.luarocks
