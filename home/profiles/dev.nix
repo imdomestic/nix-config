@@ -12,6 +12,7 @@
     # neovim dependencies
     codesnap
     nerdctl
+    k9s
     zoxide
     lua51Packages.lua
     lua51Packages.luarocks
