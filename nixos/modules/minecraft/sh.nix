@@ -58,6 +58,11 @@ in {
         sha256 = "sha256-fr2zRVNK/aX8OioT3ezKdNyWxpdBXO2epPciQYaNkyc=";
       };
 
+      # symlinks."plugins/TNEV.jar" = pkgs.fetchurl {
+      #   url = "https://cdn.modrinth.com/data/bZ4eSWf0/versions/prNGjbjv/TNE-VelocityCore-0.1.2.8-Release-1.jar";
+      #   sha256 = "";
+      # };
+
       files."plugins/Velocircon/rcon.yml" = {
         format = pkgs.formats.yaml {};
         value = {

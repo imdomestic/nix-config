@@ -42,11 +42,11 @@
       # };
 
       symlinks."plugins/CMILib.jar" = pkgs.fetchurl {
-        url = "https://www.zrips.net/CMILib/CMILib1.5.8.0.jar";
-        sha256 = "sha256-uFoI4H9W/uwZgKaK7o5Tr7Q2kRj8cHH+FYAaTCZn2E8=";
+        url = "https://www.zrips.net/CMILib/CMILib1.5.8.1.jar";
+        sha256 = "sha256-W9+mSxAB1W4XdxakC08zpMmRoDeWn+xhBRMxQsJhyLI=";
       };
 
-      symlinks."plugins/CMI.jar" = "${inputs.wg-config.outPath}/CMI-9.8.4.0.jar";
+      symlinks."plugins/CMI.jar" = "${inputs.wg-config.outPath}/CMI.jar";
 
       symlinks."plugins/VaultUnlocked.jar" = pkgs.fetchurl {
         url = "https://cdn.modrinth.com/data/ayRaM8J7/versions/hWDrazHd/VaultUnlocked-2.17.0.jar";
@@ -230,11 +230,11 @@
       };
 
       symlinks."plugins/CMILib.jar" = pkgs.fetchurl {
-        url = "https://www.zrips.net/CMILib/CMILib1.5.8.0.jar";
-        sha256 = "sha256-uFoI4H9W/uwZgKaK7o5Tr7Q2kRj8cHH+FYAaTCZn2E8=";
+        url = "https://www.zrips.net/CMILib/CMILib1.5.8.1.jar";
+        sha256 = "sha256-W9+mSxAB1W4XdxakC08zpMmRoDeWn+xhBRMxQsJhyLI=";
       };
 
-      symlinks."plugins/CMI.jar" = "${inputs.wg-config.outPath}/CMI-9.8.4.0.jar";
+      symlinks."plugins/CMI.jar" = "${inputs.wg-config.outPath}/CMI.jar";
 
       symlinks."plugins/VaultUnlocked.jar" = pkgs.fetchurl {
         url = "https://cdn.modrinth.com/data/ayRaM8J7/versions/hWDrazHd/VaultUnlocked-2.17.0.jar";
