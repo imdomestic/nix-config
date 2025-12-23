@@ -269,13 +269,16 @@ in {
 
   services.k3s = {
     enable = true;
-    role = "agent";
+    role = "server";
     token = "hbhbhb";
-    serverAddr = "https://10.0.0.1:6443";
+    clusterInit = true;
     extraFlags = [
       "--node-ip=10.0.0.66"
       "--node-external-ip=10.0.0.66"
+      "--bind-address=10.0.0.66"
+      "--advertise-address=10.0.0.66"
       "--flannel-iface=wg0"
+      "--disable traefik"
     ];
     manifests = {
       lobby-pv.content = {

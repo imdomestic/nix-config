@@ -159,17 +159,14 @@ in {
   };
 
   services.k3s = {
-    enable = false;
-    role = "server";
+    enable = true;
+    role = "agent";
     token = "hbhbhb";
-    clusterInit = true;
+    serverAddr = "https://10.0.0.66:6443";
     extraFlags = [
       "--node-ip=10.0.0.1"
       "--node-external-ip=10.0.0.1"
-      "--bind-address=10.0.0.1"
-      "--advertise-address=10.0.0.1"
       "--flannel-iface=wg0"
-      "--disable traefik"
     ];
   };
 
