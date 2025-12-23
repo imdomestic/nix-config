@@ -7,4 +7,15 @@
     device = "/dev/vda1";
     fsType = "xfs";
   };
+  zramSwap = {
+    enable = true;
+    priority = 100;
+    memoryPercent = 50;
+  };
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 4096;
+    }
+  ];
 }
