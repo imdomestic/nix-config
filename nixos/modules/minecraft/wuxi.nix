@@ -10,7 +10,7 @@
     eula = true;
 
     servers.lobby = {
-      enable = true;
+      enable = false;
       package = pkgs.paperServers.paper-1_21_1;
       serverProperties = {
         server-port = 25568;

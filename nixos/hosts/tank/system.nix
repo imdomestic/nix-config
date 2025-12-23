@@ -246,6 +246,11 @@ in {
         };
       }
     ];
+    settings = {
+      mysqld = {
+        bind-address = "0.0.0.0";
+      };
+    };
   };
 
   # for luckperms
@@ -262,8 +267,9 @@ in {
     authentication = pkgs.lib.mkForce ''
       # TYPE  DATABASE        USER            ADDRESS                 METHOD
       local   all             all                                     trust
-      host    luckperms       minecraft       127.0.0.1/32            md5
+      host    luckperms       minecraft       127.0.0.1/32            trust
       host    luckperms       minecraft       10.0.0.0/24             md5
+      host    luckperms       minecraft       10.42.0.0/24            md5
     '';
   };
 
@@ -281,6 +287,69 @@ in {
       "--disable traefik"
     ];
     manifests = {
+      lobby-gs.content = {
+        apiVersion = "agones.dev/v1";
+        kind = "Fleet";
+        metadata = {
+          name = "mc-lobby";
+        };
+        spec = {
+          replicas = 1;
+          strategy = {
+            type = "Recreate";
+          };
+          template = {
+            spec = {
+              ports = [
+                {
+                  containerPort = 25568;
+                  hostPort = 25568;
+                  name = "minecraft";
+                  portPolicy = "Static";
+                  protocol = "TCP";
+                }
+              ];
+              health = {
+                disabled = true;
+              };
+              template = {
+                spec = {
+                  containers = [
+                    {
+                      image = "mc-paper-cloud:1.21.1-nix";
+                      imagePullPolicy = "Never";
+                      name = "mc-paper";
+                      resources = {
+                        requests = {
+                          cpu = "8000m";
+                          memory = "8Gi";
+                        };
+                      };
+                      volumeMounts = [
+                        {
+                          mountPath = "/data";
+                          name = "server-data";
+                        }
+                      ];
+                    }
+                  ];
+                  nodeSelector = {
+                    "kubernetes.io/hostname" = "tank";
+                  };
+                  volumes = [
+                    {
+                      name = "server-data";
+                      persistentVolumeClaim = {
+                        claimName = "lobby-data-pvc";
+                      };
+                    }
+                  ];
+                };
+              };
+            };
+          };
+        };
+      };
       lobby-pv.content = {
         apiVersion = "v1";
         kind = "PersistentVolume";
