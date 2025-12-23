@@ -165,8 +165,8 @@ in {
     serverAddr = "https://10.0.0.66:6443";
     extraFlags = [
       "--node-name=shanghai"
-      "--node-taint=node-role.kubernetes.io/vps=true:NoSchedule"
-      "--node-label=node-role.kubernetes.io/vps=true"
+      "--node-taint=vps=true:NoSchedule"
+      "--node-label=node.kubernetes.io/vps=true"
       "--node-ip=10.0.0.1"
       "--node-external-ip=10.0.0.1"
       "--flannel-iface=wg0"
