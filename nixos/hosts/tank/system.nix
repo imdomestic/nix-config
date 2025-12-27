@@ -287,103 +287,10 @@ in {
       "--disable traefik"
     ];
     manifests = {
-      lobby-gs.content = {
-        apiVersion = "agones.dev/v1";
-        kind = "Fleet";
-        metadata = {
-          name = "mc-lobby";
-        };
-        spec = {
-          replicas = 1;
-          strategy = {
-            type = "Recreate";
-          };
-          template = {
-            spec = {
-              ports = [
-                {
-                  containerPort = 25568;
-                  hostPort = 25568;
-                  name = "minecraft";
-                  portPolicy = "Static";
-                  protocol = "TCP";
-                }
-              ];
-              health = {
-                disabled = true;
-              };
-              template = {
-                spec = {
-                  containers = [
-                    {
-                      image = "mc-paper-cloud:1.21.1-nix";
-                      imagePullPolicy = "Never";
-                      name = "mc-paper";
-                      resources = {
-                        requests = {
-                          cpu = "8000m";
-                          memory = "8Gi";
-                        };
-                      };
-                      volumeMounts = [
-                        {
-                          mountPath = "/data";
-                          name = "server-data";
-                        }
-                      ];
-                    }
-                  ];
-                  nodeSelector = {
-                    "kubernetes.io/hostname" = "tank";
-                  };
-                  volumes = [
-                    {
-                      name = "server-data";
-                      persistentVolumeClaim = {
-                        claimName = "lobby-data-pvc";
-                      };
-                    }
-                  ];
-                };
-              };
-            };
-          };
-        };
-      };
-      lobby-pv.content = {
+      "00-argocd-ns".content = {
         apiVersion = "v1";
-        kind = "PersistentVolume";
-        metadata.name = "lobby-data-pv";
-        spec = {
-          capacity.storage = "50Gi";
-          volumeMode = "Filesystem";
-          accessModes = ["ReadWriteOnce"];
-          persistentVolumeReclaimPolicy = "Retain";
-          storageClassName = "local-storage";
-          local.path = "/data/nas/public/Downloads/lobby";
-          nodeAffinity.required.nodeSelectorTerms = [
-            {
-              matchExpressions = [
-                {
-                  key = "kubernetes.io/hostname";
-                  operator = "In";
-                  values = ["tank"];
-                }
-              ];
-            }
-          ];
-        };
-      };
-
-      lobby-pvc.content = {
-        apiVersion = "v1";
-        kind = "PersistentVolumeClaim";
-        metadata.name = "lobby-data-pvc";
-        spec = {
-          accessModes = ["ReadWriteOnce"];
-          storageClassName = "local-storage";
-          resources.requests.storage = "50Gi";
-        };
+        kind = "Namespace";
+        metadata.name = "argocd";
       };
     };
   };
