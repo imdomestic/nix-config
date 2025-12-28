@@ -159,7 +159,7 @@ in {
   };
 
   services.k3s = {
-    enable = true;
+    enable = false;
     role = "agent";
     token = "hbhbhb";
     serverAddr = "https://10.0.0.66:6443";
