@@ -11,7 +11,7 @@
       lite:
         enabled: true
         routes:
-          - host: "sh.imdomestic.com"
+          - host: "*"
             backend: 10.0.0.66:25565
             proxyProtocol: true
             tcpShieldRealIP: false

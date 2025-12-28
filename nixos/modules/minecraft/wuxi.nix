@@ -14,7 +14,7 @@
 
     servers.proxy = {
       enable = true;
-      package = pkgs.velocityServers.velocity; # 最新 velocity :contentReference[oaicite:14]{index=14}
+      package = pkgs.velocityServers.velocity;
       openFirewall = false;
 
       symlinks."forwarding.secret" = secretFile;
