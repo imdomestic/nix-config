@@ -8,9 +8,6 @@
       bind: 0.0.0.0:25565
       onlineMode: false
 
-      bedrock:
-        managed: true
-
       lite:
         enabled: true
         routes:
