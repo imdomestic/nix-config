@@ -79,12 +79,13 @@
         };
       };
 
+      files."plugins/tab/config.yml" = ./tab-velocity-config.yml;
+
       # velocity.toml：关键几项写上即可
       files."velocity.toml".value = {
         config-version = "2.7"; # 默认配置里有这个字段 :contentReference[oaicite:16]{index=16}
         bind = "0.0.0.0:25565";
         motd = "Velocity Proxy";
-        haproxy-protocol = true;
         show-max-players = 100000;
         force-key-authentication = false;
         online-mode = false;
@@ -94,8 +95,11 @@
 
         # announce-forge = true;
 
+        advanced = {
+          haproxy-protocol = true;
+        };
+
         servers = {
-          # smp = "10.0.0.66:25566";
           speedrun = "10.0.0.66:25567";
           lobby = "10.0.0.66:25568";
           snk = "10.0.0.66:25570";
@@ -104,7 +108,6 @@
         };
 
         "forced-hosts" = {
-          "duel.imdomestic.com" = ["duel"];
           "snk.imdomestic.com" = ["snk"];
         };
       };
