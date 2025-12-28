@@ -84,6 +84,7 @@
         config-version = "2.7"; # 默认配置里有这个字段 :contentReference[oaicite:16]{index=16}
         bind = "0.0.0.0:25565";
         motd = "Velocity Proxy";
+        haproxy-protocol = true;
         show-max-players = 100000;
         force-key-authentication = false;
         online-mode = false;
