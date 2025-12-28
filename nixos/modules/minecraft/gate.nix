@@ -14,6 +14,7 @@
           - host: "*"
             backend: 10.0.0.66:25565
             proxyProtocol: true
+            tcpShieldRealIP: false
   '';
 in {
   virtualisation.podman.enable = true;
