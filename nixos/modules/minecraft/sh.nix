@@ -140,7 +140,7 @@ in {
         };
       };
 
-      jvmOpts = "-Dluckperms.base-directory=plugins/LuckPerms";
+      jvmOpts = "-Xmx512M -Dluckperms.base-directory=plugins/LuckPerms";
     };
   };
 }
