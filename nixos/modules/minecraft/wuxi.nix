@@ -11,6 +11,7 @@
   in {
     enable = true;
     eula = true;
+    dataDir = "/data/srv/minecraft";
 
     servers.bedrock-proxy = {
       enable = true;

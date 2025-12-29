@@ -67,9 +67,11 @@ in {
 
   systemd = {
     tmpfiles.rules = [
-      "d     /data/builds     0777 root  root  -" # 编译目录，给所有人写权限方便
+      "d     /data/builds     0777 root  root  -"
+      "d     /data/rdma       0777 root  root  -"
+      "d     /data/srv        0777 root  root  -"
       "d     /data/services   0755 root  root  -"
-      "d     /data/nas        0755 hank  users -" # 网盘目录归你的用户
+      "d     /data/nas        0755 hank  users -"
       "d     /data/nas/public 0775 hank  users -"
     ];
     services.nix-daemon.environment.TMPDIR = "/data/builds";
@@ -431,9 +433,8 @@ in {
     };
   };
 
-  systemd.enableEmergencyMode = false;
-  systemd.watchdog.runtimeTime = "60s";
-  systemd.watchdog.rebootTime = "60s";
+  systemd.settings.Manager.RebootWatchdogSec = 60;
+  systemd.settings.Manager.RuntimeWatchdogSec = 60;
 
   system.stateVersion = "24.11"; # Did you read the comment?
 }
