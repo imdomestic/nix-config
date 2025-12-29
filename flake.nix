@@ -27,6 +27,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
+
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
     nixos-wsl = {

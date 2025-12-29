@@ -19,6 +19,7 @@ in {
 
   externalModules = [
     inputs.nixos-wsl.nixosModules.default
+    inputs.determinate.nixosModules.default
     # inputs.daeuniverse.nixosModules.dae
     # inputs.daeuniverse.nixosModules.daed
     # inputs.niri.nixosModules.niri
