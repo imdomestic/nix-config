@@ -147,7 +147,14 @@
   };
   programs.zsh = {
     enable = true;
-    # dotDir = ".config/zsh";
+  };
+  programs.tmux = {
+    enable = true;
+    terminal = "tmux-256color";
+    mouse = true;
+    extraConfig = ''
+      set-option -ga terminal-overrides ",*256col*:Tc"
+    '';
   };
   programs.direnv = {
     enable = true;
