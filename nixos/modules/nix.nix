@@ -43,5 +43,6 @@
     ];
     experimental-features = ["nix-command" "flakes"];
     allow-import-from-derivation = true;
+    eval-cores = 2;
   };
 }
