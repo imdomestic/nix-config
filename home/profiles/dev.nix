@@ -145,9 +145,11 @@
       kanso-pearl = ../modules/yazi/kanso-pearl.yazi;
     };
   };
+
   programs.zsh = {
     enable = true;
   };
+
   programs.tmux = {
     enable = true;
     terminal = "tmux-256color";
@@ -170,8 +172,17 @@
       set -g history-limit 10000
 
       bind r source-file ~/.config/tmux/tmux.conf \; display '~/.config/tmux/tmux.conf sourced'
+      bind > swap-pane -D
+      bind < swap-pane -U
+      bind | swap-pane
+
+      bind -r H resize-pane -L 5
+      bind -r J resize-pane -D 5
+      bind -r K resize-pane -U 5
+      bind -r L resize-pane -R 5
     '';
   };
+
   programs.direnv = {
     enable = true;
     enableZshIntegration = true;
