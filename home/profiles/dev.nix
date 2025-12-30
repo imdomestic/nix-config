@@ -154,6 +154,22 @@
     mouse = true;
     extraConfig = ''
       set-option -ga terminal-overrides ",*256col*:Tc"
+
+      setw -g xterm-keys on
+      set -s escape-time 0
+      set -sg repeat-time 300
+      set -s focus-events on
+      set -sg exit-empty on
+
+      set -q -g status-utf8 on
+      setw -q -g utf8 on
+
+      set -g visual-activity off
+      setw -g monitor-activity off
+      setw -g monitor-bell off
+      set -g history-limit 10000
+
+      bind r source-file ~/.config/tmux/tmux.conf \; display '~/.config/tmux/tmux.conf sourced'
     '';
   };
   programs.direnv = {
