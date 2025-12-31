@@ -154,6 +154,7 @@
     enable = true;
     terminal = "tmux-256color";
     mouse = true;
+    plugins = [ pkgs.tmuxPlugins.dotbar ];
     extraConfig = ''
       set-option -ga terminal-overrides ",*256col*:Tc"
 
@@ -170,6 +171,10 @@
       setw -g monitor-activity off
       setw -g monitor-bell off
       set -g history-limit 10000
+
+      set-option -g renumber-windows on
+      set -g base-index 1
+      setw -g pane-base-index 1
 
       bind r source-file ~/.config/tmux/tmux.conf \; display '~/.config/tmux/tmux.conf sourced'
       bind > swap-pane -D

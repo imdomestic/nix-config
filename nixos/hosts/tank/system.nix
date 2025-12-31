@@ -142,6 +142,60 @@ in {
     openFirewall = true;
   };
 
+  services.nginx = {
+    enable = true;
+
+    recommendedGzipSettings = true;
+    recommendedOptimisation = true;
+    recommendedProxySettings = true;
+
+    clientMaxBodySize = "0"; # 0 代表不限制大小
+
+    virtualHosts."tank.local" = {
+      default = true;
+      listen = [
+        {
+          addr = "0.0.0.0";
+          port = 80;
+        }
+      ];
+
+      # --- 公共目录 (对应原来的 public) ---
+      locations."/public/" = {
+        alias = "/data/nas/public/"; # 注意末尾的斜杠
+
+        # 开启 WebDAV 方法
+        extraConfig = ''
+          dav_methods PUT DELETE MKCOL COPY MOVE;
+          dav_ext_methods PROPFIND OPTIONS;
+          dav_access user:rw group:rw all:r;
+
+          # 允许列出目录文件
+          autoindex on;
+
+          # 解决 macOS Finder 甚至 Windows 的一些兼容性问题
+          create_full_put_path on;
+        '';
+      };
+
+      # --- 个人目录 (对应原来的 home_hank) ---
+      locations."/hank/" = {
+        alias = "/data/nas/"; # 这里映射整个 /data/nas
+
+        extraConfig = ''
+          dav_methods PUT DELETE MKCOL COPY MOVE;
+          dav_ext_methods PROPFIND OPTIONS;
+          dav_access user:rw group:rw all:rw;
+
+          autoindex on;
+          create_full_put_path on;
+        '';
+
+        basicAuthFile = "/etc/nixos/webdav.htpasswd"; # 密码文件路径，见下文
+      };
+    };
+  };
+
   networking = {
     hostName = "tank"; # Define your hostname.
     networkmanager.enable = false; # Easiest to use and most distros use this by default.
@@ -150,7 +204,7 @@ in {
     nftables.enable = true;
     firewall = {
       enable = false;
-      trustedInterfaces = ["enp4s0" "br-lan"];
+      trustedInterfaces = ["enp5s0" "ens6" "br-lan"];
       checkReversePath = false;
     };
     wg-quick.interfaces = {
@@ -170,8 +224,14 @@ in {
       };
     };
 
-    networks."20-lan-uplink" = {
-      matchConfig.Name = "enp4s0";
+    networks."20-lan1-uplink" = {
+      matchConfig.Name = "enp5s0";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    networks."20-lan2-uplink" = {
+      matchConfig.Name = "ens6";
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
@@ -191,10 +251,21 @@ in {
   # Set your time zone.
   time.timeZone = "Hongkong";
 
-  nixpkgs.config.rocmSupport = true;
-
   # Enable the X11 windowing system.
   services.xserver.enable = true;
+  services.xserver.videoDrivers = ["nvidia"];
+  hardware.graphics.enable = true;
+  hardware.nvidia = {
+    modesetting.enable = true;
+    open = false;
+    nvidiaSettings = true;
+  };
+  hardware.nvidia-container-toolkit.enable = true;
+  environment.sessionVariables = {
+    LIBVA_DRIVER_NAME = "nvidia";
+    GBM_BACKEND = "nvidia-drm";
+    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+  };
 
   # Enable the GNOME Desktop Environment.
   services.displayManager.gdm.enable = true;
@@ -318,15 +389,7 @@ in {
 
   services.ollama = {
     enable = true;
-    acceleration = false;
-    # rocmOverrideGfx = "10.3.0";
-  };
-
-  hardware.graphics = {
-    enable = true;
-    extraPackages = with pkgs; [
-      rocmPackages.clr.icd
-    ];
+    acceleration = "cuda";
   };
 
   environment = {
@@ -387,7 +450,7 @@ in {
     corectrl
     # daed
     ddns-go
-    btop-rocm
+    btop-cuda
     pkgs.jellyfin
     pkgs.jellyfin-web
     pkgs.jellyfin-ffmpeg
