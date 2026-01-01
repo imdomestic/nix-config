@@ -64,22 +64,22 @@ in {
     useNetworkd = true;
     nftables = {
       enable = true;
-      # tables.mss-clamping = {
-      #   name = "mss-clamping";
-      #   enable = true;
-      #   family = "inet";
-      #   content = ''
-      #     chain postrouting {
-      #       type filter hook forward priority 0; policy accept;
-      #
-      #       # IPv4：PPPoE MTU 1400 → MSS 1360
-      #       oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-      #
-      #       # IPv6：PPPoE MTU 1400 → MSS 1340
-      #       oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
-      #     }
-      #   '';
-      # };
+      tables.mss-clamping = {
+        name = "mss-clamping";
+        enable = true;
+        family = "inet";
+        content = ''
+          chain postrouting {
+            type filter hook forward priority 0; policy accept;
+
+            # IPv4：PPPoE MTU 1400 → MSS 1360
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
+
+            # IPv6：PPPoE MTU 1400 → MSS 1340
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
+          }
+        '';
+      };
     };
     firewall = {
       enable = false;
@@ -135,8 +135,8 @@ in {
           ipv6cp-use-ipaddr
 
           # MTU 设置 (PPPoE 标准)
-          # mtu 1400
-          # mru 1400
+          mtu 1400
+          mru 1400
         '';
       };
     };
@@ -193,18 +193,14 @@ in {
     };
 
     networks."25-wan-ppp" = {
-      matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
+      matchConfig.Name = "ppp0";
       networkConfig = {
-        # 在这里开启 NAT (IPMasquerade)
-        # IPMasquerade = "ipv4";
-
-        # IPv6 配置 (PPPoE 也能获取 IPv6)
         IPv6AcceptRA = true;
-        DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
+        DHCP = "ipv6";
       };
       linkConfig = {
         RequiredForOnline = "carrier";
-        # MTUBytes = 1400;
+        MTUBytes = 1400;
       };
       dhcpV6Config = {
         WithoutRA = "solicit";
