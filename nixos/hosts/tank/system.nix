@@ -254,6 +254,8 @@ in {
   # Enable the X11 windowing system.
   services.xserver.enable = true;
   services.xserver.videoDrivers = ["nvidia"];
+  nixpkgs.config.cudaSupport = true;
+  nixpkgs.config.cudaCapabilities = ["6.1"];
   hardware.graphics.enable = true;
   hardware.nvidia = {
     modesetting.enable = true;
