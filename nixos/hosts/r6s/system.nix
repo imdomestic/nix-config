@@ -284,6 +284,7 @@
     neovim
     wget
     gcc
+    ddns-go
   ];
 
   programs.zsh.enable = true;
