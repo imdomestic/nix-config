@@ -5,9 +5,10 @@
 }: {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/mihomo
+    # ../../modules/mihomo
+    ../../modules/dae
     ../../modules/grub
-    ../../modules/tuigreet
+    # ../../modules/tuigreet
     ../../modules/keyd
   ];
 
@@ -21,14 +22,14 @@
   networking.proxy.default = "http://127.0.0.1:7890";
   networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
-  nixpkgs.config.rocmSupport = true;
+  # nixpkgs.config.rocmSupport = true;
 
   # Enable the X11 windowing system.
   services.xserver.enable = true;
 
   # Enable the GNOME Desktop Environment.
-  services.xserver.displayManager.gdm.enable = false;
-  services.xserver.desktopManager.gnome.enable = false;
+  services.xserver.displayManager.gdm.enable = true;
+  services.xserver.desktopManager.gnome.enable = true;
 
   programs.zsh = {
     enable = true;
@@ -37,17 +38,17 @@
   programs.nix-ld.enable = true;
 
   xdg.portal.wlr.enable = true;
-  programs = {
-    hyprland = {
-      enable = true;
-      withUWSM = true;
-    };
-    # waybar.enable = true;
-    hyprlock.enable = true;
-    # thunar.enable = true;
-    virt-manager.enable = true;
-    xwayland.enable = true;
-  };
+  # programs = {
+  #   hyprland = {
+  #     enable = true;
+  #     withUWSM = true;
+  #   };
+  #   # waybar.enable = true;
+  #   hyprlock.enable = true;
+  #   # thunar.enable = true;
+  #   virt-manager.enable = true;
+  #   xwayland.enable = true;
+  # };
 
   services.spice-vdagentd.enable = true;
 
@@ -58,9 +59,8 @@
   };
 
   services.ollama = {
-    enable = true;
-    acceleration = "rocm";
-    rocmOverrideGfx = "10.1.0";
+    enable = false;
+    acceleration = "cuda";
   };
 
   hardware.graphics = {
@@ -160,25 +160,6 @@
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
   services.vscode-server.enable = true;
-
-  systemd.services.ddns-go = {
-    enable = true;
-    description = "Simple and easy to use DDNS. Automatically update domain name resolution to public IP (Support Aliyun, Tencent Cloud, Dnspod, Cloudflare, Callback, Huawei Cloud, Baidu Cloud, Porkbun, GoDaddy...)";
-
-    wants = ["network.target"];
-    after = ["network-online.target"];
-
-    serviceConfig = {
-      StartLimitInterval = 5;
-      StartLimitBurst = 10;
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go \"-l\" \":9876\" \"-f\" \"300\" \"-cacheTimes\" \"5\" \"-c\" \"/home/genisys/.ddns_go_config.yaml\"";
-      Restart = "always";
-      RestartSec = 120;
-      EnvironmentFile = "-/etc/sysconfig/ddns-go";
-    };
-
-    wantedBy = ["multi-user.target"];
-  };
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
