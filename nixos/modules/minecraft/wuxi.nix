@@ -259,6 +259,7 @@
           lobby = "10.0.0.66:25568";
           snk = "10.0.0.66:25570";
           ftb = "10.0.0.66:25571";
+          bingo = "10.0.0.66:25573";
           try = ["lobby"];
         };
 
@@ -500,6 +501,104 @@
         disconnectMessage = "Please connect via the proxy (Velocity).";
       };
 
+      jvmOpts = "-Xms4G -Xmx8G";
+    };
+
+    servers.bingo = {
+      enable = true;
+      package = pkgs.paperServers.paper-1_21_11;
+
+      serverProperties = {
+        server-ip = "10.0.0.66";
+        server-port = 25573;
+        online-mode = false;
+        motd = "bingo 1.21.11";
+        enforce-secure-profile = false;
+        enable-rcon = true;
+        "rcon.password" = "hbhbhb";
+        "rcon.port" = 25577;
+      };
+
+      symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
+        url = "https://download.luckperms.net/1610/bukkit/loader/LuckPerms-Bukkit-5.5.21.jar";
+        sha256 = "sha256-asG+JVgKKxyKnS/eYATV3Ilpn/R+La3nfHszG8pgIGE=";
+      };
+
+      symlinks."plugins/CMILib.jar" = pkgs.fetchurl {
+        url = "https://www.zrips.net/CMILib/CMILib1.5.8.1.jar";
+        sha256 = "sha256-W9+mSxAB1W4XdxakC08zpMmRoDeWn+xhBRMxQsJhyLI=";
+      };
+
+      symlinks."plugins/CMI.jar" = "${inputs.wg-config.outPath}/CMI.jar";
+
+      symlinks."plugins/VaultUnlocked.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/ayRaM8J7/versions/hWDrazHd/VaultUnlocked-2.17.0.jar";
+        sha256 = "sha256-feIkNsA49QBg8qpOpfSv01MCDkViiN6gOJahGrqhy4c=";
+      };
+      symlinks."plugins/PlaceholderAPI.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/lKEzGugV/versions/sn9LYZkM/PlaceholderAPI-2.11.7.jar";
+        sha256 = "sha256-9aTqcYuqq2EYz+jzmD6jpWYK8e6FcjYBgqPRttvy610=";
+      };
+      symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
+        sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
+      };
+      symlinks."plugins/TAB-Bridge.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/cOXgQQKY/TAB-Bridge%20v6.2.0.jar";
+        sha256 = "sha256-7L2IOopc3SOQ7fnCQbVVJTB1vWc9NQcXgt+kMn82BnE=";
+      };
+      symlinks."plugins/CMIEInjector.jar" = pkgs.fetchurl {
+        url = "https://zrips.net/cmii/download.php?file=CMIEInjector1.0.2.4.jar";
+        sha256 = "sha256-ONRNpw4Pw4qgRIDCuzZeit+F3RYKPw82z9gAaD5fukI=";
+      };
+
+      files."config/paper-global.yml".value = {
+        proxies = {
+          velocity = {
+            enabled = true;
+            # online-mode = true;
+            secret = "hbhbhb";
+          };
+        };
+      };
+
+      files."plugins/SkinsRestorer/Config.yml" = {
+        format = pkgs.formats.yaml {};
+        value = {
+          Storage = {
+            Type = "postgresql";
+            Address = "10.0.0.66:5432";
+            Database = "luckperms";
+            Username = "minecraft";
+            Password = "hbhbhb";
+          };
+        };
+      };
+
+      files."plugins/LuckPerms/config.yml" = {
+        format = pkgs.formats.yaml {};
+        value = {
+          server = "lobby";
+          storage-method = "postgresql";
+          allow-invalid-usernames = true;
+          use-server-uuid-cache = false;
+          unloaded-user-action = "warn";
+          data = {
+            address = "10.0.0.66:5432";
+            database = "luckperms";
+            username = "minecraft";
+            password = "hbhbhb";
+            pool-settings = {
+              maximum-pool-size = 10;
+            };
+          };
+          messaging-service = "pluginmsg";
+        };
+      };
+
+      files."plugins/CMI/Settings/Chat.yml" = ./cmi-Chat.yml;
+      files."plugins/CMI/Settings/DataBaseInfo.yml" = ./cmi-DataBaseInfo.yml;
+      files."plugins/CMI/config.yml" = ./cmi-config.yaml;
       jvmOpts = "-Xms4G -Xmx8G";
     };
 
