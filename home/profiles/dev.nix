@@ -10,6 +10,7 @@
 
   home.packages = with pkgs; [
     # neovim dependencies
+    devenv
     codesnap
     nerdctl
     kubectl

@@ -16,4 +16,5 @@ in {
   r6s = callHost "r6s";
   aarch64-wsl = callHost "aarch64-wsl";
   shanghai = callHost "shanghai";
+  x470 = callHost "x470";
 }

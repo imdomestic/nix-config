@@ -58,6 +58,12 @@ in {
   boot.supportedFilesystems = ["xfs" "bcachefs"];
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 16 * 1024;
+    }
+  ];
 
   fileSystems."/data" = {
     device = "UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1";
@@ -254,8 +260,7 @@ in {
   # Enable the X11 windowing system.
   services.xserver.enable = true;
   services.xserver.videoDrivers = ["nvidia"];
-  nixpkgs.config.cudaSupport = true;
-  nixpkgs.config.cudaCapabilities = ["6.1"];
+  # nixpkgs.config.cudaSupport = true;
   hardware.graphics.enable = true;
   hardware.nvidia = {
     modesetting.enable = true;
