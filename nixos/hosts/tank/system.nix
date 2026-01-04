@@ -264,7 +264,7 @@ in {
   hardware.graphics.enable = true;
   hardware.nvidia = {
     modesetting.enable = true;
-    open = false;
+    open = true;
     nvidiaSettings = true;
   };
   hardware.nvidia-container-toolkit.enable = true;
