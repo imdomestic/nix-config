@@ -28,6 +28,12 @@
     };
   };
 
+  nix = {
+    registry.nixpkgs.flake = inputs.nixpkgs;
+    nixPath = ["nixpkgs=${inputs.nixpkgs}"];
+    channel.enable = false;
+  };
+
   nix.settings = {
     substituters = [
       "https://mirrors.ustc.edu.cn/nix-channels/store"
