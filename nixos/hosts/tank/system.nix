@@ -71,6 +71,16 @@ in {
     options = ["defaults" "nofail" "compression=zstd" "noatime"];
   };
 
+  # rdma
+  # boot.kernelModules = [
+  #   "ib_core" # RDMA 核心
+  #   "ib_uverbs" # 用户态接口
+  #   "rdma_ucm" # 用户空间连接管理
+  #   "mlx4_ib" # Mellanox CX3 的 RDMA 驱动 (关键！)
+  #   "rpcrdma" # NFS 客户端 RDMA 模块
+  #   "svcrdma" # NFS 服务端 RDMA 模块
+  # ];
+
   systemd = {
     tmpfiles.rules = [
       "d     /data/builds     0777 root  root  -"
@@ -82,6 +92,17 @@ in {
     ];
     services.nix-daemon.environment.TMPDIR = "/data/builds";
   };
+
+  # services.nfs.server = {
+  #   exports = ''
+  #     /data 192.168.1.7(rw,sync,no_subtree_check,no_root_squash,insecure)
+  #   '';
+  # };
+  #
+  # systemd.services.nfs-server.preStart = ''
+  #   modprobe svcrdma
+  #   echo "rdma 20049" > /proc/fs/nfsd/portlist
+  # '';
 
   services.filebrowser = {
     enable = true;
@@ -252,6 +273,16 @@ in {
         RequiredForOnline = "routable";
       };
     };
+
+    # networks."30-10g-backend" = {
+    #   matchConfig.Name = "ens6d1";
+    #   networkConfig = {
+    #     Address = "192.168.254.1/30";
+    #   };
+    #   linkConfig = {
+    #     RequiredForOnline = "no";
+    #   };
+    # };
   };
 
   # Set your time zone.
@@ -418,6 +449,10 @@ in {
   };
 
   environment.systemPackages = with pkgs; [
+    rdma-core
+    # infiniband-diags
+    # libibverbs
+
     cachix
     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     wget

@@ -10,6 +10,7 @@
     ./hardware-configuration.nix
     ../../modules/dae
     ../../modules/keyd
+    ../../modules/tuigreet
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -18,6 +19,40 @@
   boot.supportedFilesystems = ["bcachefs"];
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
+
+  # rdma
+  # boot.kernelModules = [
+  #   "ib_core" # RDMA 核心
+  #   "ib_uverbs" # 用户态接口
+  #   "rdma_ucm" # 用户空间连接管理
+  #   "mlx4_ib" # Mellanox CX3 的 RDMA 驱动 (关键！)
+  #   "rpcrdma" # NFS 客户端 RDMA 模块
+  #   "svcrdma" # NFS 服务端 RDMA 模块
+  # ];
+  #
+  # systemd.mounts = [
+  #   {
+  #     type = "nfs";
+  #     what = "192.168.1.11:/data"; # E5 的万兆直连 IP
+  #     where = "/data";
+  #
+  #     # 核心参数：
+  #     # proto=rdma: 强制使用 RDMA 传输
+  #     # port=20049: 指定服务端监听的 RDMA 端口
+  #     options = "proto=rdma,port=20049,vers=4.2,soft,intr";
+  #
+  #     # 依赖网络上线后再挂载
+  #     wants = ["network-online.target"];
+  #     after = ["network-online.target"];
+  #   }
+  # ];
+  #
+  # systemd.automounts = [
+  #   {
+  #     where = "/data";
+  #     wantedBy = ["multi-user.target"];
+  #   }
+  # ];
 
   networking = {
     hostName = "x470";
@@ -69,6 +104,17 @@
         RequiredForOnline = "routable";
       };
     };
+
+    # networks."30-10g-backend" = {
+    #   matchConfig.Name = "enp40s0d1";
+    #   networkConfig = {
+    #     Address = "192.168.254.2/30";
+    #   };
+    #   linkConfig = {
+    #     MTUBytes = 9000;
+    #     RequiredForOnline = "no";
+    #   };
+    # };
   };
 
   # Set your time zone.
@@ -89,7 +135,7 @@
   };
 
   # Enable the GNOME Desktop Environment.
-  services.displayManager.gdm.enable = true;
+  services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = true;
   users.users.hank = {
     isNormalUser = true;
@@ -103,6 +149,8 @@
   };
 
   environment.systemPackages = with pkgs; [
+    rdma-core
+
     cachix
     vim
     wget
