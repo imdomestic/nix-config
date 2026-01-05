@@ -1906,11 +1906,11 @@
     "zsh-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1766835251,
-        "narHash": "sha256-1wY89BQ00fU8QF3X3kbcGacG45bGNKDBqByps0gJ1nw=",
+        "lastModified": 1767591883,
+        "narHash": "sha256-B+I6MXFqsBUo2CC+/Whl1B7IUUBvts683g4muRTk+WE=",
         "owner": "HCHogan",
         "repo": "zsh",
-        "rev": "3d59a55b5ec3648932eba5c272010b111a8ca75e",
+        "rev": "e40625992e772fb6762a99b38afc6d54bfca91ae",
         "type": "github"
       },
       "original": {
