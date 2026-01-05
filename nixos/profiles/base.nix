@@ -1,4 +1,5 @@
 {
+  pkgs,
   lib,
   inputs,
   hostName,
@@ -29,4 +30,8 @@
     hostUsers = hostUsers // lib.genAttrs usernames (_: {});
     hostname = hostName;
   };
+
+  environment.systemPackages = with pkgs; [
+    tmux
+  ];
 }

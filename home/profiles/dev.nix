@@ -127,7 +127,6 @@
     zinit
 
     # qol
-    comma
     nix-output-monitor
   ];
 

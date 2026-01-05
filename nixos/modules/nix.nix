@@ -35,6 +35,7 @@
   };
 
   nix.settings = {
+    # flake-registry = "https://channels.nixos.org/flake-registry.json";
     substituters = [
       "https://mirrors.ustc.edu.cn/nix-channels/store"
       "https://cache.garnix.io"
