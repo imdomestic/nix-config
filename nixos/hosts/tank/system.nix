@@ -93,16 +93,11 @@ in {
     services.nix-daemon.environment.TMPDIR = "/data/builds";
   };
 
-  # services.nfs.server = {
-  #   exports = ''
-  #     /data 192.168.1.7(rw,sync,no_subtree_check,no_root_squash,insecure)
-  #   '';
-  # };
-  #
-  # systemd.services.nfs-server.preStart = ''
-  #   modprobe svcrdma
-  #   echo "rdma 20049" > /proc/fs/nfsd/portlist
-  # '';
+  services.nfs.server = {
+    exports = ''
+      /data/rdma 192.168.1.7(rw,sync,no_subtree_check,no_root_squash,insecure)
+    '';
+  };
 
   services.filebrowser = {
     enable = true;
