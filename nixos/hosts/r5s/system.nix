@@ -1,6 +1,11 @@
-{pkgs, ...}: {
+{
+  inputs,
+  pkgs,
+  ...
+}: {
   imports = [
-    ../../modules/mihomo
+    ../../modules/dae
+    ../../modules/keyd
   ];
 
   fileSystems = {
@@ -16,69 +21,56 @@
   hardware.firmware = [
     pkgs.linux-firmware
   ];
-
   hardware.deviceTree.name = "rockchip/rk3568-nanopi-r5s.dtb";
 
-  boot.tmp.useTmpfs = true;
-
-  boot.loader = {
-    grub.enable = false;
-    generic-extlinux-compatible = {
-      enable = true;
-      useGenerationDeviceTree = true;
+  boot = {
+    loader = {
+      grub.enable = false;
+      generic-extlinux-compatible = {
+        enable = true;
+        useGenerationDeviceTree = true;
+      };
+      timeout = 1;
     };
-    timeout = 1;
+    tmp.useTmpfs = true;
+    growPartition = true;
+    kernelPackages = pkgs.linuxPackages_latest;
+    initrd.availableKernelModules = [
+      "sdhci_of_dwcmshc"
+      "dw_mmc_rockchip"
+      "analogix_dp"
+      "io-domain"
+      "rockchip_saradc"
+      "rockchip_thermal"
+      "rockchipdrm"
+      "rockchip-rga"
+      "pcie_rockchip_host"
+      "phy-rockchip-pcie"
+      "phy_rockchip_snps_pcie3"
+      "phy_rockchip_naneng_combphy"
+      "phy_rockchip_inno_usb2"
+      "dwmac_rk"
+      "dw_wdt"
+      "dw_hdmi"
+      "dw_hdmi_cec"
+      "dw_hdmi_i2s_audio"
+      "dw_mipi_dsi"
+    ];
+    kernelParams = [
+      "console=tty0"
+      "earlycon=uart8250,mmio32,0xfe660000"
+    ];
+    kernel.sysctl = {
+      "net.ipv4.ip_forward" = 1;
+      "net.ipv6.conf.all.forwarding" = 1;
+      "net.core.default_qdisc" = "fq";
+      "net.ipv4.tcp_congestion_control" = "bbr";
+    };
   };
 
-  boot.kernelPackages = pkgs.linuxPackages;
-  boot.kernelParams = [
-    "console=tty0"
-    "earlycon=uart8250,mmio32,0xfe660000"
-  ];
-
-  boot.growPartition = true;
-
-  boot.initrd.availableKernelModules = [
-    "sdhci_of_dwcmshc"
-    "dw_mmc_rockchip"
-    "analogix_dp"
-    "io-domain"
-    "rockchip_saradc"
-    "rockchip_thermal"
-    "rockchipdrm"
-    "rockchip-rga"
-    "pcie_rockchip_host"
-    "phy-rockchip-pcie"
-    "phy_rockchip_snps_pcie3"
-    "phy_rockchip_naneng_combphy"
-    "phy_rockchip_inno_usb2"
-    "dwmac_rk"
-    "dw_wdt"
-    "dw_hdmi"
-    "dw_hdmi_cec"
-    "dw_hdmi_i2s_audio"
-    "dw_mipi_dsi"
-  ];
+  time.timeZone = "Asia/Shanghai";
 
   powerManagement.cpuFreqGovernor = "schedutil";
-  # networking.useDHCP =  true;
-
-  # services.xserver.displayManager.gdm.enable = false;
-  # services.xserver.desktopManager.gnome.enable = false;
-  networking.firewall.enable = false;
-  networking.networkmanager.enable = true;
-
-  nix = {
-    settings.experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-    settings.substituters = [
-      "https://mirrors.ustc.edu.cn/nix-channels/store"
-      "https://mirror.sjtu.edu.cn/nix-channels/store"
-      "https://cache.nixos.org"
-    ];
-  };
 
   environment.systemPackages = with pkgs; [
     git
@@ -93,7 +85,6 @@
     ethtool
     sysstat
     neovim
-    vim
     gcc
     nil
     btop
@@ -112,27 +103,20 @@
     isNormalUser = true;
     description = "nix";
     extraGroups = [
-      "networkmanager"
       "wheel"
     ];
     password = "nix";
   };
 
-  services.openssh = {
-    enable = true;
-    ports = [22 2200];
+  users.users.hank = {
+    isNormalUser = true;
+    description = "hank";
+    extraGroups = [
+      "wheel"
+    ];
   };
 
-  # default port 8388
-  services.shadowsocks = {
-    enable = true;
-    password = "nix";
-  };
-
-  i18n = {
-    defaultLocale = "en_GB.UTF-8";
-  };
-
+  i18n.defaultLocale = "en_GB.UTF-8";
   environment.etc = {
     "systemd/journald.conf.d/99-storage.conf".text = ''
       [Journal]
@@ -140,54 +124,203 @@
     '';
   };
 
-  systemd.network.links = {
-    "10-lan1" = {
-      matchConfig = {
-        Path = "platform-3c0000000.pcie-pci-0000:01:00.0";
-      };
-      linkConfig = {
-        Name = "lan1";
-      };
-    };
-    "10-lan2" = {
-      matchConfig = {
-        Path = "platform-3c0400000.pcie-pci-0001:01:00.0";
-      };
-      linkConfig = {
-        Name = "lan2";
+  networking = {
+    hostName = "r5s";
+    firewall.enable = false;
+    networkmanager.enable = false;
+    useNetworkd = true;
+    wg-quick.interfaces = {
+      wg0 = {
+        configFile = "${inputs.wg-config.outPath}/client_00007.conf";
+        autostart = true;
       };
     };
-    "10-wan0" = {
-      matchConfig = {
-        Path = "platform-fe2a0000.ethernet";
+    nftables = {
+      enable = true;
+      tables.mss-clamping = {
+        name = "mss-clamping";
+        enable = true;
+        family = "inet";
+        content = ''
+          chain postrouting {
+            type filter hook forward priority 0; policy accept;
+
+            # IPv4：PPPoE MTU 1400 → MSS 1360
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
+
+            # IPv6：PPPoE MTU 1400 → MSS 1340
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
+          }
+        '';
+      };
+    };
+  };
+  systemd.network = {
+    enable = true;
+    links = {
+      "10-wan0" = {
+        matchConfig = {
+          Path = "platform-fe2a0000.ethernet";
+        };
+        linkConfig = {
+          Name = "wan0";
+        };
+      };
+    };
+
+    netdevs."10-br-lan" = {
+      netdevConfig = {
+        Kind = "bridge";
+        Name = "br-lan";
+      };
+    };
+
+    # LAN1
+    networks."20-lan1-uplink" = {
+      matchConfig.Name = "enp1s0";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    # LAN2
+    networks."20-lan2-uplink" = {
+      matchConfig.Name = "enP1p17s0";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    # WAN, DHCP
+    # networks."20-wan-uplink" = {
+    #   matchConfig.Name = "wan0";
+    #   networkConfig = {
+    #     DHCP = "yes";
+    #     IPv6AcceptRA = true;
+    #   };
+    #   linkConfig.RequiredForOnline = "carrier";
+    #   dhcpV6Config = {
+    #     PrefixDelegationHint = "::/60";
+    #     UseDelegatedPrefix = true;
+    #   };
+    # };
+
+    # WAN
+    networks."20-wan-uplink" = {
+      matchConfig.Name = "wan0";
+      # 只需要链路层启动即可
+      linkConfig.RequiredForOnline = "no";
+      networkConfig = {
+        # 必须禁用链路本地地址，防止干扰
+        LinkLocalAddressing = "no";
+        DHCP = "no";
+        # 这里不需要 IPMasquerade 了，因为它是物理载体
+      };
+    };
+
+    networks."25-wan-ppp" = {
+      matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
+      networkConfig = {
+        # 在这里开启 NAT (IPMasquerade)
+        # IPMasquerade = "ipv4";
+
+        # IPv6 配置 (PPPoE 也能获取 IPv6)
+        IPv6AcceptRA = true;
+        DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
       };
       linkConfig = {
-        Name = "wan0";
+        RequiredForOnline = "carrier";
+        MTUBytes = 1400;
+      };
+      dhcpV6Config = {
+        WithoutRA = "solicit";
+        PrefixDelegationHint = "::/60";
+        UseDelegatedPrefix = true;
+      };
+    };
+
+    networks."30-br-lan" = {
+      matchConfig.Name = "br-lan";
+      networkConfig = {
+        Address = "192.168.3.1/24";
+        DHCPServer = true;
+        IPMasquerade = "ipv4";
+        IPv6SendRA = true;
+        IPv6AcceptRA = false;
+        DHCPPrefixDelegation = true;
+      };
+      linkConfig = {
+        RequiredForOnline = "no"; # carrier
+      };
+
+      dhcpServerConfig = {
+        PoolOffset = 100;
+        PoolSize = 100;
+        EmitDNS = true;
+        DNS = ["192.168.3.1"];
+      };
+
+      # SLAAC
+      ipv6SendRAConfig = {
+        Managed = false; # no DHCPv6
+        OtherInformation = false;
+        EmitDNS = true; # send DNS with RA
       };
     };
   };
 
-  services.cloudflare-dyndns = {
+  services.pppd = {
     enable = true;
-    domains = ["nix-wuxi.linwhite.top"];
-    apiTokenFile = "/var/lib/cf-ddns/api-token";
-    ipv4 = false; # 有公网 IPv4 就开
-    ipv6 = true; # 有公网 IPv6 就开
-    proxied = true; # 需要“橙云”就开；纯直连可设为 false
-    # interval = "5m"; # 默认5分钟，如需改频率再加
-    # create = true;   # 如域名记录还没建，想让程序自动创建就打开（若报未知选项就删掉）
+    peers = {
+      mobile = {
+        autostart = true;
+        enable = true;
+        config = ''
+          plugin pppoe.so wan0
+          user "19551998351"
+          password "837145"
+
+          # usepeerdns
+
+          # 关键参数
+          defaultroute    # 自动添加默认路由
+          persist         # 断线重连
+          maxfail 0       # 无限次重试
+          holdoff 5       # 重试间隔
+          noipdefault
+          noauth
+          hide-password
+          lcp-echo-interval 30
+          lcp-echo-failure 20
+          lcp-echo-adaptive
+
+          +ipv6
+          ipv6cp-use-ipaddr
+
+          # MTU 设置 (PPPoE 标准)
+          mtu 1400
+          mru 1400
+        '';
+      };
+    };
+  };
+
+  services.dnsmasq.enable = false;
+  services.resolved = {
+    enable = true;
+    fallbackDns = ["223.5.5.5"];
+    extraConfig = ''
+      DNSStubListener=yes
+      DNSStubListenerExtra=192.168.3.1
+      DNSStubListenerExtra=::
+    '';
+  };
+  services.irqbalance.enable = true;
+  services.openssh = {
+    enable = true;
+    ports = [22 2200];
   };
 
   programs.zsh.enable = true;
 
   nixpkgs.hostPlatform = "aarch64-linux";
-  system.stateVersion = "24.11";
-
-  networking.hostName = "r5sjp";
-  networking.wg-quick.interfaces = {
-    wg0 = {
-      configFile = "/home/nix/wireguard/wg0.conf";
-      autostart = true;
-    };
-  };
+  system.stateVersion = "25.11";
 }

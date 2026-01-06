@@ -27,5 +27,17 @@ in {
         ];
       };
     };
+
+    hank = {
+      home = {
+        profiles = with homeProfiles; [
+          core
+          dev
+        ];
+        modules = [
+          userModules.hank.module
+        ];
+      };
+    };
   };
 }
