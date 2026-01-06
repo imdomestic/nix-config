@@ -59,18 +59,37 @@
     kernelParams = [
       "console=tty0"
       "earlycon=uart8250,mmio32,0xfe660000"
+      "pcie_aspm=off" # 关闭 PCIe 节能
     ];
     kernel.sysctl = {
       "net.ipv4.ip_forward" = 1;
       "net.ipv6.conf.all.forwarding" = 1;
       "net.core.default_qdisc" = "fq";
       "net.ipv4.tcp_congestion_control" = "bbr";
+
+      # 增加 backlog 防止丢包 (从脚本移到这里)
+      "net.core.netdev_max_backlog" = 16384;
+
+      # 增加 TCP 缓冲区大小 (针对千兆/2.5G网络)
+      "net.core.rmem_max" = 16777216;
+      "net.core.wmem_max" = 16777216;
+      "net.ipv4.tcp_rmem" = "4096 87380 16777216";
+      "net.ipv4.tcp_wmem" = "4096 16384 16777216";
+
+      # 增加连接跟踪表大小 (防止大量连接导致丢包)
+      "net.netfilter.nf_conntrack_max" = 65536;
+      "net.netfilter.nf_conntrack_tcp_timeout_established" = 7440;
+
+      # ARP 缓存调整 (防止局域网设备多时 ARP 表溢出)
+      "net.ipv4.neigh.default.gc_thresh1" = 1024;
+      "net.ipv4.neigh.default.gc_thresh2" = 2048;
+      "net.ipv4.neigh.default.gc_thresh3" = 4096;
     };
   };
 
   time.timeZone = "Asia/Shanghai";
 
-  powerManagement.cpuFreqGovernor = "schedutil";
+  powerManagement.cpuFreqGovernor = "performance";
 
   environment.systemPackages = with pkgs; [
     git
@@ -137,19 +156,30 @@
     };
     nftables = {
       enable = true;
-      tables.mss-clamping = {
+      checkRuleset = false;
+      tables.router = {
         name = "mss-clamping";
         enable = true;
         family = "inet";
         content = ''
+          # Flowtable 定义
+          flowtable f {
+            hook ingress priority 0;
+            devices = { wan0, br-lan };
+          }
+
           chain postrouting {
-            type filter hook forward priority 0; policy accept;
-
-            # IPv4：PPPoE MTU 1400 → MSS 1360
+            type filter hook postrouting priority 0; policy accept;
+            # 你的 MSS Clamping 规则
             oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-
-            # IPv6：PPPoE MTU 1400 → MSS 1340
             oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
+          }
+
+          chain forward {
+            type filter hook forward priority 0; policy accept;
+            # 开启硬件/软件卸载加速
+            flow offload @f
+            ct state established,related accept
           }
         '';
       };
@@ -265,6 +295,22 @@
         EmitDNS = true; # send DNS with RA
       };
     };
+  };
+
+  systemd.services.network-rps = {
+    description = "Configure RPS for network interfaces";
+    after = ["network.target"];
+    wantedBy = ["multi-user.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    script = ''
+      # f = 1111 (二进制) -> 允许所有4个核心处理中断
+      for file in /sys/class/net/*/queues/rx-*/rps_cpus; do
+        echo f > "$file"
+      done
+    '';
   };
 
   services.pppd = {
