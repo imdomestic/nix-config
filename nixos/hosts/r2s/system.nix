@@ -274,8 +274,8 @@
       # d(0b1101, CPU0,CPU2-3)
       echo d > /sys/class/net/enu1/queues/rx-0/rps_cpus
 
-      echo 2048 > /sys/class/net/extern0/queues/rx-0/rps_flow_cnt
-      echo 2048 > /sys/class/net/intern0/queues/rx-0/rps_flow_cnt
+      echo 2048 > /sys/class/net/end0/queues/rx-0/rps_flow_cnt
+      echo 2048 > /sys/class/net/enu1/queues/rx-0/rps_flow_cnt
     '';
   };
 
@@ -371,6 +371,9 @@
     PasswordAuthentication = true;
     KbdInteractiveAuthentication = true;
     PermitRootLogin = "yes";
+  };
+  services.tailscale = {
+    enable = true;
   };
 
   time.timeZone = "Asia/Shanghai";

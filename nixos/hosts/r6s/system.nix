@@ -294,6 +294,7 @@ in {
   };
 
   services.desktopManager.gnome.enable = true;
+  services.tailscale.enable = true;
 
   programs = {
     niri = {
