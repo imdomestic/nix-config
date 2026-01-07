@@ -30,29 +30,29 @@
   #   "svcrdma" # NFS 服务端 RDMA 模块
   # ];
   #
-  systemd.mounts = [
-    {
-      type = "nfs";
-      what = "192.168.1.11:/data/rdma"; # E5 的万兆直连 IP
-      where = "/data/rdma";
-
-      # 核心参数：
-      # proto=rdma: 强制使用 RDMA 传输
-      # port=20049: 指定服务端监听的 RDMA 端口
-      options = "proto=tcp,vers=4.2,soft,intr";
-
-      # 依赖网络上线后再挂载
-      wants = ["network-online.target"];
-      after = ["network-online.target"];
-    }
-  ];
-
-  systemd.automounts = [
-    {
-      where = "/data/rdma";
-      wantedBy = ["multi-user.target"];
-    }
-  ];
+  # systemd.mounts = [
+  #   {
+  #     type = "nfs";
+  #     what = "192.168.1.11:/data/rdma"; # E5 的万兆直连 IP
+  #     where = "/data/rdma";
+  #
+  #     # 核心参数：
+  #     # proto=rdma: 强制使用 RDMA 传输
+  #     # port=20049: 指定服务端监听的 RDMA 端口
+  #     options = "proto=tcp,vers=4.2,soft,intr";
+  #
+  #     # 依赖网络上线后再挂载
+  #     wants = ["network-online.target"];
+  #     after = ["network-online.target"];
+  #   }
+  # ];
+  #
+  # systemd.automounts = [
+  #   {
+  #     where = "/data/rdma";
+  #     wantedBy = ["multi-user.target"];
+  #   }
+  # ];
 
   networking = {
     hostName = "x470";
@@ -196,8 +196,14 @@
   services.iperf3.enable = true;
   services.openssh.enable = true;
 
+  services.ollama = {
+    enable = true;
+    acceleration = "cuda";
+    host = "0.0.0.0";
+  };
+
   systemd.settings.Manager.RebootWatchdogSec = 60;
   systemd.settings.Manager.RuntimeWatchdogSec = 60;
 
-  system.stateVersion = "26.05"; # Did you read the comment?
+  system.stateVersion = "26.05";
 }
