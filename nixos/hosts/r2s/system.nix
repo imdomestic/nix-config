@@ -47,6 +47,7 @@
       };
     };
     kernelPackages = pkgs.linuxPackages_latest;
+    kernelModules = [ "nf_flow_table_pppoe" ];
     kernelParams = [
       "console=ttyS2,1500000"
       "earlycon=uart8250,mmio32,0xff130000"
