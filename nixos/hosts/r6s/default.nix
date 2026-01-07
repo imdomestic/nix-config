@@ -29,7 +29,7 @@ in {
         profiles = with homeProfiles; [
           core
           dev
-          gui.linux
+          # gui.linux
         ];
         modules = [
           userModules.hank.module

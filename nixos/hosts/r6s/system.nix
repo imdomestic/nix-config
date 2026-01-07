@@ -293,7 +293,7 @@ in {
     port = 9100;
   };
 
-  services.desktopManager.gnome.enable = true;
+  # services.desktopManager.gnome.enable = true;
   services.tailscale.enable = true;
 
   programs = {
