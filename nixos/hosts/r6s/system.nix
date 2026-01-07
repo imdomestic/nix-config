@@ -324,6 +324,7 @@ in {
     neovim
     wget
     gcc
+    tailscale
   ];
 
   programs.zsh.enable = true;
