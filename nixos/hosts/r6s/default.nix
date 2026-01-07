@@ -28,7 +28,7 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          # dev
+          dev
           # gui.linux
         ];
         modules = [
