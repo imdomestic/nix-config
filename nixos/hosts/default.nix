@@ -18,4 +18,5 @@ in {
   shanghai = callHost "shanghai";
   x470 = callHost "x470";
   r2s = callHost "r2s";
+  r5sjp = callHost "r5sjp";
 }
