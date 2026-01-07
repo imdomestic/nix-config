@@ -268,12 +268,6 @@ in {
   };
   services.irqbalance.enable = true;
 
-  # services.tailscale = {
-  #   enable = true;
-  #   openFirewall = true;
-  #   extraUpFlags = ["--accept-dns=false" "--login-server https://sh.imdomestic.com:8443"];
-  # }
-
   services.cockpit = {
     enable = true;
     port = 9090;
@@ -296,13 +290,13 @@ in {
   # services.desktopManager.gnome.enable = true;
   services.tailscale.enable = true;
 
-  programs = {
-    niri = {
-      package = pkgs.niri;
-      enable = true;
-    };
-    firefox.enable = true;
-  };
+  # programs = {
+  #   niri = {
+  #     package = pkgs.niri;
+  #     enable = true;
+  #   };
+  #   firefox.enable = true;
+  # };
 
   # Set your time zone.
   time.timeZone = "Asia/Shanghai";
