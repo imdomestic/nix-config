@@ -25,6 +25,26 @@ in {
   ];
 
   users = {
+    fendada = {
+      home = {
+        profiles = with homeProfiles; [
+          core
+        ];
+        modules = [
+          userModules.fendada.module
+        ];
+      };
+    };
+    linwhite = {
+      home = {
+        profiles = with homeProfiles; [
+          core
+        ];
+        modules = [
+          userModules.linwhite.module
+        ];
+      };
+    };
     hank = {
       home = {
         profiles = with homeProfiles; [
