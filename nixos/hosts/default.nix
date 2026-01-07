@@ -17,4 +17,5 @@ in {
   aarch64-wsl = callHost "aarch64-wsl";
   shanghai = callHost "shanghai";
   x470 = callHost "x470";
+  r2s = callHost "r2s";
 }
