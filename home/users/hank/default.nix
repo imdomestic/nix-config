@@ -54,7 +54,6 @@
 
   xdg.configFile = {
     nvim.source = inputs.kvim.outPath;
-    hvim.source = inputs.hvim.outPath;
     zsh.source = inputs.zsh-config.outPath;
     wezterm.source = inputs.wezterm-config.outPath;
     neofetch = {
@@ -72,13 +71,6 @@
       if lib.hasInfix "darwin" system
       then "/Users/hank/.config/zsh"
       else "/home/hank/.config/zsh";
-  };
-
-  programs.nh = {
-    enable = true;
-    clean.enable = false;
-    clean.extraArgs = "--keep-since 4d --keep 3";
-    flake = "/home/hank/.config/nix-config";
   };
 
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;

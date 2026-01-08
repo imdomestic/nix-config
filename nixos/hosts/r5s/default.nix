@@ -32,7 +32,7 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          dev
+          base
         ];
         modules = [
           userModules.hank.module
