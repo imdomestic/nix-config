@@ -103,6 +103,7 @@ in {
     };
   };
 
+  services.tailscale.enable = true;
   services.headscale = {
     enable = true;
     address = "127.0.0.1";
