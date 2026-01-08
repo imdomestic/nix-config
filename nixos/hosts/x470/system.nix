@@ -195,6 +195,7 @@
 
   services.iperf3.enable = true;
   services.openssh.enable = true;
+  services.tailscale.enable = true;
 
   services.ollama = {
     enable = true;
