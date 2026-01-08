@@ -31,6 +31,7 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
+          base
           dev
           gui.linux
         ];
