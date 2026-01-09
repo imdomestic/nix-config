@@ -40,7 +40,6 @@
   '';
 in {
   imports = [
-    ../../modules/dae
     ../../modules/keyd
   ];
 
@@ -462,6 +461,8 @@ in {
       RestartSec = 5;
     };
   };
+
+  services.tailscale.enable = true;
 
   programs.zsh.enable = true;
 
