@@ -110,6 +110,7 @@
     neofetch
     ripgrep
     starship
+    ddns-go
   ];
 
   security.sudo.wheelNeedsPassword = false;
@@ -363,6 +364,54 @@
   services.openssh = {
     enable = true;
     ports = [22 2200];
+  };
+  services.xray = {
+    enable = true;
+    settings = {
+      log = {
+        loglevel = "warning";
+      };
+      inbounds = [
+        {
+          port = 1443;
+          protocol = "vless";
+          settings = {
+            clients = [
+              {
+                id = "b7b7d2b9-576f-4f41-a9e8-a9e13a5d035e";
+                flow = "xtls-rprx-vision";
+              }
+            ];
+            decryption = "none";
+          };
+          streamSettings = {
+            network = "tcp";
+            security = "reality";
+            realitySettings = {
+              show = false;
+              dest = "www.sony.jp:443"; # 伪装目标：索尼日本官网
+              serverNames = ["www.sony.jp"];
+              privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_582c02e700ddae3e";
+              shortIds = [""]; # 可以留空，也可以生成一个短 ID
+            };
+          };
+          sniffing = {
+            enabled = true;
+            destOverride = ["http" "tls"];
+          };
+        }
+      ];
+      outbounds = [
+        {
+          protocol = "freedom";
+          tag = "direct";
+        }
+        {
+          protocol = "blackhole";
+          tag = "blocked";
+        }
+      ];
+    };
   };
 
   programs.zsh.enable = true;
