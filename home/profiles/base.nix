@@ -58,7 +58,7 @@
     enable = true;
     terminal = "tmux-256color";
     mouse = true;
-    plugins = [ pkgs.tmuxPlugins.dotbar ];
+    plugins = [pkgs.tmuxPlugins.dotbar];
     extraConfig = ''
       set-option -ga terminal-overrides ",*256col*:Tc"
 
@@ -107,5 +107,4 @@
     clean.extraArgs = "--keep-since 4d --keep 3";
     flake = "/home/hank/.config/nix-config";
   };
-
 }

@@ -91,7 +91,7 @@
       };
 
       files."plugins/tab/config.yml" = ./tab-velocity-config.yml;
-      
+
       files."plugins/Geyser-xyz/config.yml".value = {
         bedrock = {
           address = "0.0.0.0";
