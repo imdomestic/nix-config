@@ -507,7 +507,7 @@
 
     servers.bingo = {
       enable = true;
-      package = pkgs.paperServers.paper-1_21_11;
+      package = pkgs.fabricServers.fabric-1_21_11;
 
       serverProperties = {
         server-ip = "10.0.0.66";
@@ -520,69 +520,54 @@
         "rcon.port" = 25577;
       };
 
-      symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
-        url = "https://download.luckperms.net/1610/bukkit/loader/LuckPerms-Bukkit-5.5.21.jar";
-        sha256 = "sha256-asG+JVgKKxyKnS/eYATV3Ilpn/R+La3nfHszG8pgIGE=";
+      symlinks."mods/FabricAPI.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/DdVHbeR1/fabric-api-0.141.1%2B1.21.11.jar";
+        sha256 = "sha256-ald/g72LM8lAQSfRZTGsycQZX0feA5WVfJ1M0J17mMY=";
       };
 
-      symlinks."plugins/CMILib.jar" = pkgs.fetchurl {
-        url = "https://www.zrips.net/CMILib/CMILib1.5.8.1.jar";
-        sha256 = "sha256-W9+mSxAB1W4XdxakC08zpMmRoDeWn+xhBRMxQsJhyLI=";
+      symlinks."mods/FabricProxy.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/8dI2tmqs/versions/nR8AIdvx/FabricProxy-Lite-2.11.0.jar";
+        sha256 = "sha256-68er6vbAOsYZxwHrszLeaWbG2D7fq/AkNHIMj8PQPNw=";
       };
 
-      symlinks."plugins/CMI.jar" = "${inputs.wg-config.outPath}/CMI.jar";
-
-      symlinks."plugins/VaultUnlocked.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/ayRaM8J7/versions/hWDrazHd/VaultUnlocked-2.17.0.jar";
-        sha256 = "sha256-feIkNsA49QBg8qpOpfSv01MCDkViiN6gOJahGrqhy4c=";
-      };
-      symlinks."plugins/PlaceholderAPI.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/lKEzGugV/versions/sn9LYZkM/PlaceholderAPI-2.11.7.jar";
-        sha256 = "sha256-9aTqcYuqq2EYz+jzmD6jpWYK8e6FcjYBgqPRttvy610=";
-      };
-      symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
-        sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
-      };
-      symlinks."plugins/TAB-Bridge.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/cOXgQQKY/TAB-Bridge%20v6.2.0.jar";
-        sha256 = "sha256-7L2IOopc3SOQ7fnCQbVVJTB1vWc9NQcXgt+kMn82BnE=";
-      };
-      symlinks."plugins/CMIEInjector.jar" = pkgs.fetchurl {
-        url = "https://zrips.net/cmii/download.php?file=CMIEInjector1.0.2.4.jar";
-        sha256 = "sha256-ONRNpw4Pw4qgRIDCuzZeit+F3RYKPw82z9gAaD5fukI=";
+      symlinks."mods/C2ME.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/VSNURh3q/versions/olrVZpJd/c2me-fabric-mc1.21.11-0.3.6.0.0.jar";
+        sha256 = "sha256-DwWNNWBfzM3xl+WpB3QDSubs3yc/NMMV3c1I9QYx3f8=";
       };
 
-      files."config/paper-global.yml".value = {
-        proxies = {
-          velocity = {
-            enabled = true;
-            # online-mode = true;
-            secret = "hbhbhb";
-          };
-        };
+      symlinks."mods/Chunky.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/fALzjamp/versions/1CpEkmcD/Chunky-Fabric-1.4.55.jar";
+        sha256 = "sha256-M8vZvODjNmhRxLWYYQQzNOt8GJIkjx7xFAO77bR2vRU=";
       };
 
-      files."plugins/SkinsRestorer/Config.yml" = {
-        format = pkgs.formats.yaml {};
+      symlinks."mods/Lithium.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/gl30uZvp/lithium-fabric-0.21.2%2Bmc1.21.11.jar";
+        sha256 = "sha256-MQZjnHPuI/RL++Xl56gVTf460P1ISR5KhXZ1mO17Bzk=";
+      };
+
+      symlinks."mods/LuckPerms.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/Vebnzrzj/versions/CzCJJMuo/LuckPerms-Fabric-5.5.21.jar";
+        sha256 = "sha256-mNsvmLvat0o2x06LQuX18V5pkQUfSipV9N2rShDOEwQ=";
+      };
+
+      symlinks."mods/JEI.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/u6dRKJwZ/versions/N7YozqFm/jei-1.21.11-fabric-27.4.0.15.jar";
+        sha256 = "sha256-hfgfqATZOGg9gWklQ5wtCCq3wZXmWBnWbPmx/EgRrIA=";
+      };
+
+      files."config/FabricProxy-Lite.toml".value = {
+        secret = "hbhbhb";
+        disconnectMessage = "Please connect via the proxy (Velocity).";
+      };
+
+      files."config/luckperms/luckperms.conf" = {
+        format = pkgs.formats.json {};
         value = {
-          Storage = {
-            Type = "postgresql";
-            Address = "10.0.0.66:5432";
-            Database = "luckperms";
-            Username = "minecraft";
-            Password = "hbhbhb";
-          };
-        };
-      };
-
-      files."plugins/LuckPerms/config.yml" = {
-        format = pkgs.formats.yaml {};
-        value = {
-          server = "lobby";
+          server = "bingo";
           storage-method = "postgresql";
           allow-invalid-usernames = true;
           use-server-uuid-cache = false;
+          skip-username-check-on-login = true;
           unloaded-user-action = "warn";
           data = {
             address = "10.0.0.66:5432";
@@ -597,10 +582,7 @@
         };
       };
 
-      files."plugins/CMI/Settings/Chat.yml" = ./cmi-Chat.yml;
-      files."plugins/CMI/Settings/DataBaseInfo.yml" = ./cmi-DataBaseInfo.yml;
-      files."plugins/CMI/config.yml" = ./cmi-config.yaml;
-      jvmOpts = "-Xms4G -Xmx8G";
+      jvmOpts = "-Xms4G -Xmx8G -Dluckperms.base-directory=config/luckperms";
     };
 
     servers.speedrun = {
