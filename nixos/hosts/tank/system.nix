@@ -426,6 +426,9 @@ in {
     enable = true;
     acceleration = "cuda";
     host = "0.0.0.0";
+    environmentVariables = {
+      OLLAMA_KEEP_ALIVE = "-1";
+    };
   };
 
   environment = {
