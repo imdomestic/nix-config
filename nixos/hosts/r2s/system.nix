@@ -48,7 +48,7 @@
     };
     kernelPackages = pkgs.linuxPackages_latest;
     kernelModules = [
-      "nf_flow_table_pppoe"
+      # "nf_flow_table_pppoe"
       "tcp_bbr"
       "nf_conntrack"
     ];
@@ -66,7 +66,7 @@
     tmp.useTmpfs = true;
     growPartition = true;
     kernel.sysctl = {
-      "net.core.default_qdisc" = "cake";
+      "net.core.default_qdisc" = "fq_codel";
       "net.core.somaxconn" = 65536;
       "net.core.netdev_max_backlog" = 10000;
       "net.core.netdev_budget" = 600;
@@ -149,8 +149,7 @@
 
           chain forward {
             type filter hook forward priority 0; policy accept;
-            # 开启硬件/软件卸载加速
-            flow offload @f
+            # flow offload @f
             ct state established,related accept
           }
         '';
@@ -249,36 +248,6 @@
     };
   };
 
-  systemd.services."tweak-network-settings" = {
-    description = "Tweak network settings";
-    serviceConfig = {
-      Type = "simple";
-    };
-    wantedBy = ["multi-user.target"];
-    wants = ["network-online.target"];
-    after = ["network-online.target"];
-    script = ''
-      # The {Rx,Tx}BufferSize systemd.link options for intern0 is not working, set manually
-      ${pkgs.ethtool}/bin/ethtool -G end0 rx 1024
-      ${pkgs.ethtool}/bin/ethtool -G end0 tx 1024
-
-      ## Figure out why use these CPU mask combination?
-
-      # 8(0b1000, CPU3) for 24(xhci-hcd:usb4, extern0)
-      echo 8 > /proc/irq/24/smp_affinity
-      # 2(0b0010, CPU1) for 47(intern0)
-      echo 2 > /proc/irq/47/smp_affinity
-
-      # 7(0b0111, CPU0-2)
-      echo 7 > /sys/class/net/end0/queues/rx-0/rps_cpus
-      # d(0b1101, CPU0,CPU2-3)
-      echo d > /sys/class/net/enu1/queues/rx-0/rps_cpus
-
-      echo 2048 > /sys/class/net/end0/queues/rx-0/rps_flow_cnt
-      echo 2048 > /sys/class/net/enu1/queues/rx-0/rps_flow_cnt
-    '';
-  };
-
   systemd.services.network-rps = {
     description = "Configure RPS/XPS/RFS for network interfaces";
     after = ["network-online.target"];
@@ -288,29 +257,27 @@
       RemainAfterExit = true;
     };
     script = ''
-      # 启用 nullglob，防止通配符无法匹配时报错
       shopt -s nullglob
-
-      # 1. 设置全局流控表 (如果失败则忽略)
       echo 32768 > /proc/sys/net/core/rps_sock_flow_entries 2>/dev/null || true
+      ${pkgs.ethtool} -G end0 rx 1024 tx 1024 2>/dev/null || true
+      ${pkgs.ethtool} -G enu1 rx 1024 tx 1024 2>/dev/null || true
 
-      # 2. 遍历物理接口
+      # 8(0b1000, CPU3) for 24(xhci-hcd:usb4, extern0)
+      echo 8 > /proc/irq/24/smp_affinity
+      # 2(0b0010, CPU1) for 47(intern0)
+      echo 2 > /proc/irq/47/smp_affinity
+
       for dev in end0 enu1; do
-        # 接口不存在则跳过
         [ -d /sys/class/net/$dev ] || continue
 
-        # --- RPS (接收) ---
         for file in /sys/class/net/$dev/queues/rx-*/rps_cpus; do
-          # 强制忽略错误，确保服务成功启动
           echo f > "$file" 2>/dev/null || true
         done
 
-        # --- RFS (接收流控) ---
         for file in /sys/class/net/$dev/queues/rx-*/rps_flow_cnt; do
           echo 4096 > "$file" 2>/dev/null || true
         done
 
-        # --- XPS (发送) ---
         for file in /sys/class/net/$dev/queues/tx-*/xps_cpus; do
           echo f > "$file" 2>/dev/null || true
         done
