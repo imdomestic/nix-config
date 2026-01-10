@@ -99,6 +99,8 @@ in {
     '';
   };
 
+  services.tailscale.enable = true;
+
   services.filebrowser = {
     enable = true;
     user = "hank"; # FileBrowser 以 hank 身份运行
