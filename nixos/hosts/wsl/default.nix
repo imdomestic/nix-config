@@ -15,6 +15,11 @@ in {
     ./system.nix
   ];
 
+  externalModules = [
+    inputs.determinate.nixosModules.default
+    inputs.nix-index-database.nixosModules.default
+  ];
+
   users = {
     hank = {
       home = {
