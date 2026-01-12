@@ -306,6 +306,15 @@ in {
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
 
+  services.sunshine = {
+    enable = true;
+    autoStart = true;
+    capSysAdmin = true;
+    openFirewall = true;
+  };
+
+  xdg.portal.enable = true;
+
   services.xrdp.enable = true;
   services.xrdp.defaultWindowManager = "xfce4-session";
   services.xrdp.openFirewall = true;
