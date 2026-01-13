@@ -1,5 +1,6 @@
 {
   pkgs,
+  pkgs-unstable,
   lib,
   ...
 }: {
@@ -12,14 +13,9 @@
     # neovim dependencies
     devenv
     codesnap
-    nerdctl
-    kubectl
-    k9s
-    kubernetes-helm
     lua51Packages.lua
     lua51Packages.luarocks
     ruff
-    uv
     basedpyright
     typst
     tinymist
@@ -37,7 +33,6 @@
     prettierd
     lua-language-server
     bash-language-server
-    neovide
     nil
     alejandra
     nodejs_22
@@ -49,12 +44,11 @@
     mermaid-cli
     tectonic
     # texliveTeTeX
+
     wasmtime
-    gemini-cli
-    codex
     git-filter-repo
     duckdb
-    # pgloader
+    tree-sitter
     pgcli
     usql
     gnumake
@@ -96,8 +90,19 @@
     gnutar
     gawk
     gnupg
-    tree-sitter
+
+    # devops
+    nerdctl
+    kubectl
+    k9s
+    kubernetes-helm
+
+    # agents
+    pkgs-unstable.codex
+    pkgs-unstable.gemini-cli
   ];
+
+
 
   programs.direnv = {
     enable = true;

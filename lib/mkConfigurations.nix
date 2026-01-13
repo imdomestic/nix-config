@@ -1,19 +1,32 @@
 {inputs}: {hosts}: let
   lib = inputs.nixpkgs.lib;
+  defaultNixpkgsConfig = {
+    allowUnfree = true;
+    allowUnfreePredicate = _: true;
+  };
 
   mkSpecialArgs = hostName: host: let
     hostUsers = host.users or {};
+    hostSystem = host.system or (throw "Host ${hostName} must define a system");
     usernames =
       if host ? usernames
       then host.usernames
       else builtins.attrNames hostUsers;
+    pkgsUnstable =
+      import inputs.nixpkgs-unstable {
+        system = hostSystem;
+        overlays = (host.overlays or []) ++ [inputs.nur.overlays.default];
+        config = defaultNixpkgsConfig;
+      };
   in
     {
       inherit inputs hostName hostUsers usernames;
       hostname = hostName;
       hostRoles = host.roles or [];
-      system = host.system;
+      system = hostSystem;
       host = host;
+      pkgsUnstable = pkgsUnstable;
+      "pkgs-unstable" = pkgsUnstable;
     }
     // (host.extraSpecialArgs or {});
 

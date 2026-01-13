@@ -22,6 +22,11 @@ in {
       inherit system overlays;
       config = home.nixpkgsConfig or defaultNixpkgsConfig;
     };
+    pkgsUnstable =
+      import inputs.nixpkgs-unstable {
+        inherit system overlays;
+        config = home.nixpkgsConfig or defaultNixpkgsConfig;
+      };
     modules =
       (home.profiles or [])
       ++ (home.modules or [])
@@ -35,6 +40,8 @@ in {
         hostName = hostName;
         hostname = hostName;
         roles = host.roles or [];
+        pkgsUnstable = pkgsUnstable;
+        "pkgs-unstable" = pkgsUnstable;
       }
       // extraSpecialArgs;
   in {

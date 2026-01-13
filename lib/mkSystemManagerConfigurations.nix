@@ -1,5 +1,9 @@
 {inputs}: {hosts}: let
   lib = inputs.nixpkgs.lib;
+  defaultNixpkgsConfig = {
+    allowUnfree = true;
+    allowUnfreePredicate = _: true;
+  };
 
   mkSpecialArgs = hostName: host: let
     sysman = host.systemManager or {};
@@ -9,12 +13,20 @@
       then host.usernames
       else builtins.attrNames hostUsers;
     hostSystem = host.system or (throw "Host ${hostName} must define a system");
+    pkgsUnstable =
+      import inputs.nixpkgs-unstable {
+        system = hostSystem;
+        overlays = (sysman.overlays or []) ++ [inputs.nur.overlays.default];
+        config = defaultNixpkgsConfig;
+      };
   in
     {
       inherit inputs hostName host hostUsers usernames;
       hostname = hostName;
       hostRoles = host.roles or [];
       system = hostSystem;
+      pkgsUnstable = pkgsUnstable;
+      "pkgs-unstable" = pkgsUnstable;
     }
     // (sysman.extraSpecialArgs or {});
 
