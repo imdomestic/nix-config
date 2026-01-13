@@ -15,7 +15,6 @@ in {
   ];
 
   networking.hostName = "shanghai";
-  networking.domain = "";
   time.timeZone = "Asia/Shanghai";
 
   boot.loader.grub.enable = true;
@@ -96,6 +95,9 @@ in {
       matchConfig.Name = "br-lan";
       networkConfig = {
         DHCP = "yes";
+      };
+      dhcpV4Config = {
+        UseStaticRoutes = false;
       };
       linkConfig = {
         RequiredForOnline = "routable";
