@@ -173,31 +173,13 @@
   };
 
   environment.systemPackages = with pkgs; [
-    vim
-    wget
-    neovim
-    git
-    gcc
     wqy_microhei
     ntfs3g
     qemu
-    starship
-    zsh
     brightnessctl
-    duf
-    gnumake
-    flex
-    bison
-    elfutils
-    libelf
-    pkg-config
     clapper
-    bat
-    just
-    mihomo
-    clinfo
 
-    #virtualisation
+    # virtualisation
     virt-manager
     virt-viewer
     spice
@@ -211,9 +193,6 @@
     btop-rocm
     corectrl
     nautilus
-    # daed
-
-    # gnome
     gnomeExtensions.blur-my-shell
     gnomeExtensions.dash-to-dock
     gnomeExtensions.arc-menu

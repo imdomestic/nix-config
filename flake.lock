@@ -558,14 +558,18 @@
     "hvim": {
       "flake": false,
       "locked": {
-        "path": "git@ssh://git@github.com/HCHogan/hvim",
-        "type": "path"
+        "lastModified": 1763028637,
+        "narHash": "sha256-Rq0djNBqU8VjYdef9ifoWwqIYryhvo9CeT5KQPU9ehg=",
+        "owner": "HCHogan",
+        "repo": "hvim",
+        "rev": "3464e6fc6cc6fbbd81420f60ac698a4f217ca3c7",
+        "type": "github"
       },
       "original": {
-        "path": "git@ssh://git@github.com/HCHogan/hvim",
-        "type": "path"
-      },
-      "parent": []
+        "owner": "HCHogan",
+        "repo": "hvim",
+        "type": "github"
+      }
     },
     "kvim": {
       "flake": false,

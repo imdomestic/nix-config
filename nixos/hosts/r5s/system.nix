@@ -92,24 +92,12 @@
   powerManagement.cpuFreqGovernor = "performance";
 
   environment.systemPackages = with pkgs; [
-    git
-    python3
-    mc
-    psmisc
-    curl
-    wget
-    dig
-    file
-    nvd
+    vim
+    tcpdump
+    iproute2
     ethtool
-    sysstat
-    neovim
-    gcc
-    nil
-    btop
-    neofetch
-    ripgrep
-    starship
+    mtr
+    tailscale
   ];
 
   security.sudo.wheelNeedsPassword = false;

@@ -31,7 +31,4 @@
     hostname = hostName;
   };
 
-  environment.systemPackages = with pkgs; [
-    tmux
-  ];
 }

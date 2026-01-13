@@ -61,7 +61,7 @@
     };
 
     hvim = {
-      url = "git@ssh://git@github.com/HCHogan/hvim";
+      url = "github:HCHogan/hvim";
       flake = false;
     };
 
