@@ -86,6 +86,7 @@ in {
       "d     /data/builds     0777 root  root  -"
       "d     /data/rdma       0777 root  root  -"
       "d     /data/srv        0777 root  root  -"
+      "d     /data/lib/ollama 0777 root  root  -"
       "d     /data/services   0755 root  root  -"
       "d     /data/nas        0755 hank  users -"
       "d     /data/nas/public 0775 hank  users -"
@@ -315,9 +316,15 @@ in {
 
   xdg.portal.enable = true;
 
-  services.xrdp.enable = true;
-  services.xrdp.defaultWindowManager = "xfce4-session";
-  services.xrdp.openFirewall = true;
+  services.gnome.gnome-remote-desktop.enable = true;
+  services.xrdp = {
+    enable = true;
+    openFirewall = true;
+    defaultWindowManager = "${pkgs.gnome-session}/bin/gnome-session";
+  };
+
+  services.displayManager.autoLogin.enable = false;
+  services.getty.autologinUser = null;
 
   # services.cockpit = {
   #   enable = true;
@@ -435,9 +442,14 @@ in {
     enable = true;
     acceleration = "cuda";
     host = "0.0.0.0";
+    home = "/data/lib/ollama";
     environmentVariables = {
       OLLAMA_KEEP_ALIVE = "-1";
     };
+    loadModels = [
+      "qwen3:8b"
+    ];
+    syncModels = true;
   };
 
   environment = {

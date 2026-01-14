@@ -103,8 +103,8 @@
       "net.ipv4.conf.default.forwarding" = true;
       "net.ipv6.conf.all.forwarding" = true;
       "net.ipv6.conf.default.forwarding" = true;
-      "net.ipv4.conf.all.rp_filter" = true;
-      "net.ipv4.conf.default.rp_filter" = true;
+      "net.ipv4.conf.all.rp_filter" = 2;
+      "net.ipv4.conf.default.rp_filter" = 2;
 
       "net.netfilter.nf_conntrack_buckets" = 393216;
       "net.netfilter.nf_conntrack_max" = 393216;
