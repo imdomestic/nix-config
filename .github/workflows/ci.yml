@@ -1,0 +1,22 @@
+name: flake-check
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  flake-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            substituters = https://cache.nixos.org https://mirrors.ustc.edu.cn/nix-channels/store
+            experimental-features = nix-command flakes
+      - name: Nix flake check
+        run: nix flake check --option substituters "https://cache.nixos.org https://mirrors.ustc.edu.cn/nix-channels/store"
