@@ -16,7 +16,6 @@ in {
   ];
 
   externalModules = [
-    inputs.determinate.nixosModules.default
     inputs.nix-index-database.nixosModules.default
   ];
 

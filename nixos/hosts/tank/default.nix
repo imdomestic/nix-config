@@ -23,7 +23,6 @@ in {
   externalModules = [
     inputs.vscode-server.nixosModules.default
     inputs.nix-minecraft.nixosModules.minecraft-servers
-    inputs.determinate.nixosModules.default
   ];
 
   users = {
