@@ -16,15 +16,9 @@
     overlays = [
       inputs.nur.overlays.default
       inputs.nix-minecraft.overlay
-      # inputs.niri.overlays.niri
     ];
     config = {
       allowUnfree = true;
-      allowUnfreePredicate = _: true;
-      permittedInsecurePackages = [
-        "electron-11.5.0"
-        "mbedtls-2.28.10"
-      ];
     };
   };
 
@@ -32,10 +26,20 @@
     registry.nixpkgs.flake = inputs.nixpkgs;
     nixPath = ["nixpkgs=${inputs.nixpkgs}"];
     channel.enable = false;
+    distributedBuilds = true;
   };
 
+  # nix.buildMachines = [
+  #   {
+  #     hostName = "tank";
+  #     system = "x86_64-linux";
+  #     maxJobs = 20;
+  #     speedFactor = 2;
+  #     supportedFeatures = ["nixos-test" "benchmark" "big-parallel" "kvm"];
+  #   }
+  # ];
+
   nix.settings = {
-    # flake-registry = "https://channels.nixos.org/flake-registry.json";
     substituters = [
       "https://mirrors.ustc.edu.cn/nix-channels/store"
       "https://cache.garnix.io"
@@ -50,6 +54,5 @@
     ];
     experimental-features = ["nix-command" "flakes"];
     allow-import-from-derivation = true;
-    # eval-cores = 2;
   };
 }
