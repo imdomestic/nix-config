@@ -16,6 +16,7 @@ in {
   ];
 
   externalModules = [
+    inputs.nixos-wsl.nixosModules.wsl
     inputs.nix-index-database.nixosModules.default
   ];
 

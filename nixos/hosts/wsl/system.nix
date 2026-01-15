@@ -3,10 +3,6 @@
   pkgs,
   ...
 }: {
-  imports = [
-    inputs.nixos-wsl.nixosModules.wsl
-  ];
-
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
 
   wsl = {

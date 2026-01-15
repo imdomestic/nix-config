@@ -23,8 +23,14 @@
   };
 
   nix = {
-    registry.nixpkgs.flake = inputs.nixpkgs;
-    nixPath = ["nixpkgs=${inputs.nixpkgs}"];
+    registry = {
+      nixpkgs.flake = inputs.nixpkgs;
+      nixpkgs-unstable.flake = inputs.nixpkgs-unstable;
+    };
+    nixPath = [
+      "nixpkgs=${inputs.nixpkgs}"
+      "nixpkgs-unstable=${inputs.nixpkgs-unstable}"
+    ];
     channel.enable = false;
     distributedBuilds = true;
   };
