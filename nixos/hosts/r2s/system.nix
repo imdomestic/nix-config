@@ -48,7 +48,7 @@
     };
     kernelPackages = pkgs.linuxPackages_latest;
     kernelModules = [
-      # "nf_flow_table_pppoe"
+      "tcp_bbr"
       "tcp_bbr"
       "nf_conntrack"
     ];
@@ -66,7 +66,7 @@
     tmp.useTmpfs = true;
     growPartition = true;
     kernel.sysctl = {
-      "net.core.default_qdisc" = "fq_codel";
+      "net.core.default_qdisc" = "fq";
       "net.core.somaxconn" = 65536;
       "net.core.netdev_max_backlog" = 10000;
       "net.core.netdev_budget" = 600;
@@ -75,16 +75,17 @@
 
       "net.ipv4.tcp_congestion_control" = "bbr";
       "net.ipv4.tcp_fastopen" = 3;
-      "net.ipv4.tcp_keepalive_time" = 60;
-      "net.ipv4.tcp_keepalive_intvl" = 10;
-      "net.ipv4.tcp_keepalive_probes" = 6;
+      "net.ipv4.tcp_keepalive_time" = 300;
+      "net.ipv4.tcp_keepalive_intvl" = 30;
+      "net.ipv4.tcp_keepalive_probes" = 5;
       "net.ipv4.tcp_mtu_probing" = true;
+      "net.ipv4.tcp_notsent_lowat" = 16384;
 
       # tcp pending
       "net.ipv4.tcp_max_syn_backlog" = 65536;
       "net.ipv4.tcp_max_tw_buckets" = 2000000;
       "net.ipv4.tcp_tw_reuse" = true;
-      "net.ipv4.tcp_fin_timeout" = 10;
+      "net.ipv4.tcp_fin_timeout" = 30;
       "net.ipv4.tcp_slow_start_after_idle" = false;
 
       # net mem
@@ -110,7 +111,7 @@
       "net.netfilter.nf_conntrack_max" = 393216;
       "net.netfilter.nf_conntrack_generic_timeout" = 60;
       "net.netfilter.nf_conntrack_tcp_timeout_fin_wait" = 10;
-      "net.netfilter.nf_conntrack_tcp_timeout_established" = 600;
+      "net.netfilter.nf_conntrack_tcp_timeout_established" = 432000;
       "net.netfilter.nf_conntrack_tcp_timeout_time_wait" = 5;
     };
   };
@@ -271,7 +272,7 @@
         [ -d /sys/class/net/$dev ] || continue
 
         for file in /sys/class/net/$dev/queues/rx-*/rps_cpus; do
-          echo f > "$file" 2>/dev/null || true
+          echo 7 > "$file" 2>/dev/null || true
         done
 
         for file in /sys/class/net/$dev/queues/rx-*/rps_flow_cnt; do
@@ -279,7 +280,7 @@
         done
 
         for file in /sys/class/net/$dev/queues/tx-*/xps_cpus; do
-          echo f > "$file" 2>/dev/null || true
+          echo 7 > "$file" 2>/dev/null || true
         done
       done
     '';
