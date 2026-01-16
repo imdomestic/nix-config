@@ -138,6 +138,7 @@
 
   networking = {
     hostName = "r5s";
+    enableIPv6 = false;
     firewall.enable = false;
     networkmanager.enable = false;
     useNetworkd = true;
@@ -150,32 +151,32 @@
     nftables = {
       enable = true;
       checkRuleset = false;
-      # tables.router = {
-      #   name = "mss-clamping";
-      #   enable = true;
-      #   family = "inet";
-      #   content = ''
-      #     # Flowtable 定义
-      #     flowtable f {
-      #       hook ingress priority 0;
-      #       devices = { wan0, br-lan };
-      #     }
-      #
-      #     chain postrouting {
-      #       type filter hook postrouting priority 0; policy accept;
-      #       # 你的 MSS Clamping 规则
-      #       oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-      #       oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
-      #     }
-      #
-      #     chain forward {
-      #       type filter hook forward priority 0; policy accept;
-      #       # 开启硬件/软件卸载加速
-      #       flow offload @f
-      #       ct state established,related accept
-      #     }
-      #   '';
-      # };
+      tables.router = {
+        name = "mss-clamping";
+        enable = true;
+        family = "inet";
+        content = ''
+          # Flowtable 定义
+          flowtable f {
+            hook ingress priority 0;
+            devices = { wan0, br-lan };
+          }
+
+          chain postrouting {
+            type filter hook postrouting priority 0; policy accept;
+            # 你的 MSS Clamping 规则
+            oifname "wan0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
+            oifname "wan0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
+          }
+
+          chain forward {
+            type filter hook forward priority 0; policy accept;
+            # 开启硬件/软件卸载加速
+            # flow offload @f
+            ct state established,related accept
+          }
+        '';
+      };
     };
   };
   systemd.network = {
@@ -305,80 +306,6 @@
   };
 
   services.tailscale.enable = true;
-
-  services.radvd = {
-    enable = true;
-    config = ''
-      interface br-lan {
-        AdvSendAdvert on;
-        MinRtrAdvInterval 30;
-        MaxRtrAdvInterval 100;
-        AdvManagedFlag off; # 不使用 DHCPv6 有状态分配
-        AdvOtherConfigFlag off;
-
-        # 关键：从 wan0 接口借用前缀
-        prefix ::/64 {
-          Base6Interface wan0;
-          # Base6To6Prefix on;
-          AdvOnLink on;
-          AdvAutonomous on; # 允许 SLAAC 自动配置
-        };
-      };
-    '';
-  };
-
-  services.ndppd = {
-    enable = true;
-    configFile = pkgs.writeText "ndppd.conf" ''
-      proxy wan0 {
-        router yes
-        timeout 500
-        ttl 30000
-
-        # 这里的规则意思是：只要光猫问的是 2000::/3 (全球单播地址) 范围内的 IP，
-        # 并且不是 wan0 自己的 IP，ndppd 就尝试在 br-lan 找，找到就代答。
-        rule 2000::/3 {
-          iface br-lan
-        }
-      }
-    '';
-  };
-
-  # services.pppd = {
-  #   enable = true;
-  #   peers = {
-  #     mobile = {
-  #       autostart = true;
-  #       enable = true;
-  #       config = ''
-  #         plugin pppoe.so wan0
-  #         user "19551998351"
-  #         password "837145"
-  #
-  #         # usepeerdns
-  #
-  #         # 关键参数
-  #         defaultroute    # 自动添加默认路由
-  #         persist         # 断线重连
-  #         maxfail 0       # 无限次重试
-  #         holdoff 5       # 重试间隔
-  #         noipdefault
-  #         noauth
-  #         hide-password
-  #         lcp-echo-interval 30
-  #         lcp-echo-failure 20
-  #         lcp-echo-adaptive
-  #
-  #         +ipv6
-  #         ipv6cp-use-ipaddr
-  #
-  #         # MTU 设置 (PPPoE 标准)
-  #         mtu 1400
-  #         mru 1400
-  #       '';
-  #     };
-  #   };
-  # };
 
   services.dnsmasq.enable = false;
   services.resolved = {
