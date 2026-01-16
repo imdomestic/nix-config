@@ -63,7 +63,11 @@
     ];
     kernel.sysctl = {
       "net.ipv4.ip_forward" = 1;
+
       "net.ipv6.conf.all.forwarding" = 1;
+      "net.ipv6.conf.all.proxy_ndp" = 1; # dnp proxy
+      "net.ipv6.conf.wan0.proxy_ndp" = 1;
+
       "net.core.default_qdisc" = "fq";
       "net.ipv4.tcp_congestion_control" = "bbr";
 
@@ -92,6 +96,7 @@
   powerManagement.cpuFreqGovernor = "performance";
 
   environment.systemPackages = with pkgs; [
+    ndppd
     vim
     tcpdump
     iproute2
@@ -138,39 +143,39 @@
     useNetworkd = true;
     wg-quick.interfaces = {
       wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00007.conf";
+        configFile = "${inputs.wg-config.outPath}/client_00008.conf";
         autostart = true;
       };
     };
     nftables = {
       enable = true;
       checkRuleset = false;
-      tables.router = {
-        name = "mss-clamping";
-        enable = true;
-        family = "inet";
-        content = ''
-          # Flowtable 定义
-          flowtable f {
-            hook ingress priority 0;
-            devices = { wan0, br-lan };
-          }
-
-          chain postrouting {
-            type filter hook postrouting priority 0; policy accept;
-            # 你的 MSS Clamping 规则
-            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
-          }
-
-          chain forward {
-            type filter hook forward priority 0; policy accept;
-            # 开启硬件/软件卸载加速
-            flow offload @f
-            ct state established,related accept
-          }
-        '';
-      };
+      # tables.router = {
+      #   name = "mss-clamping";
+      #   enable = true;
+      #   family = "inet";
+      #   content = ''
+      #     # Flowtable 定义
+      #     flowtable f {
+      #       hook ingress priority 0;
+      #       devices = { wan0, br-lan };
+      #     }
+      #
+      #     chain postrouting {
+      #       type filter hook postrouting priority 0; policy accept;
+      #       # 你的 MSS Clamping 规则
+      #       oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
+      #       oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
+      #     }
+      #
+      #     chain forward {
+      #       type filter hook forward priority 0; policy accept;
+      #       # 开启硬件/软件卸载加速
+      #       flow offload @f
+      #       ct state established,related accept
+      #     }
+      #   '';
+      # };
     };
   };
   systemd.network = {
@@ -208,52 +213,48 @@
     };
 
     # WAN, DHCP
+    networks."20-wan-uplink" = {
+      matchConfig.Name = "wan0";
+      networkConfig = {
+        DHCP = "yes";
+        IPv6AcceptRA = true;
+      };
+      linkConfig.RequiredForOnline = "carrier";
+    };
+
+    # WAN
     # networks."20-wan-uplink" = {
     #   matchConfig.Name = "wan0";
+    #   # 只需要链路层启动即可
+    #   linkConfig.RequiredForOnline = "no";
     #   networkConfig = {
-    #     DHCP = "yes";
-    #     IPv6AcceptRA = true;
+    #     # 必须禁用链路本地地址，防止干扰
+    #     LinkLocalAddressing = "no";
+    #     DHCP = "no";
+    #     # 这里不需要 IPMasquerade 了，因为它是物理载体
     #   };
-    #   linkConfig.RequiredForOnline = "carrier";
+    # };
+
+    # networks."25-wan-ppp" = {
+    #   matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
+    #   networkConfig = {
+    #     # 在这里开启 NAT (IPMasquerade)
+    #     # IPMasquerade = "ipv4";
+    #
+    #     # IPv6 配置 (PPPoE 也能获取 IPv6)
+    #     IPv6AcceptRA = true;
+    #     DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
+    #   };
+    #   linkConfig = {
+    #     RequiredForOnline = "carrier";
+    #     MTUBytes = 1400;
+    #   };
     #   dhcpV6Config = {
+    #     WithoutRA = "solicit";
     #     PrefixDelegationHint = "::/60";
     #     UseDelegatedPrefix = true;
     #   };
     # };
-
-    # WAN
-    networks."20-wan-uplink" = {
-      matchConfig.Name = "wan0";
-      # 只需要链路层启动即可
-      linkConfig.RequiredForOnline = "no";
-      networkConfig = {
-        # 必须禁用链路本地地址，防止干扰
-        LinkLocalAddressing = "no";
-        DHCP = "no";
-        # 这里不需要 IPMasquerade 了，因为它是物理载体
-      };
-    };
-
-    networks."25-wan-ppp" = {
-      matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
-      networkConfig = {
-        # 在这里开启 NAT (IPMasquerade)
-        # IPMasquerade = "ipv4";
-
-        # IPv6 配置 (PPPoE 也能获取 IPv6)
-        IPv6AcceptRA = true;
-        DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
-      };
-      linkConfig = {
-        RequiredForOnline = "carrier";
-        MTUBytes = 1400;
-      };
-      dhcpV6Config = {
-        WithoutRA = "solicit";
-        PrefixDelegationHint = "::/60";
-        UseDelegatedPrefix = true;
-      };
-    };
 
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
@@ -261,9 +262,10 @@
         Address = "192.168.3.1/24";
         DHCPServer = true;
         IPMasquerade = "ipv4";
-        IPv6SendRA = true;
+
+        IPv6SendRA = false;
         IPv6AcceptRA = false;
-        DHCPPrefixDelegation = true;
+        DHCPPrefixDelegation = false;
       };
       linkConfig = {
         RequiredForOnline = "no"; # carrier
@@ -281,6 +283,7 @@
         Managed = false; # no DHCPv6
         OtherInformation = false;
         EmitDNS = true; # send DNS with RA
+        RouterLifetimeSec = 300;
       };
     };
   };
@@ -301,41 +304,81 @@
     '';
   };
 
-  services.pppd = {
+  services.tailscale.enable = true;
+
+  services.radvd = {
     enable = true;
-    peers = {
-      mobile = {
-        autostart = true;
-        enable = true;
-        config = ''
-          plugin pppoe.so wan0
-          user "19551998351"
-          password "837145"
+    config = ''
+      interface br-lan {
+        AdvSendAdvert on;
+        MinRtrAdvInterval 30;
+        MaxRtrAdvInterval 100;
+        AdvManagedFlag off; # 不使用 DHCPv6 有状态分配
+        AdvOtherConfigFlag off;
 
-          # usepeerdns
-
-          # 关键参数
-          defaultroute    # 自动添加默认路由
-          persist         # 断线重连
-          maxfail 0       # 无限次重试
-          holdoff 5       # 重试间隔
-          noipdefault
-          noauth
-          hide-password
-          lcp-echo-interval 30
-          lcp-echo-failure 20
-          lcp-echo-adaptive
-
-          +ipv6
-          ipv6cp-use-ipaddr
-
-          # MTU 设置 (PPPoE 标准)
-          mtu 1400
-          mru 1400
-        '';
+        # 关键：从 wan0 接口借用前缀
+        prefix ::/64 {
+          Base6Interface wan0;
+          # Base6To6Prefix on;
+          AdvOnLink on;
+          AdvAutonomous on; # 允许 SLAAC 自动配置
+        };
       };
-    };
+    '';
   };
+
+  services.ndppd = {
+    enable = true;
+    configFile = pkgs.writeText "ndppd.conf" ''
+      proxy wan0 {
+        router yes
+        timeout 500
+        ttl 30000
+
+        # 这里的规则意思是：只要光猫问的是 2000::/3 (全球单播地址) 范围内的 IP，
+        # 并且不是 wan0 自己的 IP，ndppd 就尝试在 br-lan 找，找到就代答。
+        rule 2000::/3 {
+          iface br-lan
+        }
+      }
+    '';
+  };
+
+  # services.pppd = {
+  #   enable = true;
+  #   peers = {
+  #     mobile = {
+  #       autostart = true;
+  #       enable = true;
+  #       config = ''
+  #         plugin pppoe.so wan0
+  #         user "19551998351"
+  #         password "837145"
+  #
+  #         # usepeerdns
+  #
+  #         # 关键参数
+  #         defaultroute    # 自动添加默认路由
+  #         persist         # 断线重连
+  #         maxfail 0       # 无限次重试
+  #         holdoff 5       # 重试间隔
+  #         noipdefault
+  #         noauth
+  #         hide-password
+  #         lcp-echo-interval 30
+  #         lcp-echo-failure 20
+  #         lcp-echo-adaptive
+  #
+  #         +ipv6
+  #         ipv6cp-use-ipaddr
+  #
+  #         # MTU 设置 (PPPoE 标准)
+  #         mtu 1400
+  #         mru 1400
+  #       '';
+  #     };
+  #   };
+  # };
 
   services.dnsmasq.enable = false;
   services.resolved = {
