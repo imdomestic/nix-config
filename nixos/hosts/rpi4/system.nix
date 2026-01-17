@@ -30,22 +30,22 @@
     useNetworkd = true;
     nftables = {
       enable = true;
-      tables.mss-clamping = {
-        name = "mss-clamping";
-        enable = true;
-        family = "inet";
-        content = ''
-          chain postrouting {
-            type filter hook forward priority 0; policy accept;
-
-            # IPv4：PPPoE MTU 1400 → MSS 1360
-            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-
-            # IPv6：PPPoE MTU 1400 → MSS 1340
-            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
-          }
-        '';
-      };
+      # tables.mss-clamping = {
+      #   name = "mss-clamping";
+      #   enable = true;
+      #   family = "inet";
+      #   content = ''
+      #     chain postrouting {
+      #       type filter hook forward priority 0; policy accept;
+      #
+      #       # IPv4：PPPoE MTU 1400 → MSS 1360
+      #       oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
+      #
+      #       # IPv6：PPPoE MTU 1400 → MSS 1340
+      #       oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
+      #     }
+      #   '';
+      # };
     };
     firewall = {
       enable = true;
@@ -71,42 +71,42 @@
     "net.ipv4.tcp_congestion_control" = "bbr";
   };
 
-  services.pppd = {
-    enable = true;
-    peers = {
-      # 定义拨号连接名称，接口将是 ppp0
-      chinamobile = {
-        autostart = true;
-        enable = true;
-        config = ''
-          plugin pppoe.so enp1s0u2
-          user "19551998351"
-          password "837145"
-
-          # usepeerdns
-
-          # 关键参数
-          defaultroute    # 自动添加默认路由
-          persist         # 断线重连
-          maxfail 0       # 无限次重试
-          holdoff 5       # 重试间隔
-          noipdefault
-          noauth
-          hide-password
-          lcp-echo-interval 30
-          lcp-echo-failure 20
-          lcp-echo-adaptive
-
-          +ipv6
-          ipv6cp-use-ipaddr
-
-          # MTU 设置 (PPPoE 标准)
-          mtu 1400
-          mru 1400
-        '';
-      };
-    };
-  };
+  # services.pppd = {
+  #   enable = true;
+  #   peers = {
+  #     # 定义拨号连接名称，接口将是 ppp0
+  #     chinamobile = {
+  #       autostart = true;
+  #       enable = true;
+  #       config = ''
+  #         plugin pppoe.so enp1s0u2
+  #         user "19551998351"
+  #         password "837145"
+  #
+  #         # usepeerdns
+  #
+  #         # 关键参数
+  #         defaultroute    # 自动添加默认路由
+  #         persist         # 断线重连
+  #         maxfail 0       # 无限次重试
+  #         holdoff 5       # 重试间隔
+  #         noipdefault
+  #         noauth
+  #         hide-password
+  #         lcp-echo-interval 30
+  #         lcp-echo-failure 20
+  #         lcp-echo-adaptive
+  #
+  #         +ipv6
+  #         ipv6cp-use-ipaddr
+  #
+  #         # MTU 设置 (PPPoE 标准)
+  #         mtu 1400
+  #         mru 1400
+  #       '';
+  #     };
+  #   };
+  # };
 
   # --- 3. Systemd-networkd 配置 (DHCP & RA) ---
   systemd.network = {
@@ -128,52 +128,52 @@
     };
 
     # WAN, DHCP
-    # networks."20-wan-uplink" = {
-    #   matchConfig.Name = "enp1s0u2";
-    #   networkConfig = {
-    #     DHCP = "yes";
-    #     IPv6AcceptRA = true;
-    #     # IPMasquerade = "ipv4";
-    #   };
-    #   linkConfig.RequiredForOnline = "routable";
-    #   dhcpV6Config = {
-    #     PrefixDelegationHint = "::/60";
-    #     UseDelegatedPrefix = true;
-    #   };
-    # };
-
     networks."20-wan-uplink" = {
       matchConfig.Name = "enp1s0u2";
-      # 只需要链路层启动即可
-      linkConfig.RequiredForOnline = "no";
       networkConfig = {
-        # 必须禁用链路本地地址，防止干扰
-        LinkLocalAddressing = "no";
-        DHCP = "no";
-        # 这里不需要 IPMasquerade 了，因为它是物理载体
-      };
-    };
-
-    networks."25-wan-ppp" = {
-      matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
-      networkConfig = {
-        # 在这里开启 NAT (IPMasquerade)
-        # IPMasquerade = "ipv4";
-
-        # IPv6 配置 (PPPoE 也能获取 IPv6)
+        DHCP = "yes";
         IPv6AcceptRA = true;
-        DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
+        # IPMasquerade = "ipv4";
       };
-      linkConfig = {
-        RequiredForOnline = "carrier";
-        MTUBytes = 1400;
-      };
+      linkConfig.RequiredForOnline = "routable";
       dhcpV6Config = {
-        WithoutRA = "solicit";
         PrefixDelegationHint = "::/60";
         UseDelegatedPrefix = true;
       };
     };
+
+    # networks."20-wan-uplink" = {
+    #   matchConfig.Name = "enp1s0u2";
+    #   # 只需要链路层启动即可
+    #   linkConfig.RequiredForOnline = "no";
+    #   networkConfig = {
+    #     # 必须禁用链路本地地址，防止干扰
+    #     LinkLocalAddressing = "no";
+    #     DHCP = "no";
+    #     # 这里不需要 IPMasquerade 了，因为它是物理载体
+    #   };
+    # };
+
+    # networks."25-wan-ppp" = {
+    #   matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
+    #   networkConfig = {
+    #     # 在这里开启 NAT (IPMasquerade)
+    #     # IPMasquerade = "ipv4";
+    #
+    #     # IPv6 配置 (PPPoE 也能获取 IPv6)
+    #     IPv6AcceptRA = true;
+    #     DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
+    #   };
+    #   linkConfig = {
+    #     RequiredForOnline = "carrier";
+    #     MTUBytes = 1400;
+    #   };
+    #   dhcpV6Config = {
+    #     WithoutRA = "solicit";
+    #     PrefixDelegationHint = "::/60";
+    #     UseDelegatedPrefix = true;
+    #   };
+    # };
 
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
