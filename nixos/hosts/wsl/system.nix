@@ -3,7 +3,9 @@
   pkgs,
   ...
 }: {
-  boot.binfmt.emulatedSystems = ["aarch64-linux"];
+  imports = [
+    inputs.nixos-wsl.nixosModules.wsl
+  ];
 
   wsl = {
     enable = true;
