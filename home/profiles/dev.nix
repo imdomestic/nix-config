@@ -36,8 +36,8 @@
     nil
     alejandra
     nodejs_22
-    # sqlite
-    # sqlite-interactive
+    sqlite
+    sqlite-interactive
     tree-sitter
     imagemagick
     fd
@@ -55,8 +55,8 @@
     gh
     zellij
     gcc
-    lazygit
     elan
+    lazygit
 
     # utils
     hyperfine
@@ -100,9 +100,8 @@
     # agents
     pkgs-unstable.codex
     pkgs-unstable.gemini-cli
+    pkgs-unstable.opencode
   ];
-
-
 
   programs.direnv = {
     enable = true;
