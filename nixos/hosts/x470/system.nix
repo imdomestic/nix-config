@@ -4,6 +4,7 @@
 {
   inputs,
   pkgs,
+  config,
   ...
 }: {
   imports = [
@@ -125,8 +126,10 @@
   services.xserver.videoDrivers = ["nvidia"];
   hardware.nvidia = {
     modesetting.enable = true;
+    powerManagement.enable = true;
     open = false;
     nvidiaSettings = true;
+    package = config.boot.kernelPackages.nvidiaPackages.production;
   };
   hardware.nvidia-container-toolkit.enable = true;
   environment.sessionVariables = {
@@ -171,8 +174,9 @@
   };
 
   nixpkgs.config = {
+    allowUnfree = true;
     cudaSupport = true;
-    cudaCababilities = ["6.1"];
+    # cudaCapabilities = ["6.1"];
   };
 
   environment.systemPackages = with pkgs; [
