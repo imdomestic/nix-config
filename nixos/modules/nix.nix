@@ -52,11 +52,13 @@
       "https://cache.iog.io"
       "https://hyprland.cachix.org"
       "https://mirror.sjtu.edu.cn/nix-channels/store"
+      "https://cache.nixos-cuda.org"
     ];
     trusted-public-keys = [
       "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
       "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
       "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
+      "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
     ];
     experimental-features = ["nix-command" "flakes"];
     allow-import-from-derivation = true;

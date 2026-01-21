@@ -356,7 +356,7 @@ in {
               app-id = "firefox"; # Nix multiline strings are ''...'' but typically KDL regex handles newlines differently. Simple string here.
             }
           ];
-          open-floating = true;
+          open-floating = false;
         }
 
         # Example: block out two password managers from screen capture.

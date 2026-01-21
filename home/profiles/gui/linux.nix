@@ -31,7 +31,6 @@
   home.sessionVariables.NIXOS_OZONE_WL = "1";
 
   home.packages = with pkgs; [
-    # monitor
     iotop
     iftop
     strace
@@ -39,15 +38,18 @@
     lsof
     pstree
 
-    # system tools
     sysstat
     lm_sensors
     ethtool
     pciutils # lspci
     usbutils # lsusb
 
-    # sourcekit-lsp
     edid-decode
+    dmidecode
+
+    # apps
+    prismlauncher
+    zathura
   ];
 
   # catppuccin.gtk = {

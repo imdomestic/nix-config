@@ -121,7 +121,6 @@
   time.timeZone = "Hongkong";
   services.xserver.enable = true;
   services.xserver.videoDrivers = ["nvidia"];
-  hardware.graphics.enable = true;
   hardware.nvidia = {
     modesetting.enable = true;
     open = false;
@@ -144,37 +143,40 @@
       tree
     ];
   };
-  programs.zsh = {
-    enable = true;
+  programs = {
+    zsh.enable = true;
+    chromium.enable = true;
+    firefox.enable = true;
+    gamescope = {
+      enable = true;
+      capSysNice = true;
+    };
+    steam = {
+      enable = true;
+      gamescopeSession.enable = true;
+      remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
+      dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
+      localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
+    };
+  };
+
+  hardware = {
+    graphics = {
+      enable = true;
+      enable32Bit = true;
+    };
+    xone.enable = true;
+  };
+
+  nixpkgs.config = {
+    cudaSupport = true;
+    cudaCababilities = ["6.1"];
   };
 
   environment.systemPackages = with pkgs; [
     rdma-core
 
     cachix
-    vim
-    wget
-    neovim
-    git
-    gcc
-    ntfs3g
-    qemu
-    starship
-    zsh
-    waybar
-    duf
-    gnumake
-    flex
-    bison
-    elfutils
-    libelf
-    pkg-config
-    clapper
-    bat
-    just
-    mihomo
-    xfsprogs
-
     virt-manager
     virt-viewer
     spice
@@ -182,15 +184,13 @@
     spice-protocol
     virtio-win
     win-spice
-    adwaita-icon-theme
-    radeontop
-    corectrl
-    # daed
     ddns-go
     btop-cuda
 
     steam-run
     steamcmd
+
+    inputs.zen-browser.packages."${system}".default
   ];
 
   services.iperf3.enable = true;
