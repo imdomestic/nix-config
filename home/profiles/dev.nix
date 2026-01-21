@@ -36,8 +36,8 @@
     nil
     alejandra
     nodejs_22
-    sqlite
-    sqlite-interactive
+    # sqlite
+    # sqlite-interactive
     tree-sitter
     imagemagick
     fd

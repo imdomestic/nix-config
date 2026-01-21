@@ -50,6 +50,8 @@
     # apps
     prismlauncher
     zathura
+    spotify
+    qq
   ];
 
   # catppuccin.gtk = {

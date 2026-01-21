@@ -20,6 +20,8 @@
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
 
+  zramSwap.enable = true;
+
   # rdma
   # boot.kernelModules = [
   #   "ib_core" # RDMA 核心
