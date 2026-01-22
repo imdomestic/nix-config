@@ -76,7 +76,7 @@
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../../../fonts/Recursive-Italic.ttf;
   home.file.".local/share/fonts/Recursive-Regular.ttf".source = ../../../fonts/Recursive-Regular.ttf;
-  home.file.wallpapers.source = ../../../wallpapers;
+  # home.file.wallpapers.source = ../../../wallpapers;
 
   home.packages = with pkgs; [
   ];

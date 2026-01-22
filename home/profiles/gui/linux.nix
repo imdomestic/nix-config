@@ -1,5 +1,6 @@
 {
   pkgs,
+  pkgs-unstable,
   inputs,
   ...
 }: {
@@ -50,8 +51,19 @@
     # apps
     prismlauncher
     zathura
+    nwg-look
+    pavucontrol
+    grimblast
+    wl-clipboard
+    playerctl
+    google-chrome
     spotify
     qq
+    wechat-uos
+    cider
+    sioyek
+    upscayl
+    sioyek
   ];
 
   # catppuccin.gtk = {

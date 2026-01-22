@@ -6,6 +6,40 @@
 }: let
   lib = pkgs.lib;
 in {
+  services.hyprpaper = {
+    enable = true;
+    settings = {
+      ipc = "off";
+      splash = false;
+      preload = [
+        "/home/hank/wallpapers/dark_wave.png"
+      ];
+
+      wallpaper =
+        if hostname == "7540u"
+        then [
+          "DP-2,/home/hank/wallpapers/nixos-blue-4k.png"
+          "eDP-1,/home/hank/wallpapers/grid.png"
+        ]
+        else if hostname == "H610"
+        then [
+          "DP-2,/home/hank/wallpapers/nixos-stroke-4k.png"
+        ]
+        else if hostname == "tank"
+        then [
+          "DP-2,/home/hank/wallpapers/nixos-blue-4k.png"
+        ]
+        else if hostname == "b650"
+        then [
+          "DP-2,/home/hank/wallpapers/nixos-blue-4k.png"
+        ]
+        else if hostname == "x470"
+        then [
+          "DP-2,/home/hank/wallpapers/dark_wave.png"
+        ] else [];
+    };
+  };
+
   programs.niri = {
     enable = true;
     package = pkgs.niri;
