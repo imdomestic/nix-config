@@ -83,11 +83,8 @@ in {
     };
     firewall = {
       enable = false;
-      # 信任 LAN 口，方便调试
       trustedInterfaces = ["br-lan" "end0"];
-      # DHCPv6 rx
       interfaces."ppp0".allowedUDPPorts = [546];
-      # 必须关闭 rpfilter (反向路径过滤)，否则 dae 的透明代理可能会被丢包
       checkReversePath = false;
     };
     wg-quick.interfaces = {
