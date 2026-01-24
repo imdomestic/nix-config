@@ -1,6 +1,3 @@
-# Edit this configuration file to define what should be installed on
-# your system. Help is available in the configuration.nix(5) man page, on
-# https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 {
   inputs,
   config,
@@ -67,8 +64,65 @@
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
+
+    "net.ipv6.conf.all.accept_ra" = 2;
+    "net.ipv6.conf.enp1s0u2.accept_ra" = 2;
+    "net.ipv6.conf.default.accept_ra" = 2;
+    "net.ipv6.conf.all.proxy_ndp" = 1;
+    "net.ipv6.conf.enp1s0u2.proxy_ndp" = 1; # WAN口
+    "net.ipv6.conf.br-lan.proxy_ndp" = 1; # LAN口
+
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
+  };
+
+  services.ndppd = {
+    enable = true;
+    proxies = {
+      "enp1s0u2" = {
+        router = true;
+        rules."::/0" = {
+          interface = "br-lan";
+        };
+      };
+      "br-lan" = {
+        router = true;
+        rules."::/0" = {
+          interface = "enp1s0u2";
+        };
+      };
+    };
+  };
+
+  services.radvd = {
+    enable = true;
+    config = ''
+      interface br-lan {
+        AdvSendAdvert on;
+        MinRtrAdvInterval 3;
+        MaxRtrAdvInterval 10;
+
+        # 宣告自己是默认路由
+        AdvDefaultLifetime 9000;
+
+        # 既然是透传，MTU 最好保守一点，防止包过大被运营商丢弃
+        AdvLinkMTU 1480;
+
+        # 【核心魔法】不写死前缀，而是让它去抄 enp1s0u2 的作业
+        prefix ::/64 {
+          AdvOnLink on;
+          AdvAutonomous on;
+          AdvRouterAddr on;
+
+          # 关键指令：动态借用 WAN 口前缀
+          Base6Interface enp1s0u2;
+        };
+
+        # 可选：下发 DNS (Rdnss)
+        RDNSS 2400:3200::1 2400:3200:baba::1 {
+        };
+      };
+    '';
   };
 
   # services.pppd = {
@@ -133,7 +187,8 @@
       networkConfig = {
         DHCP = "yes";
         IPv6AcceptRA = true;
-        # IPMasquerade = "ipv4";
+
+        IPv6ProxyNDP = true;
       };
       linkConfig.RequiredForOnline = "routable";
       dhcpV6Config = {
@@ -179,13 +234,13 @@
       matchConfig.Name = "br-lan";
       networkConfig = {
         Address = "192.168.20.1/24";
-        # DHCPv4 Server
         DHCPServer = true;
-        # IPv4 NAT
         IPMasquerade = "ipv4";
-        # IPv6 RA (SLAAC)
-        IPv6SendRA = true;
+
+        IPv6SendRA = false;
         IPv6AcceptRA = false;
+        IPv6ProxyNDP = true; # 允许 NDP 穿透
+
         DHCPPrefixDelegation = true;
       };
       linkConfig = {
@@ -201,11 +256,12 @@
       };
 
       # SLAAC
-      ipv6SendRAConfig = {
-        Managed = false; # no DHCPv6
-        OtherInformation = false;
-        EmitDNS = true; # send DNS with RA
-      };
+      # ipv6SendRAConfig = {
+      #   Managed = false; # no DHCPv6
+      #   OtherInformation = false;
+      #   EmitDNS = true; # send DNS with RA
+      #   UplinkInterface = "enp1s0u2";
+      # };
     };
   };
 
@@ -294,24 +350,5 @@
   services.pipewire.enable = true;
 
   services.openssh.enable = true;
-  systemd.services.ddns-go = {
-    enable = false;
-    description = "Simple and easy to use DDNS. Automatically update domain name resolution to public IP (Support Aliyun, Tencent Cloud, Dnspod, Cloudflare, Callback, Huawei Cloud, Baidu Cloud, Porkbun, GoDaddy...)";
-
-    wants = ["network.target"];
-    after = ["network-online.target"];
-
-    serviceConfig = {
-      StartLimitInterval = 5;
-      StartLimitBurst = 10;
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go \"-l\" \":9876\" \"-f\" \"300\" \"-cacheTimes\" \"5\" \"-c\" \"/home/nix/.ddns_go_config.yaml\"";
-      Restart = "always";
-      RestartSec = 120;
-      EnvironmentFile = "-/etc/sysconfig/ddns-go";
-    };
-
-    wantedBy = ["multi-user.target"];
-  };
-
   system.stateVersion = "25.05"; # Did you read the comment?
 }
