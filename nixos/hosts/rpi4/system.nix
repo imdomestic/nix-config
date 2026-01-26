@@ -6,7 +6,6 @@
   ...
 }: {
   imports = [
-    # Include the results of the hardware scan.
     ./hardware-configuration.nix
     # ../../modules/mihomo
     ../../modules/dae
@@ -14,9 +13,7 @@
     ../../modules/keyd
   ];
 
-  # Use the extlinux boot loader. (NixOS wants to enable GRUB by default)
   boot.loader.grub.enable = false;
-  # Enables the generation of /boot/extlinux/extlinux.conf
   boot.loader.generic-extlinux-compatible.enable = true;
   boot.kernelPackages = pkgs.linuxPackages_rpi4;
 
@@ -46,11 +43,8 @@
     };
     firewall = {
       enable = true;
-      # 信任 LAN 口，方便调试
       trustedInterfaces = ["br-lan"];
-      # DHCPv6 rx
       interfaces."ppp0".allowedUDPPorts = [546];
-      # 必须关闭 rpfilter (反向路径过滤)，否则 dae 的透明代理可能会被丢包
       checkReversePath = false;
     };
     wg-quick.interfaces = {
@@ -85,12 +79,24 @@
           interface = "br-lan";
         };
       };
-      "br-lan" = {
-        router = true;
-        rules."::/0" = {
-          interface = "enp1s0u2";
-        };
-      };
+      # "br-lan" = {
+      #   router = true;
+      #   rules."::/0" = {
+      #     interface = "enp1s0u2";
+      #   };
+      # };
+    };
+  };
+
+  systemd.services.ndppd = {
+    after = ["network.target" "sys-subsystem-net-devices-br\\x2dlan.device"];
+    bindsTo = ["sys-subsystem-net-devices-br\\x2dlan.device"];
+
+    # 【保险2】无限重启策略
+    serviceConfig = {
+      Restart = "always";
+      RestartSec = "5";
+      ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
     };
   };
 
@@ -102,27 +108,65 @@
         MinRtrAdvInterval 3;
         MaxRtrAdvInterval 10;
 
-        # 宣告自己是默认路由
         AdvDefaultLifetime 9000;
 
-        # 既然是透传，MTU 最好保守一点，防止包过大被运营商丢弃
         AdvLinkMTU 1480;
 
-        # 【核心魔法】不写死前缀，而是让它去抄 enp1s0u2 的作业
         prefix ::/64 {
           AdvOnLink on;
           AdvAutonomous on;
           AdvRouterAddr on;
 
-          # 关键指令：动态借用 WAN 口前缀
           Base6Interface enp1s0u2;
         };
 
-        # 可选：下发 DNS (Rdnss)
         RDNSS 2400:3200::1 2400:3200:baba::1 {
         };
       };
     '';
+  };
+
+  services.networkd-dispatcher = {
+    enable = true;
+    rules = {
+      "ipv6-relay-route" = {
+        # 当接口状态变为 "routable" (已获取 IP 且可路由) 时触发
+        onState = ["routable"];
+        script = ''
+          #!${pkgs.runtimeShell}
+
+          # 定义接口名称
+          WAN_IF="enp1s0u2"
+          LAN_IF="br-lan"
+
+          # 只有当触发事件的接口是 WAN 口时才执行
+          if [ "$IFACE" != "$WAN_IF" ]; then
+            exit 0
+          fi
+
+          echo "IPv6 Relay Script: Detecting prefix change on $WAN_IF..."
+
+          # 提取 WAN 口的全球单播 IPv6 地址 (带掩码，例如 240e:xxx.../64)
+          # 使用 ip -6 -o addr show ... 避免输出多行，awk 提取第4列 IP
+          IP6_CIDR=$(${pkgs.iproute2}/bin/ip -6 -o addr show dev "$WAN_IF" scope global | ${pkgs.gawk}/bin/awk '{print $4}' | head -n 1)
+
+          if [ -n "$IP6_CIDR" ]; then
+             echo "IPv6 Relay Script: Found prefix $IP6_CIDR. Adding route to $LAN_IF."
+
+             # 【核心魔法】
+             # 添加一条路由：去往这个 /64 网段的包，扔给 LAN 口
+             # metric 100 确保它的优先级高于内核自带的 WAN 口路由 (通常是 1024)
+             # 使用 'replace' 而不是 'add'，防止脚本重复执行报错
+             ${pkgs.iproute2}/bin/ip -6 route replace "$IP6_CIDR" dev "$LAN_IF" metric 100
+
+             # 可选：重启 radvd 确保它尽快更新通告 (虽然 Base6Interface 通常会自动处理)
+             # /run/current-system/sw/bin/systemctl try-reload-or-restart radvd
+          else
+             echo "IPv6 Relay Script: No global IPv6 address found on $WAN_IF."
+          fi
+        '';
+      };
+    };
   };
 
   # services.pppd = {
