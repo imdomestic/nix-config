@@ -8,6 +8,28 @@
     ../../modules/keyd
   ];
 
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelParams = [
+    "i915.force_probe=!56a5"
+    "xe.force_probe=56a5"
+    "enable_guc=3"
+  ];
+  boot.kernel.sysctl = {
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
+
+    "net.ipv6.conf.all.accept_ra" = 2;
+    "net.ipv6.conf.eno1.accept_ra" = 2;
+    "net.ipv6.conf.default.accept_ra" = 2;
+    "net.ipv6.conf.all.proxy_ndp" = 1;
+    "net.ipv6.conf.eno1.proxy_ndp" = 1; # WAN口
+    "net.ipv6.conf.br-lan.proxy_ndp" = 1; # LAN口
+
+    "net.core.default_qdisc" = "fq";
+    "net.ipv4.tcp_congestion_control" = "bbr";
+  };
+
   time.timeZone = "Hongkong";
 
   networking = {
@@ -46,26 +68,6 @@
         autostart = true;
       };
     };
-  };
-
-  boot.kernelParams = [
-    "i915.force_probe=!56a5"
-    "xe.force_probe=56a5"
-    "enable_guc=3"
-  ];
-  boot.kernel.sysctl = {
-    "net.ipv4.ip_forward" = 1;
-    "net.ipv6.conf.all.forwarding" = 1;
-
-    "net.ipv6.conf.all.accept_ra" = 2;
-    "net.ipv6.conf.eno1.accept_ra" = 2;
-    "net.ipv6.conf.default.accept_ra" = 2;
-    "net.ipv6.conf.all.proxy_ndp" = 1;
-    "net.ipv6.conf.eno1.proxy_ndp" = 1; # WAN口
-    "net.ipv6.conf.br-lan.proxy_ndp" = 1; # LAN口
-
-    "net.core.default_qdisc" = "fq";
-    "net.ipv4.tcp_congestion_control" = "bbr";
   };
 
   services.ndppd = {
