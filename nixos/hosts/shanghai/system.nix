@@ -97,7 +97,8 @@ in {
         DHCP = "yes";
       };
       dhcpV4Config = {
-        UseStaticRoutes = false;
+        UseRoutes = false;
+        UseGateway = true;
       };
       linkConfig = {
         RequiredForOnline = "routable";
