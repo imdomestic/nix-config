@@ -148,6 +148,50 @@ in {
     };
   };
 
+  services.nginx = {
+    enable = true;
+
+    # 优化上传大小限制
+    clientMaxBodySize = "50m";
+
+    virtualHosts."sh.imdomestic.com" = {
+      # 监听 8448 端口，开启 SSL
+      listen = [
+        {
+          addr = "0.0.0.0";
+          port = 8448;
+          ssl = true;
+        }
+        {
+          addr = "[::]";
+          port = 8448;
+          ssl = true;
+        }
+      ];
+
+      # 使用你已经上传的阿里云证书
+      sslCertificate = "/etc/nixos/certs/sh.imdomestic.com.pem";
+      sslCertificateKey = "/etc/nixos/certs/sh.imdomestic.com.key";
+
+      # 代理转发到 NAS (Tank)
+      locations."/" = {
+        proxyPass = "http://10.0.0.66:8008"; # 走 WireGuard 隧道
+        proxyWebsockets = true; # Matrix 可能会用到 WebSocket
+
+        # 传递必要的 Header
+        extraConfig = ''
+          proxy_set_header X-Forwarded-For $remote_addr;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header Host $host;
+
+          # 增加超时时间，防止同步大量消息时断开
+          proxy_read_timeout 600s;
+          proxy_send_timeout 600s;
+        '';
+      };
+    };
+  };
+
   services.resolved.enable = true;
   services.qemuGuest.enable = true;
 

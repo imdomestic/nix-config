@@ -377,14 +377,17 @@ in {
     };
   };
 
-  # for luckperms
   services.postgresql = {
     enable = true;
-    ensureDatabases = ["luckperms" "minecraft"];
+    ensureDatabases = ["luckperms" "minecraft" "matrix-synapse"];
     enableTCPIP = true;
     ensureUsers = [
       {
         name = "minecraft";
+        ensureDBOwnership = true;
+      }
+      {
+        name = "matrix-synapse";
         ensureDBOwnership = true;
       }
     ];
@@ -395,6 +398,52 @@ in {
       host    luckperms       minecraft       10.0.0.0/24             md5
       host    luckperms       minecraft       10.42.0.0/24            md5
     '';
+  };
+
+  services.matrix-synapse = {
+    enable = true;
+    settings = {
+      # 域名部分（也就是你的 Matrix ID 后缀，如 @hank:sh.imdomestic.com）
+      server_name = "sh.imdomestic.com";
+
+      # 公网访问地址，必须显式加上 VPS 的端口 8448
+      public_baseurl = "https://sh.imdomestic.com:8448";
+
+      listeners = [
+        {
+          port = 8008;
+          # 绑定到 0.0.0.0 允许来自 WireGuard IP 的连接
+          # 或者更安全一点： bind_addresses = [ "10.0.0.66" "127.0.0.1" ];
+          bind_addresses = ["0.0.0.0"];
+          type = "http";
+          tls = false; # NAS 本地不搞 SSL，让 VPS 处理
+          x_forwarded = true;
+          resources = [
+            {
+              names = ["client" "federation"];
+              compress = false;
+            }
+          ];
+        }
+      ];
+
+      # 数据库连接
+      database = {
+        name = "psycopg2";
+        args = {
+          user = "matrix-synapse";
+          database = "matrix-synapse";
+          host = "/run/postgresql";
+        };
+      };
+
+      enable_registration = false;
+      # 生成一个随机字符串填入下面
+      registration_shared_secret = "hbhbhb";
+
+      # 允许上传文件的大小 (例如 50M)
+      max_upload_size = "50M";
+    };
   };
 
   services.k3s = {
