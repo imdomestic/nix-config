@@ -48,6 +48,11 @@
     };
   };
 
+  boot.kernelParams = [
+    "i915.force_probe=!56a5"
+    "xe.force_probe=56a5"
+    "enable_guc=3"
+  ];
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
@@ -324,8 +329,15 @@
 
   xdg.portal.wlr.enable = true;
 
+  hardware.enableRedistributableFirmware = true;
   hardware.graphics = {
     enable = true;
+    extraPackages = with pkgs; [
+      vpl-gpu-rt
+      intel-compute-runtime
+      intel-media-driver
+    ];
+    enable32Bit = true;
   };
 
   environment = {
@@ -334,10 +346,12 @@
     };
   };
 
-  environment.sessionVariables.NIXOS_OZONE_WL = "1";
+  environment.sessionVariables = {
+    LIBVA_DRIVER_NAME = "iHD";
+    NIXOS_OZONE_WL = "1";
+  };
 
   services.openssh.enable = true;
-  services.vscode-server.enable = true;
 
   system.stateVersion = "25.11";
 }
