@@ -1,7 +1,7 @@
 {inputs}: let
   callHost = name: import (./. + "/${name}") {inherit inputs;};
 in {
-  H610 = callHost "H610";
+  h610 = callHost "h610";
   b650 = callHost "b650";
   "7540u" = callHost "7540u";
   tank = callHost "tank";

@@ -5,12 +5,11 @@
 in {
   system = "x86_64-linux";
   kind = "nixos";
-  roles = ["desktop" "gui"];
+  roles = ["server"];
 
   profiles = with nixosProfiles; [
     base
-    desktop
-    virtualisation
+    server
   ];
 
   modules = [
@@ -19,8 +18,6 @@ in {
   ];
 
   externalModules = [
-    inputs.vscode-server.nixosModules.default
-    inputs.steam-servers.nixosModules.default
   ];
 
   users = {
@@ -28,8 +25,7 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          dev
-          gui.linux
+          base
         ];
         modules = [
           userModules.hank.module
@@ -40,8 +36,6 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          dev
-          gui.linux
         ];
         modules = [
           userModules.genisys.module
