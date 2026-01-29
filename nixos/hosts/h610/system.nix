@@ -312,7 +312,7 @@
 
   services.dnsmasq.enable = false;
   services.resolved = {
-    enable = true;
+    enable = false;
     fallbackDns = ["223.5.5.5"];
     extraConfig = ''
       DNSStubListener=yes
