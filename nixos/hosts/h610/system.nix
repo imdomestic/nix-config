@@ -11,6 +11,7 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelParams = [
+    "pcie_aspm=off"
     "i915.force_probe=!56a5"
     "xe.force_probe=56a5"
     "enable_guc=3"
