@@ -72,11 +72,8 @@ in {
           chain postrouting {
             type filter hook forward priority 0; policy accept;
 
-            # IPv4：PPPoE MTU 1400 → MSS 1360
-            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-
-            # IPv6：PPPoE MTU 1400 → MSS 1340
-            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1452
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1432
           }
         '';
       };
@@ -132,8 +129,8 @@ in {
           ipv6cp-use-ipaddr
 
           # MTU 设置 (PPPoE 标准)
-          mtu 1400
-          mru 1400
+          mtu 1492
+          mru 1492
         '';
       };
     };
@@ -165,21 +162,6 @@ in {
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # WAN, DHCP
-    # networks."20-wan-uplink" = {
-    #   matchConfig.Name = "end0";
-    #   networkConfig = {
-    #     DHCP = "yes";
-    #     IPv6AcceptRA = true;
-    #     # IPMasquerade = "ipv4";
-    #   };
-    #   linkConfig.RequiredForOnline = "carrier";
-    #   dhcpV6Config = {
-    #     PrefixDelegationHint = "::/60";
-    #     UseDelegatedPrefix = true;
-    #   };
-    # };
-
     networks."20-wan-uplink" = {
       matchConfig.Name = "end0";
       linkConfig.RequiredForOnline = "no";
@@ -197,7 +179,6 @@ in {
       };
       linkConfig = {
         RequiredForOnline = "carrier";
-        MTUBytes = 1400;
       };
       dhcpV6Config = {
         WithoutRA = "solicit";

@@ -150,32 +150,30 @@
     nftables = {
       enable = true;
       checkRuleset = false;
-      # tables.router = {
-      #   name = "mss-clamping";
-      #   enable = true;
-      #   family = "inet";
-      #   content = ''
-      #     # Flowtable 定义
-      #     flowtable f {
-      #       hook ingress priority 0;
-      #       devices = { wan0, br-lan };
-      #     }
-      #
-      #     chain postrouting {
-      #       type filter hook postrouting priority 0; policy accept;
-      #       # 你的 MSS Clamping 规则
-      #       oifname "wan0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-      #       oifname "wan0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
-      #     }
-      #
-      #     chain forward {
-      #       type filter hook forward priority 0; policy accept;
-      #       # 开启硬件/软件卸载加速
-      #       # flow offload @f
-      #       ct state established,related accept
-      #     }
-      #   '';
-      # };
+      tables.router = {
+        name = "mss-clamping";
+        enable = true;
+        family = "inet";
+        content = ''
+          flowtable f {
+            hook ingress priority 0;
+            devices = { wan0, br-lan };
+          }
+
+          chain postrouting {
+            type filter hook postrouting priority 0; policy accept;
+
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1452
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1432
+          }
+
+          chain forward {
+            type filter hook forward priority 0; policy accept;
+            # flow offload @f
+            ct state established,related accept
+          }
+        '';
+      };
     };
   };
   systemd.network = {
@@ -212,20 +210,6 @@
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # WAN, DHCP
-    # networks."20-wan-uplink" = {
-    #   matchConfig.Name = "wan0";
-    #   networkConfig = {
-    #     DHCP = "yes";
-    #     IPv6AcceptRA = true;
-    #   };
-    #   linkConfig.RequiredForOnline = "carrier";
-    #   dhcpV6Config = {
-    #     PrefixDelegationHint = "::/60";
-    #     UseDelegatedPrefix = true;
-    #   };
-    # };
-
     # WAN
     networks."20-wan-uplink" = {
       matchConfig.Name = "wan0";
@@ -237,22 +221,17 @@
     };
 
     networks."25-wan-ppp" = {
-      matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
+      matchConfig.Name = "ppp0";
       networkConfig = {
-        # 在这里开启 NAT (IPMasquerade)
-        # IPMasquerade = "ipv4";
-
-        # IPv6 配置 (PPPoE 也能获取 IPv6)
         IPv6AcceptRA = true;
-        # DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
+        DHCP = "ipv6";
       };
       linkConfig = {
         RequiredForOnline = "carrier";
-        # MTUBytes = 1400;
       };
       dhcpV6Config = {
         WithoutRA = "solicit";
-        PrefixDelegationHint = "::/60";
+        PrefixDelegationHint = "::/62";
         UseDelegatedPrefix = true;
       };
     };
@@ -297,7 +276,6 @@
       RemainAfterExit = true;
     };
     script = ''
-      # f = 1111 (二进制) -> 允许所有4个核心处理中断
       for file in /sys/class/net/*/queues/rx-*/rps_cpus; do
         echo f > "$file"
       done
@@ -309,7 +287,6 @@
   services.pppd = {
     enable = true;
     peers = {
-      # 定义拨号连接名称，接口将是 ppp0
       telecom = {
         autostart = true;
         enable = true;
@@ -320,7 +297,6 @@
 
           # usepeerdns
 
-          # 关键参数
           defaultroute    # 自动添加默认路由
           persist         # 断线重连
           maxfail 0       # 无限次重试
@@ -336,8 +312,8 @@
           ipv6cp-use-ipaddr
 
           # MTU 设置 (PPPoE 标准)
-          # mtu 1400
-          # mru 1400
+          mtu 1492
+          mru 1492
         '';
       };
     };
