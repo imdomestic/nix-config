@@ -353,6 +353,7 @@
     LIBVA_DRIVER_NAME = "iHD";
     NIXOS_OZONE_WL = "1";
   };
+  xdg.portal.config.common.default = "*";
 
   services.openssh.enable = true;
 
