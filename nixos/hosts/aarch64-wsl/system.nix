@@ -40,7 +40,15 @@
     duf
     bat
     just
+
+    distrobox
   ];
+
+  virtualisation.podman = {
+    enable = true;
+    dockerCompat = true;
+    defaultNetwork.settings.dns_enabled = true;
+  };
 
   services.resolved.enable = true;
   services.tailscale = {
