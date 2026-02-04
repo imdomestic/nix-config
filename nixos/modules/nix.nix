@@ -25,6 +25,7 @@
   nix = {
     registry = {
       nixpkgs.flake = inputs.nixpkgs;
+      nixpkgs-local.flake = inputs.nixpkgs;
       nixpkgs-unstable.flake = inputs.nixpkgs-unstable;
     };
     nixPath = [

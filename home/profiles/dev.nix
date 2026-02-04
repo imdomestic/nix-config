@@ -108,5 +108,6 @@
     enableZshIntegration = true;
     enableBashIntegration = true;
     nix-direnv.enable = true;
+    enableNushellIntegration = true;
   };
 }

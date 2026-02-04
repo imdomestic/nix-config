@@ -70,24 +70,6 @@
 
       "net.core.default_qdisc" = "fq";
       "net.ipv4.tcp_congestion_control" = "bbr";
-
-      # 增加 backlog 防止丢包 (从脚本移到这里)
-      # "net.core.netdev_max_backlog" = 16384;
-
-      # 增加 TCP 缓冲区大小 (针对千兆/2.5G网络)
-      # "net.core.rmem_max" = 16777216;
-      # "net.core.wmem_max" = 16777216;
-      # "net.ipv4.tcp_rmem" = "4096 87380 16777216";
-      # "net.ipv4.tcp_wmem" = "4096 16384 16777216";
-
-      # 增加连接跟踪表大小 (防止大量连接导致丢包)
-      # "net.netfilter.nf_conntrack_max" = 65536;
-      # "net.netfilter.nf_conntrack_tcp_timeout_established" = 7440;
-
-      # ARP 缓存调整 (防止局域网设备多时 ARP 表溢出)
-      # "net.ipv4.neigh.default.gc_thresh1" = 1024;
-      # "net.ipv4.neigh.default.gc_thresh2" = 2048;
-      # "net.ipv4.neigh.default.gc_thresh3" = 4096;
     };
   };
 
@@ -276,8 +258,18 @@
       RemainAfterExit = true;
     };
     script = ''
-      for file in /sys/class/net/*/queues/rx-*/rps_cpus; do
+      echo 32768 > /proc/sys/net/core/rps_sock_flow_entries
+
+      for file in /sys/class/net/enp1s0/queues/rx-*/rps_cpus; do
         echo f > "$file"
+      done
+
+      for file in /sys/class/net/enP1p17s0/queues/rx-*/rps_cpus; do
+        echo f > "$file"
+      done
+
+      for tx in "$dev"/queues/tx-*; do
+        echo $mask > "$tx/xps_cpus" 2>/dev/null || true
       done
     '';
   };

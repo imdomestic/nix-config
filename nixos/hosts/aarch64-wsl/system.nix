@@ -27,9 +27,16 @@
   security.sudo.wheelNeedsPassword = false;
   programs.zsh.enable = true;
   programs.nix-index-database.comma.enable = true;
+  programs.nix-index = {
+    enableBashIntegration = false;
+    enableFishIntegration = false;
+    enableZshIntegration = false;
+  };
+  programs.command-not-found.enable = false;
 
   environment.systemPackages = with pkgs; [
     kmod
+    tzdata
     vim
     wget
     neovim
