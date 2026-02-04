@@ -222,8 +222,9 @@ in {
   };
   systemd.services.ddns-go = {
     enable = true;
-    description = "ddns";
+    description = "ddns-go";
 
+    wantedBy = [ "multi-user.target" ];
     wants = ["network-online.target"];
     after = ["network-online.target"];
 
