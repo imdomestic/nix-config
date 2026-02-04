@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   lib,
   inputs,
@@ -90,6 +91,7 @@ in {
       "d     /data/services   0755 root  root  -"
       "d     /data/nas        0755 hank  users -"
       "d     /data/nas/public 0775 hank  users -"
+      "d     /data/services/matrix-synapse 0700 matrix-synapse matrix-synapse -"
     ];
     services.nix-daemon.environment.TMPDIR = "/data/builds";
   };
@@ -379,6 +381,7 @@ in {
 
   services.postgresql = {
     enable = true;
+    dataDir = "/data/lib/postgresql/${config.services.postgresql.package.psqlSchema}";
     ensureDatabases = ["luckperms" "minecraft" "matrix-synapse"];
     enableTCPIP = true;
     ensureUsers = [
@@ -402,18 +405,18 @@ in {
 
   services.matrix-synapse = {
     enable = true;
+    dataDir = "/data/services/matrix-synapse";
     settings = {
-      # 域名部分（也就是你的 Matrix ID 后缀，如 @hank:sh.imdomestic.com）
       server_name = "sh.imdomestic.com";
-
-      # 公网访问地址，必须显式加上 VPS 的端口 8448
       public_baseurl = "https://sh.imdomestic.com:8448";
+      sliding_sync.enabled = true;
+      turn_uris = ["turn:sh.imdomestic.com:3478?transport=udp" "turn:sh.imdomestic.com:3478?transport=tcp"];
+      turn_shared_secret = "REMOVED_SECRET_MATRIX_COTURN_SHARED_SECRET_3663816911b7a509";
+      turn_user_lifetime = "1h";
 
       listeners = [
         {
           port = 8008;
-          # 绑定到 0.0.0.0 允许来自 WireGuard IP 的连接
-          # 或者更安全一点： bind_addresses = [ "10.0.0.66" "127.0.0.1" ];
           bind_addresses = ["0.0.0.0"];
           type = "http";
           tls = false; # NAS 本地不搞 SSL，让 VPS 处理
@@ -427,7 +430,6 @@ in {
         }
       ];
 
-      # 数据库连接
       database = {
         name = "psycopg2";
         args = {
@@ -435,15 +437,40 @@ in {
           database = "matrix-synapse";
           host = "/run/postgresql";
         };
+        allow_unsafe_locale = true;
       };
 
       enable_registration = false;
-      # 生成一个随机字符串填入下面
       registration_shared_secret = "hbhbhb";
-
-      # 允许上传文件的大小 (例如 50M)
       max_upload_size = "50M";
     };
+  };
+
+  services.coturn = {
+    enable = true;
+    no-cli = true;
+    realm = "sh.imdomestic.com";
+    static-auth-secret = "REMOVED_SECRET_MATRIX_COTURN_SHARED_SECRET_3663816911b7a509";
+
+    listening-port = 3478;
+    tls-listening-port = 5349;
+    relay-ips = ["127.0.0.1"];
+
+    extraConfig = ''
+      external-ip=101.132.183.117
+
+      allow-loopback-peers
+      min-port=49152
+      max-port=65535
+    '';
+  };
+
+  services.murmur = {
+    enable = true;
+    registerName = "imdomestic";
+    password = "hbhbhb";
+    port = 64738;
+    bandwidth = 128000; # 128kbps 已经非常顶级的音质了
   };
 
   services.k3s = {
@@ -520,6 +547,7 @@ in {
 
   environment.systemPackages = with pkgs; [
     rdma-core
+    matrix-synapse
     # infiniband-diags
     # libibverbs
 

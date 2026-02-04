@@ -57,6 +57,14 @@ in {
 
             iifname "br-lan" tcp dport 27015 dnat ip to 10.0.0.66:27015
             iifname "br-lan" udp dport 27015 dnat ip to 10.0.0.66:27015
+
+            iifname "br-lan" tcp dport 3478 dnat ip to 10.0.0.66:3478
+            iifname "br-lan" udp dport 3478 dnat ip to 10.0.0.66:3478
+            iifname "br-lan" tcp dport 5349 dnat ip to 10.0.0.66:5349
+            iifname "br-lan" udp dport 5349 dnat ip to 10.0.0.66:5349
+
+            iifname "br-lan" tcp dport 64738 dnat ip to 10.0.0.66:64738
+            iifname "br-lan" udp dport 64738 dnat ip to 10.0.0.66:64738
           }
 
           chain postrouting {
@@ -64,6 +72,14 @@ in {
 
             oifname "wg0" ip daddr 10.0.0.66 tcp dport 27015 masquerade
             oifname "wg0" ip daddr 10.0.0.66 udp dport 27015 masquerade
+
+            oifname "wg0" ip daddr 10.0.0.66 tcp dport 3478 masquerade
+            oifname "wg0" ip daddr 10.0.0.66 udp dport 3478 masquerade
+            oifname "wg0" ip daddr 10.0.0.66 tcp dport 5349 masquerade
+            oifname "wg0" ip daddr 10.0.0.66 udp dport 5349 masquerade
+
+            oifname "wg0" ip daddr 10.0.0.66 tcp dport 64738 masquerade
+            oifname "wg0" ip daddr 10.0.0.66 udp dport 64738 masquerade
           }
         '';
       };
@@ -151,12 +167,9 @@ in {
 
   services.nginx = {
     enable = true;
-
-    # 优化上传大小限制
     clientMaxBodySize = "50m";
-
     virtualHosts."sh.imdomestic.com" = {
-      # 监听 8448 端口，开启 SSL
+      onlySSL = true;
       listen = [
         {
           addr = "0.0.0.0";
@@ -170,22 +183,51 @@ in {
         }
       ];
 
-      # 使用你已经上传的阿里云证书
       sslCertificate = "/etc/nixos/certs/sh.imdomestic.com.pem";
       sslCertificateKey = "/etc/nixos/certs/sh.imdomestic.com.key";
 
-      # 代理转发到 NAS (Tank)
-      locations."/" = {
-        proxyPass = "http://10.0.0.66:8008"; # 走 WireGuard 隧道
-        proxyWebsockets = true; # Matrix 可能会用到 WebSocket
+      locations."=/.well-known/matrix/client" = {
+        extraConfig = ''
+          add_header Content-Type application/json;
+          add_header Access-Control-Allow-Origin *;
+          return 200 '{"m.homeserver": {"base_url": "https://sh.imdomestic.com:8448"}, "org.matrix.msc3575.proxy": {"url": "https://sh.imdomestic.com:8448"}}';
+        '';
+      };
 
-        # 传递必要的 Header
+      locations."=/.well-known/matrix/server" = {
+        extraConfig = ''
+          add_header Content-Type application/json;
+          add_header Access-Control-Allow-Origin *;
+          return 200 '{"m.server": "sh.imdomestic.com:8448"}';
+        '';
+      };
+
+      locations."/" = {
+        root = pkgs.element-web.override {
+          conf = {
+            default_server_config = {
+              "m.homeserver" = {
+                "base_url" = "https://sh.imdomestic.com:8448";
+                "server_name" = "sh.imdomestic.com";
+              };
+            };
+            default_theme = "dark";
+            show_labs_settings = true;
+          };
+        };
+        index = "index.html";
+        extraConfig = ''
+          try_files $uri $uri/ /index.html;
+        '';
+      };
+
+      locations."~ ^/(_matrix|_synapse|/.well-known)" = {
+        proxyPass = "http://10.0.0.66:8008";
+        proxyWebsockets = true;
         extraConfig = ''
           proxy_set_header X-Forwarded-For $remote_addr;
           proxy_set_header X-Forwarded-Proto $scheme;
           proxy_set_header Host $host;
-
-          # 增加超时时间，防止同步大量消息时断开
           proxy_read_timeout 600s;
           proxy_send_timeout 600s;
         '';
