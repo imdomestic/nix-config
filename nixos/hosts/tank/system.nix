@@ -518,7 +518,7 @@ in {
           settings = {
             vnext = [
               {
-                address = "r5sjp.imdomestic.com"; # 你的 DDNS 域名
+                address = "100.64.0.3";
                 port = 1443;
                 users = [
                   {
@@ -538,8 +538,6 @@ in {
               publicKey = "sWTogEQycOOC4JsoY2fkiExFOAAurXebyCnQg5LuBAQ";
               fingerprint = "chrome";
               shortId = "16";
-              # 关键优化：指定 dialing 使用 IPv6
-              # 在 newer xray versions, this is handled by domainStrategy usually
             };
           };
         }
