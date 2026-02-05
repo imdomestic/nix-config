@@ -495,6 +495,66 @@ in {
     };
   };
 
+  services.xray = {
+    enable = true;
+    settings = {
+      inbounds = [
+        {
+          port = 1080;
+          protocol = "socks";
+          sniffing = {
+            enabled = true;
+            destOverride = ["http" "tls"];
+          };
+          settings = {
+            auth = "noauth";
+            udp = true;
+          };
+        }
+      ];
+      outbounds = [
+        {
+          protocol = "vless";
+          settings = {
+            vnext = [
+              {
+                address = "r5sjp.imdomestic.com"; # 你的 DDNS 域名
+                port = 1443;
+                users = [
+                  {
+                    id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+                    flow = "xtls-rprx-vision";
+                    encryption = "none";
+                  }
+                ];
+              }
+            ];
+          };
+          streamSettings = {
+            network = "tcp";
+            security = "reality";
+            realitySettings = {
+              serverName = "www.yahoo.co.jp";
+              publicKey = "sWTogEQycOOC4JsoY2fkiExFOAAurXebyCnQg5LuBAQ";
+              fingerprint = "chrome";
+              shortId = "16";
+              # 关键优化：指定 dialing 使用 IPv6
+              # 在 newer xray versions, this is handled by domainStrategy usually
+            };
+          };
+        }
+        {
+          protocol = "freedom";
+          tag = "direct";
+        }
+      ];
+      routing = {
+        domainStrategy = "IPIfNonMatch";
+        rules = [];
+      };
+    };
+  };
+
   programs.zsh = {
     enable = true;
   };
@@ -627,7 +687,7 @@ in {
     enable = true;
     description = "ddns";
 
-    wantedBy = [ "multi-user.target" ];
+    wantedBy = ["multi-user.target"];
     wants = ["network-online.target"];
     after = ["network-online.target"];
 
