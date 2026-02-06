@@ -224,7 +224,7 @@ in {
     enable = true;
     description = "ddns-go";
 
-    wantedBy = [ "multi-user.target" ];
+    wantedBy = ["multi-user.target"];
     wants = ["network-online.target"];
     after = ["network-online.target"];
 
@@ -246,6 +246,117 @@ in {
     '';
   };
   services.irqbalance.enable = true;
+
+  services.xray.enable = true;
+  services.xray.settings = {
+    log.loglevel = "debug";
+
+    reverse = {
+      portals = [
+        {
+          tag = "portal";
+          domain = "reverse.hank.internal"; # 不要带 :80
+        }
+      ];
+    };
+
+    inbounds = [
+      # 1) 给 bridge 连进来的“互联入站”
+      {
+        tag = "interconn";
+        port = 1443;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
+            shortIds = ["16"];
+          };
+        };
+      }
+
+      # 2) 你的入口（示例：本机 socks）
+      {
+        tag = "socks-in";
+        port = 10800;
+        protocol = "socks";
+        settings = {
+          auth = "noauth";
+          udp = true;
+        };
+      }
+
+      # ---【新增：给外网 Clash 用的加密入口】---
+      {
+        tag = "client-in";
+        port = 54321;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
+            shortIds = ["16"];
+          };
+        };
+      }
+    ];
+
+    # portal 本身是 reverse 模块提供的“出站”，你不需要再手写一个叫 portal 的 outbound
+    outbounds = [
+      {
+        tag = "direct";
+        protocol = "freedom";
+      }
+    ];
+
+    routing.rules = [
+      # socks 进来的流量交给 portal，让 portal 转发给 bridge
+      {
+        type = "field";
+        inboundTag = ["socks-in"];
+        outboundTag = "portal";
+      }
+
+      # bridge 连进来的 interconn 也交给 portal（让 portal 能识别/建立反代隧道）
+      {
+        type = "field";
+        inboundTag = ["interconn"];
+        outboundTag = "portal";
+      }
+
+      {
+        type = "field";
+        inboundTag = ["client-in"]; # 匹配刚才定义的入口
+        outboundTag = "portal"; # 送去重定向，最终会被吸入日本隧道
+      }
+    ];
+  };
 
   services.cockpit = {
     enable = true;
