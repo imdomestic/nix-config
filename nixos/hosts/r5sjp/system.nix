@@ -489,7 +489,7 @@ in {
       # bridge 发起、目的域是 reverse 域名 => 去 interconn（注册/维持反代隧道）
       {
         type = "field";
-        inboundTag = ["bridge"];
+        inboundTag = ["bridge-r6s"];
         domain = ["full:reverse-r6s.hank.internal"];
         outboundTag = "interconn-r6s";
       }
