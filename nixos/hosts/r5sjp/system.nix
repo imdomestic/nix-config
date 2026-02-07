@@ -472,7 +472,7 @@ in {
             serverName = "www.microsoft.com";
             publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo"; # 复用
             fingerprint = "chrome";
-            shortId = "16"; # 复用
+            shortId = "17"; # 复用
           };
         };
       }
