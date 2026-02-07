@@ -412,11 +412,14 @@ in {
           tag = "bridge-tank";
           domain = "reverse-tank.hank.internal";
         }
+        {
+          tag = "bridge-sh";
+          domain = "reverse-sh.hank.internal";
+        }
       ];
     };
 
     outbounds = [
-      # 1) 连接到 portal 的互联出站（你现在的 tunnel-to-wuxi）
       {
         tag = "interconn-r6s";
         protocol = "vless";
@@ -470,9 +473,39 @@ in {
           security = "reality";
           realitySettings = {
             serverName = "www.microsoft.com";
-            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo"; # 复用
+            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
             fingerprint = "chrome";
-            shortId = "17"; # 复用
+            shortId = "17";
+          };
+        };
+      }
+
+      {
+        tag = "interconn-sh";
+        protocol = "vless";
+        settings = {
+          vnext = [
+            {
+              address = "sh.imdomestic.com";
+              port = 3443;
+              users = [
+                {
+                  id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+                  flow = "xtls-rprx-vision";
+                  encryption = "none";
+                }
+              ];
+            }
+          ];
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            serverName = "www.microsoft.com";
+            publicKey = "GWoWYGsFBtkpzl_PqTSPrU2sfBlT36RNZMPSW20liww";
+            fingerprint = "chrome";
+            shortId = "16";
           };
         };
       }
@@ -498,6 +531,12 @@ in {
         inboundTag = ["bridge-tank"];
         domain = ["full:reverse-tank.hank.internal"];
         outboundTag = "interconn-tank";
+      }
+      {
+        type = "field";
+        inboundTag = ["bridge-sh"];
+        domain = ["full:reverse-sh.hank.internal"];
+        outboundTag = "interconn-sh";
       }
 
       # portal 转发来的“真实流量”（同样从 inboundTag=bridge 进入，但域名不是上面那个）=> 去 out

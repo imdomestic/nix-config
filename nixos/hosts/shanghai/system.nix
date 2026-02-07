@@ -263,6 +263,95 @@ in {
     ];
   };
 
+  services.xray.enable = true;
+  services.xray.settings = {
+    log.loglevel = "debug";
+
+    reverse = {
+      portals = [
+        {
+          tag = "portal-sh";
+          domain = "reverse-sh.hank.internal";
+        }
+      ];
+    };
+
+    inbounds = [
+      {
+        tag = "interconn";
+        port = 3443;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_20fd86f4d5e342b3";
+            shortIds = ["16"];
+          };
+        };
+      }
+
+      {
+        tag = "client-in";
+        port = 54321;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
+            shortIds = ["16"];
+          };
+        };
+      }
+    ];
+
+    outbounds = [
+      {
+        tag = "direct";
+        protocol = "freedom";
+      }
+    ];
+
+    routing.rules = [
+      {
+        type = "field";
+        inboundTag = ["interconn"];
+        outboundTag = "portal-sh";
+      }
+
+      {
+        type = "field";
+        inboundTag = ["client-in"];
+        outboundTag = "portal-sh";
+      }
+    ];
+  };
+
   security.sudo.wheelNeedsPassword = false;
 
   environment.systemPackages = with pkgs; [
