@@ -517,7 +517,7 @@ in {
         settings = {
           clients = [
             {
-              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
               flow = "xtls-rprx-vision";
             }
           ];
@@ -530,7 +530,7 @@ in {
             show = false;
             dest = "www.microsoft.com:443";
             serverNames = ["www.microsoft.com" "microsoft.com"];
-            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd"; # 复用你 r6s 的
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_a6fdbd63f69faa60"; # 复用你 r6s 的
             shortIds = ["16"]; # 复用
           };
         };
