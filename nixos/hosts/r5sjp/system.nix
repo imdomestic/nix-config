@@ -405,8 +405,12 @@ in {
     reverse = {
       bridges = [
         {
-          tag = "bridge";
-          domain = "reverse.hank.internal";
+          tag = "bridge-r6s";
+          domain = "reverse-r6s.hank.internal";
+        }
+        {
+          tag = "bridge-tank";
+          domain = "reverse-tank.hank.internal";
         }
       ];
     };
@@ -414,7 +418,7 @@ in {
     outbounds = [
       # 1) 连接到 portal 的互联出站（你现在的 tunnel-to-wuxi）
       {
-        tag = "interconn";
+        tag = "interconn-r6s";
         protocol = "vless";
         settings = {
           vnext = [
@@ -443,7 +447,36 @@ in {
         };
       }
 
-      # 2) 真正的出口（把 portal 转来的连接发出去）
+      {
+        tag = "interconn-tank";
+        protocol = "vless";
+        settings = {
+          vnext = [
+            {
+              address = "tank.sanuki.cn";
+              port = 2443;
+              users = [
+                {
+                  id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+                  flow = "xtls-rprx-vision";
+                  encryption = "none";
+                }
+              ];
+            }
+          ];
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            serverName = "www.microsoft.com";
+            publicKey = "2oMfAnRmOiZN3ra85D05Zhr8ehI8hRSRqzpJ0oJUcgM"; # 复用
+            fingerprint = "chrome";
+            shortId = "16"; # 复用
+          };
+        };
+      }
+
       {
         tag = "out";
         protocol = "freedom";
@@ -457,14 +490,20 @@ in {
       {
         type = "field";
         inboundTag = ["bridge"];
-        domain = ["full:reverse.hank.internal"];
-        outboundTag = "interconn";
+        domain = ["full:reverse-r6s.hank.internal"];
+        outboundTag = "interconn-r6s";
+      }
+      {
+        type = "field";
+        inboundTag = ["bridge-tank"];
+        domain = ["full:reverse-tank.hank.internal"];
+        outboundTag = "interconn-tank";
       }
 
       # portal 转发来的“真实流量”（同样从 inboundTag=bridge 进入，但域名不是上面那个）=> 去 out
       {
         type = "field";
-        inboundTag = ["bridge"];
+        inboundTag = ["bridge-r6s" "bridge-tank"];
         outboundTag = "out";
       }
     ];

@@ -254,8 +254,8 @@ in {
     reverse = {
       portals = [
         {
-          tag = "portal";
-          domain = "reverse.hank.internal"; # 不要带 :80
+          tag = "portal-r6s";
+          domain = "reverse-r6s.hank.internal"; # 不要带 :80
         }
       ];
     };
@@ -340,20 +340,20 @@ in {
       {
         type = "field";
         inboundTag = ["socks-in"];
-        outboundTag = "portal";
+        outboundTag = "portal-r6s";
       }
 
       # bridge 连进来的 interconn 也交给 portal（让 portal 能识别/建立反代隧道）
       {
         type = "field";
         inboundTag = ["interconn"];
-        outboundTag = "portal";
+        outboundTag = "portal-r6s";
       }
 
       {
         type = "field";
         inboundTag = ["client-in"]; # 匹配刚才定义的入口
-        outboundTag = "portal"; # 送去重定向，最终会被吸入日本隧道
+        outboundTag = "portal-r6s"; # 送去重定向，最终会被吸入日本隧道
       }
     ];
   };

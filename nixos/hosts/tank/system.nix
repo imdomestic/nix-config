@@ -495,62 +495,97 @@ in {
     };
   };
 
-  services.xray = {
-    enable = true;
-    settings = {
-      inbounds = [
+  services.xray.enable = true;
+  services.xray.settings = {
+    log.loglevel = "debug";
+
+    reverse = {
+      portals = [
         {
-          port = 1080;
-          protocol = "socks";
-          sniffing = {
-            enabled = true;
-            destOverride = ["http" "tls"];
-          };
-          settings = {
-            auth = "noauth";
-            udp = true;
-          };
+          tag = "portal-tank";
+          domain = "reverse-tank.hank.internal";
         }
       ];
-      outbounds = [
-        {
-          protocol = "vless";
-          settings = {
-            vnext = [
-              {
-                address = "100.64.0.3";
-                port = 1443;
-                users = [
-                  {
-                    id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
-                    flow = "xtls-rprx-vision";
-                    encryption = "none";
-                  }
-                ];
-              }
-            ];
-          };
-          streamSettings = {
-            network = "tcp";
-            security = "reality";
-            realitySettings = {
-              serverName = "www.yahoo.co.jp";
-              publicKey = "sWTogEQycOOC4JsoY2fkiExFOAAurXebyCnQg5LuBAQ";
-              fingerprint = "chrome";
-              shortId = "16";
-            };
-          };
-        }
-        {
-          protocol = "freedom";
-          tag = "direct";
-        }
-      ];
-      routing = {
-        domainStrategy = "IPIfNonMatch";
-        rules = [];
-      };
     };
+
+    inbounds = [
+      # 1) 给 r5s bridge 连进来的“互联入站”
+      {
+        tag = "interconn";
+        port = 2443;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd"; # 复用你 r6s 的
+            shortIds = ["16"]; # 复用
+          };
+        };
+      }
+
+      # 2) （可选）给外网客户端用的入口：VLESS + Reality
+      {
+        tag = "client-in";
+        port = 54321;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd"; # 复用
+            shortIds = ["16"]; # 复用
+          };
+        };
+      }
+    ];
+
+    outbounds = [
+      {
+        tag = "direct";
+        protocol = "freedom";
+      }
+    ];
+
+    routing.rules = [
+      # interconn 进来的维护/反代握手 -> portal-tank
+      {
+        type = "field";
+        inboundTag = ["interconn"];
+        outboundTag = "portal-tank";
+      }
+
+      # client-in 进来的真实流量 -> portal-tank（最终被吸到 r5s 出口）
+      {
+        type = "field";
+        inboundTag = ["client-in"];
+        outboundTag = "portal-tank";
+      }
+    ];
   };
 
   programs.zsh = {
