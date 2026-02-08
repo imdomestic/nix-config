@@ -577,11 +577,11 @@
     "hvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1768386140,
-        "narHash": "sha256-JLAb11ZAt20D7EaT64RWcOENJVctXUtZeEdrRync84s=",
+        "lastModified": 1770533922,
+        "narHash": "sha256-YQIZWaSSxkTabyGli/d8gVok9om6PMfGIsoO2/l684I=",
         "owner": "HCHogan",
         "repo": "hvim",
-        "rev": "4b388204dc9ced705fc14af8407f7179ecdaabea",
+        "rev": "9a9603dd355b07702d5521863691a2d7dafdba84",
         "type": "github"
       },
       "original": {
@@ -593,11 +593,11 @@
     "kvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1770531533,
-        "narHash": "sha256-8lUEI2uJ+QtU/BB4CcOFiS5rtvE6nWGq4AGjnWi3XXc=",
+        "lastModified": 1770532317,
+        "narHash": "sha256-DSXaBiV71FpBfv1NFczhJbYaHuG6RMZ65XFaeL17PeA=",
         "ref": "refs/heads/main",
-        "rev": "1a11d6134eede3f887356cb78f3c82e6f908c5eb",
-        "revCount": 497,
+        "rev": "64fcd58f13b0c1ea50185b4060e100e81ee9aedd",
+        "revCount": 498,
         "type": "git",
         "url": "ssh://git@github.com/HCHogan/kvim"
       },
