@@ -299,7 +299,6 @@ in {
         };
       }
 
-      # ---【新增：给外网 Clash 用的加密入口】---
       {
         tag = "client-in";
         port = 54321;
@@ -327,7 +326,6 @@ in {
       }
     ];
 
-    # portal 本身是 reverse 模块提供的“出站”，你不需要再手写一个叫 portal 的 outbound
     outbounds = [
       {
         tag = "direct";
@@ -336,14 +334,12 @@ in {
     ];
 
     routing.rules = [
-      # socks 进来的流量交给 portal，让 portal 转发给 bridge
       {
         type = "field";
         inboundTag = ["socks-in"];
         outboundTag = "portal-r6s";
       }
 
-      # bridge 连进来的 interconn 也交给 portal（让 portal 能识别/建立反代隧道）
       {
         type = "field";
         inboundTag = ["interconn"];
@@ -352,8 +348,8 @@ in {
 
       {
         type = "field";
-        inboundTag = ["client-in"]; # 匹配刚才定义的入口
-        outboundTag = "portal-r6s"; # 送去重定向，最终会被吸入日本隧道
+        inboundTag = ["client-in"];
+        outboundTag = "portal-r6s";
       }
     ];
   };
@@ -361,7 +357,7 @@ in {
   services.cockpit = {
     enable = true;
     port = 9090;
-    openFirewall = true; # Please see the comments section
+    openFirewall = true;
     allowed-origins = ["*"];
     settings = {
       WebService = {

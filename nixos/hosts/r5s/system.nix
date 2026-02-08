@@ -139,7 +139,7 @@
         content = ''
           flowtable f {
             hook ingress priority 0;
-            devices = { wan0, br-lan };
+            devices = { wan0 };
           }
 
           chain postrouting {
