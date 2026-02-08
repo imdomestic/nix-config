@@ -4,11 +4,47 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+    dnsconf:
+        - name: ""
+          ipv4:
+            enable: false
+            gettype: url
+            url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
+            netinterface: wan0
+            cmd: ""
+            domains:
+                - ""
+          ipv6:
+            enable: true
+            gettype: netInterface
+            url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
+            netinterface: ppp0
+            cmd: ""
+            ipv6reg: ""
+            domains:
+                - rpi4:imdomestic.com
+          dns:
+            name: cloudflare
+            id: ""
+            secret: REMOVED_SECRET_CLOUDFLARE_API_TOKEN_1e6e67ea94941305
+          ttl: ""
+    user:
+        username: hank
+        password: REMOVED_SECRET_DDNS_BCRYPT_PASSWORD_HASH_05f4b998098acd58
+    webhook:
+        webhookurl: ""
+        webhookrequestbody: ""
+        webhookheaders: ""
+    notallowwanaccess: false
+    lang: zh
+  '';
+in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    ../../modules/dae
+    # ../../modules/dae
     ../../modules/tuigreet
     ../../modules/keyd
   ];
@@ -24,22 +60,19 @@
     useNetworkd = true;
     nftables = {
       enable = true;
-      # tables.mss-clamping = {
-      #   name = "mss-clamping";
-      #   enable = true;
-      #   family = "inet";
-      #   content = ''
-      #     chain postrouting {
-      #       type filter hook forward priority 0; policy accept;
-      #
-      #       # IPv4：PPPoE MTU 1400 → MSS 1360
-      #       oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-      #
-      #       # IPv6：PPPoE MTU 1400 → MSS 1340
-      #       oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
-      #     }
-      #   '';
-      # };
+      tables.mss-clamping = {
+        name = "mss-clamping";
+        enable = true;
+        family = "inet";
+        content = ''
+          chain postrouting {
+            type filter hook forward priority 0; policy accept;
+
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1452
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1432
+          }
+        '';
+      };
     };
     firewall = {
       enable = true;
@@ -58,159 +91,47 @@
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
-
-    "net.ipv6.conf.all.accept_ra" = 2;
-    "net.ipv6.conf.enp1s0u2.accept_ra" = 2;
-    "net.ipv6.conf.default.accept_ra" = 2;
-    "net.ipv6.conf.all.proxy_ndp" = 1;
-    "net.ipv6.conf.enp1s0u2.proxy_ndp" = 1; # WAN口
-    "net.ipv6.conf.br-lan.proxy_ndp" = 1; # LAN口
-
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
   };
 
-  services.ndppd = {
+  services.pppd = {
     enable = true;
-    proxies = {
-      "enp1s0u2" = {
-        router = true;
-        rules."::/0" = {
-          interface = "br-lan";
-        };
-      };
-      # "br-lan" = {
-      #   router = true;
-      #   rules."::/0" = {
-      #     interface = "enp1s0u2";
-      #   };
-      # };
-    };
-  };
+    peers = {
+      chinamobile = {
+        autostart = true;
+        enable = true;
+        config = ''
+          plugin pppoe.so enp1s0u2
+          user "15861587760"
+          password "168168"
 
-  systemd.services.ndppd = {
-    after = ["network.target" "sys-subsystem-net-devices-br\\x2dlan.device"];
-    bindsTo = ["sys-subsystem-net-devices-br\\x2dlan.device"];
+          # usepeerdns
 
-    # 【保险2】无限重启策略
-    serviceConfig = {
-      Restart = "always";
-      RestartSec = "5";
-      ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
-    };
-  };
+          defaultroute
+          persist
+          maxfail 0
+          holdoff 5
+          noipdefault
+          noauth
+          hide-password
+          lcp-echo-interval 30
+          lcp-echo-failure 20
+          lcp-echo-adaptive
 
-  services.radvd = {
-    enable = true;
-    config = ''
-      interface br-lan {
-        AdvSendAdvert on;
-        MinRtrAdvInterval 3;
-        MaxRtrAdvInterval 10;
+          +ipv6
+          ipv6cp-use-ipaddr
 
-        AdvDefaultLifetime 9000;
-
-        AdvLinkMTU 1480;
-
-        prefix ::/64 {
-          AdvOnLink on;
-          AdvAutonomous on;
-          AdvRouterAddr on;
-
-          Base6Interface enp1s0u2;
-        };
-
-        RDNSS 2400:3200::1 2400:3200:baba::1 {
-        };
-      };
-    '';
-  };
-
-  services.networkd-dispatcher = {
-    enable = true;
-    rules = {
-      "ipv6-relay-route" = {
-        # 当接口状态变为 "routable" (已获取 IP 且可路由) 时触发
-        onState = ["routable"];
-        script = ''
-          #!${pkgs.runtimeShell}
-
-          # 定义接口名称
-          WAN_IF="enp1s0u2"
-          LAN_IF="br-lan"
-
-          # 只有当触发事件的接口是 WAN 口时才执行
-          if [ "$IFACE" != "$WAN_IF" ]; then
-            exit 0
-          fi
-
-          echo "IPv6 Relay Script: Detecting prefix change on $WAN_IF..."
-
-          # 提取 WAN 口的全球单播 IPv6 地址 (带掩码，例如 240e:xxx.../64)
-          # 使用 ip -6 -o addr show ... 避免输出多行，awk 提取第4列 IP
-          IP6_CIDR=$(${pkgs.iproute2}/bin/ip -6 -o addr show dev "$WAN_IF" scope global | ${pkgs.gawk}/bin/awk '{print $4}' | head -n 1)
-
-          if [ -n "$IP6_CIDR" ]; then
-             echo "IPv6 Relay Script: Found prefix $IP6_CIDR. Adding route to $LAN_IF."
-
-             # 【核心魔法】
-             # 添加一条路由：去往这个 /64 网段的包，扔给 LAN 口
-             # metric 100 确保它的优先级高于内核自带的 WAN 口路由 (通常是 1024)
-             # 使用 'replace' 而不是 'add'，防止脚本重复执行报错
-             ${pkgs.iproute2}/bin/ip -6 route replace "$IP6_CIDR" dev "$LAN_IF" metric 100
-
-             # 可选：重启 radvd 确保它尽快更新通告 (虽然 Base6Interface 通常会自动处理)
-             # /run/current-system/sw/bin/systemctl try-reload-or-restart radvd
-          else
-             echo "IPv6 Relay Script: No global IPv6 address found on $WAN_IF."
-          fi
+          mtu 1492
+          mru 1492
         '';
       };
     };
   };
 
-  # services.pppd = {
-  #   enable = true;
-  #   peers = {
-  #     # 定义拨号连接名称，接口将是 ppp0
-  #     chinamobile = {
-  #       autostart = true;
-  #       enable = true;
-  #       config = ''
-  #         plugin pppoe.so enp1s0u2
-  #         user "19551998351"
-  #         password "837145"
-  #
-  #         # usepeerdns
-  #
-  #         # 关键参数
-  #         defaultroute    # 自动添加默认路由
-  #         persist         # 断线重连
-  #         maxfail 0       # 无限次重试
-  #         holdoff 5       # 重试间隔
-  #         noipdefault
-  #         noauth
-  #         hide-password
-  #         lcp-echo-interval 30
-  #         lcp-echo-failure 20
-  #         lcp-echo-adaptive
-  #
-  #         +ipv6
-  #         ipv6cp-use-ipaddr
-  #
-  #         # MTU 设置 (PPPoE 标准)
-  #         mtu 1400
-  #         mru 1400
-  #       '';
-  #     };
-  #   };
-  # };
-
-  # --- 3. Systemd-networkd 配置 (DHCP & RA) ---
   systemd.network = {
     enable = true;
 
-    # bridge
     netdevs."10-br-lan" = {
       netdevConfig = {
         Kind = "bridge";
@@ -218,61 +139,36 @@
       };
     };
 
-    # LAN
     networks."20-lan-uplink" = {
       matchConfig.Name = "end0";
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # WAN, DHCP
     networks."20-wan-uplink" = {
       matchConfig.Name = "enp1s0u2";
+      linkConfig.RequiredForOnline = "no";
       networkConfig = {
-        DHCP = "yes";
-        IPv6AcceptRA = true;
-
-        IPv6ProxyNDP = true;
+        LinkLocalAddressing = "no";
+        DHCP = "no";
       };
-      linkConfig.RequiredForOnline = "routable";
+    };
+
+    networks."25-wan-ppp" = {
+      matchConfig.Name = "ppp0";
+      networkConfig = {
+        IPv6AcceptRA = true;
+        DHCP = "ipv6";
+      };
+      linkConfig = {
+        RequiredForOnline = "carrier";
+      };
       dhcpV6Config = {
+        WithoutRA = "solicit";
         PrefixDelegationHint = "::/60";
         UseDelegatedPrefix = true;
       };
     };
-
-    # networks."20-wan-uplink" = {
-    #   matchConfig.Name = "enp1s0u2";
-    #   # 只需要链路层启动即可
-    #   linkConfig.RequiredForOnline = "no";
-    #   networkConfig = {
-    #     # 必须禁用链路本地地址，防止干扰
-    #     LinkLocalAddressing = "no";
-    #     DHCP = "no";
-    #     # 这里不需要 IPMasquerade 了，因为它是物理载体
-    #   };
-    # };
-
-    # networks."25-wan-ppp" = {
-    #   matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
-    #   networkConfig = {
-    #     # 在这里开启 NAT (IPMasquerade)
-    #     # IPMasquerade = "ipv4";
-    #
-    #     # IPv6 配置 (PPPoE 也能获取 IPv6)
-    #     IPv6AcceptRA = true;
-    #     DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
-    #   };
-    #   linkConfig = {
-    #     RequiredForOnline = "carrier";
-    #     MTUBytes = 1400;
-    #   };
-    #   dhcpV6Config = {
-    #     WithoutRA = "solicit";
-    #     PrefixDelegationHint = "::/60";
-    #     UseDelegatedPrefix = true;
-    #   };
-    # };
 
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
@@ -281,14 +177,11 @@
         DHCPServer = true;
         IPMasquerade = "ipv4";
 
-        IPv6SendRA = false;
+        IPv6SendRA = true;
         IPv6AcceptRA = false;
-        IPv6ProxyNDP = true; # 允许 NDP 穿透
-
         DHCPPrefixDelegation = true;
       };
       linkConfig = {
-        # or "routable" with IP addresses configured
         RequiredForOnline = "no"; # carrier
       };
 
@@ -296,16 +189,15 @@
         PoolOffset = 100;
         PoolSize = 100;
         EmitDNS = true;
-        DNS = ["192.168.20.1"]; # 告诉客户端 DNS 找我 (然后被 dae 劫持)
+        DNS = ["192.168.20.1"];
       };
 
       # SLAAC
-      # ipv6SendRAConfig = {
-      #   Managed = false; # no DHCPv6
-      #   OtherInformation = false;
-      #   EmitDNS = true; # send DNS with RA
-      #   UplinkInterface = "enp1s0u2";
-      # };
+      ipv6SendRAConfig = {
+        Managed = false; # no DHCPv6
+        OtherInformation = false;
+        EmitDNS = true; # send DNS with RA
+      };
     };
   };
 
@@ -325,11 +217,9 @@
   '';
   boot.kernelParams = ["usbcore.autosuspend=-1"];
 
-  # services.tailscale = {
-  #   enable = true;
-  #   openFirewall = true;
-  #   extraUpFlags = ["--accept-dns=false" "--login-server https://sh.imdomestic.com:8443"];
-  # }
+  services.tailscale = {
+    enable = true;
+  };
 
   services.cockpit = {
     enable = true;
@@ -349,6 +239,111 @@
     enabledCollectors = ["systemd" "netdev" "netstat"];
     port = 9100;
   };
+
+  systemd.services.ddns-go = {
+    enable = true;
+    description = "ddns";
+
+    wantedBy = ["multi-user.target"];
+    wants = ["network-online.target"];
+    after = ["network-online.target"];
+
+    serviceConfig = {
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
+      Restart = "always";
+      RestartSec = 5;
+    };
+  };
+
+  services.xray.enable = true;
+  services.xray.settings = {
+    log.loglevel = "debug";
+
+    reverse = {
+      portals = [
+        {
+          tag = "portal-rpi4";
+          domain = "reverse-rpi4.hank.internal";
+        }
+      ];
+    };
+
+    inbounds = [
+      {
+        tag = "interconn";
+        port = 2443;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_a6fdbd63f69faa60";
+            shortIds = ["17"];
+          };
+        };
+      }
+
+      {
+        tag = "client-in";
+        port = 54321;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
+            shortIds = ["16"];
+          };
+        };
+      }
+    ];
+
+    outbounds = [
+      {
+        tag = "direct";
+        protocol = "freedom";
+      }
+    ];
+
+    routing.rules = [
+      {
+        type = "field";
+        inboundTag = ["interconn"];
+        outboundTag = "portal-rpi4";
+      }
+
+      {
+        type = "field";
+        inboundTag = ["client-in"];
+        outboundTag = "portal-rpi4";
+      }
+    ];
+  };
+
 
   services.desktopManager.gnome.enable = true;
 
@@ -387,6 +382,7 @@
     iproute2
     ethtool
     mtr
+    ddns-go
   ];
 
   programs.zsh.enable = true;
