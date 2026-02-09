@@ -7,13 +7,44 @@ on:
   pull_request:
 
 jobs:
-  flake-check:
+  check-configurations:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host: wsl
+            arch: x86_64
+          - host: shanghai
+            arch: x86_64
+          - host: x470
+            arch: x86_64
+          - host: tank
+            arch: x86_64
+          - host: h610
+            arch: x86_64
+          
+          - host: r2s
+            arch: aarch64
+          - host: r5sjp
+            arch: aarch64
+          - host: r5s
+            arch: aarch64
+          - host: r6s
+            arch: aarch64
+          - host: aarch64-wsl
+            arch: aarch64
+          - host: rpi4
+            arch: aarch64
+
+    name: Check ${{ matrix.host }} (${{ matrix.arch }})
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up QEMU
+        if: matrix.arch == 'aarch64'
         uses: docker/setup-qemu-action@v3
 
       - uses: webfactory/ssh-agent@v0.9.0
@@ -24,9 +55,12 @@ jobs:
         uses: cachix/install-nix-action@v27
         with:
           extra_nix_config: |
-            extra-platforms = aarch64-linux
-            substituters = https://cache.nixos.org https://mirrors.ustc.edu.cn/nix-channels/store
-            experimental-features = nix-command flakes
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            ${{ matrix.arch == 'aarch64' && 'extra-platforms = aarch64-linux' || '' }}
 
-      - name: Nix flake check
-        run: nix flake check --print-build-logs
+      - uses: DeterminateSystems/magic-nix-cache-action@v2
+
+      - name: Build Toplevel (Dry Run)
+        run: |
+          echo "Checking configuration for host: ${{ matrix.host }}..."
+          nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --dry-run
