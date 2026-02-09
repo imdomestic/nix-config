@@ -289,15 +289,15 @@ in {
       }
 
       # 2) 你的入口（示例：本机 socks）
-      {
-        tag = "socks-in";
-        port = 10800;
-        protocol = "socks";
-        settings = {
-          auth = "noauth";
-          udp = true;
-        };
-      }
+      # {
+      #   tag = "socks-in";
+      #   port = 10800;
+      #   protocol = "socks";
+      #   settings = {
+      #     auth = "noauth";
+      #     udp = true;
+      #   };
+      # }
 
       {
         tag = "client-in";
@@ -334,11 +334,11 @@ in {
     ];
 
     routing.rules = [
-      {
-        type = "field";
-        inboundTag = ["socks-in"];
-        outboundTag = "portal-r6s";
-      }
+      # {
+      #   type = "field";
+      #   inboundTag = ["socks-in"];
+      #   outboundTag = "portal-r6s";
+      # }
 
       {
         type = "field";
