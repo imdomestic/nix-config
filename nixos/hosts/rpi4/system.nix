@@ -75,9 +75,7 @@ in {
       };
     };
     firewall = {
-      enable = true;
-      trustedInterfaces = ["br-lan"];
-      interfaces."ppp0".allowedUDPPorts = [546];
+      enable = false;
       checkReversePath = false;
     };
     wg-quick.interfaces = {

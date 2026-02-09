@@ -409,8 +409,8 @@ in {
           domain = "reverse-r6s.hank.internal";
         }
         {
-          tag = "bridge-tank";
-          domain = "reverse-tank.hank.internal";
+          tag = "bridge-rpi4";
+          domain = "reverse-rpi4.hank.internal";
         }
         {
           tag = "bridge-sh";
@@ -451,12 +451,12 @@ in {
       }
 
       {
-        tag = "interconn-tank";
+        tag = "interconn-rpi4";
         protocol = "vless";
         settings = {
           vnext = [
             {
-              address = "tank.sanuki.cn";
+              address = "rpi4.imdomestic.com";
               port = 2443;
               users = [
                 {
@@ -519,7 +519,6 @@ in {
     ];
 
     routing.rules = [
-      # bridge 发起、目的域是 reverse 域名 => 去 interconn（注册/维持反代隧道）
       {
         type = "field";
         inboundTag = ["bridge-r6s"];
@@ -528,9 +527,9 @@ in {
       }
       {
         type = "field";
-        inboundTag = ["bridge-tank"];
-        domain = ["full:reverse-tank.hank.internal"];
-        outboundTag = "interconn-tank";
+        inboundTag = ["bridge-rpi4"];
+        domain = ["full:reverse-rpi4.hank.internal"];
+        outboundTag = "interconn-rpi4";
       }
       {
         type = "field";
@@ -542,7 +541,7 @@ in {
       # portal 转发来的“真实流量”（同样从 inboundTag=bridge 进入，但域名不是上面那个）=> 去 out
       {
         type = "field";
-        inboundTag = ["bridge-r6s" "bridge-tank"];
+        inboundTag = ["bridge-r6s" "bridge-rpi4" "bridge-sh"];
         outboundTag = "out";
       }
     ];

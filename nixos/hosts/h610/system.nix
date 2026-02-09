@@ -251,27 +251,6 @@
       };
     };
 
-    # networks."25-wan-ppp" = {
-    #   matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
-    #   networkConfig = {
-    #     # 在这里开启 NAT (IPMasquerade)
-    #     # IPMasquerade = "ipv4";
-    #
-    #     # IPv6 配置 (PPPoE 也能获取 IPv6)
-    #     IPv6AcceptRA = true;
-    #     DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
-    #   };
-    #   linkConfig = {
-    #     RequiredForOnline = "carrier";
-    #     MTUBytes = 1400;
-    #   };
-    #   dhcpV6Config = {
-    #     WithoutRA = "solicit";
-    #     PrefixDelegationHint = "::/60";
-    #     UseDelegatedPrefix = true;
-    #   };
-    # };
-
     networks."25-wan-ppp" = {
       matchConfig.Name = "ppp0";
       networkConfig = {
