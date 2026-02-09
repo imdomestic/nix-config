@@ -13,6 +13,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -21,8 +24,9 @@ jobs:
         uses: cachix/install-nix-action@v27
         with:
           extra_nix_config: |
+            extra-platforms = aarch64-linux
             substituters = https://cache.nixos.org https://mirrors.ustc.edu.cn/nix-channels/store
             experimental-features = nix-command flakes
 
       - name: Nix flake check
-        run: nix flake check --option substituters "https://cache.nixos.org https://mirrors.ustc.edu.cn/nix-channels/store"
+        run: nix flake check --print-build-logs
