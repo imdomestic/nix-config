@@ -2,7 +2,43 @@
   pkgs,
   inputs,
   ...
-}: {
+}: let
+  ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+    dnsconf:
+        - name: ""
+          ipv4:
+            enable: true
+            gettype: netInterface
+            url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
+            netinterface: ppp0
+            cmd: ""
+            domains:
+                - h610:imdomestic.com
+          ipv6:
+            enable: false
+            gettype: netInterface
+            url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
+            netinterface: br-lan
+            cmd: ""
+            ipv6reg: ""
+            domains:
+                - ""
+          dns:
+            name: cloudflare
+            id: ""
+            secret: REMOVED_SECRET_CLOUDFLARE_API_TOKEN_1e6e67ea94941305
+          ttl: ""
+    user:
+        username: hank
+        password: REMOVED_SECRET_DDNS_BCRYPT_PASSWORD_HASH_f41c83e46c6a3217
+    webhook:
+        webhookurl: ""
+        webhookrequestbody: ""
+        webhookheaders: ""
+    notallowwanaccess: false
+    lang: zh
+  '';
+in {
   imports = [
     ../../modules/dae
     ../../modules/keyd
@@ -179,8 +215,8 @@
         enable = true;
         config = ''
           plugin pppoe.so eno1
-          user "wx10158998"
-          password "14725836"
+          user "051012664304"
+          password "845747"
 
           # usepeerdns
 
@@ -270,7 +306,7 @@
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
       networkConfig = {
-        Address = "192.168.22.1/24";
+        Address = "192.168.2.1/24";
         DHCPServer = true;
         IPMasquerade = "ipv4";
 
@@ -286,7 +322,7 @@
         PoolOffset = 100;
         PoolSize = 100;
         EmitDNS = true;
-        DNS = ["192.168.22.1"];
+        DNS = ["192.168.2.1"];
       };
 
       # SLAAC
@@ -304,9 +340,130 @@
     fallbackDns = ["223.5.5.5"];
     extraConfig = ''
       DNSStubListener=yes
-      DNSStubListenerExtra=192.168.22.1
+      DNSStubListenerExtra=192.168.2.1
       DNSStubListenerExtra=::
     '';
+  };
+
+  systemd.services.ddns-go = {
+    enable = true;
+    description = "ddns-go";
+
+    wantedBy = ["multi-user.target"];
+    wants = ["network-online.target"];
+    after = ["network-online.target"];
+
+    serviceConfig = {
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
+      Restart = "always";
+      RestartSec = 5;
+    };
+  };
+
+  services.xray.enable = true;
+  services.xray.settings = {
+    log.loglevel = "debug";
+
+    reverse = {
+      portals = [
+        {
+          tag = "portal-r6s";
+          domain = "reverse-r6s.hank.internal";
+        }
+      ];
+    };
+
+    inbounds = [
+      {
+        tag = "interconn";
+        port = 1443;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
+            shortIds = ["16"];
+          };
+        };
+      }
+
+      # 2) 你的入口（示例：本机 socks）
+      # {
+      #   tag = "socks-in";
+      #   port = 10800;
+      #   protocol = "socks";
+      #   settings = {
+      #     auth = "noauth";
+      #     udp = true;
+      #   };
+      # }
+
+      {
+        tag = "client-in";
+        port = 54321;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
+            shortIds = ["16"];
+          };
+        };
+      }
+    ];
+
+    outbounds = [
+      {
+        tag = "direct";
+        protocol = "freedom";
+      }
+    ];
+
+    routing.rules = [
+      # {
+      #   type = "field";
+      #   inboundTag = ["socks-in"];
+      #   outboundTag = "portal-r6s";
+      # }
+
+      {
+        type = "field";
+        inboundTag = ["interconn"];
+        outboundTag = "portal-r6s";
+      }
+
+      {
+        type = "field";
+        inboundTag = ["client-in"];
+        outboundTag = "portal-r6s";
+      }
+    ];
   };
 
   services.xserver.displayManager.gdm.enable = false;

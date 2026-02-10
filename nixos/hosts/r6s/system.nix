@@ -102,14 +102,13 @@ in {
   services.pppd = {
     enable = true;
     peers = {
-      # 定义拨号连接名称，接口将是 ppp0
       telecom = {
         autostart = true;
         enable = true;
         config = ''
           plugin pppoe.so end0
-          user "051012664304"
-          password "845747"
+          user "wx10158998"
+          password "14725836"
 
           # usepeerdns
 
@@ -247,112 +246,6 @@ in {
   };
   services.irqbalance.enable = true;
 
-  services.xray.enable = true;
-  services.xray.settings = {
-    log.loglevel = "debug";
-
-    reverse = {
-      portals = [
-        {
-          tag = "portal-r6s";
-          domain = "reverse-r6s.hank.internal"; # 不要带 :80
-        }
-      ];
-    };
-
-    inbounds = [
-      # 1) 给 bridge 连进来的“互联入站”
-      {
-        tag = "interconn";
-        port = 1443;
-        protocol = "vless";
-        settings = {
-          clients = [
-            {
-              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
-              flow = "xtls-rprx-vision";
-            }
-          ];
-          decryption = "none";
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            show = false;
-            dest = "www.microsoft.com:443";
-            serverNames = ["www.microsoft.com" "microsoft.com"];
-            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
-            shortIds = ["16"];
-          };
-        };
-      }
-
-      # 2) 你的入口（示例：本机 socks）
-      # {
-      #   tag = "socks-in";
-      #   port = 10800;
-      #   protocol = "socks";
-      #   settings = {
-      #     auth = "noauth";
-      #     udp = true;
-      #   };
-      # }
-
-      {
-        tag = "client-in";
-        port = 54321;
-        protocol = "vless";
-        settings = {
-          clients = [
-            {
-              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
-              flow = "xtls-rprx-vision";
-            }
-          ];
-          decryption = "none";
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            show = false;
-            dest = "www.microsoft.com:443";
-            serverNames = ["www.microsoft.com" "microsoft.com"];
-            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
-            shortIds = ["16"];
-          };
-        };
-      }
-    ];
-
-    outbounds = [
-      {
-        tag = "direct";
-        protocol = "freedom";
-      }
-    ];
-
-    routing.rules = [
-      # {
-      #   type = "field";
-      #   inboundTag = ["socks-in"];
-      #   outboundTag = "portal-r6s";
-      # }
-
-      {
-        type = "field";
-        inboundTag = ["interconn"];
-        outboundTag = "portal-r6s";
-      }
-
-      {
-        type = "field";
-        inboundTag = ["client-in"];
-        outboundTag = "portal-r6s";
-      }
-    ];
-  };
 
   services.cockpit = {
     enable = true;
