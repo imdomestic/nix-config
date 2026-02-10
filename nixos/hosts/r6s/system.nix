@@ -12,22 +12,22 @@
     dnsconf:
         - name: ""
           ipv4:
-            enable: true
-            gettype: netInterface
+            enable: false
+            gettype: url
             url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-            netinterface: ppp0
+            netinterface: wan0
             cmd: ""
             domains:
-                - r6s:imdomestic.com
+                - ""
           ipv6:
-            enable: false
+            enable: true
             gettype: netInterface
             url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-            netinterface: br-lan
+            netinterface: ppp0
             cmd: ""
             ipv6reg: ""
             domains:
-                - ""
+                - r6s:imdomestic.com
           dns:
             name: cloudflare
             id: ""
@@ -35,7 +35,7 @@
           ttl: ""
     user:
         username: hank
-        password: REMOVED_SECRET_DDNS_BCRYPT_PASSWORD_HASH_f41c83e46c6a3217
+        password: REMOVED_SECRET_DDNS_BCRYPT_PASSWORD_HASH_05f4b998098acd58
     webhook:
         webhookurl: ""
         webhookrequestbody: ""
@@ -189,7 +189,7 @@ in {
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
       networkConfig = {
-        Address = "192.168.2.1/24";
+        Address = "192.168.22.1/24";
         # DHCPv4 Server
         DHCPServer = true;
         # IPv4 NAT
@@ -208,7 +208,7 @@ in {
         PoolOffset = 100;
         PoolSize = 100;
         EmitDNS = true;
-        DNS = ["192.168.2.1"]; # 告诉客户端 DNS 找我 (然后被 dae 劫持)
+        DNS = ["192.168.22.1"]; # 告诉客户端 DNS 找我 (然后被 dae 劫持)
       };
 
       # SLAAC
@@ -240,12 +240,11 @@ in {
     fallbackDns = ["223.5.5.5"];
     extraConfig = ''
       DNSStubListener=yes
-      DNSStubListenerExtra=192.168.2.1
+      DNSStubListenerExtra=192.168.22.1
       DNSStubListenerExtra=::
     '';
   };
   services.irqbalance.enable = true;
-
 
   services.cockpit = {
     enable = true;
