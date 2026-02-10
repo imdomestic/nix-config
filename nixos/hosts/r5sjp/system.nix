@@ -405,8 +405,8 @@ in {
     reverse = {
       bridges = [
         {
-          tag = "bridge-r6s";
-          domain = "reverse-r6s.hank.internal";
+          tag = "bridge-h610";
+          domain = "reverse-h610.hank.internal";
         }
         {
           tag = "bridge-rpi4";
@@ -421,12 +421,12 @@ in {
 
     outbounds = [
       {
-        tag = "interconn-r6s";
+        tag = "interconn-h610";
         protocol = "vless";
         settings = {
           vnext = [
             {
-              address = "r6s.imdomestic.com";
+              address = "h610.imdomestic.com";
               port = 1443;
               users = [
                 {
@@ -521,9 +521,9 @@ in {
     routing.rules = [
       {
         type = "field";
-        inboundTag = ["bridge-r6s"];
-        domain = ["full:reverse-r6s.hank.internal"];
-        outboundTag = "interconn-r6s";
+        inboundTag = ["bridge-h610"];
+        domain = ["full:reverse-h610.hank.internal"];
+        outboundTag = "interconn-h610";
       }
       {
         type = "field";
@@ -541,7 +541,7 @@ in {
       # portal 转发来的“真实流量”（同样从 inboundTag=bridge 进入，但域名不是上面那个）=> 去 out
       {
         type = "field";
-        inboundTag = ["bridge-r6s" "bridge-rpi4" "bridge-sh"];
+        inboundTag = ["bridge-h610" "bridge-rpi4" "bridge-sh"];
         outboundTag = "out";
       }
     ];

@@ -367,8 +367,8 @@ in {
     reverse = {
       portals = [
         {
-          tag = "portal-r6s";
-          domain = "reverse-r6s.hank.internal";
+          tag = "portal-h610";
+          domain = "reverse-h610.hank.internal";
         }
       ];
     };
@@ -449,19 +449,19 @@ in {
       # {
       #   type = "field";
       #   inboundTag = ["socks-in"];
-      #   outboundTag = "portal-r6s";
+      #   outboundTag = "portal-h610";
       # }
 
       {
         type = "field";
         inboundTag = ["interconn"];
-        outboundTag = "portal-r6s";
+        outboundTag = "portal-h610";
       }
 
       {
         type = "field";
         inboundTag = ["client-in"];
-        outboundTag = "portal-r6s";
+        outboundTag = "portal-h610";
       }
     ];
   };
