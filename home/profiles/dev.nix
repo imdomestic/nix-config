@@ -105,6 +105,7 @@
     ]
     ++ lib.optionals (lib.hasInfix "linux" system) [
       nerdctl
+      multipath-tools
     ]
     ++ lib.optionals (lib.hasInfix "darwin" system) [
       iproute2mac
