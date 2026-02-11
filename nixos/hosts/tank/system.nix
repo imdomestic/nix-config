@@ -67,7 +67,6 @@ in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    ../../modules/dae
     ../../modules/grub
     ../../modules/tuigreet
     ../../modules/keyd
