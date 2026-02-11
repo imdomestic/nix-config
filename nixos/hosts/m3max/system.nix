@@ -28,7 +28,9 @@
   };
 
   nixpkgs.hostPlatform = "aarch64-darwin";
+
   # environment.systemPackages = with pkgs; [
+  #   iproute2mac
   # ];
 
   # host-users

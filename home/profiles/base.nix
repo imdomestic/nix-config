@@ -2,6 +2,8 @@
   inputs,
   pkgs,
   lib,
+  system,
+  username,
   ...
 }: {
   home.packages = with pkgs; [
@@ -247,6 +249,9 @@
     enable = true;
     clean.enable = false;
     clean.extraArgs = "--keep-since 4d --keep 3";
-    flake = "/home/hank/.config/nix-config";
+    flake =
+      if lib.hasInfix "linux" system
+      then "/home/${username}/.config/nix-config"
+      else "/Users/${username}/.config/nix-config";
   };
 }
