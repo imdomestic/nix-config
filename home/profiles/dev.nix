@@ -92,7 +92,6 @@
     gnupg
 
     # devops
-    nerdctl
     kubectl
     k9s
     kubernetes-helm
