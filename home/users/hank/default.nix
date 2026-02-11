@@ -53,7 +53,7 @@
   };
 
   xdg.configFile = {
-    nvim.source = inputs.kvim.outPath;
+    kvim.source = inputs.kvim.outPath;
     zsh.source = inputs.zsh-config.outPath;
     wezterm.source = inputs.wezterm-config.outPath;
     neofetch = {

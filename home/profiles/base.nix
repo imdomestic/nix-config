@@ -235,7 +235,7 @@
   };
 
   xdg.configFile = {
-    hvim.source = inputs.hvim.outPath;
+    nvim.source = inputs.hvim.outPath;
   };
 
   programs.neovim = {

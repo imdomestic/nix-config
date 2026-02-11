@@ -44,7 +44,7 @@ in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    # ../../modules/dae
+    ../../modules/dae
     ../../modules/tuigreet
     ../../modules/keyd
   ];

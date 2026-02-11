@@ -577,11 +577,11 @@
     "hvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1770695167,
-        "narHash": "sha256-cl/DmmRFx8ioBqRc1XOqWsVokjXbl7odhb27wYaDl5o=",
+        "lastModified": 1770784969,
+        "narHash": "sha256-/XNH3qVkmOlCGLWgHGhVCoWWV2eyUFNelwSlBgQnRIg=",
         "owner": "HCHogan",
         "repo": "hvim",
-        "rev": "f8a0bf55cd1698952cd09cbcf084f99f4c778f25",
+        "rev": "3988f55810733650dff2c0431f041a922913bde2",
         "type": "github"
       },
       "original": {
