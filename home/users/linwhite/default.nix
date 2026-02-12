@@ -11,4 +11,25 @@
       then "/Users/linwhite/.config/zsh"
       else "/home/linwhite/.config/zsh";
   };
+
+  programs.git = {
+    enable = true;
+    settings = {
+      user.name = "linwhite";
+      user.email = "linwhite@linwhite.top"
+    };
+  };
+
+  programs.neovim = {
+    enable = true;
+    defaultEditor = true;
+  };
+
+  programs.starship = {
+    enable = true;
+    enableTransience = true;
+    enableZshIntegration = true;
+  };
+
+  
 }
