@@ -85,6 +85,7 @@
       socat
       nmap
       ipcalc
+      tshark
 
       #misc
       cowsay
@@ -104,6 +105,7 @@
       pkgs-unstable.opencode
     ]
     ++ lib.optionals (lib.hasInfix "linux" system) [
+      iproute2
       nerdctl
       multipath-tools
     ]

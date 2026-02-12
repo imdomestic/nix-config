@@ -219,6 +219,7 @@
       setw -g monitor-activity off
       setw -g monitor-bell off
       set -g history-limit 10000
+      set -g set-clipboard on
 
       set-option -g renumber-windows on
       set -g base-index 1
