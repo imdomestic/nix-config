@@ -193,8 +193,6 @@
   programs.zoxide = {
     enable = true;
     enableNushellIntegration = true;
-    # 关键配置：把 cd 命令直接替换成 zoxide
-    # 这样你还是习惯敲 cd，但拥有了 zoxide 的所有超能力
     # options = ["--cmd cd"];
   };
 
@@ -205,6 +203,11 @@
     plugins = [pkgs.tmuxPlugins.dotbar];
     extraConfig = ''
       set-option -ga terminal-overrides ",*256col*:Tc"
+      set -ga terminal-overrides ',*:Ss=\E[%p1%d q:Se=\E[6 q'
+
+      set -g allow-passthrough on
+      set -ga update-environment TERM
+      set -ga update-environment TERM_PROGRAM
 
       setw -g xterm-keys on
       set -s escape-time 0
@@ -219,6 +222,7 @@
       setw -g monitor-activity off
       setw -g monitor-bell off
       set -g history-limit 10000
+
       set -g set-clipboard on
 
       set-option -g renumber-windows on
@@ -230,10 +234,17 @@
       bind < swap-pane -U
       bind | swap-pane
 
+      unbind C-b
+      set -g prefix C-a
+      bind C-a send-prefix
       bind -r H resize-pane -L 5
       bind -r J resize-pane -D 5
       bind -r K resize-pane -U 5
       bind -r L resize-pane -R 5
+
+      setw -g mode-keys vi
+      bind -T copy-mode-vi v send-keys -X begin-selection
+      bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
     '';
   };
 
