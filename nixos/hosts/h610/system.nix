@@ -367,6 +367,7 @@ in {
     insecure = true; # 本地单节点运行，不强制 SSL，方便 Zitadel 连接
     listen.address = "127.0.0.1"; # 只监听本地，不要暴露给公网
     http.address = "127.0.0.1";
+    extraArgs = [ "--single-node" ];
   };
   systemd.services.caddy.serviceConfig = {
     EnvironmentFile = "/etc/caddy/cloudflare.env";
