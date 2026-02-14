@@ -364,11 +364,15 @@ in {
 
   services.cockroachdb = {
     enable = true;
-    insecure = true; # 本地单节点运行，不强制 SSL，方便 Zitadel 连接
-    listen.address = "127.0.0.1"; # 只监听本地，不要暴露给公网
-    http.address = "127.0.0.1";
-    extraArgs = [ "--single-node" ];
+    insecure = true;
   };
+  systemd.services.cockroachdb.serviceConfig.ExecStart = lib.mkForce (
+    "${pkgs.cockroachdb}/bin/cockroach start-single-node"
+    + " --insecure"
+    + " --listen-addr=127.0.0.1"
+    + " --http-addr=127.0.0.1"
+    + " --store=/var/lib/cockroachdb"
+  );
   systemd.services.caddy.serviceConfig = {
     EnvironmentFile = "/etc/caddy/cloudflare.env";
   };
