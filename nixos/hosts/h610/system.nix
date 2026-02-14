@@ -412,7 +412,7 @@ in {
   };
 
   services.zitadel = {
-    enable = false;
+    enable = true;
     masterKeyFile = "/etc/nixos/zitadel-masterkey"; # 步骤二生成的文件
     settings = {
       Port = 8080;
@@ -426,80 +426,79 @@ in {
     };
   };
 
-  services.netbird.server = {
-    enable = false;
-    domain = "${domain}:${toString netbirdPort}"; # 这里的 Domain 必须带端口
-    enableNginx = false; # 我们使用 Caddy，禁用内置 Nginx
+  # services.netbird.server = {
+  #   enable = true;
+  #   domain = "${domain}:${toString netbirdPort}"; # 这里的 Domain 必须带端口
+  #   enableNginx = false; # 我们使用 Caddy，禁用内置 Nginx
+  #
+  #   # 管理服务
+  #   management = {
+  #     port = 8011;
+  #     metricsPort = 9090;
+  #     dnsDomain = "netbird.local"; # 内网 peer 域名后缀
+  #
+  #     # OIDC 配置：指向 Zitadel
+  #     oidcConfigEndpoint = "https://${domain}:${toString zitadelPort}/.well-known/openid-configuration";
+  #
+  #     settings = {
+  #       # 认证流程配置
+  #       HttpConfig = {
+  #         # 必须显式设置，否则可能获取不到带端口的 URL
+  #         OIDCConfigEndpoint = "https://${domain}:${toString zitadelPort}/.well-known/openid-configuration";
+  #         AuthAudience = oidcClientId;
+  #       };
+  #
+  #       # 这里的 ClientID 需要在 Zitadel 中创建后填入
+  #       PKCEAuthorizationFlow = {
+  #         ProviderConfig = {
+  #           ClientID = oidcClientId;
+  #           Audience = oidcClientId;
+  #           RedirectURLs = ["http://localhost:53000"]; # 本地 CLI 登录回调
+  #         };
+  #       };
+  #       DeviceAuthorizationFlow = {
+  #         Provider = "hosted";
+  #         ProviderConfig = {
+  #           ClientID = oidcClientId;
+  #           Audience = oidcClientId;
+  #         };
+  #       };
+  #     };
+  #   };
+  #
+  #   # 信令服务
+  #   signal = {
+  #     port = 8012;
+  #   };
+  #
+  #   # Dashboard 配置
+  #   dashboard = {
+  #     # Dashboard 配置会被编译进前端静态文件
+  #     settings = {
+  #       AUTH_AUTHORITY = "https://${domain}:${toString zitadelPort}";
+  #       AUTH_CLIENT_ID = oidcClientId;
+  #       AUTH_AUDIENCE = oidcClientId;
+  #       AUTH_SUPPORTED_SCOPES = "openid profile email offline_access";
+  #       USE_AUTH0 = false;
+  #       NETBIRD_TOKEN_SOURCE = "accessToken"; # Zitadel 通常用 accessToken
+  #     };
+  #   };
+  #
+  #   # Coturn 中继服务器
+  #   coturn = {
+  #     enable = true;
+  #     password = "YOUR_COTURN_SECRET"; # 建议使用 passwordFile 并在生产环境中保密
+  #   };
+  # };
 
-    # 管理服务
-    management = {
-      port = 8011;
-      metricsPort = 9090;
-      dnsDomain = "netbird.local"; # 内网 peer 域名后缀
-
-      # OIDC 配置：指向 Zitadel
-      oidcConfigEndpoint = "https://${domain}:${toString zitadelPort}/.well-known/openid-configuration";
-
-      settings = {
-        # 认证流程配置
-        HttpConfig = {
-          # 必须显式设置，否则可能获取不到带端口的 URL
-          OIDCConfigEndpoint = "https://${domain}:${toString zitadelPort}/.well-known/openid-configuration";
-          AuthAudience = oidcClientId;
-        };
-
-        # 这里的 ClientID 需要在 Zitadel 中创建后填入
-        PKCEAuthorizationFlow = {
-          ProviderConfig = {
-            ClientID = oidcClientId;
-            Audience = oidcClientId;
-            RedirectURLs = ["http://localhost:53000"]; # 本地 CLI 登录回调
-          };
-        };
-        DeviceAuthorizationFlow = {
-          Provider = "hosted";
-          ProviderConfig = {
-            ClientID = oidcClientId;
-            Audience = oidcClientId;
-          };
-        };
-      };
-    };
-
-    # 信令服务
-    signal = {
-      port = 8012;
-    };
-
-    # Dashboard 配置
-    dashboard = {
-      # Dashboard 配置会被编译进前端静态文件
-      settings = {
-        AUTH_AUTHORITY = "https://${domain}:${toString zitadelPort}";
-        AUTH_CLIENT_ID = oidcClientId;
-        AUTH_AUDIENCE = oidcClientId;
-        AUTH_SUPPORTED_SCOPES = "openid profile email offline_access";
-        USE_AUTH0 = false;
-        NETBIRD_TOKEN_SOURCE = "accessToken"; # Zitadel 通常用 accessToken
-      };
-    };
-
-    # Coturn 中继服务器
-    coturn = {
-      enable = true;
-      password = "YOUR_COTURN_SECRET"; # 建议使用 passwordFile 并在生产环境中保密
-    };
-  };
-
-  # --- 4. NetBird Client (本机加入网络) ---
-  services.netbird.clients.default = {
-    port = 51820;
-    interface = "wt0";
-    # 自动连接到我们自建的服务器
-    # 注意：客户端初次连接通常需要 `netbird up --management-url ...`
-    # NixOS 模块可能只负责启动 daemon。
-    # 建议在系统启动后手动执行一次登录命令。
-  };
+  # services.netbird.clients.default = {
+  #   port = 51820;
+  #   interface = "wt0";
+  #   # 自动连接到我们自建的服务器
+  #   # 注意：客户端初次连接通常需要 `netbird up --management-url ...`
+  #   # NixOS 模块可能只负责启动 daemon。
+  #   # 建议在系统启动后手动执行一次登录命令。
+  # };
 
   services.xserver.displayManager.gdm.enable = false;
   services.xserver.desktopManager.gnome.enable = false;
