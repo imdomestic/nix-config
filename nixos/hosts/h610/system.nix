@@ -431,30 +431,35 @@ in {
   services.zitadel = {
     enable = true;
     masterKeyFile = "/etc/nixos/zitadel-masterkey"; # 步骤二生成的文件
+    tlsMode = "external";
     settings = {
       Port = 8080;
       ExternalSecure = true;
       ExternalDomain = "${domain}:${toString zitadelPort}";
       ExternalPort = zitadelPort;
-      # 禁用自带 TLS，由 Caddy 处理
-      TLS = {
-        Enabled = false;
-      };
-      Database = lib.mkForce {
+
+      Database = {
         postgres = {
           Host = "127.0.0.1";
           Port = 5432;
-          User = "zitadel"; # 大写 U
-          Password = ""; # 大写 P，虽然是空但最好留着
-          Database = "zitadel"; # 大写 D
-          SSL = {
-            Mode = "disable"; # 大写 S, M
-          };
-          # 连接池配置也必须大写开头
+          Database = "zitadel";
+
           MaxOpenConns = 20;
           MaxIdleConns = 10;
-          ConnMaxLifetime = "30m";
-          ConnMaxIdleTime = "5m";
+          MaxConnLifetime = "30m";
+          MaxConnIdleTime = "5m";
+
+          User = {
+            Username = "zitadel";
+            # Password 放到 extraSettingsPaths 的 secret 里（见下）
+            SSL = {Mode = "disable";};
+          };
+
+          Admin = {
+            Username = "postgres";
+            # Password 同样放 secret 里
+            SSL = {Mode = "disable";};
+          };
         };
       };
     };
