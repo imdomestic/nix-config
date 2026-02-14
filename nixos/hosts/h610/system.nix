@@ -12,9 +12,7 @@
   oidcClientSecret = "NETBIRD_CLIENT_SECRET_FROM_ZITADEL";
   cloudflareTokenFile = "/etc/nixos/cloudflare-token";
   caddyWithCloudflare = pkgs.caddy.withPlugins {
-    plugins = [ "github.com/caddy-dns/cloudflare@master" ];
-    # 注意：第一次构建必定报错 Hash Mismatch，这是正常的！
-    # 请运行 rebuild，将报错信息中 "got: sha256-..." 那一串哈希值复制下来，替换下面这一行：
+    plugins = [ "github.com/caddy-dns/cloudflare@v0.2.3" ];
     hash = "sha256-bJO2RIa6hYsoVl3y2L86EM34Dfkm2tlcEsXn2+COgzo="; 
   };
   ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
