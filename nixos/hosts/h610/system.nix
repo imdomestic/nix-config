@@ -374,7 +374,7 @@ in {
         url = "https://binaries.cockroachdb.com/cockroach-v${version}.linux-amd64.tgz";
         # 第一次构建会报错 Hash Mismatch，请像之前处理 Caddy 一样，
         # 把报错里的 sha256 填回来。
-        hash = lib.fakeHash;
+        hash = "sha256-AUkFMaCfWNirtdAy9GhNPzeAuRaklCfW35GPt8h9KPM=";
       };
 
       installPhase = ''
