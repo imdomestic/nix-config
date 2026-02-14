@@ -444,17 +444,14 @@ in {
         postgres = {};
       };
     };
-    environment = {
-      "ZITADEL_DATABASE_POSTGRES_HOST" = "127.0.0.1";
-      "ZITADEL_DATABASE_POSTGRES_PORT" = "5432";
-      "ZITADEL_DATABASE_POSTGRES_USER" = "zitadel";
-      "ZITADEL_DATABASE_POSTGRES_DATABASE" = "zitadel";
-      "ZITADEL_DATABASE_POSTGRES_SSL_MODE" = "disable";
-      "ZITADEL_DATABASE_POSTGRES_PASSWORD" = ""; # 空密码
-
-      # 显式设置连接池 (可选，防止默认值过大)
-      "ZITADEL_DATABASE_POSTGRES_MAXOPENCONNS" = "20";
-    };
+  };
+  systemd.services.zitadel.environment = {
+    "ZITADEL_DATABASE_POSTGRES_HOST" = "127.0.0.1";
+    "ZITADEL_DATABASE_POSTGRES_PORT" = "5432";
+    "ZITADEL_DATABASE_POSTGRES_USER" = "zitadel";
+    "ZITADEL_DATABASE_POSTGRES_DATABASE" = "zitadel";
+    "ZITADEL_DATABASE_POSTGRES_SSL_MODE" = "disable";
+    "ZITADEL_DATABASE_POSTGRES_MAX_OPEN_CONNS" = "20";
   };
 
   services.netbird.server = {
