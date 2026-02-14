@@ -16,6 +16,9 @@
     overlays = [
       inputs.nur.overlays.default
       inputs.nix-minecraft.overlay
+      (final: prev: {
+        zjstatus = inputs.zjstatus.packages.${prev.system}.default;
+      })
     ];
     config = {
       allowUnfree = true;
