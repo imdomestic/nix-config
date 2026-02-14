@@ -441,17 +441,23 @@ in {
         Enabled = false;
       };
       Database = lib.mkForce {
-        postgres = {};
+        postgres = {
+          Host = "127.0.0.1";
+          Port = 5432;
+          User = "zitadel"; # 大写 U
+          Password = ""; # 大写 P，虽然是空但最好留着
+          Database = "zitadel"; # 大写 D
+          SSL = {
+            Mode = "disable"; # 大写 S, M
+          };
+          # 连接池配置也必须大写开头
+          MaxOpenConns = 20;
+          MaxIdleConns = 10;
+          ConnMaxLifetime = "30m";
+          ConnMaxIdleTime = "5m";
+        };
       };
     };
-  };
-  systemd.services.zitadel.environment = {
-    "ZITADEL_DATABASE_POSTGRES_HOST" = "127.0.0.1";
-    "ZITADEL_DATABASE_POSTGRES_PORT" = "5432";
-    "ZITADEL_DATABASE_POSTGRES_USER" = "zitadel";
-    "ZITADEL_DATABASE_POSTGRES_DATABASE" = "zitadel";
-    "ZITADEL_DATABASE_POSTGRES_SSL_MODE" = "disable";
-    "ZITADEL_DATABASE_POSTGRES_MAX_OPEN_CONNS" = "20";
   };
 
   services.netbird.server = {
