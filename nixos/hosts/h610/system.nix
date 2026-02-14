@@ -1,8 +1,22 @@
 {
   pkgs,
   inputs,
+  config,
+  lib,
   ...
 }: let
+  domain = "h610.imdomestic.com";
+  zitadelPort = 8443; # 外部访问 Zitadel 的端口
+  netbirdPort = 9443; # 外部访问 NetBird 的端口
+  oidcClientId = "NETBIRD_CLIENT_ID_FROM_ZITADEL";
+  oidcClientSecret = "NETBIRD_CLIENT_SECRET_FROM_ZITADEL";
+  cloudflareTokenFile = "/etc/nixos/cloudflare-token";
+  caddyWithCloudflare = pkgs.caddy.withPlugins {
+    plugins = [ "github.com/caddy-dns/cloudflare@master" ];
+    # 注意：第一次构建必定报错 Hash Mismatch，这是正常的！
+    # 请运行 rebuild，将报错信息中 "got: sha256-..." 那一串哈希值复制下来，替换下面这一行：
+    hash = lib.fakeHash; 
+  };
   ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
     dnsconf:
         - name: ""
@@ -108,105 +122,6 @@ in {
     };
   };
 
-  # services.ndppd = {
-  #   enable = true;
-  #   proxies = {
-  #     "eno1" = {
-  #       router = true;
-  #       rules."::/0" = {
-  #         interface = "br-lan";
-  #       };
-  #     };
-  #     # "br-lan" = {
-  #     #   router = true;
-  #     #   rules."::/0" = {
-  #     #     interface = "enp1s0u2";
-  #     #   };
-  #     # };
-  #   };
-  # };
-
-  # systemd.services.ndppd = {
-  #   after = ["network.target" "sys-subsystem-net-devices-br\\x2dlan.device"];
-  #   bindsTo = ["sys-subsystem-net-devices-br\\x2dlan.device"];
-  #
-  #   # 【保险2】无限重启策略
-  #   serviceConfig = {
-  #     Restart = "always";
-  #     RestartSec = "5";
-  #     ExecStartPre = "${pkgs.coreutils}/bin/sleep 2";
-  #   };
-  # };
-
-  # services.radvd = {
-  #   enable = true;
-  #   config = ''
-  #     interface br-lan {
-  #       AdvSendAdvert on;
-  #       MinRtrAdvInterval 3;
-  #       MaxRtrAdvInterval 10;
-  #
-  #       AdvDefaultLifetime 9000;
-  #
-  #       AdvLinkMTU 1480;
-  #
-  #       prefix ::/64 {
-  #         AdvOnLink on;
-  #         AdvAutonomous on;
-  #         AdvRouterAddr on;
-  #
-  #         Base6Interface eno1;
-  #       };
-  #
-  #       RDNSS 2400:3200::1 2400:3200:baba::1 {
-  #       };
-  #     };
-  #   '';
-  # };
-
-  # services.networkd-dispatcher = {
-  #   enable = true;
-  #   rules = {
-  #     "ipv6-relay-route" = {
-  #       # 当接口状态变为 "routable" (已获取 IP 且可路由) 时触发
-  #       onState = ["routable"];
-  #       script = ''
-  #         #!${pkgs.runtimeShell}
-  #
-  #         # 定义接口名称
-  #         WAN_IF="eno1"
-  #         LAN_IF="br-lan"
-  #
-  #         # 只有当触发事件的接口是 WAN 口时才执行
-  #         if [ "$IFACE" != "$WAN_IF" ]; then
-  #           exit 0
-  #         fi
-  #
-  #         echo "IPv6 Relay Script: Detecting prefix change on $WAN_IF..."
-  #
-  #         # 提取 WAN 口的全球单播 IPv6 地址 (带掩码，例如 240e:xxx.../64)
-  #         # 使用 ip -6 -o addr show ... 避免输出多行，awk 提取第4列 IP
-  #         IP6_CIDR=$(${pkgs.iproute2}/bin/ip -6 -o addr show dev "$WAN_IF" scope global | ${pkgs.gawk}/bin/awk '{print $4}' | head -n 1)
-  #
-  #         if [ -n "$IP6_CIDR" ]; then
-  #            echo "IPv6 Relay Script: Found prefix $IP6_CIDR. Adding route to $LAN_IF."
-  #
-  #            # 【核心魔法】
-  #            # 添加一条路由：去往这个 /64 网段的包，扔给 LAN 口
-  #            # metric 100 确保它的优先级高于内核自带的 WAN 口路由 (通常是 1024)
-  #            # 使用 'replace' 而不是 'add'，防止脚本重复执行报错
-  #            ${pkgs.iproute2}/bin/ip -6 route replace "$IP6_CIDR" dev "$LAN_IF" metric 100
-  #
-  #            # 可选：重启 radvd 确保它尽快更新通告 (虽然 Base6Interface 通常会自动处理)
-  #            # /run/current-system/sw/bin/systemctl try-reload-or-restart radvd
-  #         else
-  #            echo "IPv6 Relay Script: No global IPv6 address found on $WAN_IF."
-  #         fi
-  #       '';
-  #     };
-  #   };
-  # };
-
   services.pppd = {
     enable = true;
     peers = {
@@ -243,7 +158,6 @@ in {
     };
   };
 
-  # --- 3. Systemd-networkd 配置 (DHCP & RA) ---
   systemd.network = {
     enable = true;
 
@@ -261,22 +175,6 @@ in {
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
-
-    # WAN, DHCP
-    # networks."20-wan-uplink" = {
-    #   matchConfig.Name = "eno1";
-    #   networkConfig = {
-    #     DHCP = "yes";
-    #     IPv6AcceptRA = true;
-    #
-    #     IPv6ProxyNDP = true;
-    #   };
-    #   linkConfig.RequiredForOnline = "routable";
-    #   dhcpV6Config = {
-    #     PrefixDelegationHint = "::/60";
-    #     UseDelegatedPrefix = true;
-    #   };
-    # };
 
     networks."20-wan-uplink" = {
       matchConfig.Name = "eno1";
@@ -464,6 +362,145 @@ in {
         outboundTag = "portal-h610";
       }
     ];
+  };
+
+  services.caddy = {
+    enable = true;
+    package = caddyWithCloudflare;
+
+    # Caddy 全局配置：配置 DNS-01 验证
+    globalConfig = ''
+      acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+    '';
+
+    # 环境变量：注入 Cloudflare Token
+    environmentFile = cloudflareTokenFile;
+
+    virtualHosts = {
+      # Zitadel 入口
+      "https://${domain}:${toString zitadelPort}" = {
+        extraConfig = ''
+          reverse_proxy h2c://localhost:8080
+        '';
+      };
+
+      # NetBird 入口 (Dashboard + API + Signal 复用端口)
+      "https://${domain}:${toString netbirdPort}" = {
+        extraConfig = ''
+          # 1. 静态 Dashboard 文件
+          root * ${config.services.netbird.server.dashboard.finalDrv}
+          file_server
+
+          # 2. Management API (HTTP)
+          handle /api* {
+            reverse_proxy localhost:8011
+          }
+
+          # 3. Management API (gRPC)
+          handle /management.ManagementService/* {
+            reverse_proxy h2c://localhost:8011
+          }
+
+          # 4. Signal (gRPC)
+          handle /signalexchange.SignalExchange/* {
+            reverse_proxy h2c://localhost:8012
+          }
+
+          # 5. 处理前端路由 (SPA)
+          try_files {path} {path}/ /index.html
+        '';
+      };
+    };
+  };
+
+  services.zitadel = {
+    enable = true;
+    masterKeyFile = "/etc/nixos/zitadel-masterkey"; # 步骤二生成的文件
+    settings = {
+      Port = 8080;
+      ExternalSecure = true;
+      ExternalDomain = "${domain}:${toString zitadelPort}";
+      ExternalPort = zitadelPort;
+      # 禁用自带 TLS，由 Caddy 处理
+      TLS = {
+        Enabled = false;
+      };
+    };
+  };
+
+  services.netbird.server = {
+    enable = true;
+    domain = "${domain}:${toString netbirdPort}"; # 这里的 Domain 必须带端口
+    enableNginx = false; # 我们使用 Caddy，禁用内置 Nginx
+
+    # 管理服务
+    management = {
+      port = 8011;
+      metricsPort = 9090;
+      dnsDomain = "netbird.local"; # 内网 peer 域名后缀
+
+      # OIDC 配置：指向 Zitadel
+      oidcConfigEndpoint = "https://${domain}:${toString zitadelPort}/.well-known/openid-configuration";
+
+      settings = {
+        # 认证流程配置
+        HttpConfig = {
+          # 必须显式设置，否则可能获取不到带端口的 URL
+          OIDCConfigEndpoint = "https://${domain}:${toString zitadelPort}/.well-known/openid-configuration";
+          AuthAudience = oidcClientId;
+        };
+
+        # 这里的 ClientID 需要在 Zitadel 中创建后填入
+        PKCEAuthorizationFlow = {
+          ProviderConfig = {
+            ClientID = oidcClientId;
+            Audience = oidcClientId;
+            RedirectURLs = ["http://localhost:53000"]; # 本地 CLI 登录回调
+          };
+        };
+        DeviceAuthorizationFlow = {
+          Provider = "hosted";
+          ProviderConfig = {
+            ClientID = oidcClientId;
+            Audience = oidcClientId;
+          };
+        };
+      };
+    };
+
+    # 信令服务
+    signal = {
+      port = 8012;
+    };
+
+    # Dashboard 配置
+    dashboard = {
+      # Dashboard 配置会被编译进前端静态文件
+      settings = {
+        AUTH_AUTHORITY = "https://${domain}:${toString zitadelPort}";
+        AUTH_CLIENT_ID = oidcClientId;
+        AUTH_AUDIENCE = oidcClientId;
+        AUTH_SUPPORTED_SCOPES = "openid profile email offline_access";
+        USE_AUTH0 = false;
+        NETBIRD_TOKEN_SOURCE = "accessToken"; # Zitadel 通常用 accessToken
+      };
+    };
+
+    # Coturn 中继服务器
+    coturn = {
+      enable = true;
+      password = "YOUR_COTURN_SECRET"; # 建议使用 passwordFile 并在生产环境中保密
+    };
+  };
+
+  # --- 4. NetBird Client (本机加入网络) ---
+  services.netbird.clients.default = {
+    port = 51820;
+    interface = "wt0";
+    # 自动连接到我们自建的服务器
+    # 注意：客户端初次连接通常需要 `netbird up --management-url ...`
+    # NixOS 模块可能只负责启动 daemon。
+    # 建议在系统启动后手动执行一次登录命令。
   };
 
   services.xserver.displayManager.gdm.enable = false;
