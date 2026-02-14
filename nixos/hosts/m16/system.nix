@@ -20,9 +20,12 @@
 
   networking = {
     hostName = "m16"; # Define your hostname.
-    networkmanager.enable = false; # Easiest to use and most distros use this by default.
-    # useDHCP = false;
+    networkmanager.enable = false ;
+    wireless.wireless.iwd.enable = true ;
+
+    useDHCP = false;
     useNetworkd = true;
+    nameservers = [ "1.1.1.1" "8.8.8.8" ];
     };
 
   #   wg-quick.interfaces = {
@@ -38,14 +41,18 @@
   # networking.proxy.default = "http://127.0.0.1:7890";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
-  # systemd.network = {
-  #   enable = true;
-  #   netdevs."10-br-lan" = {
-  #     netdevConfig = {
-  #       Kind = "bridge";
-  #       Name = "br-lan";
-  #     };
-  #   };
+  systemd.network = {
+    wait-online.enable = false;
+    enable = true;
+    networks."wlan" ={
+      matchConfig.Name = "wlan0";
+      networkConfig = {
+      DHCP = "yes";
+      };
+    };
+  };
+  
+
   #
   #   networks."20-lan-uplink" = {
   #     matchConfig.Name = "eno1";
@@ -76,6 +83,8 @@
   services.flatpak.enable = true;
   services.spice-vdagentd.enable = true;
   services.blueman.enable = true;
+
+  services.resolved.enable = true;
 
   xdg.portal.wlr.enable = true;
 
