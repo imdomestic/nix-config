@@ -21,7 +21,7 @@
   networking = {
     hostName = "m16"; # Define your hostname.
     networkmanager.enable = false ;
-    wireless.wireless.iwd.enable = true ;
+    wireless.iwd.enable = true ;
 
     useDHCP = false;
     useNetworkd = true;
