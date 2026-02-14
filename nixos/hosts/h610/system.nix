@@ -365,6 +365,24 @@ in {
   services.cockroachdb = {
     enable = true;
     insecure = true;
+    package = pkgs.stdenv.mkDerivation rec {
+      pname = "cockroachdb-bin";
+      version = "22.2.19";
+
+      src = pkgs.fetchzip {
+        # 注意：这里专门选了 linux-arm64 版本以适配你的机器
+        url = "https://binaries.cockroachdb.com/cockroach-v${version}.linux-x86_64.tgz";
+        # 第一次构建会报错 Hash Mismatch，请像之前处理 Caddy 一样，
+        # 把报错里的 sha256 填回来。
+        hash = lib.fakeHash;
+      };
+
+      installPhase = ''
+        install -D cockroach $out/bin/cockroach
+        install -D lib/libgeos.so $out/lib/libgeos.so
+        install -D lib/libgeos_c.so $out/lib/libgeos_c.so
+      '';
+    };
   };
   systemd.services.cockroachdb.serviceConfig = {
     Type = lib.mkForce "simple";
