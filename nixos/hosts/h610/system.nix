@@ -412,7 +412,7 @@ in {
   };
 
   services.zitadel = {
-    enable = true;
+    enable = false;
     masterKeyFile = "/etc/nixos/zitadel-masterkey"; # 步骤二生成的文件
     settings = {
       Port = 8080;
@@ -427,7 +427,7 @@ in {
   };
 
   services.netbird.server = {
-    enable = true;
+    enable = false;
     domain = "${domain}:${toString netbirdPort}"; # 这里的 Domain 必须带端口
     enableNginx = false; # 我们使用 Caddy，禁用内置 Nginx
 
