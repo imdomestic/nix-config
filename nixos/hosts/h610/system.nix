@@ -12,8 +12,8 @@
   oidcClientSecret = "NETBIRD_CLIENT_SECRET_FROM_ZITADEL";
   cloudflareTokenFile = "/etc/nixos/cloudflare-token";
   caddyWithCloudflare = pkgs.caddy.withPlugins {
-    plugins = [ "github.com/caddy-dns/cloudflare@v0.2.3" ];
-    hash = "sha256-bJO2RIa6hYsoVl3y2L86EM34Dfkm2tlcEsXn2+COgzo="; 
+    plugins = ["github.com/caddy-dns/cloudflare@v0.2.3"];
+    hash = "sha256-bJO2RIa6hYsoVl3y2L86EM34Dfkm2tlcEsXn2+COgzo=";
   };
   ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
     dnsconf:
@@ -362,6 +362,12 @@ in {
     ];
   };
 
+  services.cockroachdb = {
+    enable = true;
+    insecure = true; # 本地单节点运行，不强制 SSL，方便 Zitadel 连接
+    listen.address = "127.0.0.1"; # 只监听本地，不要暴露给公网
+    http.address = "127.0.0.1";
+  };
   systemd.services.caddy.serviceConfig = {
     EnvironmentFile = "/etc/caddy/cloudflare.env";
   };
