@@ -362,34 +362,22 @@ in {
     ];
   };
 
-  services.cockroachdb = {
+  services.postgresql = {
     enable = true;
-    insecure = true;
-    package = pkgs.stdenv.mkDerivation rec {
-      pname = "cockroachdb-bin";
-      version = "22.2.19";
-
-      src = pkgs.fetchzip {
-        url = "https://binaries.cockroachdb.com/cockroach-v${version}.linux-amd64.tgz";
-        hash = "sha256-AUkFMaCfWNirtdAy9GhNPzeAuRaklCfW35GPt8h9KPM=";
-      };
-
-      installPhase = ''
-        install -D cockroach $out/bin/cockroach
-        install -D lib/libgeos.so $out/lib/libgeos.so
-        install -D lib/libgeos_c.so $out/lib/libgeos_c.so
-      '';
-    };
-  };
-  systemd.services.cockroachdb.serviceConfig = {
-    Type = lib.mkForce "simple";
-    ExecStart = lib.mkForce (
-      "${config.services.cockroachdb.package}/bin/cockroach start-single-node"
-      + " --insecure"
-      + " --listen-addr=127.0.0.1"
-      + " --http-addr=127.0.0.1:9080"
-      + " --store=/var/lib/cockroachdb"
-    );
+    package = pkgs.postgresql_15; # 使用稳定的 PG 15
+    ensureDatabases = ["zitadel"];
+    ensureUsers = [
+      {
+        name = "zitadel";
+        ensureDBOwnership = true;
+      }
+    ];
+    authentication = pkgs.lib.mkOverride 10 ''
+      #type database  DBuser  auth-method
+      local all       all     trust
+      host  all       all     127.0.0.1/32 trust
+      host  all       all     ::1/128      trust
+    '';
   };
   systemd.services.caddy.serviceConfig = {
     EnvironmentFile = "/etc/caddy/cloudflare.env";
@@ -451,6 +439,22 @@ in {
       # 禁用自带 TLS，由 Caddy 处理
       TLS = {
         Enabled = false;
+      };
+      Database = {
+        postgres = {
+          Host = "127.0.0.1";
+          Port = 5432;
+          User = "zitadel";
+          Database = "zitadel";
+          SSL = {
+            Mode = "disable";
+          };
+          # PostgreSQL 连接池配置 (可选，保持默认即可)
+          MaxOpenConns = 20;
+          MaxIdleConns = 10;
+          ConnMaxLifetime = "30m";
+          ConnMaxIdleTime = "5m";
+        };
       };
     };
   };
