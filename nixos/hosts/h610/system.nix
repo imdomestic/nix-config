@@ -440,7 +440,7 @@ in {
       TLS = {
         Enabled = false;
       };
-      Database = {
+      Database = lib.mkForce {
         postgres = {
           Host = "127.0.0.1";
           Port = 5432;
