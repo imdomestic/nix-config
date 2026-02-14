@@ -97,6 +97,10 @@
 
     catppuccin.url = "github:catppuccin/nix";
 
+    zjstatus = {
+      url = "github:dj95/zjstatus";
+    };
+
     nur = {
       url = "github:nix-community/NUR";
       inputs.nixpkgs.follows = "nixpkgs";

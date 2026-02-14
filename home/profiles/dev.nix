@@ -55,7 +55,6 @@
       usql
       gnumake
       gh
-      zellij
       gcc
       elan
       lazygit
