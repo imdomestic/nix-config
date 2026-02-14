@@ -442,18 +442,18 @@ in {
       };
       Database = lib.mkForce {
         postgres = {
-          Host = "127.0.0.1";
-          Port = 5432;
-          User = "zitadel";
-          Database = "zitadel";
-          SSL = {
-            Mode = "disable";
+          host = "127.0.0.1";
+          port = 5432;
+          user = "zitadel";
+          database = "zitadel";
+          password = "";
+          ssl = {
+            mode = "disable";
           };
-          # PostgreSQL 连接池配置 (可选，保持默认即可)
-          MaxOpenConns = 20;
-          MaxIdleConns = 10;
-          ConnMaxLifetime = "30m";
-          ConnMaxIdleTime = "5m";
+          max_open_conns = 20;
+          max_idle_conns = 10;
+          conn_max_lifetime = "30m";
+          conn_max_idle_time = "5m";
         };
       };
     };
