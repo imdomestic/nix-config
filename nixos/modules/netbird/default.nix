@@ -18,7 +18,7 @@ in {
   #### ACME (DNS-01) - 不需要 80/443
   security.acme = {
     acceptTerms = true;
-    defaults.email = "you@example.com";
+    defaults.email = "hankchogan@gmail.com";
   };
   security.acme.certs.${authDomain} = {
     dnsProvider = "cloudflare";
