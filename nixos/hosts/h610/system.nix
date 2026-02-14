@@ -441,21 +441,19 @@ in {
         Enabled = false;
       };
       Database = lib.mkForce {
-        postgres = {
-          host = "127.0.0.1";
-          port = 5432;
-          user = "zitadel";
-          database = "zitadel";
-          password = "";
-          ssl = {
-            mode = "disable";
-          };
-          max_open_conns = 20;
-          max_idle_conns = 10;
-          conn_max_lifetime = "30m";
-          conn_max_idle_time = "5m";
-        };
+        postgres = {};
       };
+    };
+    environment = {
+      "ZITADEL_DATABASE_POSTGRES_HOST" = "127.0.0.1";
+      "ZITADEL_DATABASE_POSTGRES_PORT" = "5432";
+      "ZITADEL_DATABASE_POSTGRES_USER" = "zitadel";
+      "ZITADEL_DATABASE_POSTGRES_DATABASE" = "zitadel";
+      "ZITADEL_DATABASE_POSTGRES_SSL_MODE" = "disable";
+      "ZITADEL_DATABASE_POSTGRES_PASSWORD" = ""; # 空密码
+
+      # 显式设置连接池 (可选，防止默认值过大)
+      "ZITADEL_DATABASE_POSTGRES_MAXOPENCONNS" = "20";
     };
   };
 
