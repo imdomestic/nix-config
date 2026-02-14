@@ -362,6 +362,9 @@ in {
     ];
   };
 
+  systemd.services.caddy.serviceConfig = {
+    EnvironmentFile = "/etc/caddy/cloudflare.env";
+  };
   services.caddy = {
     enable = true;
     package = caddyWithCloudflare;
@@ -370,11 +373,6 @@ in {
     globalConfig = ''
       acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
     '';
-
-    # 环境变量：注入 Cloudflare Token
-    environment = {
-      CLOUDFLARE_API_TOKEN = "REMOVED_SECRET_CLOUDFLARE_API_TOKEN_1e6e67ea94941305";
-    };
 
     virtualHosts = {
       # Zitadel 入口
