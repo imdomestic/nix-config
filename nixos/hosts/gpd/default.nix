@@ -22,11 +22,11 @@ in {
     inputs.catppuccin.nixosModules.catppuccin
     inputs.vscode-server.nixosModules.default
     inputs.noctalia.nixosModules.default
-    # inputs.niri.nixosModules.niri
+    inputs.niri.nixosModules.niri
   ];
 
   users = {
-    hank = {
+    linwhite = {
       home = {
         profiles = with homeProfiles; [
           core
@@ -34,7 +34,7 @@ in {
           gui.linux
         ];
         modules = [
-          userModules.hank.module
+          userModules.linwhite.module
         ];
       };
     };
