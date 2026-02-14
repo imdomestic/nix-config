@@ -372,7 +372,7 @@ in {
       "${pkgs.cockroachdb}/bin/cockroach start-single-node"
       + " --insecure"
       + " --listen-addr=127.0.0.1"
-      + " --http-addr=127.0.0.1"
+      + " --http-addr=127.0.0.1:9080"
       + " --store=/var/lib/cockroachdb"
     );
   };
