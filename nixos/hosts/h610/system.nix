@@ -366,13 +366,16 @@ in {
     enable = true;
     insecure = true;
   };
-  systemd.services.cockroachdb.serviceConfig.ExecStart = lib.mkForce (
-    "${pkgs.cockroachdb}/bin/cockroach start-single-node"
-    + " --insecure"
-    + " --listen-addr=127.0.0.1"
-    + " --http-addr=127.0.0.1"
-    + " --store=/var/lib/cockroachdb"
-  );
+  systemd.services.cockroachdb.serviceConfig = {
+    Type = lib.mkForce "simple";
+    ExecStart = lib.mkForce (
+      "${pkgs.cockroachdb}/bin/cockroach start-single-node"
+      + " --insecure"
+      + " --listen-addr=127.0.0.1"
+      + " --http-addr=127.0.0.1"
+      + " --store=/var/lib/cockroachdb"
+    );
+  };
   systemd.services.caddy.serviceConfig = {
     EnvironmentFile = "/etc/caddy/cloudflare.env";
   };
