@@ -16,7 +16,7 @@
     enable = true;
     settings = {
       user.name = "linwhite";
-      user.email = "linwhite@linwhite.top"
+      user.email = "linwhite@linwhite.top";
     };
   };
 
