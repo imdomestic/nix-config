@@ -438,6 +438,21 @@ in {
       ExternalDomain = "${domain}:${toString zitadelPort}";
       ExternalPort = zitadelPort;
 
+      FirstInstance = {
+        Org = {
+          Name = "HankDomestic";
+          Human = {
+            Username = "hankadmin";
+            Email = {
+              # 必须使用合法的邮箱格式
+              Address = "hank@h610.imdomestic.com";
+              Verified = true;
+            };
+            Password = "REMOVED_SECRET_ZITADEL_BOOTSTRAP_ADMIN_PASSWORD_2429be5bcd469915"; # 建议启动成功后立即更改
+          };
+        };
+      };
+
       Database = {
         postgres = {
           Host = "127.0.0.1";
@@ -451,13 +466,11 @@ in {
 
           User = {
             Username = "zitadel";
-            # Password 放到 extraSettingsPaths 的 secret 里（见下）
             SSL = {Mode = "disable";};
           };
 
           Admin = {
             Username = "postgres";
-            # Password 同样放 secret 里
             SSL = {Mode = "disable";};
           };
         };
