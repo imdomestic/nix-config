@@ -44,7 +44,7 @@ in {
   imports = [
     ../../modules/dae
     ../../modules/keyd
-    ../../modules/netbird
+    # ../../modules/netbird
   ];
 
   boot.loader.systemd-boot.enable = true;

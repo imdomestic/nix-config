@@ -72,7 +72,7 @@
   #   icon.enable = true;
   #   icon.accent = "lavender";
   # };
-  catppuccin.yazi.enable = true;
-  catppuccin.zellij.enable = true;
-  catppuccin.btop.enable = true;
+  # catppuccin.yazi.enable = true;
+  # catppuccin.zellij.enable = true;
+  # catppuccin.btop.enable = true;
 }
