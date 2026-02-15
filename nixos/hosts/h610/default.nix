@@ -43,5 +43,15 @@ in {
         ];
       };
     };
+    linwhite = {
+      home = {
+        profiles = with homeProfiles; [
+          core
+        ];
+        modules = [
+          userModules.linwhite.module
+        ];
+      };
+    };
   };
 }
