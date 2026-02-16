@@ -220,7 +220,7 @@ in {
 
   services.nginx.virtualHosts.${netbirdDomain} = lib.mkMerge [
     {
-      enableACME = true;
+      useACMEHost = netbirdDomain;
       forceSSL = true;
       listen = lib.mkForce [
         {
