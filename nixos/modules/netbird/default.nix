@@ -239,7 +239,7 @@ in {
         root = config.services.netbird.server.dashboard.finalDrv;
 
         # 关键：SPA 路由回落到 /index.html
-        tryFiles = "$uri $uri/ /index.html";
+        tryFiles = lib.mkForce "$uri $uri/ /index.html";
       };
     }
   ];
