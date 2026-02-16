@@ -7,7 +7,7 @@
 }: let
   ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
     dnsconf:
-        - name: ""
+        - name: "h610"
           ipv4:
             enable: true
             gettype: netInterface
@@ -16,6 +16,29 @@
             cmd: ""
             domains:
                 - h610:imdomestic.com
+          ipv6:
+            enable: false
+            gettype: netInterface
+            url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
+            netinterface: br-lan
+            cmd: ""
+            ipv6reg: ""
+            domains:
+                - ""
+          dns:
+            name: cloudflare
+            id: ""
+            secret: REMOVED_SECRET_CLOUDFLARE_API_TOKEN_1e6e67ea94941305
+          ttl: ""
+        - name: "root"
+          ipv4:
+            enable: true
+            gettype: netInterface
+            url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
+            netinterface: ppp0
+            cmd: ""
+            domains:
+                - @:imdomestic.com
           ipv6:
             enable: false
             gettype: netInterface

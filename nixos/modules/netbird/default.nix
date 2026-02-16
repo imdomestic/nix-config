@@ -7,10 +7,9 @@
   httpsPort = 8443;
 
   rootDomain = "imdomestic.com";
-  host = "h610.${rootDomain}";
 
-  authDomain = "auth.${host}";
-  netbirdDomain = "netbird.${host}";
+  authDomain = "auth.${rootDomain}";
+  netbirdDomain = "netbird.${rootDomain}";
 
   # 你后面在 Zitadel 创建 NetBird OIDC App 拿到的 ClientID
   netbirdClientId = "REPLACE_ME_CLIENT_ID";
