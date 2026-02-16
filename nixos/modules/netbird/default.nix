@@ -150,9 +150,12 @@ in {
           AUTH_CLIENT_ID = netbirdClientId;
           AUTH_AUDIENCE = netbirdClientId;
 
-          # 强烈建议显式给出，否则 envsubst 变量可能为空
-          AUTH_REDIRECT_URI = "/auth";
-          AUTH_SILENT_REDIRECT_URI = "/silent-auth";
+          AUTH_REDIRECT_URI = "https://${authDomain}:${toString httpsPort}/auth";
+          AUTH_SILENT_REDIRECT_URI = "https://${authDomain}:${toString httpsPort}/silent-auth";
+
+          NETBIRD_MGMT_API_ENDPOINT = "https://${authDomain}:${toString httpsPort}";
+          NETBIRD_MGMT_GRPC_API_ENDPOINT = "https://${authDomain}:${toString httpsPort}";
+
           AUTH_SUPPORTED_SCOPES = "openid profile email offline_access api";
           USE_AUTH0 = false;
           NETBIRD_TOKEN_SOURCE = "idToken";
@@ -170,7 +173,6 @@ in {
         oidcConfigEndpoint = "https://${authDomain}:${toString httpsPort}/.well-known/openid-configuration";
 
         settings = {
-          # 关键：你不用 443，所以把 signal/management 的 URI/port 都改掉
           Signal.URI = "${netbirdDomain}:${toString httpsPort}";
 
           HttpConfig.AuthAudience = netbirdClientId;
@@ -238,13 +240,11 @@ in {
       locations."/" = {
         root = config.services.netbird.server.dashboard.finalDrv;
 
-        # 关键：SPA 路由回落到 /index.html
         tryFiles = lib.mkForce "$uri $uri/ /index.html";
       };
     }
   ];
 
-  # NetBird Relay（容器）：挂载 netbird 域名证书，跑 TLS Relay on 33080
   virtualisation.oci-containers.containers.netbird-relay = {
     image = "netbirdio/relay:latest";
     ports = [
@@ -266,7 +266,6 @@ in {
     ];
   };
 
-  # （建议）缩小 coturn 端口范围，便于放行
   services.coturn = {
     min-port = 40000;
     max-port = 40050;
