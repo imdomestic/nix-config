@@ -61,11 +61,11 @@
         "rev": "dc1938ef5c99af2615c057797509476793e5a669",
         "revCount": 34,
         "type": "git",
-        "url": "ssh://git@github.com/HCHogan/dae"
+        "url": "ssh://git@github.com/imdomestic/dae"
       },
       "original": {
         "type": "git",
-        "url": "ssh://git@github.com/HCHogan/dae"
+        "url": "ssh://git@github.com/imdomestic/dae"
       }
     },
     "determinate": {

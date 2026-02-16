@@ -81,7 +81,7 @@
     };
 
     dae-config = {
-      url = "git+ssh://git@github.com/HCHogan/dae";
+      url = "git+ssh://git@github.com/imdomestic/dae";
       flake = false;
     };
 
