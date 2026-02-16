@@ -99,12 +99,19 @@ in {
     '';
 
     locations."/" = {
-      grpcPass = "grpc://127.0.0.1:39995";
       extraConfig = ''
-        grpc_set_header Host $host;
+        grpc_pass grpc://127.0.0.1:39995;
+
+        grpc_set_header Host $http_host;
+        grpc_set_header X-Forwarded-Host $http_host;
+        grpc_set_header X-Forwarded-Port $server_port;
         grpc_set_header X-Forwarded-Proto https;
+
         grpc_set_header X-Real-IP $remote_addr;
         grpc_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        grpc_read_timeout 3600s;
+        grpc_send_timeout 3600s;
       '';
     };
   };
