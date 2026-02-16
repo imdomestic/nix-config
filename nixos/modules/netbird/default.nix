@@ -220,6 +220,8 @@ in {
 
   services.nginx.virtualHosts.${netbirdDomain} = lib.mkMerge [
     {
+      enableACME = true;
+      forceSSL = true;
       listen = lib.mkForce [
         {
           addr = "0.0.0.0";
@@ -233,9 +235,6 @@ in {
         }
       ];
       http2 = true;
-
-      sslCertificate = "${config.security.acme.certs.${netbirdDomain}.directory}/fullchain.pem";
-      sslCertificateKey = "${config.security.acme.certs.${netbirdDomain}.directory}/key.pem";
     }
   ];
 
