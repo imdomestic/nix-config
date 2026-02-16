@@ -115,4 +115,157 @@ in {
       '';
     };
   };
+
+  services.netbird = {
+    # 如果你这台机已经有 WireGuard( wg-quick wg0 )，别用默认 51820，防止冲突
+    clients.default = {
+      port = 51830;
+      interface = "nb0";
+      hardened = true;
+      # 你要自动登录就用 setupKeyFile（后面 dashboard 里生成）
+      # login.enable = true;
+      # login.setupKeyFile = "/var/lib/secrets/netbird/setup_key";
+    };
+
+    # 你这台既当 server 又当路由/出口节点，通常选 both
+    useRoutingFeatures = "both";
+
+    server = {
+      enable = true;
+      enableNginx = true;
+      domain = netbirdDomain;
+
+      coturn = {
+        enable = true;
+        domain = netbirdDomain;
+        passwordFile = "/var/lib/secrets/netbird/turn_password";
+      };
+
+      dashboard = {
+        enable = true;
+        enableNginx = true;
+        domain = netbirdDomain;
+        settings = {
+          AUTH_AUTHORITY = "https://${authDomain}:${toString httpsPort}";
+          AUTH_CLIENT_ID = netbirdClientId;
+          AUTH_AUDIENCE = netbirdClientId;
+
+          # 强烈建议显式给出，否则 envsubst 变量可能为空
+          AUTH_REDIRECT_URI = "/auth";
+          AUTH_SILENT_REDIRECT_URI = "/silent-auth";
+          AUTH_SUPPORTED_SCOPES = "openid profile email offline_access api";
+          USE_AUTH0 = false;
+          NETBIRD_TOKEN_SOURCE = "idToken";
+        };
+      };
+
+      management = {
+        enable = true;
+        enableNginx = true;
+        domain = netbirdDomain;
+
+        turnDomain = netbirdDomain;
+        singleAccountModeDomain = netbirdDomain;
+
+        oidcConfigEndpoint = "https://${authDomain}:${toString httpsPort}/.well-known/openid-configuration";
+
+        settings = {
+          # 关键：你不用 443，所以把 signal/management 的 URI/port 都改掉
+          Signal.URI = "${netbirdDomain}:${toString httpsPort}";
+
+          HttpConfig.AuthAudience = netbirdClientId;
+
+          DeviceAuthorizationFlow.ProviderConfig = {
+            Audience = netbirdClientId;
+            ClientID = netbirdClientId;
+          };
+          PKCEAuthorizationFlow.ProviderConfig = {
+            Audience = netbirdClientId;
+            ClientID = netbirdClientId;
+          };
+
+          TURNConfig = {
+            Secret._secret = "/var/lib/secrets/netbird/turn_password";
+            CredentialsTTL = "12h";
+            TimeBasedCredentials = false;
+            Turns = [
+              {
+                Proto = "udp";
+                URI = "turn:${netbirdDomain}:3478";
+                Username = "netbird";
+                Password._secret = "/var/lib/secrets/netbird/turn_password";
+              }
+            ];
+          };
+
+          Relay = {
+            Addresses = ["rels://${netbirdDomain}:33080"];
+            CredentialsTTL = "24h";
+            Secret._secret = "/var/lib/secrets/netbird/relay_secret";
+          };
+
+          DataStoreEncryptionKey._secret = "/var/lib/secrets/netbird/data_store_encryption_key";
+        };
+      };
+
+      signal = {
+        enable = true;
+        enableNginx = true;
+        domain = netbirdDomain;
+      };
+    };
+  };
+
+  # 让 netbird-management 从 EnvironmentFile 读一些它需要的 env（参考可工作实例）
+  systemd.services.netbird-management.serviceConfig.EnvironmentFile = "/var/lib/secrets/netbird/setup.env";
+
+  # 把 NetBird 的 nginx vhost 从 443 强制改到 8443，并使用 DNS-01 证书
+  services.nginx.virtualHosts.${netbirdDomain} = lib.mkMerge [
+    {
+      listen = lib.mkForce [
+        {
+          addr = "0.0.0.0";
+          port = httpsPort;
+          ssl = true;
+        }
+        {
+          addr = "[::]";
+          port = httpsPort;
+          ssl = true;
+        }
+      ];
+      http2 = true;
+
+      sslCertificate = "${config.security.acme.certs.${netbirdDomain}.directory}/fullchain.pem";
+      sslCertificateKey = "${config.security.acme.certs.${netbirdDomain}.directory}/key.pem";
+    }
+  ];
+
+  # NetBird Relay（容器）：挂载 netbird 域名证书，跑 TLS Relay on 33080
+  virtualisation.oci-containers.containers.netbird-relay = {
+    image = "netbirdio/relay:latest";
+    ports = [
+      "33080:33080/tcp"
+      "33080:33080/udp"
+    ];
+    volumes = [
+      "/var/lib/acme/${netbirdDomain}/:/certs:ro"
+    ];
+    environment = {
+      NB_LOG_LEVEL = "info";
+      NB_LISTEN_ADDRESS = ":33080";
+      NB_EXPOSED_ADDRESS = "rels://${netbirdDomain}:33080";
+      NB_TLS_CERT_FILE = "/certs/fullchain.pem";
+      NB_TLS_KEY_FILE = "/certs/key.pem";
+    };
+    environmentFiles = [
+      "/var/lib/secrets/netbird/relay_secret_container"
+    ];
+  };
+
+  # （建议）缩小 coturn 端口范围，便于放行
+  services.coturn = {
+    min-port = 40000;
+    max-port = 40050;
+  };
 }
