@@ -38,7 +38,7 @@
             netinterface: ppp0
             cmd: ""
             domains:
-                - @:imdomestic.com
+                - imdomestic.com
           ipv6:
             enable: false
             gettype: netInterface
