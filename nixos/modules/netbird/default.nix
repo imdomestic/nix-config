@@ -32,13 +32,13 @@ in {
   };
 
   # #### Nginx：同一端口 8443 用 SNI 分流两个域名
-  # services.nginx = {
-  #   enable = true;
-  #   recommendedProxySettings = true;
-  #   recommendedTlsSettings = true;
-  #   recommendedGzipSettings = true;
-  # };
-  #
+  services.nginx = {
+    enable = true;
+    recommendedProxySettings = true;
+    recommendedTlsSettings = true;
+    recommendedGzipSettings = true;
+  };
+
   # #### Zitadel + Postgres(容器) + 反代
   # virtualisation.podman.enable = true;
   # virtualisation.oci-containers.backend = "podman";
