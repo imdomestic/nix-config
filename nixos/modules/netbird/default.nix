@@ -175,10 +175,12 @@ in {
           HttpConfig.AuthAudience = netbirdClientId;
 
           DeviceAuthorizationFlow.ProviderConfig = {
+            UseIDToken = true;
             Audience = netbirdClientId;
             ClientID = netbirdClientId;
           };
           PKCEAuthorizationFlow.ProviderConfig = {
+            UseIDToken = true;
             Audience = netbirdClientId;
             ClientID = netbirdClientId;
           };
