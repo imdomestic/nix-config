@@ -11,7 +11,7 @@
   authDomain = "auth.${rootDomain}";
   netbirdDomain = "netbird.${rootDomain}";
 
-  netbirdClientId = "REPLACE_ME_CLIENT_ID";
+  netbirdClientId = "360283462168543745";
 in {
   security.acme = {
     acceptTerms = true;
@@ -216,10 +216,8 @@ in {
     };
   };
 
-  # 让 netbird-management 从 EnvironmentFile 读一些它需要的 env（参考可工作实例）
   systemd.services.netbird-management.serviceConfig.EnvironmentFile = "/var/lib/secrets/netbird/setup.env";
 
-  # 把 NetBird 的 nginx vhost 从 443 强制改到 8443，并使用 DNS-01 证书
   services.nginx.virtualHosts.${netbirdDomain} = lib.mkMerge [
     {
       listen = lib.mkForce [
