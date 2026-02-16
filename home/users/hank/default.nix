@@ -11,6 +11,11 @@
     settings = {
       user.name = "Hank Hogan";
       user.email = "ysh2291939848@outlook.com";
+      push.autoSetupRemote = true;
+      gpg.format = "ssh";
+      user.signingkey = "~/.ssh/id_rsa.pub";
+      commit.gpgsign = true;
+      column.ui = "auto";
     };
   };
 
