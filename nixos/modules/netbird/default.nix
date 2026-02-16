@@ -235,6 +235,8 @@ in {
         }
       ];
       http2 = true;
+      root = config.services.netbird.server.dashboard.finalDrv;
+      tryFiles = "$uri $uri/ /index.html";
     }
   ];
 
