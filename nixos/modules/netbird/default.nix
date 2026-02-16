@@ -99,8 +99,7 @@ in {
     '';
 
     locations."/" = {
-      proxyPass = "http://127.0.0.1:39995";
-      proxyWebsockets = true;
+      grpcPass = "grpc://127.0.0.1:39995";
       extraConfig = ''
         grpc_set_header Host $host;
         grpc_set_header X-Forwarded-Proto https;
