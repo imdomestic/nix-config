@@ -95,9 +95,10 @@ in {
       }
     ];
     http2 = true;
-
-    sslCertificate = "${config.security.acme.certs.${authDomain}.directory}/fullchain.pem";
-    sslCertificateKey = "${config.security.acme.certs.${authDomain}.directory}/key.pem";
+    extraConfig = ''
+      proxy_headers_hash_max_size 512;
+      proxy_headers_hash_bucket_size 128;
+    '';
 
     locations."/" = {
       proxyPass = "http://127.0.0.1:39995";
