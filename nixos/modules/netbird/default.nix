@@ -11,10 +11,8 @@
   authDomain = "auth.${rootDomain}";
   netbirdDomain = "netbird.${rootDomain}";
 
-  # 你后面在 Zitadel 创建 NetBird OIDC App 拿到的 ClientID
   netbirdClientId = "REPLACE_ME_CLIENT_ID";
 in {
-  #### ACME (DNS-01) - 不需要 80/443
   security.acme = {
     acceptTerms = true;
     defaults.email = "hankchogan@gmail.com";
@@ -104,14 +102,15 @@ in {
       proxyPass = "http://127.0.0.1:39995";
       proxyWebsockets = true;
       extraConfig = ''
-        proxy_set_header Host $host;
+        proxy_set_header Host $http_host;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Real-IP $remote_addr;
+
+        proxy_buffer_size 128k;
+        proxy_buffers 4 256k;
+        proxy_busy_buffers_size 256k;
       '';
     };
   };
-
-  #### （阶段2再开启）NetBird Server + TURN + Relay + WebUI
-  # imports = [ ... 你自己的 netbird 相关模块 ... ];
 }
