@@ -30,7 +30,6 @@ in {
     group = "nginx";
   };
 
-  # #### Nginx：同一端口 8443 用 SNI 分流两个域名
   services.nginx = {
     enable = true;
     recommendedProxySettings = true;
@@ -38,11 +37,9 @@ in {
     recommendedGzipSettings = true;
   };
 
-  #### Zitadel + Postgres(容器) + 反代
   virtualisation.podman.enable = true;
   virtualisation.oci-containers.backend = "podman";
 
-  # Postgres 容器：只绑定到 127.0.0.1，避免在你 firewall 关着的情况下裸奔
   virtualisation.oci-containers.containers.zitadel-db = {
     image = "postgres:17";
     ports = ["127.0.0.1:5432:5432"];
@@ -57,7 +54,6 @@ in {
   services.zitadel = {
     enable = true;
 
-    # 关键：你不用 443，所以 external port 改成 8443
     tlsMode = "external";
     masterKeyFile = "/var/lib/secrets/zitadel/master_key";
     extraStepsPaths = ["/var/lib/secrets/zitadel/admin_steps.yaml"];
@@ -83,6 +79,8 @@ in {
 
   services.nginx.virtualHosts.${authDomain} = {
     serverName = authDomain;
+    useACMEHost = authDomain;
+    forceSSL = true;
 
     listen = lib.mkForce [
       {
