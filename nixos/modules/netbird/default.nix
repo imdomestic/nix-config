@@ -150,8 +150,8 @@ in {
           AUTH_CLIENT_ID = netbirdClientId;
           AUTH_AUDIENCE = netbirdClientId;
 
-          AUTH_REDIRECT_URI = lib.mkForce "https://${netbirdDomain}:${toString httpsPort}/auth";
-          AUTH_SILENT_REDIRECT_URI = lib.mkForce "https://${netbirdDomain}:${toString httpsPort}/silent-auth";
+          AUTH_REDIRECT_URI = lib.mkForce "https://${authDomain}:${toString httpsPort}/auth";
+          AUTH_SILENT_REDIRECT_URI = lib.mkForce "https://${authDomain}:${toString httpsPort}/silent-auth";
 
           NETBIRD_MGMT_API_ENDPOINT = lib.mkForce "https://${netbirdDomain}:${toString httpsPort}";
           NETBIRD_MGMT_GRPC_API_ENDPOINT = lib.mkForce "https://${netbirdDomain}:${toString httpsPort}";
