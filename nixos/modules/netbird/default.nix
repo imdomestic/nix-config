@@ -11,7 +11,7 @@
   authDomain = "auth.${rootDomain}";
   netbirdDomain = "netbird.${rootDomain}";
 
-  netbirdClientId = "360283462168543745";
+  netbirdClientId = "360296295379829249";
 in {
   security.acme = {
     acceptTerms = true;
@@ -62,6 +62,7 @@ in {
       ExternalPort = httpsPort;
       ExternalDomain = authDomain;
       ExternalSecure = true;
+      LoginV2.Required = false;
 
       Database.postgres = {
         Host = "127.0.0.1";
@@ -148,7 +149,7 @@ in {
         settings = {
           AUTH_AUTHORITY = "https://${authDomain}:${toString httpsPort}";
           AUTH_CLIENT_ID = netbirdClientId;
-          AUTH_CLIENT_SECRET = lib.mkForce "REMOVED_SECRET_NETBIRD_OAUTH_CLIENT_SECRET_b91d656fca5e539b";
+          # AUTH_CLIENT_SECRET = lib.mkForce "REMOVED_SECRET_NETBIRD_OAUTH_CLIENT_SECRET_b91d656fca5e539b";
           AUTH_AUDIENCE = netbirdClientId;
 
           # 强烈建议显式给出，否则 envsubst 变量可能为空
