@@ -241,6 +241,11 @@ in {
         }
       ];
       http2 = true;
+      locations."/" = {
+        root = config.services.netbird.server.dashboard.finalDrv;
+
+        tryFiles = lib.mkForce "$uri $uri/ /index.html";
+      };
     }
   ];
 
