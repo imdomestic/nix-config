@@ -32,6 +32,7 @@ in {
     iperf3
     which
     wget
+    sops
 
     # archives
     zip

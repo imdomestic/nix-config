@@ -20,6 +20,7 @@ in {
   externalModules = [
     inputs.nixos-wsl.nixosModules.default
     inputs.nix-index-database.nixosModules.default
+    inputs.sops-nix.nixosModules.sops
   ];
 
   users = {
