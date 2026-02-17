@@ -8,11 +8,18 @@
   hostUsers ? {},
   ...
 }: {
-  imports = [
-    ../modules/nix.nix
-    ../modules/users.nix
-    ../modules/home-manager.nix
-  ];
+  imports =
+    [
+      ../modules/nix.nix
+      ../modules/users.nix
+      ../modules/home-manager.nix
+    ]
+    ++ lib.optionals (lib.hasInfix "linux" system) [
+      inputs.sops-nix.nixosModules.sops
+    ]
+    ++ lib.optionals (lib.hasInfix "darwin" system) [
+      inputs.sops-nix.darwinModules.sops
+    ];
 
   # Provide host metadata to downstream modules
   nixpkgs.hostPlatform = lib.mkDefault system;
@@ -31,4 +38,8 @@
     hostname = hostName;
   };
 
+  sops = {
+    defaultSopsFile = ../../secrets/secrets.yaml;
+    defaultSopsFormat = "yaml";
+  };
 }

@@ -492,7 +492,7 @@ in {
     registerName = "imdomestic";
     password = "hbhbhb";
     port = 64738;
-    bandwidth = 128000; # 128kbps 已经非常顶级的音质了
+    bandwidth = 128000;
   };
 
   services.k3s = {
