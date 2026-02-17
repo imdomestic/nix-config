@@ -241,11 +241,6 @@ in {
         }
       ];
       http2 = true;
-      locations."/" = {
-        root = config.services.netbird.server.dashboard.finalDrv;
-
-        tryFiles = lib.mkForce "$uri $uri/ /index.html";
-      };
     }
   ];
 
@@ -269,6 +264,30 @@ in {
       "/var/lib/secrets/netbird/relay_secret_container"
     ];
   };
+
+  # virtualisation.oci-containers.containers.zitadel-login = {
+  #   image = "ghcr.io/zitadel/zitadel-login:latest";
+  #   ports = ["127.0.0.1:3000:3000"];
+  #
+  #   environment = {
+  #     ZITADEL_API_URL = "http://127.0.0.1:39995"; # 你 zitadel 内部端口
+  #     NEXT_PUBLIC_BASE_PATH = "/ui/v2/login";
+  #     ZITADEL_SERVICE_USER_TOKEN_FILE = "/secrets/login-client.pat";
+  #     CUSTOM_REQUEST_HEADERS = "Host:${authDomain}";
+  #   };
+  #
+  #   volumes = [
+  #     "/var/lib/secrets/zitadel/login-client.pat:/secrets/login-client.pat:ro"
+  #   ];
+  # };
+  # services.nginx.virtualHosts.${authDomain}.locations."/ui/v2/login" = {
+  #   proxyPass = "http://127.0.0.1:3000";
+  #   extraConfig = ''
+  #     proxy_set_header Host $host;
+  #     proxy_set_header X-Forwarded-Proto https;
+  #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  #   '';
+  # };
 
   services.coturn = {
     min-port = 40000;
