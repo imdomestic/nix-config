@@ -245,6 +245,14 @@ in {
         root = config.services.netbird.server.dashboard.finalDrv;
 
         tryFiles = lib.mkForce "$uri $uri/ /index.html";
+        extraConfig = ''
+          grpc_read_timeout 3600s;
+          grpc_send_timeout 3600s;
+          client_max_body_size 512M;
+          proxy_http_version 1.1;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+        '';
       };
     }
   ];
