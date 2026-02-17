@@ -149,10 +149,8 @@ in {
         settings = {
           AUTH_AUTHORITY = "https://${authDomain}:${toString httpsPort}";
           AUTH_CLIENT_ID = netbirdClientId;
-          AUTH_CLIENT_SECRET = lib.mkForce "REMOVED_SECRET_NETBIRD_OAUTH_CLIENT_SECRET_b91d656fca5e539b";
           AUTH_AUDIENCE = netbirdClientId;
 
-          # 强烈建议显式给出，否则 envsubst 变量可能为空
           AUTH_REDIRECT_URI = "/auth";
           AUTH_SILENT_REDIRECT_URI = "/silent-auth";
 
