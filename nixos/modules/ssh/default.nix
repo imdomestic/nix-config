@@ -1,7 +1,4 @@
-{
-  lib,
-  ...
-}: let
+{lib, ...}: let
   keys = [
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINR7+B5jirLm5+cXrKabb0hrvq1OFxX6jCzKi/Sb4rkj ysh2291939848@outlook.com"
   ];
@@ -18,5 +15,14 @@ in {
       PasswordAuthentication = true;
       PermitRootLogin = "yes";
     };
+  };
+
+  programs.ssh = {
+    extraConfig = ''
+      CanonicalizeHostname yes
+      CanonicalDomains imdomestic.com
+      CanonicalizeFallbackLocal no
+      CanonicalizeFallbackLocal yes
+    '';
   };
 }
