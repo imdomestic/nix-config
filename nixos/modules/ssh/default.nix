@@ -20,6 +20,7 @@ in {
   programs.ssh = {
     extraConfig = ''
       CanonicalizeHostname yes
+      CanonicalizeMaxDots 0
       CanonicalDomains imdomestic.com
       CanonicalizeFallbackLocal no
       CanonicalizeFallbackLocal yes
