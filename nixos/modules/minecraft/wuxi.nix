@@ -119,11 +119,13 @@
           lobby = "10.0.0.66:25568";
           snk = "10.0.0.66:25570";
           ftb = "10.0.0.66:25571";
+          gtl = "10.0.0.66:25560";
           try = ["lobby"];
         };
 
         "forced-hosts" = {
           "snk.imdomestic.com" = ["snk"];
+          "gtl.imdomestic.com" = ["gtl"];
         };
       };
 
@@ -260,12 +262,14 @@
           lobby = "10.0.0.66:25568";
           snk = "10.0.0.77:25570";
           ftb = "10.0.0.66:25571";
+          gtl = "10.0.0.66:25560";
           bingo = "10.0.0.66:25573";
           try = ["lobby"];
         };
 
         "forced-hosts" = {
           "snk.imdomestic.com" = ["snk"];
+          "gtl.imdomestic.com" = ["gtl"];
         };
       };
 

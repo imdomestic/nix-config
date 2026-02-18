@@ -521,6 +521,14 @@ in {
     enable = true;
   };
 
+  programs.nix-index-database.comma.enable = true;
+  programs.nix-index = {
+    enableBashIntegration = false;
+    enableFishIntegration = false;
+    enableZshIntegration = false;
+  };
+  programs.command-not-found.enable = false;
+
   xdg.portal.wlr.enable = true;
   programs = {
     hyprland = {
