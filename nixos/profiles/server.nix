@@ -3,6 +3,10 @@
   pkgs-unstable,
   ...
 }: {
+  imports = [
+    ../modules/ssh
+  ];
+
   services = {
     xserver.enable = lib.mkDefault false;
     printing.enable = lib.mkDefault false;

@@ -2,6 +2,7 @@
   imports = [
     ../modules/nerdfonts
     ../modules/fcitx5
+    ../modules/ssh
   ];
 
   # Core desktop expectations
