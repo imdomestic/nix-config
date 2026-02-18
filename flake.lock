@@ -610,11 +610,11 @@
     "hvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1771005790,
-        "narHash": "sha256-lOAWEyOGXKF322fuP23gQiWobanD3MBZ6bOvUoa9OWc=",
+        "lastModified": 1771395049,
+        "narHash": "sha256-M2RZm6gMl3pzwJfLxLGJQWiy9BsVth+3x1908wG8P1I=",
         "owner": "HCHogan",
         "repo": "hvim",
-        "rev": "6a06e9569cc068b488ebea995cb8339daa9ce795",
+        "rev": "518bf658f5b4f4417c495fbc14df2241e3212c13",
         "type": "github"
       },
       "original": {
@@ -1091,11 +1091,11 @@
     },
     "nixpkgs-unstable": {
       "locked": {
-        "lastModified": 1767379071,
-        "narHash": "sha256-EgE0pxsrW9jp9YFMkHL9JMXxcqi/OoumPJYwf+Okucw=",
+        "lastModified": 1771008912,
+        "narHash": "sha256-gf2AmWVTs8lEq7z/3ZAsgnZDhWIckkb+ZnAo5RzSxJg=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "fb7944c166a3b630f177938e478f0378e64ce108",
+        "rev": "a82ccc39b39b621151d6732718e3e250109076fa",
         "type": "github"
       },
       "original": {
@@ -1480,7 +1480,7 @@
         "wg-config": "wg-config",
         "zen-browser": "zen-browser",
         "zjstatus": "zjstatus",
-        "zsh-config": "zsh-config"
+        "zsh-hank": "zsh-hank"
       }
     },
     "rpi-bluez-firmware-src": {
@@ -2055,7 +2055,7 @@
         "type": "github"
       }
     },
-    "zsh-config": {
+    "zsh-hank": {
       "flake": false,
       "locked": {
         "lastModified": 1767591883,

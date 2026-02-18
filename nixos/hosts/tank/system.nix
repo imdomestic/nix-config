@@ -350,16 +350,6 @@ in {
   services.displayManager.autoLogin.enable = false;
   services.getty.autologinUser = null;
 
-  # services.cockpit = {
-  #   enable = true;
-  #   openFirewall = true;
-  #   settings = {
-  #     WebService = {
-  #       AllowUnencrypted = true;
-  #     };
-  #   };
-  # };
-
   # services.jellyfin = {
   #   enable = true;
   #   openFirewall = true;

@@ -1,5 +1,14 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  pkgs-unstable,
+  ...
+}: {
   environment.systemPackages = with pkgs; [
+    virt-manager
+    cloud-utils
+    cdrtools
+    qemu
+    libguestfs
     virt-viewer
     spice
     spice-gtk
@@ -7,13 +16,13 @@
     virtio-win
     win-spice
     dive
-    # podman-tui
     podman-compose
+
+    pkgs-unstable.cockpit-machines
   ];
 
-  virtualisation.containers.enable = true;
-
   virtualisation = {
+    containers.enable = true;
     containerd = {
       enable = true;
     };
@@ -26,6 +35,7 @@
       enable = true;
       qemu = {
         swtpm.enable = true;
+        runAsRoot = true;
         # ovmf.enable = true;
         # ovmf.packages = [pkgs.OVMFFull.fd];
       };

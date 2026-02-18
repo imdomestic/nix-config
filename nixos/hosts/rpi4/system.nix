@@ -219,18 +219,6 @@ in {
     enable = true;
   };
 
-  services.cockpit = {
-    enable = true;
-    port = 9090;
-    openFirewall = true; # Please see the comments section
-    allowed-origins = ["*"];
-    settings = {
-      WebService = {
-        AllowUnencrypted = true;
-      };
-    };
-  };
-
   services.prometheus.exporters.node = {
     enable = true;
     openFirewall = true;
@@ -341,7 +329,6 @@ in {
       }
     ];
   };
-
 
   services.desktopManager.gnome.enable = true;
 

@@ -59,7 +59,8 @@
 
   xdg.configFile = {
     kvim.source = inputs.kvim.outPath;
-    zsh.source = inputs.zsh-config.outPath;
+    nvim.source = inputs.hvim.outPath;
+    zsh.source = inputs.zsh-hank.outPath;
     wezterm.source = inputs.wezterm-config.outPath;
     neofetch = {
       source = ../../modules/neofetch;

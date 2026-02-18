@@ -80,7 +80,7 @@
       flake = false;
     };
 
-    zsh-config = {
+    zsh-hank = {
       url = "github:HCHogan/zsh";
       flake = false;
     };

@@ -20,6 +20,8 @@
     };
   };
 
+  programs.zsh.enable = true;
+
   programs.neovim = {
     enable = true;
     defaultEditor = true;
@@ -30,6 +32,4 @@
     enableTransience = true;
     enableZshIntegration = true;
   };
-
-  
 }

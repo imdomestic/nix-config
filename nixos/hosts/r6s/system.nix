@@ -246,18 +246,6 @@ in {
   };
   services.irqbalance.enable = true;
 
-  services.cockpit = {
-    enable = true;
-    port = 9090;
-    openFirewall = true;
-    allowed-origins = ["*"];
-    settings = {
-      WebService = {
-        AllowUnencrypted = true;
-      };
-    };
-  };
-
   services.prometheus.exporters.node = {
     enable = true;
     openFirewall = true;

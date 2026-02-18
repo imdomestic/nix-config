@@ -119,17 +119,6 @@
   services.dnsmasq.enable = false;
   services.resolved.enable = true;
 
-  services.cockpit = {
-    enable = true;
-    port = 9090;
-    openFirewall = true; # Please see the comments section
-    settings = {
-      WebService = {
-        AllowUnencrypted = true;
-      };
-    };
-  };
-
   services.desktopManager.gnome.enable = true;
 
   programs = {
