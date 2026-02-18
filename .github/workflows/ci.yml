@@ -23,6 +23,10 @@ jobs:
             arch: x86_64
           - host: h610
             arch: x86_64
+          - host: gpd
+            arch: x86_64
+          - host: m16
+            arch: x86_64
           
           - host: r2s
             arch: aarch64
