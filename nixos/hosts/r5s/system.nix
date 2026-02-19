@@ -76,6 +76,8 @@
   time.timeZone = "Asia/Shanghai";
 
   powerManagement.cpuFreqGovernor = "performance";
+  services.displayManager.gdm.enable = false;
+  services.desktopManager.gnome.enable = false;
 
   environment.systemPackages = with pkgs; [
     ndppd

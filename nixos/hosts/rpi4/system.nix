@@ -331,7 +331,8 @@ in {
     ];
   };
 
-  services.desktopManager.gnome.enable = true;
+  services.displayManager.gdm.enable = false;
+  services.desktopManager.gnome.enable = false;
 
   systemd.services.network-tuning = {
     description = "Optimize Network Performance (RPS)";

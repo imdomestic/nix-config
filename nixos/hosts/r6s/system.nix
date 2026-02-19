@@ -284,7 +284,9 @@ in {
     port = 9100;
   };
 
-  # services.desktopManager.gnome.enable = true;
+  services.displayManager.gdm.enable = false;
+  services.desktopManager.gnome.enable = false;
+
   services.tailscale.enable = true;
 
   # programs = {

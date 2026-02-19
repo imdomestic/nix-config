@@ -123,6 +123,8 @@ in {
   };
 
   time.timeZone = "Asia/Shanghai";
+  services.displayManager.gdm.enable = false;
+  services.desktopManager.gnome.enable = false;
 
   powerManagement.cpuFreqGovernor = "performance";
 
