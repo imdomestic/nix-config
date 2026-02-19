@@ -45,9 +45,7 @@
   '';
 in {
   imports = [
-    # Include the results of the hardware scan.
     ./hardware-configuration.nix
-    # ../../modules/mihomo
     ../../modules/dae
     ../../modules/tuigreet
     ../../modules/keyd
@@ -56,6 +54,7 @@ in {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
+  powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
     hostName = "r6s"; # Define your hostname.
@@ -97,7 +96,16 @@ in {
     "net.ipv6.conf.all.forwarding" = 1;
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
+
+    "net.core.netdev_max_backlog" = 16384; # 增加网卡接收数据包队列
+    "net.core.rps_sock_flow_entries" = 32768; # 全局 RFS 流表大小
+    "net.ipv4.tcp_fastopen" = 3; # 开启 TCP Fast Open
+    "net.ipv4.tcp_mtu_probing" = 1; # 应对黑洞路由，自动探测 MTU
   };
+
+  services.udev.extraRules = ''
+    SUBSYSTEM=="net", ACTION=="add", RUN+="${pkgs.bash}/bin/bash -c 'for file in /sys/class/net/%k/queues/rx-*/rps_cpus; do echo ff > $file; done'"
+  '';
 
   services.pppd = {
     enable = true;
@@ -244,7 +252,6 @@ in {
       DNSStubListenerExtra=::
     '';
   };
-  services.irqbalance.enable = true;
 
   services.prometheus.exporters.node = {
     enable = true;
@@ -267,9 +274,6 @@ in {
   # Set your time zone.
   time.timeZone = "Asia/Shanghai";
 
-  # networking.proxy.default = "http://192.168.1.25:7890";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
   i18n.defaultLocale = "en_US.UTF-8";
 
   # Define a user account. Don't forget to set a password with ‘passwd’.
@@ -283,10 +287,7 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
   environment.systemPackages = with pkgs; [
-    vim
     tcpdump
     iproute2
     ethtool

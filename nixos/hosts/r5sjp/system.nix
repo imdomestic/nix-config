@@ -339,7 +339,6 @@ in {
       RemainAfterExit = true;
     };
     script = ''
-      # f = 1111 (二进制) -> 允许所有4个核心处理中断
       for file in /sys/class/net/*/queues/rx-*/rps_cpus; do
         echo f > "$file"
       done
