@@ -103,9 +103,33 @@ in {
     "net.ipv4.tcp_mtu_probing" = 1; # 应对黑洞路由，自动探测 MTU
   };
 
-  services.udev.extraRules = ''
-    SUBSYSTEM=="net", ACTION=="add", RUN+="${pkgs.bash}/bin/bash -c 'for file in /sys/class/net/%k/queues/rx-*/rps_cpus; do echo ff > $file; done'"
-  '';
+  systemd.services.network-tuning = {
+    description = "Optimize Network Performance (RPS)";
+
+    wantedBy = ["multi-user.target"];
+    wants = ["network-online.target"];
+    after = ["network-online.target"];
+
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeScript "enable-rps" ''
+        #!${pkgs.bash}/bin/bash
+
+        if [ -d /sys/class/net/enP3p49s0/queues/rx-0 ]; then
+          echo ff > /sys/class/net/enP3p49s0/queues/rx-0/rps_cpus
+        fi
+
+        if [ -d /sys/class/net/enP4p65s0/queues/rx-0 ]; then
+          echo ff > /sys/class/net/enP4p65s0/queues/rx-0/rps_cpus
+        fi
+
+        if [ -d /sys/class/net/end0/queues/rx-0 ]; then
+          echo ff > /sys/class/net/end0/queues/rx-0/rps_cpus
+        fi
+      '';
+    };
+  };
 
   services.pppd = {
     enable = true;
