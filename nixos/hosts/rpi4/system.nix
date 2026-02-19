@@ -52,6 +52,7 @@ in {
   boot.loader.grub.enable = false;
   boot.loader.generic-extlinux-compatible.enable = true;
   boot.kernelPackages = pkgs.linuxPackages_rpi4;
+  powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
     hostName = "rpi4"; # Define your hostname.
@@ -209,7 +210,7 @@ in {
       DNSStubListenerExtra=::
     '';
   };
-  services.irqbalance.enable = true;
+  # services.irqbalance.enable = true;
   services.udev.extraRules = ''
     ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="8156", ATTR{power/control}="on"
   '';
@@ -332,6 +333,27 @@ in {
 
   services.desktopManager.gnome.enable = true;
 
+  systemd.services.network-tuning = {
+    description = "Optimize Network Performance (RPS)";
+    wantedBy = ["multi-user.target"];
+    after = ["network-online.target"];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = pkgs.writeScript "enable-rps" ''
+        #!${pkgs.bash}/bin/bash
+
+        if [ -d /sys/class/net/enp1s0u2/queues/rx-0 ]; then
+          echo f > /sys/class/net/enp1s0u2/queues/rx-0/rps_cpus
+        fi
+
+        if [ -d /sys/class/net/end0/queues/rx-0 ]; then
+          echo f > /sys/class/net/end0/queues/rx-0/rps_cpus
+        fi
+      '';
+    };
+  };
+
   programs = {
     niri = {
       package = pkgs.niri;
@@ -340,15 +362,10 @@ in {
     firefox.enable = true;
   };
 
-  # Set your time zone.
   time.timeZone = "Asia/Shanghai";
-
-  # networking.proxy.default = "http://192.168.1.25:7890";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
 
   i18n.defaultLocale = "en_US.UTF-8";
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.hank = {
     isNormalUser = true;
     extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
@@ -359,8 +376,6 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  # List packages installed in system profile. To search, run:
-  # $ nix search wget
   environment.systemPackages = with pkgs; [
     vim
     tcpdump
