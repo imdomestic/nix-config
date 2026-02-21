@@ -507,6 +507,22 @@ in {
     };
   };
 
+  systemd.nspawn."debian-guest" = {
+    enable = true;
+    execConfig = {
+      Boot = true;
+    };
+    networkConfig = {
+      Bridge = "br-lan";
+    };
+  };
+
+  systemd.services."systemd-nspawn@debian-guest" = {
+    enable = true;
+    wantedBy = ["machines.target"];
+    overrideStrategy = "asDropin";
+  };
+
   programs.zsh = {
     enable = true;
   };
@@ -571,6 +587,7 @@ in {
     # infiniband-diags
     # libibverbs
 
+    debootstrap
     cachix
     vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
     wget
