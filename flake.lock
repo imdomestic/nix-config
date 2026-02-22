@@ -55,11 +55,11 @@
     "dae-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1771523930,
-        "narHash": "sha256-gFtDJNfbs9NNlWhw0ek7YrsQWIvqR923nZSXd4kYof8=",
+        "lastModified": 1771784094,
+        "narHash": "sha256-6nm3tqUBPlHbD14TaKT6BLIjQhjHyHhWZPYX6+DWasI=",
         "ref": "refs/heads/main",
-        "rev": "c7c29572b549ee08e14c8d9ae375c3989dc009c8",
-        "revCount": 35,
+        "rev": "d9b147a0c5af33fa174764a073f2fd82e35e4bd5",
+        "revCount": 36,
         "type": "git",
         "url": "ssh://git@github.com/imdomestic/dae"
       },
@@ -653,11 +653,11 @@
     "hvim": {
       "flake": false,
       "locked": {
-        "lastModified": 1771395049,
-        "narHash": "sha256-M2RZm6gMl3pzwJfLxLGJQWiy9BsVth+3x1908wG8P1I=",
+        "lastModified": 1771784818,
+        "narHash": "sha256-4DzJQ1+Fk9e4ilLBjuOo2hlAPXcakRdWoBpD0yetOII=",
         "owner": "HCHogan",
         "repo": "hvim",
-        "rev": "518bf658f5b4f4417c495fbc14df2241e3212c13",
+        "rev": "37a82b220388d4b3e3bd4de41b10f5625f96edf6",
         "type": "github"
       },
       "original": {
