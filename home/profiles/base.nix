@@ -5,8 +5,7 @@
   system,
   username,
   ...
-}: let
-in {
+}: {
   home.packages = with pkgs; [
     zoxide
     curl
