@@ -68,6 +68,7 @@ in {
     ../../modules/dae
     ../../modules/keyd
     # ../../modules/netbird
+    # ../../modules/minecraft/wuxi.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
