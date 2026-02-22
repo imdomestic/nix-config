@@ -95,18 +95,18 @@ in {
       q = "exit";
 
       # --- File Ops ---
-      mkdir = "mkdir -p";
-      fm = "ranger";
-      ls = "eza --color=auto --icons";
-      l = "ls -l";
-      la = "ls -a";
-      lla = "ls -la";
-      lt = "ls --tree";
-      cat = "bat --color always --plain";
+      # mkdir = "mkdir -p";
+      # fm = "ranger";
+      # ls = "eza --color=auto --icons";
+      # l = "ls -l";
+      # la = "ls -a";
+      # lla = "ls -la";
+      # lt = "ls --tree";
+      # cat = "bat --color always --plain";
       # Nu 的 cp/mv/rm 默认行为略有不同，但这些参数通常兼容
-      mv = "mv -v";
-      cp = "cp -vr";
-      rm = "rm -vr";
+      # mv = "mv -v";
+      # cp = "cp -vr";
+      # rm = "rm -vr";
 
       # --- Git (基础部分) ---
       # 复杂 Git 别名建议使用 git config alias 或 def，这里保留通用的
