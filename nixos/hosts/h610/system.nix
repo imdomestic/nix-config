@@ -406,6 +406,7 @@ in {
   };
 
   environment.systemPackages = with pkgs; [
+    gcc
     neovim
     nginx
   ];
