@@ -244,7 +244,7 @@ in {
       locations."/" = {
         root = config.services.netbird.server.dashboard.finalDrv;
 
-        tryFiles = lib.mkForce "$uri $uri/ /index.html";
+        tryFiles = lib.mkForce "$uri $uri.html $uri/ /index.html";
         extraConfig = ''
           grpc_read_timeout 3600s;
           grpc_send_timeout 3600s;
