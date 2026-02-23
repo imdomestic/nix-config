@@ -380,6 +380,8 @@ in {
   services.xserver.displayManager.gdm.enable = false;
   services.xserver.desktopManager.gnome.enable = false;
 
+  services.cockpit.enable = lib.mkForce false;
+
   programs.zsh = {
     enable = true;
   };
