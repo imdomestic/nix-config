@@ -74,11 +74,27 @@
 
   time.timeZone = "Hongkong";
 
+  users.users.linwhite = {
+    isNormalUser = true;
+    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
+    packages = with pkgs; [
+      tree
+    ];
+  };
+
+  security.sudo.wheelNeedsPassword = false;
+
   nixpkgs.config.rocmSupport = true;
 
   services.xserver.enable = true;
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
+  # services.xserver.displayManager.lightdm = {
+  #   enable = true;
+  #   extraConfig = ''
+  #     display-setup-script=xrandr --output eDP-1 --rotate right
+  #     '';
+  # };
 
   services.flatpak.enable = true;
   services.spice-vdagentd.enable = true;

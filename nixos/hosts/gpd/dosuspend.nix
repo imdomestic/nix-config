@@ -55,14 +55,9 @@ let
         ;;
     esac
   '';
-
-  dosuspeng = pkgs.runCommand "dosuspeng" {} ''
-    mkdir -p $out/bin
-    ln -s ${dosuspend}/bin/dosuspend $out/bin/dosuspeng
-  '';
 in
 {
-  environment.systemPackages = [ dosuspend dosuspeng ];
+  environment.systemPackages = [ dosuspend ];
 
   systemd.tmpfiles.rules = [
     "d ${stateDir} 0755 root root -"

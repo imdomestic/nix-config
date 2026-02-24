@@ -10,7 +10,6 @@ in {
   profiles = with nixosProfiles; [
     base
     desktop
-    virtualisation
   ];
 
   modules = [
@@ -30,6 +29,7 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
+          base
           dev
           gui.linux
         ];
