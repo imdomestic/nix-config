@@ -35,6 +35,10 @@
     unzip
     p7zip
     zstd
+
+    # nix
+    nil
+    alejandra
   ];
 
   programs.yazi = {

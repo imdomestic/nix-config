@@ -35,8 +35,6 @@
       prettierd
       lua-language-server
       bash-language-server
-      nil
-      alejandra
       nodejs_22
       # sqlite
       # sqlite-interactive
