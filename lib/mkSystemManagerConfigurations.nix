@@ -13,12 +13,11 @@
       then host.usernames
       else builtins.attrNames hostUsers;
     hostSystem = host.system or (throw "Host ${hostName} must define a system");
-    pkgsUnstable =
-      import inputs.nixpkgs-unstable {
-        system = hostSystem;
-        overlays = (sysman.overlays or []) ++ [inputs.nur.overlays.default];
-        config = defaultNixpkgsConfig;
-      };
+    pkgsUnstable = import inputs.nixpkgs-unstable {
+      system = hostSystem;
+      overlays = (sysman.overlays or []) ++ [inputs.nur.overlays.default];
+      config = defaultNixpkgsConfig;
+    };
   in
     {
       inherit inputs hostName host hostUsers usernames;

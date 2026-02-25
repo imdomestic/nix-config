@@ -1,6 +1,8 @@
-{ config, pkgs, ... }:
-
-let
+{
+  config,
+  pkgs,
+  ...
+}: let
   stateDir = "/var/lib/dosuspend";
   flagFile = "${stateDir}/enabled";
 
@@ -55,9 +57,8 @@ let
         ;;
     esac
   '';
-in
-{
-  environment.systemPackages = [ dosuspend ];
+in {
+  environment.systemPackages = [dosuspend];
 
   systemd.tmpfiles.rules = [
     "d ${stateDir} 0755 root root -"
@@ -65,7 +66,7 @@ in
 
   systemd.services.no-suspend-inhibit = {
     description = "Block suspend/hibernate via systemd-inhibit (toggle with dosuspend)";
-    wantedBy = [ "multi-user.target" ];
+    wantedBy = ["multi-user.target"];
     before = [
       "sleep.target"
       "suspend.target"

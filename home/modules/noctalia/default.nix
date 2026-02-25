@@ -36,7 +36,8 @@ in {
         else if hostname == "x470"
         then [
           "DP-2,/home/hank/wallpapers/dark_wave.png"
-        ] else [];
+        ]
+        else [];
     };
   };
 

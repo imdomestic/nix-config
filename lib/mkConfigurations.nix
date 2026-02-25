@@ -12,12 +12,11 @@
       if host ? usernames
       then host.usernames
       else builtins.attrNames hostUsers;
-    pkgsUnstable =
-      import inputs.nixpkgs-unstable {
-        system = hostSystem;
-        overlays = (host.overlays or []) ++ [inputs.nur.overlays.default];
-        config = defaultNixpkgsConfig;
-      };
+    pkgsUnstable = import inputs.nixpkgs-unstable {
+      system = hostSystem;
+      overlays = (host.overlays or []) ++ [inputs.nur.overlays.default];
+      config = defaultNixpkgsConfig;
+    };
   in
     {
       inherit inputs hostName hostUsers usernames;

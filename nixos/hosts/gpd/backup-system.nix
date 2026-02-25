@@ -17,13 +17,12 @@
     preferStaticEmulators = true;
   };
 
-
   networking = {
     hostName = "gpd"; # Define your hostname.
     networkmanager.enable = false; # Easiest to use and most distros use this by default.
     # useDHCP = false;
     useNetworkd = true;
-    };
+  };
 
   #   wg-quick.interfaces = {
   #     wg0 = {
@@ -32,7 +31,6 @@
   #     };
   #   };
   # };
-
 
   # Configure network proxy if necessary
   # networking.proxy.default = "http://127.0.0.1:7890";

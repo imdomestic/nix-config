@@ -17,16 +17,15 @@
     preferStaticEmulators = true;
   };
 
-
   networking = {
     hostName = "gpd"; # Define your hostname.
-    networkmanager.enable = false ;
-    wireless.iwd.enable = true ;
+    networkmanager.enable = false;
+    wireless.iwd.enable = true;
 
     useDHCP = false;
     useNetworkd = true;
-    nameservers = [ "1.1.1.1" "8.8.8.8" ];
-    };
+    nameservers = ["1.1.1.1" "8.8.8.8"];
+  };
 
   #   wg-quick.interfaces = {
   #     wg0 = {
@@ -36,7 +35,6 @@
   #   };
   # };
 
-
   # Configure network proxy if necessary
   # networking.proxy.default = "http://127.0.0.1:7890";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
@@ -44,14 +42,13 @@
   systemd.network = {
     wait-online.enable = false;
     enable = true;
-    networks."wlan" ={
+    networks."wlan" = {
       matchConfig.Name = "wlan0";
       networkConfig = {
-      DHCP = "yes";
+        DHCP = "yes";
       };
     };
   };
-  
 
   #
   #   networks."20-lan-uplink" = {
