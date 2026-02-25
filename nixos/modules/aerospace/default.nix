@@ -1,10 +1,13 @@
 {
   lib,
-  username,
+  usernames ? [],
   ...
-}: {
+}: let
+  resolvedUsernames = usernames;
+  hasUser = needle: lib.any (u: lib.hasInfix needle u) resolvedUsernames;
+in {
   services.aerospace =
-    if lib.hasInfix "hank" username
+    if hasUser "hank"
     then {
       enable = true;
       settings = {
@@ -97,7 +100,7 @@
         };
       };
     }
-    else if lib.hasInfix "linwhite" username
+    else if hasUser "linwhite"
     then {
     }
     else {};

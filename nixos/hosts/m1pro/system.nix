@@ -7,8 +7,8 @@
   # Used for backwards compatibility, please read the changelog before changing.
   # $ darwin-rebuild changelog
   imports = [
-    ../../modules/aerospace
     ../../modules/nerdfonts
+    ../../modules/aerospace
   ];
   system.stateVersion = 5;
 

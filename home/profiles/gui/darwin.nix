@@ -1,7 +1,7 @@
 {pkgs, ...}: {
   imports = [
     ../../modules/kitty
-    # ../../modules/ghostty
+    ../../modules/ghostty
   ];
   home.packages = with pkgs; [
     swiftlint

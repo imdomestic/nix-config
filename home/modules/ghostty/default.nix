@@ -48,7 +48,7 @@ in {
       font-size =
         if isLinux
         then 11.5
-        else 15;
+        else 16;
       window-decoration = true;
       font-family =
         if isLinux
