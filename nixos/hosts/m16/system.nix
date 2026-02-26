@@ -10,7 +10,7 @@
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_lqx;
 
   boot.binfmt = {
     emulatedSystems = ["aarch64-linux"];
@@ -49,6 +49,8 @@
       };
     };
   };
+<<<<<<< Updated upstream
+<<<<<<< Updated upstream
 
   #
   #   networks."20-lan-uplink" = {
@@ -68,6 +70,10 @@
   #     };
   #   };
   # };
+=======
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
 
   time.timeZone = "Hongkong";
 

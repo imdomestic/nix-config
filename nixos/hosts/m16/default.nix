@@ -32,6 +32,7 @@ in {
         profiles = with homeProfiles; [
           core
           dev
+          base
           gui.linux
         ];
         modules = [
