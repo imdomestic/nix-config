@@ -49,8 +49,6 @@
       };
     };
   };
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 
   #
   #   networks."20-lan-uplink" = {
@@ -70,10 +68,6 @@
   #     };
   #   };
   # };
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
   time.timeZone = "Hongkong";
 

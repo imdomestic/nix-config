@@ -79,7 +79,7 @@ in {
     "dm-cache-default" # when using volumes set up with lvmcache
   ];
   boot.supportedFilesystems = ["xfs" "bcachefs"];
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_6_18;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
   swapDevices = [
     {
@@ -486,7 +486,7 @@ in {
   };
 
   services.k3s = {
-    enable = true;
+    enable = false;
     role = "server";
     token = "hbhbhb";
     clusterInit = true;
