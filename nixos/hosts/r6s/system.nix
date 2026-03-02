@@ -44,6 +44,7 @@ in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/dae
+    # ../../modules/singbox
     ../../modules/tuigreet
     ../../modules/keyd
   ];
@@ -266,8 +267,11 @@ in {
   services.dnsmasq.enable = false;
   services.resolved = {
     enable = true;
+    dnssec = "false";
     fallbackDns = ["223.5.5.5"];
     extraConfig = ''
+      # DNS=127.0.0.1:1053
+      # Domains=~.
       DNSStubListener=yes
       DNSStubListenerExtra=192.168.22.1
       DNSStubListenerExtra=::
@@ -284,6 +288,7 @@ in {
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
+  services.cockpit.enable = lib.mkForce false;
   services.tailscale.enable = true;
 
   # programs = {

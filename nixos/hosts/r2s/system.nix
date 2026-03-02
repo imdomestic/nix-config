@@ -66,53 +66,9 @@
     tmp.useTmpfs = true;
     growPartition = true;
     kernel.sysctl = {
+      "net.ipv4.ip_forward" = 1;
       "net.core.default_qdisc" = "fq";
-      "net.core.somaxconn" = 65536;
-      "net.core.netdev_max_backlog" = 10000;
-      "net.core.netdev_budget" = 600;
-      "net.core.rps_sock_flow_entries" = 32768;
-      "net.core.dev_weight" = 600;
-
       "net.ipv4.tcp_congestion_control" = "bbr";
-      "net.ipv4.tcp_fastopen" = 3;
-      "net.ipv4.tcp_keepalive_time" = 300;
-      "net.ipv4.tcp_keepalive_intvl" = 30;
-      "net.ipv4.tcp_keepalive_probes" = 5;
-      "net.ipv4.tcp_mtu_probing" = true;
-      "net.ipv4.tcp_notsent_lowat" = 16384;
-
-      # tcp pending
-      "net.ipv4.tcp_max_syn_backlog" = 65536;
-      "net.ipv4.tcp_max_tw_buckets" = 2000000;
-      "net.ipv4.tcp_tw_reuse" = true;
-      "net.ipv4.tcp_fin_timeout" = 30;
-      "net.ipv4.tcp_slow_start_after_idle" = false;
-
-      # net mem
-      "net.core.rmem_default" = 1048576;
-      "net.core.rmem_max" = 16777216;
-      "net.core.wmem_default" = 1048576;
-      "net.core.wmem_max" = 16777216;
-      "net.core.optmem_max" = 65536;
-      "net.ipv4.tcp_rmem" = "4096 1048576 2097152";
-      "net.ipv4.tcp_wmem" = "4096 65536 16777216";
-      "net.ipv4.udp_rmem_min" = 8192;
-      "net.ipv4.udp_wmem_min" = 8192;
-
-      "net.ipv4.ip_forward" = true;
-      "net.ipv4.conf.all.forwarding" = true;
-      "net.ipv4.conf.default.forwarding" = true;
-      "net.ipv6.conf.all.forwarding" = true;
-      "net.ipv6.conf.default.forwarding" = true;
-      "net.ipv4.conf.all.rp_filter" = 2;
-      "net.ipv4.conf.default.rp_filter" = 2;
-
-      "net.netfilter.nf_conntrack_buckets" = 393216;
-      "net.netfilter.nf_conntrack_max" = 393216;
-      "net.netfilter.nf_conntrack_generic_timeout" = 60;
-      "net.netfilter.nf_conntrack_tcp_timeout_fin_wait" = 10;
-      "net.netfilter.nf_conntrack_tcp_timeout_established" = 432000;
-      "net.netfilter.nf_conntrack_tcp_timeout_time_wait" = 5;
     };
   };
 
@@ -129,29 +85,16 @@
     };
     nftables = {
       enable = true;
-      checkRuleset = false;
       tables.router = {
         name = "mss-clamping";
         enable = true;
         family = "inet";
         content = ''
-          # Flowtable 定义
-          flowtable f {
-            hook ingress priority 0;
-            devices = { end0, enu1, br-lan };
-          }
-
           chain postrouting {
-            type filter hook postrouting priority 0; policy accept;
-            # 你的 MSS Clamping 规则
-            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
-          }
-
-          chain forward {
             type filter hook forward priority 0; policy accept;
-            # flow offload @f
-            ct state established,related accept
+
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1452
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1432
           }
         '';
       };
@@ -210,7 +153,6 @@
       };
       linkConfig = {
         RequiredForOnline = "carrier";
-        MTUBytes = 1400;
       };
       dhcpV6Config = {
         WithoutRA = "solicit";
@@ -252,6 +194,7 @@
   systemd.services.network-rps = {
     description = "Configure RPS/XPS/RFS for network interfaces";
     after = ["network-online.target"];
+    wants = ["network-online.target"];
     wantedBy = ["multi-user.target"];
     serviceConfig = {
       Type = "oneshot";
@@ -315,8 +258,8 @@
           ipv6cp-use-ipaddr
 
           # MTU 设置 (PPPoE 标准)
-          mtu 1400
-          mru 1400
+          mtu 1492
+          mru 1492
         '';
       };
     };
@@ -342,6 +285,57 @@
   };
   services.tailscale = {
     enable = true;
+  };
+
+  systemd.services.ddns-go = let
+    ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+      dnsconf:
+          - name: ""
+            ipv4:
+              enable: false
+              gettype: url
+              url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
+              netinterface: wan0
+              cmd: ""
+              domains:
+                  - ""
+            ipv6:
+              enable: true
+              gettype: netInterface
+              url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
+              netinterface: ppp0
+              cmd: ""
+              ipv6reg: ""
+              domains:
+                  - r5sjp:imdomestic.com
+            dns:
+              name: cloudflare
+              id: ""
+              secret: WY4F4gK8O-VgV1P7dGnic4yNSxmtPBep5OXuh2Js
+            ttl: ""
+      user:
+          username: hank
+          password: $2a$10$Jk0oGrcwc5NyTXyeDJebxeET1efrILq64Y9.8112NLW2qMmizFSIK
+      webhook:
+          webhookurl: ""
+          webhookrequestbody: ""
+          webhookheaders: ""
+      notallowwanaccess: false
+      lang: zh
+    '';
+  in {
+    enable = true;
+    description = "ddns";
+
+    wantedBy = ["multi-user.target"];
+    wants = ["network-online.target"];
+    after = ["network-online.target"];
+
+    serviceConfig = {
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
+      Restart = "always";
+      RestartSec = 5;
+    };
   };
 
   time.timeZone = "Asia/Shanghai";
