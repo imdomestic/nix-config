@@ -4,43 +4,7 @@
   lib,
   pkgs,
   ...
-}: let
-  ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
-    dnsconf:
-        - name: ""
-          ipv4:
-            enable: false
-            gettype: url
-            url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-            netinterface: wan0
-            cmd: ""
-            domains:
-                - ""
-          ipv6:
-            enable: true
-            gettype: netInterface
-            url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-            netinterface: ppp0
-            cmd: ""
-            ipv6reg: ""
-            domains:
-                - r6s:imdomestic.com
-          dns:
-            name: cloudflare
-            id: ""
-            secret: WY4F4gK8O-VgV1P7dGnic4yNSxmtPBep5OXuh2Js
-          ttl: ""
-    user:
-        username: hank
-        password: $2a$10$Jk0oGrcwc5NyTXyeDJebxeET1efrILq64Y9.8112NLW2qMmizFSIK
-    webhook:
-        webhookurl: ""
-        webhookrequestbody: ""
-        webhookheaders: ""
-    notallowwanaccess: false
-    lang: zh
-  '';
-in {
+}: {
   imports = [
     ./hardware-configuration.nix
     ../../modules/dae
@@ -249,7 +213,43 @@ in {
       };
     };
   };
-  systemd.services.ddns-go = {
+  systemd.services.ddns-go = let
+    ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+      dnsconf:
+          - name: ""
+            ipv4:
+              enable: false
+              gettype: url
+              url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
+              netinterface: wan0
+              cmd: ""
+              domains:
+                  - ""
+            ipv6:
+              enable: true
+              gettype: netInterface
+              url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
+              netinterface: ppp0
+              cmd: ""
+              ipv6reg: ""
+              domains:
+                  - r6s:imdomestic.com
+            dns:
+              name: cloudflare
+              id: ""
+              secret: WY4F4gK8O-VgV1P7dGnic4yNSxmtPBep5OXuh2Js
+            ttl: ""
+      user:
+          username: hank
+          password: $2a$10$Jk0oGrcwc5NyTXyeDJebxeET1efrILq64Y9.8112NLW2qMmizFSIK
+      webhook:
+          webhookurl: ""
+          webhookrequestbody: ""
+          webhookheaders: ""
+      notallowwanaccess: false
+      lang: zh
+    '';
+  in {
     enable = true;
     description = "ddns-go";
 
