@@ -36,28 +36,16 @@
     useNetworkd = true;
     nftables = {
       enable = true;
-      checkRuleset = false;
       tables.router = {
         name = "mss-clamping";
         enable = true;
         family = "inet";
         content = ''
-          flowtable f {
-            hook ingress priority 0;
-            devices = { eno1, br-lan };
-          }
-
           chain postrouting {
-            type filter hook postrouting priority 0; policy accept;
-
-            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1340
-            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1320
-          }
-
-          chain forward {
             type filter hook forward priority 0; policy accept;
-            # flow offload @f
-            ct state established,related accept
+
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1452
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1432
           }
         '';
       };
@@ -104,9 +92,8 @@
           +ipv6
           ipv6cp-use-ipaddr
 
-          # MTU 设置 (PPPoE 标准)
-          mtu 1380
-          mru 1380
+          mtu 1492
+          mru 1492
         '';
       };
     };
@@ -192,7 +179,7 @@
     fallbackDns = ["223.5.5.5"];
     extraConfig = ''
       DNSStubListener=yes
-      DNSStubListenerExtra=10.0.0.1
+      DNSStubListenerExtra=10.0.1.1
       DNSStubListenerExtra=::
     '';
   };
