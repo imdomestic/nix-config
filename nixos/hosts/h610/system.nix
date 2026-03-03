@@ -158,7 +158,7 @@
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
       networkConfig = {
-        Address = "192.168.2.1/24";
+        Address = "10.0.1.1/24";
         DHCPServer = true;
         IPMasquerade = "ipv4";
 
@@ -174,7 +174,7 @@
         PoolOffset = 100;
         PoolSize = 100;
         EmitDNS = true;
-        DNS = ["192.168.2.1"];
+        DNS = ["10.0.1.1"];
       };
 
       # SLAAC
@@ -192,7 +192,7 @@
     fallbackDns = ["223.5.5.5"];
     extraConfig = ''
       DNSStubListener=yes
-      DNSStubListenerExtra=192.168.2.1
+      DNSStubListenerExtra=10.0.0.1
       DNSStubListenerExtra=::
     '';
   };
