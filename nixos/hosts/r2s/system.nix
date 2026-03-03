@@ -310,7 +310,7 @@
               cmd: ""
               ipv6reg: ""
               domains:
-                  - r5sjp:imdomestic.com
+                  - r2s:imdomestic.com
             dns:
               name: cloudflare
               id: ""
