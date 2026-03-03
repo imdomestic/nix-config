@@ -134,7 +134,10 @@
     # WAN
     networks."20-wan-uplink" = {
       matchConfig.Name = "end0";
-      linkConfig.RequiredForOnline = "no";
+      linkConfig = {
+        RequiredForOnline = "no";
+        # MTUBytes = 9000;
+      };
       networkConfig = {
         LinkLocalAddressing = "no";
         DHCP = "no";
