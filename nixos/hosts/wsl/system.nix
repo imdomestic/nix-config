@@ -10,10 +10,21 @@
   wsl = {
     enable = true;
     defaultUser = "hank";
+    useWindowsDriver = true;
     wslConf = {
       network.generateResolvConf = false;
       network.generateHosts = false;
     };
+  };
+  hardware.graphics.extraPackages = [
+    (pkgs.runCommand "wsl-nvidia-symlink" {} ''
+      mkdir -p $out/lib
+      ln -s /usr/lib/wsl/lib/libnvidia-ml.so.1 $out/lib/libnvidia-ml.so
+    '')
+  ];
+  programs.nix-ld.enable = true;
+  environment.variables = {
+    LD_LIBRARY_PATH = "/run/opengl-driver/lib:/usr/lib/wsl/lib";
   };
 
   networking.hostName = "wsl";
