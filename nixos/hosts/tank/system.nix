@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  pkgs-unstable,
   lib,
   inputs,
   ...
@@ -551,8 +552,10 @@ in {
   services.spice-vdagentd.enable = true;
 
   services.ollama = {
+    package = pkgs-unstable.ollama;
     enable = true;
-    acceleration = "cuda";
+    # acceleration = "cuda";
+    acceleration = false;
     host = "0.0.0.0";
     home = "/data/lib/ollama";
     environmentVariables = {
