@@ -429,9 +429,9 @@
       policy.path = "${pkgs.writeText "headscale-policy.json" (builtins.toJSON {
         groups = {
           "group:imdomestic" = [
-            "user:hank"
-            "user:linwhite"
-            "user:fendada"
+            "hank@imdomestic.com"
+            "linwhite@imdomestic.com"
+            "fendada@imdomestic.com"
           ];
         };
 
