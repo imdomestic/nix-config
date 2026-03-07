@@ -446,6 +446,28 @@
     };
   };
 
+  services.headplane = {
+    enable = true;
+    settings = {
+      server = {
+        host = "127.0.0.1";
+        port = 3000;
+        base_url = "https://tailscale.imdomestic.com:8443";
+        cookie_secure = true;
+        cookie_secret_path = "/var/lib/secrets/headplane/cookie_secret";
+      };
+      headscale = {
+        url = "https://tailscale.imdomestic.com:8443";
+      };
+      integration = {
+        agent.enabled = false;
+        docker.enabled = false;
+        kubernetes.enabled = false;
+        proc.enabled = false;
+      };
+    };
+  };
+
   services.nginx.enable = true;
   services.nginx.virtualHosts."tailscale.imdomestic.com" = {
     serverName = "tailscale.imdomestic.com";
@@ -466,6 +488,19 @@
     ];
     locations."/" = {
       proxyPass = "http://127.0.0.1:8080";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+      '';
+    };
+
+    locations."/admin" = {
+      proxyPass = "http://127.0.0.1:3000";
       proxyWebsockets = true;
       extraConfig = ''
         proxy_set_header Host $host;
