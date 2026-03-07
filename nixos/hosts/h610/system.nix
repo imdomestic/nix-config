@@ -184,6 +184,11 @@
     '';
   };
 
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "hankchogan@gmail.com";
+  };
+
   security.acme.certs."tailscale.imdomestic.com" = {
     dnsProvider = "cloudflare";
     credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
