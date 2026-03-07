@@ -2,12 +2,7 @@
   inputs,
   pkgs,
   ...
-}: let
-  domainName = "sh.imdomestic.com";
-  listenPort = "8443";
-  certFile = "/etc/nixos/certs/sh.imdomestic.com.pem";
-  keyFile = "/etc/nixos/certs/sh.imdomestic.com.key";
-in {
+}: {
   imports = [
     ./hardware-configuration.nix
     ../../modules/dae
@@ -123,47 +118,6 @@ in {
   };
 
   services.tailscale.enable = true;
-  services.headscale = {
-    enable = true;
-    address = "127.0.0.1";
-    port = 8080;
-    settings = {
-      server_url = "https://${domainName}:${listenPort}";
-      derp.server = {
-        enable = true;
-        region_id = 999;
-        region_code = "sh-aliyun";
-        region_name = "Shanghai Aliyun";
-        stun_listen_addr = "0.0.0.0:3478";
-      };
-      dns = {
-        base_domain = "inner.imdomestic.com";
-        magic_dns = true;
-        nameservers = {};
-        override_local_dns = false;
-      };
-      ip_prefixes = ["100.64.0.0/10"];
-    };
-  };
-
-  services.caddy = {
-    enable = true;
-    virtualHosts."${domainName}:${listenPort}" = {
-      extraConfig = ''
-        tls ${certFile} ${keyFile}
-
-        reverse_proxy 127.0.0.1:8080 {
-            header_up Host {host}
-            header_up X-Real-IP {remote}
-            header_up X-Forwarded-For {remote}
-            header_up X-Forwarded-Proto {scheme}
-            transport http {
-                keepalive 300s
-            }
-        }
-      '';
-    };
-  };
 
   services.nginx = {
     enable = true;

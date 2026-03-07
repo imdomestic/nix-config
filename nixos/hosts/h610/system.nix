@@ -184,6 +184,12 @@
     '';
   };
 
+  security.acme.certs."tailscale.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
+    group = "nginx";
+  };
+
   systemd.services.ddns-go = let
     ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
       dnsconf:
@@ -196,6 +202,7 @@
               cmd: ""
               domains:
                   - h610:imdomestic.com
+                  - tailscale:imdomestic.com
             ipv6:
               enable: false
               gettype: netInterface
@@ -408,6 +415,60 @@
 
   services.openssh.enable = true;
   services.tailscale.enable = true;
+
+  services.headscale = {
+    enable = true;
+    address = "127.0.0.1";
+    port = 8080;
+    settings = {
+      server_url = "https://tailscale.imdomestic.com:8443";
+      derp.server = {
+        enable = true;
+        region_id = 610;
+        region_code = "h610";
+        region_name = "H610";
+        stun_listen_addr = "0.0.0.0:3478";
+      };
+      dns = {
+        base_domain = "inner.imdomestic.com";
+        magic_dns = true;
+        nameservers = {};
+        override_local_dns = false;
+      };
+      ip_prefixes = ["100.64.0.0/10"];
+    };
+  };
+
+  services.nginx.virtualHosts."tailscale.imdomestic.com" = {
+    serverName = "tailscale.imdomestic.com";
+    useACMEHost = "tailscale.imdomestic.com";
+    forceSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8443;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8443;
+        ssl = true;
+      }
+    ];
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:8080";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+      '';
+    };
+  };
 
   system.stateVersion = "25.11";
 }

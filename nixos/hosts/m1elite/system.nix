@@ -27,6 +27,7 @@
     screensaver.askForPasswordDelay = 10;
   };
 
+  nix.enable = false;
   nixpkgs.hostPlatform = "aarch64-darwin";
 
   # environment.systemPackages = with pkgs; [
@@ -50,15 +51,15 @@
     ];
   };
 
-  services.postgresql = {
-    enable = true;
-    enableTCPIP = true;
-    package = pkgs.postgresql_17;
-    authentication = pkgs.lib.mkOverride 10 ''
-      #type database  DBuser  auth-method
-      local all       all     trust
-    '';
-  };
+  # services.postgresql = {
+  #   enable = true;
+  #   enableTCPIP = true;
+  #   package = pkgs.postgresql_17;
+  #   authentication = pkgs.lib.mkOverride 10 ''
+  #     #type database  DBuser  auth-method
+  #     local all       all     trust
+  #   '';
+  # };
 
   networking.wg-quick.interfaces = {
     wg0 = {
