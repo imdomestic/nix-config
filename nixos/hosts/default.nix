@@ -8,7 +8,7 @@ in {
   r5s = callHost "r5s";
   rpi4 = callHost "rpi4";
   wsl = callHost "wsl";
-  m3max = callHost "m3max";
+  m1elite = callHost "m1elite";
   m1pro = callHost "m1pro";
   hackintosh = callHost "hackintosh";
   x86_64-headless = callHost "x86_64-headless";
