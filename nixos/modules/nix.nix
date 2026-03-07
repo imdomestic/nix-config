@@ -16,6 +16,7 @@
     overlays = [
       inputs.nur.overlays.default
       inputs.nix-minecraft.overlay
+      inputs.headplane.overlays.default
       (final: prev: {
         zjstatus = inputs.zjstatus.packages.${prev.system}.default;
       })
