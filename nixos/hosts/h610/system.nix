@@ -462,7 +462,8 @@
         cookie_secret_path = "/var/lib/secrets/headplane/cookie_secret";
       };
       headscale = {
-        url = "https://tailscale.imdomestic.com:8443";
+        url = "http://127.0.0.1:8080";
+        public_url = "https://tailscale.imdomestic.com:8443";
       };
       integration = {
         agent = {
