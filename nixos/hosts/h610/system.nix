@@ -529,7 +529,12 @@
         return 302 /admin/;
       '';
     };
-    locations."/admin" = {
+    locations."= /admin" = {
+      extraConfig = ''
+        return 302 /admin/;
+      '';
+    };
+    locations."/admin/" = {
       proxyPass = "http://127.0.0.1:3000";
       proxyWebsockets = true;
       extraConfig = ''
