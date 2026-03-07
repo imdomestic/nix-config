@@ -453,6 +453,7 @@
 
   services.headplane = {
     enable = true;
+    debug = true;
     settings = {
       server = {
         host = "127.0.0.1";
