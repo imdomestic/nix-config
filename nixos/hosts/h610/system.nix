@@ -184,8 +184,6 @@
     '';
   };
 
-  users.groups.nginx = {};
-
   security.acme = {
     acceptTerms = true;
     defaults.email = "hankchogan@gmail.com";
