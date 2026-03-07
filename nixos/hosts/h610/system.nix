@@ -195,7 +195,6 @@
     group = "nginx";
   };
 
-
   systemd.services.ddns-go = let
     ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
       dnsconf:
@@ -427,6 +426,31 @@
     address = "127.0.0.1";
     port = 8080;
     settings = {
+      policy.path = "${pkgs.writeText "headscale-policy.json" (builtins.toJSON {
+        groups = {
+          "group:imdomestic" = [
+            "user:hank"
+            "user:linwhite"
+            "user:fendada"
+          ];
+        };
+
+        acls = [
+          # 核心规则：允许这个组内的所有人访问该组内的所有设备（所有端口）
+          {
+            action = "accept";
+            src = ["group:imdomestic"];
+            dst = ["group:imdomestic:*"];
+          }
+
+          # (可选) 允许所有人访问你广播的特定子网（比如你家的 R6S 局域网）
+          # {
+          #   action = "accept";
+          #   src = [ "group:friends" ];
+          #   dst = [ "192.168.1.0/24:*" ];
+          # }
+        ];
+      })}";
       server_url = "https://tailscale.imdomestic.com:8443";
       derp.server = {
         enable = true;
@@ -452,7 +476,7 @@
       server = {
         host = "127.0.0.1";
         port = 3000;
-        base_url = "https://tailscale.imdomestic.com:8443/admin";
+        base_url = "https://tailscale.imdomestic.com:8443";
         cookie_secure = true;
         cookie_secret_path = "/var/lib/secrets/headplane/cookie_secret";
       };
