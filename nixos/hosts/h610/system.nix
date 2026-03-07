@@ -195,11 +195,6 @@
     group = "nginx";
   };
 
-  security.acme.certs."headplane.imdomestic.com" = {
-    dnsProvider = "cloudflare";
-    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
-    group = "nginx";
-  };
 
   systemd.services.ddns-go = let
     ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
@@ -214,7 +209,6 @@
               domains:
                   - h610:imdomestic.com
                   - tailscale:imdomestic.com
-                  - headplane:imdomestic.com
             ipv6:
               enable: false
               gettype: netInterface
@@ -458,7 +452,7 @@
       server = {
         host = "127.0.0.1";
         port = 3000;
-        base_url = "https://headplane.imdomestic.com:8443";
+        base_url = "https://tailscale.imdomestic.com:8443/admin";
         cookie_secure = true;
         cookie_secret_path = "/var/lib/secrets/headplane/cookie_secret";
       };
@@ -504,30 +498,6 @@
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
-      '';
-    };
-  };
-
-  services.nginx.virtualHosts."headplane.imdomestic.com" = {
-    serverName = "headplane.imdomestic.com";
-    useACMEHost = "headplane.imdomestic.com";
-    forceSSL = true;
-    http2 = true;
-    listen = [
-      {
-        addr = "0.0.0.0";
-        port = 8443;
-        ssl = true;
-      }
-      {
-        addr = "[::]";
-        port = 8443;
-        ssl = true;
-      }
-    ];
-    locations."/" = {
-      extraConfig = ''
-        return 302 /admin/;
       '';
     };
     locations."= /admin" = {
