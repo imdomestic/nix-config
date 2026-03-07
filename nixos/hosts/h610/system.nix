@@ -465,7 +465,10 @@
         url = "https://tailscale.imdomestic.com:8443";
       };
       integration = {
-        agent.enabled = false;
+        agent = {
+          enabled = false;
+          pre_authkey = "";
+        };
         proc.enabled = true;
       };
     };
