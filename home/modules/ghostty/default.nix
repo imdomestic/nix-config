@@ -53,7 +53,7 @@ in {
       font-family =
         if isLinux
         then "Recursive"
-        else "RecMonoLinear Nerd Font Mono";
+        else "RecMonoSmCasual Nerd Font Mono";
       background-opacity = 0.85;
       background-blur-radius = 20;
       macos-option-as-alt = true;
