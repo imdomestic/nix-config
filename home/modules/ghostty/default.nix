@@ -3,7 +3,7 @@
   hostname,
   ...
 }: let
-  isLinux = hostname != "m3max" && hostname != "hackintosh";
+  isLinux = hostname != "m1elite" && hostname != "hackintosh";
   isHome = hostname == "aarch64-headless" || hostname == "x86_64-headless";
 in {
   programs.ghostty = {
@@ -48,7 +48,7 @@ in {
       font-size =
         if isLinux
         then 11.5
-        else 16;
+        else 15;
       window-decoration = true;
       font-family =
         if isLinux
