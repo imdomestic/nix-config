@@ -467,7 +467,7 @@
       integration = {
         agent = {
           enabled = false;
-          pre_authkey = "";
+          pre_authkey_path = "/var/lib/secrets/headplane/agent_preauthkey";
         };
         proc.enabled = true;
       };
