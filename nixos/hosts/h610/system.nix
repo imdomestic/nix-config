@@ -8,7 +8,7 @@
   imports = [
     ../../modules/dae
     ../../modules/keyd
-    ../../modules/netbird
+    # ../../modules/netbird
     # ../../modules/minecraft/wuxi.nix
   ];
 
