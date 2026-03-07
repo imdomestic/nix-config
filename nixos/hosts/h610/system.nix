@@ -461,9 +461,7 @@
       };
       integration = {
         agent.enabled = false;
-        docker.enabled = false;
-        kubernetes.enabled = false;
-        proc.enabled = false;
+        proc.enabled = true;
       };
     };
   };
