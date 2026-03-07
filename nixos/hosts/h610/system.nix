@@ -184,6 +184,8 @@
     '';
   };
 
+  users.groups.nginx = {};
+
   security.acme = {
     acceptTerms = true;
     defaults.email = "hankchogan@gmail.com";
@@ -444,6 +446,7 @@
     };
   };
 
+  services.nginx.enable = true;
   services.nginx.virtualHosts."tailscale.imdomestic.com" = {
     serverName = "tailscale.imdomestic.com";
     useACMEHost = "tailscale.imdomestic.com";
