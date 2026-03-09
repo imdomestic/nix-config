@@ -453,7 +453,7 @@
       })}";
       server_url = "https://tailscale.imdomestic.com:8443";
       derp.server = {
-        enable = true;
+        enabled = true;
         region_id = 610;
         region_code = "h610";
         region_name = "H610";
@@ -470,7 +470,7 @@
   };
 
   services.headplane = {
-    enabled = true;
+    enable = true;
     debug = true;
     settings = {
       server = {
