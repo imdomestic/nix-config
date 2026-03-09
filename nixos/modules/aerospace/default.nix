@@ -1,6 +1,7 @@
 {
   lib,
   usernames ? [],
+  pkgs,
   ...
 }: let
   resolvedUsernames = usernames;
@@ -103,12 +104,10 @@ in {
     else if hasUser "linwhite"
     then {
     enable = true;
-    package = pkgs.aerospace; # 默认也是这个，一般可省略  [oai_citation:1‡nix-darwin.github.io](https://nix-darwin.github.io/nix-darwin/manual/?utm_source=chatgpt.com)
 
     settings = {
       # "config-version" = 2;
       "after-startup-command" = [ ];
-      "start-at-login" = true;
       "enable-normalization-flatten-containers" = true;
       "enable-normalization-opposite-orientation-for-nested-containers" = true;
       "accordion-padding" = 30;

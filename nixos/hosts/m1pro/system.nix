@@ -39,6 +39,8 @@
   system.defaults.smb.NetBIOSName = hostname;
   system.primaryUser = "linwhite";
 
+  services.tailscale.enable = true;
+
   homebrew = {
     enable = true;
     caskArgs.no_quarantine = true;
