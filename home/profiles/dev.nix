@@ -96,6 +96,9 @@
       k9s
       kubernetes-helm
 
+      # android
+      android-tools
+
       # agents
       pkgs-unstable.codex
       pkgs-unstable.gemini-cli
