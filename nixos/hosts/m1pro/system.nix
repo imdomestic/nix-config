@@ -48,6 +48,6 @@
     casks = [
     ];
   };
-  
+
   nix.enable = false;
 }
