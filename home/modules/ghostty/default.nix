@@ -3,7 +3,7 @@
   hostname,
   ...
 }: let
-  isLinux = hostname != "m1elite" && hostname != "hackintosh";
+  isLinux = hostname != "m1elite" && hostname != "hackintosh" && hostname != "m1pro";
   isHome = hostname == "aarch64-headless" || hostname == "x86_64-headless";
 in {
   programs.ghostty = {
