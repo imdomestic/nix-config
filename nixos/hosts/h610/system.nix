@@ -470,7 +470,7 @@
   };
 
   services.headplane = {
-    enable = true;
+    enabled = true;
     debug = true;
     settings = {
       server = {
