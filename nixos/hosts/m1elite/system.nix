@@ -30,9 +30,10 @@
   nix.enable = false;
   nixpkgs.hostPlatform = "aarch64-darwin";
 
-  # environment.systemPackages = with pkgs; [
-  #   iproute2mac
-  # ];
+  environment.systemPackages = with pkgs; [
+    iproute2mac
+    nixos-rebuild
+  ];
 
   # host-users
   networking.hostName = hostname;
