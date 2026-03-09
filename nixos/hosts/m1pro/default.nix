@@ -21,7 +21,7 @@ in {
         profiles = with homeProfiles; [
           core
           base
-          dev
+          # dev
           gui.darwin
         ];
         modules = [
