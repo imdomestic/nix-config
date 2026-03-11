@@ -195,6 +195,12 @@
     group = "nginx";
   };
 
+  security.acme.certs."netdata.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
+    group = "nginx";
+  };
+
   systemd.services.ddns-go = let
     ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
       dnsconf:
@@ -274,7 +280,7 @@
     enable = true;
     config = {
       global = {
-        "bind socket to IP" = "0.0.0.0";
+        "bind socket to IP" = "127.0.0.1";
       };
     };
   };
@@ -553,6 +559,25 @@
     #     proxy_send_timeout 3600s;
     #   '';
     # };
+  };
+  services.nginx.virtualHosts."netdata.imdomestic.com" = {
+    serverName = "netdata.imdomestic.com";
+    useACMEHost = "netdata.imdomestic.com";
+    forceSSL = true;
+    http2 = true;
+
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:19999";
+
+      extraConfig = ''
+        allow 100.64.0.0/10;
+        allow 127.0.0.1;
+        deny all;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+      '';
+    };
   };
 
   system.stateVersion = "25.11";
