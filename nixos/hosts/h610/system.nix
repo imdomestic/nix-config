@@ -469,30 +469,30 @@
     };
   };
 
-  services.headplane = {
-    enable = true;
-    debug = true;
-    settings = {
-      server = {
-        host = "127.0.0.1";
-        port = 3000;
-        base_url = "https://tailscale.imdomestic.com:8443";
-        cookie_secure = true;
-        cookie_secret_path = "/var/lib/secrets/headplane/cookie_secret";
-      };
-      headscale = {
-        url = "http://127.0.0.1:8080";
-        public_url = "https://tailscale.imdomestic.com:8443";
-      };
-      integration = {
-        agent = {
-          enabled = false;
-          pre_authkey_path = "/var/lib/secrets/headplane/agent_preauthkey";
-        };
-        proc.enabled = true;
-      };
-    };
-  };
+  # services.headplane = {
+  #   enable = true;
+  #   debug = true;
+  #   settings = {
+  #     server = {
+  #       host = "127.0.0.1";
+  #       port = 3000;
+  #       base_url = "https://tailscale.imdomestic.com:8443";
+  #       cookie_secure = true;
+  #       cookie_secret_path = "/var/lib/secrets/headplane/cookie_secret";
+  #     };
+  #     headscale = {
+  #       url = "http://127.0.0.1:8080";
+  #       public_url = "https://tailscale.imdomestic.com:8443";
+  #     };
+  #     integration = {
+  #       agent = {
+  #         enabled = false;
+  #         pre_authkey_path = "/var/lib/secrets/headplane/agent_preauthkey";
+  #       };
+  #       proc.enabled = true;
+  #     };
+  #   };
+  # };
 
   services.nginx.enable = true;
   services.nginx.virtualHosts."tailscale.imdomestic.com" = {
@@ -524,23 +524,23 @@
         proxy_send_timeout 3600s;
       '';
     };
-    locations."= /admin" = {
-      extraConfig = ''
-        return 302 /admin/;
-      '';
-    };
-    locations."/admin/" = {
-      proxyPass = "http://127.0.0.1:3000";
-      proxyWebsockets = true;
-      extraConfig = ''
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-      '';
-    };
+    # locations."= /admin" = {
+    #   extraConfig = ''
+    #     return 302 /admin/;
+    #   '';
+    # };
+    # locations."/admin/" = {
+    #   proxyPass = "http://127.0.0.1:3000";
+    #   proxyWebsockets = true;
+    #   extraConfig = ''
+    #     proxy_set_header Host $host;
+    #     proxy_set_header X-Real-IP $remote_addr;
+    #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    #     proxy_set_header X-Forwarded-Proto $scheme;
+    #     proxy_read_timeout 3600s;
+    #     proxy_send_timeout 3600s;
+    #   '';
+    # };
   };
 
   system.stateVersion = "25.11";
