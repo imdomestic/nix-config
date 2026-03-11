@@ -270,6 +270,17 @@
     };
   };
 
+  services.netdata = {
+    enable = true;
+    config = {
+      global = {
+        "bind socket to IP" = "0.0.0.0";
+      };
+    };
+  };
+
+  users.users.netdata.extraGroups = ["video" "render"];
+
   services.xray.enable = true;
   services.xray.settings = {
     log.loglevel = "debug";
@@ -410,6 +421,7 @@
     gcc
     neovim
     nginx
+    intel-gpu-tools
   ];
 
   environment.sessionVariables = {
