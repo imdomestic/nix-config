@@ -579,7 +579,7 @@
     ];
 
     locations."/" = {
-      proxyPass = "http://127.0.0.1:19999";
+      proxyPass = "http://127.0.0.1:9999";
 
       extraConfig = ''
         allow 100.64.0.0/10;
