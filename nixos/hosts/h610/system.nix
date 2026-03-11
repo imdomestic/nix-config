@@ -565,6 +565,18 @@
     useACMEHost = "netdata.imdomestic.com";
     forceSSL = true;
     http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 19999;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 19999;
+        ssl = true;
+      }
+    ];
 
     locations."/" = {
       proxyPass = "http://127.0.0.1:19999";
