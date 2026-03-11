@@ -568,18 +568,18 @@
     listen = [
       {
         addr = "0.0.0.0";
-        port = 19999;
+        port = 8443;
         ssl = true;
       }
       {
         addr = "[::]";
-        port = 19999;
+        port = 8443;
         ssl = true;
       }
     ];
 
     locations."/" = {
-      proxyPass = "http://127.0.0.1:9999";
+      proxyPass = "http://127.0.0.1:19999";
 
       extraConfig = ''
         allow 100.64.0.0/10;
