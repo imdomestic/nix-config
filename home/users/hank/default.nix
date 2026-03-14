@@ -467,6 +467,10 @@ in {
   programs.neovim = {
     enable = true;
     defaultEditor = true;
+    extraPackages = with pkgs; [
+      tree-sitter
+      stdenv.cc
+    ];
   };
 
   programs.starship = {
