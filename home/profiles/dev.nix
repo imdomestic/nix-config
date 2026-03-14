@@ -38,7 +38,6 @@
       nodejs_22
       # sqlite
       # sqlite-interactive
-      tree-sitter
       imagemagick
       fd
       mermaid-cli
@@ -53,7 +52,6 @@
       usql
       gnumake
       gh
-      gcc
       elan
       lazygit
 
