@@ -52,6 +52,8 @@
     ];
   };
 
+  programs.nix-index-database.comma.enable = true;
+
   # services.postgresql = {
   #   enable = true;
   #   enableTCPIP = true;
