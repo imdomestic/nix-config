@@ -15,6 +15,10 @@ in {
     ./system.nix
   ];
 
+  externalModules = [
+    inputs.nix-index-database.darwinModules.nix-index
+  ];
+
   users = {
     hank = {
       home = {
