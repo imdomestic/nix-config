@@ -46,9 +46,8 @@
         configurationLimit = 15;
       };
     };
-    kernelPackages = pkgs.linuxPackages_latest;
+    # kernelPackages = pkgs.linuxPackages;
     kernelModules = [
-      "tcp_bbr"
       "tcp_bbr"
       "nf_conntrack"
     ];
