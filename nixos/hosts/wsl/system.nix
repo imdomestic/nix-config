@@ -50,5 +50,11 @@
     enable = true;
   };
 
+  services.openssh = {
+    enable = true;
+    ports = [2222];
+  };
+  # New-NetFirewallRule -DisplayName "WSL SSH" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 2222
+
   system.stateVersion = "25.11";
 }
