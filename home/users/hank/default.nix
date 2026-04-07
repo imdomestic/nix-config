@@ -4,6 +4,7 @@
   username,
   system,
   pkgs,
+  pkgs-unstable,
   ...
 }: let
   zjstatus = pkgs.fetchurl {
@@ -467,6 +468,7 @@ in {
   programs.neovim = {
     enable = true;
     defaultEditor = true;
+    package = pkgs-unstable.neovim-unwrapped;
     extraPackages = with pkgs; [
       tree-sitter
       stdenv.cc
