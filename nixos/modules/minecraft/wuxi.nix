@@ -559,6 +559,11 @@
         sha256 = "sha256-hfgfqATZOGg9gWklQ5wtCCq3wZXmWBnWbPmx/EgRrIA=";
       };
 
+      symlinks."mods/bingo.jar" = pkgs.fetchurl {
+        url = "https://cdn.modrinth.com/data/mHeNceaH/versions/Vb6yPYhc/bingo-2.9.7%2Bmc1.21.11.jar";
+        sha256 = "sha256-XWZjBzAzdq0nB4cGsHi2nh8TGaGYoA6zzNE3/dMJutg=";
+      };
+
       files."config/FabricProxy-Lite.toml".value = {
         secret = "hbhbhb";
         disconnectMessage = "Please connect via the proxy (Velocity).";
