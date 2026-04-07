@@ -1,6 +1,7 @@
 {
   inputs,
   pkgs,
+  pkgs-unstable,
   lib,
   system,
   username,
