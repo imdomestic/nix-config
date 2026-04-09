@@ -4,7 +4,7 @@
   ...
 }: {
   imports = [
-    # ../../modules/dae
+    ../../modules/dae
     ./hardware-configuration.nix
   ];
 
