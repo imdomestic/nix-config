@@ -12,6 +12,11 @@
     sha256 = "sha256-TeQm0gscv4YScuknrutbSdksF/Diu50XP4W/fwFU3VM=";
   };
 in {
+  imports = [
+    inputs.nixvim.homeModules.nixvim
+    ./nixvim.nix
+  ];
+
   programs.git = {
     enable = true;
     settings = {
@@ -465,25 +470,21 @@ in {
     enable = false;
   };
 
-  programs.neovim = {
-    enable = true;
-    defaultEditor = true;
-    package = pkgs-unstable.neovim-unwrapped;
-    extraPackages = with pkgs; [
-      tree-sitter
-      stdenv.cc
-    ];
-  };
-
   programs.starship = {
     enable = true;
     enableTransience = true;
     enableZshIntegration = true;
   };
 
+  programs.vim.enable = lib.mkForce false;
+
+  programs.neovim = {
+    enable = lib.mkForce false;
+    package = pkgs-unstable.neovim-unwrapped;
+  };
+
   xdg.configFile = {
     kvim.source = inputs.kvim.outPath;
-    nvim.source = inputs.hvim.outPath;
     zsh.source = inputs.zsh-hank.outPath;
     wezterm.source = inputs.wezterm-config.outPath;
     neofetch = {
