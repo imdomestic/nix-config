@@ -1,4 +1,5 @@
 {
+  inputs,
   pkgs,
   pkgs-unstable,
   lib,
@@ -6,8 +7,10 @@
   ...
 }: {
   imports = [
+    inputs.nixvim.homeModules.nixvim
     ../modules/vim
     ../modules/helix
+    ../modules/nixvim
   ];
 
   home.packages = with pkgs;
@@ -117,5 +120,10 @@
     enableBashIntegration = true;
     nix-direnv.enable = true;
     enableNushellIntegration = true;
+  };
+
+  programs.neovim = {
+    enable = lib.mkForce false;
+    package = pkgs-unstable.neovim-unwrapped;
   };
 }
