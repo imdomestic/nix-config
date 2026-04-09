@@ -12,11 +12,6 @@
     sha256 = "sha256-TeQm0gscv4YScuknrutbSdksF/Diu50XP4W/fwFU3VM=";
   };
 in {
-  imports = [
-    inputs.nixvim.homeModules.nixvim
-    ./nixvim.nix
-  ];
-
   programs.git = {
     enable = true;
     settings = {
@@ -476,12 +471,6 @@ in {
     enableZshIntegration = true;
   };
 
-  programs.vim.enable = lib.mkForce false;
-
-  programs.neovim = {
-    enable = lib.mkForce false;
-    package = pkgs-unstable.neovim-unwrapped;
-  };
 
   xdg.configFile = {
     kvim.source = inputs.kvim.outPath;
