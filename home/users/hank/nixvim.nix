@@ -993,7 +993,7 @@ in {
 
       conform-nvim = {
         enable = true;
-        autoInstall.enable = true;
+        autoInstall.enable = false;
         lazyLoad.settings = {
           event = "BufWritePre";
           cmd = ["ConformInfo"];
