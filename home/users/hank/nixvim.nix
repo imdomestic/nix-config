@@ -1268,8 +1268,8 @@ in {
             ];
             filetypes = [
               "yaml"
-              # "yaml.docker-compose"
-              # "yaml.gitlab"
+              "yaml.docker-compose"
+              "yaml.gitlab"
             ];
             rootMarkers = [".git"];
             settings.redhat.telemetry.enabled = false;
