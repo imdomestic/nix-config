@@ -131,6 +131,11 @@ in {
       "net.ipv4.neigh.default.gc_thresh1" = 1024;
       "net.ipv4.neigh.default.gc_thresh2" = 2048;
       "net.ipv4.neigh.default.gc_thresh3" = 4096;
+
+      # 纯交换机核心优化：禁止桥接流量被 netfilter (防火墙) 处理
+      "net.bridge.bridge-nf-call-iptables" = 0;
+      "net.bridge.bridge-nf-call-ip6tables" = 0;
+      "net.bridge.bridge-nf-call-arptables" = 0;
     };
   };
 
@@ -197,33 +202,7 @@ in {
     useNetworkd = true;
     nftables = {
       enable = true;
-      checkRuleset = false;
-      # tables.router = {
-      #   name = "mss-clamping";
-      #   enable = true;
-      #   family = "inet";
-      #   content = ''
-      #     # Flowtable 定义
-      #     flowtable f {
-      #       hook ingress priority 0;
-      #       devices = { wan0, br-lan };
-      #     }
-      #
-      #     chain postrouting {
-      #       type filter hook postrouting priority 0; policy accept;
-      #       # 你的 MSS Clamping 规则
-      #       oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1360
-      #       oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1340
-      #     }
-      #
-      #     chain forward {
-      #       type filter hook forward priority 0; policy accept;
-      #       # 开启硬件/软件卸载加速
-      #       flow offload @f
-      #       ct state established,related accept
-      #     }
-      #   '';
-      # };
+      checkRuleset = true;
     };
   };
   systemd.network = {
@@ -267,40 +246,6 @@ in {
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # WAN
-    # networks."20-wan-uplink" = {
-    #   matchConfig.Name = "wan0";
-    #   # 只需要链路层启动即可
-    #   linkConfig.RequiredForOnline = "no";
-    #   networkConfig = {
-    #     # 必须禁用链路本地地址，防止干扰
-    #     LinkLocalAddressing = "no";
-    #     DHCP = "no";
-    #     # 这里不需要 IPMasquerade 了，因为它是物理载体
-    #   };
-    # };
-
-    # networks."25-wan-ppp" = {
-    #   matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
-    #   networkConfig = {
-    #     # 在这里开启 NAT (IPMasquerade)
-    #     # IPMasquerade = "ipv4";
-    #
-    #     # IPv6 配置 (PPPoE 也能获取 IPv6)
-    #     IPv6AcceptRA = true;
-    #     DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
-    #   };
-    #   linkConfig = {
-    #     RequiredForOnline = "carrier";
-    #     MTUBytes = 1400;
-    #   };
-    #   dhcpV6Config = {
-    #     WithoutRA = "solicit";
-    #     PrefixDelegationHint = "::/60";
-    #     UseDelegatedPrefix = true;
-    #   };
-    # };
-
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
       networkConfig = {
@@ -313,19 +258,24 @@ in {
     };
   };
 
-  systemd.services.network-rps = {
-    description = "Configure RPS for network interfaces";
-    after = ["network.target"];
+  systemd.services.enable-rps = {
+    description = "Enable RPS for network interfaces";
     wantedBy = ["multi-user.target"];
+    after = ["network.target"];
+    script = ''
+      for dev in enp1s0 enP1p17s0 wan0; do
+        if [ -d "/sys/class/net/$dev/queues" ]; then
+          for rx in /sys/class/net/$dev/queues/rx-*; do
+            # f 对应二进制 1111，表示允许 CPU 0-3 处理
+            echo f > "$rx/rps_cpus"
+          done
+        fi
+      done
+    '';
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
     };
-    script = ''
-      for file in /sys/class/net/*/queues/rx-*/rps_cpus; do
-        echo f > "$file"
-      done
-    '';
   };
 
   # services.pppd = {
@@ -373,7 +323,6 @@ in {
       DNSStubListenerExtra=::
     '';
   };
-  services.irqbalance.enable = true;
   services.openssh = {
     enable = true;
     ports = [22 2200];
@@ -439,7 +388,7 @@ in {
 
   services.xray.enable = true;
   services.xray.settings = {
-    log.loglevel = "debug";
+    log.loglevel = "warning";
 
     reverse = {
       bridges = [
