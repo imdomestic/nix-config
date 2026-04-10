@@ -23,6 +23,7 @@
             ipv6reg: ""
             domains:
                 - r5sjp:imdomestic.com
+                - matrix:imdomestic.com
           dns:
             name: cloudflare
             id: ""
@@ -42,6 +43,17 @@ in {
   imports = [
     ../../modules/keyd
   ];
+
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "hankchogan@gmail.com";
+  };
+
+  security.acme.certs."matrix.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
+    group = "nginx";
+  };
 
   fileSystems = {
     "/" = {
@@ -397,6 +409,64 @@ in {
   services.openssh = {
     enable = true;
     ports = [22 2200];
+  };
+
+  services.nginx = {
+    enable = true;
+    clientMaxBodySize = "50m";
+  };
+  services.nginx.virtualHosts."matrix.imdomestic.com" = {
+    serverName = "matrix.imdomestic.com";
+    useACMEHost = "matrix.imdomestic.com";
+    forceSSL = true;
+    http2 = true;
+
+    locations."=/.well-known/matrix/client" = {
+      extraConfig = ''
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 '{"m.homeserver": {"base_url": "https://matrix.imdomestic.com"}, "org.matrix.msc3575.proxy": {"url": "https://matrix.imdomestic.com"}}';
+      '';
+    };
+
+    locations."=/.well-known/matrix/server" = {
+      extraConfig = ''
+        add_header Content-Type application/json;
+        add_header Access-Control-Allow-Origin *;
+        return 200 '{"m.server": "matrix.imdomestic.com:443"}';
+      '';
+    };
+
+    locations."/" = {
+      root = pkgs.element-web.override {
+        conf = {
+          default_server_config = {
+            "m.homeserver" = {
+              "base_url" = "https://matrix.imdomestic.com";
+              "server_name" = "matrix.imdomestic.com";
+            };
+          };
+          default_theme = "dark";
+          show_labs_settings = true;
+        };
+      };
+      index = "index.html";
+      extraConfig = ''
+        try_files $uri $uri/ /index.html;
+      '';
+    };
+
+    locations."~ ^/(_matrix|_synapse|/.well-known)" = {
+      proxyPass = "http://10.0.0.66:8008";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host $host;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+      '';
+    };
   };
 
   services.xray.enable = true;

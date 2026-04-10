@@ -420,10 +420,9 @@ in {
     enable = true;
     dataDir = "/data/services/matrix-synapse";
     settings = {
-      server_name = "sh.imdomestic.com";
-      public_baseurl = "https://sh.imdomestic.com:8448";
+      server_name = "matrix.imdomestic.com";
+      public_baseurl = "https://matrix.imdomestic.com";
       sliding_sync.enabled = true;
-      turn_uris = ["turn:sh.imdomestic.com:3478?transport=udp" "turn:sh.imdomestic.com:3478?transport=tcp"];
       turn_shared_secret = "REMOVED_SECRET_MATRIX_COTURN_SHARED_SECRET_3663816911b7a509";
       turn_user_lifetime = "1h";
 
@@ -462,7 +461,7 @@ in {
   services.coturn = {
     enable = true;
     no-cli = true;
-    realm = "sh.imdomestic.com";
+    realm = "matrix.imdomestic.com";
     static-auth-secret = "REMOVED_SECRET_MATRIX_COTURN_SHARED_SECRET_3663816911b7a509";
 
     listening-port = 3478;
