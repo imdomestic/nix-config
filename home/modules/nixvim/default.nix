@@ -1136,6 +1136,7 @@ in {
         servers = {
           basedpyright = {
             enable = true;
+            packageFallback = true;
             cmd = [
               "basedpyright-langserver"
               "--stdio"
@@ -1156,6 +1157,7 @@ in {
 
           bashls = {
             enable = true;
+            packageFallback = true;
             cmd = [
               "bash-language-server"
               "start"
@@ -1171,6 +1173,7 @@ in {
 
           clangd = {
             enable = true;
+            packageFallback = true;
             cmd = [
               "clangd"
               "--background-index"
@@ -1188,6 +1191,7 @@ in {
 
           cssls = {
             enable = true;
+            packageFallback = true;
             filetypes = [
               "css"
               "scss"
@@ -1207,6 +1211,7 @@ in {
 
           elmls = {
             enable = true;
+            packageFallback = true;
             filetypes = ["elm"];
             rootMarkers = ["elm.json"];
             extraOptions.init_options = {
@@ -1219,6 +1224,7 @@ in {
 
           html = {
             enable = true;
+            packageFallback = true;
             filetypes = [
               "html"
               "templ"
@@ -1243,6 +1249,7 @@ in {
 
           jsonls = {
             enable = true;
+            packageFallback = true;
             filetypes = [
               "json"
               "jsonc"
@@ -1253,6 +1260,7 @@ in {
 
           lua_ls = {
             enable = true;
+            packageFallback = true;
             cmd = ["lua-language-server"];
             filetypes = ["lua"];
             rootMarkers = [".git"];
@@ -1267,6 +1275,7 @@ in {
 
           neocmake = {
             enable = true;
+            packageFallback = true;
             cmd = [
               "neocmakelsp"
               "--stdio"
@@ -1282,6 +1291,7 @@ in {
 
           nil_ls = {
             enable = true;
+            packageFallback = true;
             cmd = ["nil"];
             filetypes = ["nix"];
             rootMarkers = [
@@ -1294,6 +1304,7 @@ in {
 
           taplo = {
             enable = true;
+            packageFallback = true;
             cmd = [
               "taplo"
               "lsp"
@@ -1309,6 +1320,7 @@ in {
 
           tinymist = {
             enable = true;
+            packageFallback = true;
             cmd = ["tinymist"];
             filetypes = ["typst"];
             rootMarkers = [".git"];
@@ -1316,6 +1328,7 @@ in {
 
           yamlls = {
             enable = true;
+            packageFallback = true;
             cmd = [
               "yaml-language-server"
               "--stdio"
