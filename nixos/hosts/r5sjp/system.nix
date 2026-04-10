@@ -195,12 +195,6 @@ in {
     firewall.enable = false;
     networkmanager.enable = false;
     useNetworkd = true;
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00007.conf";
-        autostart = true;
-      };
-    };
     nftables = {
       enable = true;
       checkRuleset = false;
