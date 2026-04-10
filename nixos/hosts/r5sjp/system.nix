@@ -10,7 +10,7 @@
             enable: false
             gettype: url
             url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-            netinterface: wan0
+            netinterface: br-lan
             cmd: ""
             domains:
                 - ""
@@ -18,7 +18,7 @@
             enable: true
             gettype: netInterface
             url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-            netinterface: wan0
+            netinterface: br-lan
             cmd: ""
             ipv6reg: ""
             domains:
@@ -266,18 +266,11 @@ in {
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # WAN, DHCP
+    # WAN
     networks."20-wan-uplink" = {
       matchConfig.Name = "wan0";
-      networkConfig = {
-        DHCP = "yes";
-        IPv6AcceptRA = true;
-      };
-      linkConfig.RequiredForOnline = "carrier";
-      dhcpV6Config = {
-        PrefixDelegationHint = "::/60";
-        UseDelegatedPrefix = true;
-      };
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
     };
 
     # WAN
@@ -317,29 +310,11 @@ in {
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
       networkConfig = {
-        Address = "192.168.3.1/24";
-        DHCPServer = true;
-        IPMasquerade = "ipv4";
-        IPv6SendRA = true;
-        IPv6AcceptRA = false;
-        DHCPPrefixDelegation = true;
+        DHCP = "yes";
+        IPv6AcceptRA = true;
       };
       linkConfig = {
-        RequiredForOnline = "no"; # carrier
-      };
-
-      dhcpServerConfig = {
-        PoolOffset = 100;
-        PoolSize = 100;
-        EmitDNS = true;
-        DNS = ["192.168.3.1"];
-      };
-
-      # SLAAC
-      ipv6SendRAConfig = {
-        Managed = false; # no DHCPv6
-        OtherInformation = false;
-        EmitDNS = true; # send DNS with RA
+        RequiredForOnline = "routable";
       };
     };
   };
@@ -401,7 +376,6 @@ in {
     fallbackDns = ["223.5.5.5"];
     extraConfig = ''
       DNSStubListener=yes
-      DNSStubListenerExtra=192.168.3.1
       DNSStubListenerExtra=::
     '';
   };
