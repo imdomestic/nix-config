@@ -471,7 +471,6 @@ in {
     enableZshIntegration = true;
   };
 
-
   xdg.configFile = {
     kvim.source = inputs.kvim.outPath;
     zsh.source = inputs.zsh-hank.outPath;
