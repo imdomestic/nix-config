@@ -8,7 +8,6 @@
   imports = [
     ../../modules/dae
     ../../modules/keyd
-    # ../../modules/netbird
     # ../../modules/minecraft/wuxi.nix
   ];
 
@@ -512,7 +511,10 @@
   #   };
   # };
 
-  services.nginx.enable = true;
+  services.nginx = {
+    enable = true;
+    clientMaxBodySize = "50m";
+  };
   services.nginx.virtualHosts."tailscale.imdomestic.com" = {
     serverName = "tailscale.imdomestic.com";
     useACMEHost = "tailscale.imdomestic.com";
