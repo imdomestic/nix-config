@@ -4,7 +4,9 @@
   config,
   lib,
   ...
-}: {
+}: let
+  matrixUpstream = "http://tank.inner.imdomestic.com:8008";
+in {
   imports = [
     ../../modules/dae
     ../../modules/keyd
@@ -200,6 +202,12 @@
     group = "nginx";
   };
 
+  security.acme.certs."matrix.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
+    group = "nginx";
+  };
+
   systemd.services.ddns-go = let
     ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
       dnsconf:
@@ -213,29 +221,7 @@
               domains:
                   - h610:imdomestic.com
                   - tailscale:imdomestic.com
-            ipv6:
-              enable: false
-              gettype: netInterface
-              url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-              netinterface: br-lan
-              cmd: ""
-              ipv6reg: ""
-              domains:
-                  - ""
-            dns:
-              name: cloudflare
-              id: ""
-              secret: WY4F4gK8O-VgV1P7dGnic4yNSxmtPBep5OXuh2Js
-            ttl: ""
-          - name: "root"
-            ipv4:
-              enable: true
-              gettype: netInterface
-              url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-              netinterface: ppp0
-              cmd: ""
-              domains:
-                  - imdomestic.com
+                  - matrix:imdomestic.com
             ipv6:
               enable: false
               gettype: netInterface
@@ -561,6 +547,36 @@
     #     proxy_send_timeout 3600s;
     #   '';
     # };
+  };
+  services.nginx.virtualHosts."matrix.imdomestic.com" = {
+    serverName = "matrix.imdomestic.com";
+    useACMEHost = "matrix.imdomestic.com";
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8448;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8448;
+        ssl = true;
+      }
+    ];
+
+    locations."/" = {
+      proxyPass = matrixUpstream;
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+      '';
+    };
   };
   services.nginx.virtualHosts."netdata.imdomestic.com" = {
     serverName = "netdata.imdomestic.com";

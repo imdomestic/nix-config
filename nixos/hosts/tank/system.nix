@@ -420,18 +420,16 @@ in {
     enable = true;
     dataDir = "/data/services/matrix-synapse";
     settings = {
-      server_name = "matrix.imdomestic.com";
-      public_baseurl = "https://matrix.imdomestic.com";
+      server_name = "imdomestic.com";
+      public_baseurl = "https://matrix.imdomestic.com:8448";
       sliding_sync.enabled = true;
-      turn_shared_secret = "your_turn_shared_secret_here";
-      turn_user_lifetime = "1h";
 
       listeners = [
         {
           port = 8008;
           bind_addresses = ["0.0.0.0"];
           type = "http";
-          tls = false; # NAS 本地不搞 SSL，让 VPS 处理
+          tls = false;
           x_forwarded = true;
           resources = [
             {
@@ -456,25 +454,6 @@ in {
       registration_shared_secret = "hbhbhb";
       max_upload_size = "50M";
     };
-  };
-
-  services.coturn = {
-    enable = true;
-    no-cli = true;
-    realm = "matrix.imdomestic.com";
-    static-auth-secret = "your_turn_shared_secret_here";
-
-    listening-port = 3478;
-    tls-listening-port = 5349;
-    relay-ips = ["127.0.0.1"];
-
-    extraConfig = ''
-      external-ip=101.132.183.117
-
-      allow-loopback-peers
-      min-port=49152
-      max-port=65535
-    '';
   };
 
   services.murmur = {
@@ -585,7 +564,6 @@ in {
 
   environment.systemPackages = with pkgs; [
     rdma-core
-    matrix-synapse
     # infiniband-diags
     # libibverbs
 
