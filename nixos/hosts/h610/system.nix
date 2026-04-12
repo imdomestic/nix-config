@@ -217,14 +217,14 @@ in {
                   - tailscale:imdomestic.com
                   - matrix:imdomestic.com
             ipv6:
-              enable: false
+              enable: true
               gettype: netInterface
               url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-              netinterface: br-lan
+              netinterface: ppp0
               cmd: ""
               ipv6reg: ""
               domains:
-                  - ""
+                  - matrix:imdomestic.com
             dns:
               name: cloudflare
               id: ""
