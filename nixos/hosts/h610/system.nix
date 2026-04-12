@@ -5,7 +5,7 @@
   lib,
   ...
 }: let
-  matrixUpstream = "http://10.0.0.66:8008";
+  matrixUpstream = "http://100.64.0.4:8008";
 in {
   imports = [
     ../../modules/dae
