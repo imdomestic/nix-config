@@ -534,6 +534,7 @@ in {
   services.nginx.virtualHosts."matrix.imdomestic.com" = {
     serverName = "matrix.imdomestic.com";
     useACMEHost = "matrix.imdomestic.com";
+    addSSL = true;
     http2 = true;
     listen = [
       {
