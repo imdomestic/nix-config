@@ -196,12 +196,6 @@ in {
     group = "nginx";
   };
 
-  security.acme.certs."netdata.imdomestic.com" = {
-    dnsProvider = "cloudflare";
-    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
-    group = "nginx";
-  };
-
   security.acme.certs."matrix.imdomestic.com" = {
     dnsProvider = "cloudflare";
     credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
@@ -260,17 +254,6 @@ in {
       RestartSec = 5;
     };
   };
-
-  services.netdata = {
-    enable = true;
-    config = {
-      global = {
-        "bind socket to IP" = "127.0.0.1";
-      };
-    };
-  };
-
-  users.users.netdata.extraGroups = ["video" "render"];
 
   services.xray.enable = true;
   services.xray.settings = {
@@ -575,37 +558,6 @@ in {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
-      '';
-    };
-  };
-  services.nginx.virtualHosts."netdata.imdomestic.com" = {
-    serverName = "netdata.imdomestic.com";
-    useACMEHost = "netdata.imdomestic.com";
-    forceSSL = true;
-    http2 = true;
-    listen = [
-      {
-        addr = "0.0.0.0";
-        port = 8443;
-        ssl = true;
-      }
-      {
-        addr = "[::]";
-        port = 8443;
-        ssl = true;
-      }
-    ];
-
-    locations."/" = {
-      proxyPass = "http://127.0.0.1:19999";
-
-      extraConfig = ''
-        allow 100.64.0.0/10;
-        allow 127.0.0.1;
-        deny all;
-
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
       '';
     };
   };
