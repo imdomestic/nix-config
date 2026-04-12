@@ -5,7 +5,7 @@
   lib,
   ...
 }: let
-  matrixUpstream = "http://tank.sanuki.cn:8008";
+  matrixUpstream = "http://10.0.0.66:8008";
 in {
   imports = [
     ../../modules/dae
