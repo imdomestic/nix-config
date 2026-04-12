@@ -5,7 +5,7 @@
   lib,
   ...
 }: let
-  matrixUpstream = "http://tank.inner.imdomestic.com:8008";
+  matrixUpstream = "http://tank:8008";
 in {
   imports = [
     ../../modules/dae
