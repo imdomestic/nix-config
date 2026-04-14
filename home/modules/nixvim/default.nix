@@ -4,7 +4,7 @@
   pkgs-unstable,
   ...
 }: let
-  raw = inputs.nixvim.lib.nixvim.mkRaw;
+  mkRaw = inputs.nixvim.raw;
 in {
   programs.nixvim = {
     enable = true;
@@ -31,12 +31,12 @@ in {
       clipboard = {
         name = "OSC 52";
         copy = {
-          "+" = raw ''require("vim.ui.clipboard.osc52").copy("+")'';
-          "*" = raw ''require("vim.ui.clipboard.osc52").copy("*")'';
+          "+" = mkRaw ''require("vim.ui.clipboard.osc52").copy("+")'';
+          "*" = mkRaw ''require("vim.ui.clipboard.osc52").copy("*")'';
         };
         paste = {
-          "+" = raw ''require("vim.ui.clipboard.osc52").paste("+")'';
-          "*" = raw ''require("vim.ui.clipboard.osc52").paste("*")'';
+          "+" = mkRaw ''require("vim.ui.clipboard.osc52").paste("+")'';
+          "*" = mkRaw ''require("vim.ui.clipboard.osc52").paste("*")'';
         };
       };
     };
@@ -80,7 +80,7 @@ in {
         border = "rounded";
         source = "if_many";
       };
-      underline.severity = raw "vim.diagnostic.severity.ERROR";
+      underline.severity = mkRaw "vim.diagnostic.severity.ERROR";
       signs = {
         numhl.__raw = ''
           {
@@ -115,7 +115,7 @@ in {
         event = "TextYankPost";
         group = "highlight-yank";
         desc = "Highlight when yanking (copying) text";
-        callback = raw ''
+        callback = mkRaw ''
           function()
             vim.highlight.on_yank()
           end
@@ -123,7 +123,7 @@ in {
       }
       {
         event = "VimLeavePre";
-        callback = raw ''
+        callback = mkRaw ''
           function()
             if vim.uv.guess_handle(vim.v.stderr) ~= "tty" then
               return
@@ -137,7 +137,7 @@ in {
         event = "VimLeavePre";
         group = "terminal-cleanup";
         desc = "Exit: Kill all background terminals automatically";
-        callback = raw ''
+        callback = mkRaw ''
           function()
             for _, buf in ipairs(vim.api.nvim_list_bufs()) do
               if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
@@ -163,7 +163,7 @@ in {
           "nix"
           "yaml"
         ];
-        callback = raw ''
+        callback = mkRaw ''
           function()
             vim.bo.expandtab = true
             vim.bo.tabstop = 2
@@ -176,7 +176,7 @@ in {
         event = "FileType";
         group = "indent-rust";
         pattern = "rust";
-        callback = raw ''
+        callback = mkRaw ''
           function()
             vim.bo.expandtab = true
             vim.bo.tabstop = 4
@@ -189,7 +189,7 @@ in {
         event = "FileType";
         group = "haskell-extra";
         pattern = "haskell";
-        callback = raw ''
+        callback = mkRaw ''
           function(args)
             local ht = require("haskell-tools")
             local opts = { noremap = true, silent = true, buffer = args.buf }
@@ -203,7 +203,7 @@ in {
         event = "FileType";
         group = "rust-extra";
         pattern = "rust";
-        callback = raw ''
+        callback = mkRaw ''
           function(args)
             vim.keymap.set("n", "<leader>a", function()
               vim.cmd.RustLsp("codeAction")
@@ -232,7 +232,7 @@ in {
       {
         mode = "n";
         key = "<leader>c";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").bufdelete()
           end
@@ -305,7 +305,7 @@ in {
       {
         mode = "n";
         key = "<M-n>";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").terminal()
           end
@@ -315,7 +315,7 @@ in {
       {
         mode = "t";
         key = "<M-n>";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").terminal()
           end
@@ -325,7 +325,7 @@ in {
       {
         mode = "n";
         key = "<leader>th";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").terminal()
           end
@@ -365,7 +365,7 @@ in {
       {
         mode = "n";
         key = "<leader>ui";
-        action = raw ''
+        action = mkRaw ''
           function()
             local ok, input = pcall(vim.fn.input, "Set indent value (>0 expandtab, <=0 noexpandtab): ")
             if not ok then
@@ -388,7 +388,7 @@ in {
       {
         mode = "n";
         key = "<leader>f<space>";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.smart()
           end
@@ -398,7 +398,7 @@ in {
       {
         mode = "n";
         key = "<leader>fr";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.recent()
           end
@@ -408,7 +408,7 @@ in {
       {
         mode = "n";
         key = "<leader>ff";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.files()
           end
@@ -418,7 +418,7 @@ in {
       {
         mode = "n";
         key = "<leader>fw";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.grep()
           end
@@ -428,7 +428,7 @@ in {
       {
         mode = "n";
         key = "<leader>fi";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.icons()
           end
@@ -438,7 +438,7 @@ in {
       {
         mode = "n";
         key = "<leader>fk";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.keymaps()
           end
@@ -448,7 +448,7 @@ in {
       {
         mode = "n";
         key = "<leader>fu";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.undo()
           end
@@ -458,7 +458,7 @@ in {
       {
         mode = "n";
         key = "<leader>fs";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.lsp_workspace_symbols()
           end
@@ -468,7 +468,7 @@ in {
       {
         mode = "n";
         key = "<leader>g";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").lazygit()
           end
@@ -478,7 +478,7 @@ in {
       {
         mode = "n";
         key = "<leader>e";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").explorer()
           end
@@ -488,7 +488,7 @@ in {
       {
         mode = "n";
         key = "<leader>lD";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("snacks").picker.diagnostics()
           end
@@ -501,7 +501,7 @@ in {
           "i"
         ];
         key = "<M-;>";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("sidekick").nes_jump_or_apply()
           end
@@ -511,7 +511,7 @@ in {
       {
         mode = "n";
         key = "<leader>aa";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("sidekick.cli").toggle({ name = "codex", focus = true })
           end
@@ -521,7 +521,7 @@ in {
       {
         mode = "n";
         key = "<leader>as";
-        action = raw ''
+        action = mkRaw ''
           function()
             require("sidekick.cli").select({ filter = { installed = true } })
           end
@@ -604,11 +604,11 @@ in {
         lazyLoad.settings = {
           event = "DeferredUIEnter";
           keys = [
-            (raw ''{ "s", function() require("flash").jump() end, mode = { "n", "x", "o" }, desc = "Flash" }'')
-            (raw ''{ "S", function() require("flash").treesitter() end, mode = { "n", "x", "o" }, desc = "Flash Treesitter" }'')
-            (raw ''{ "r", function() require("flash").remote() end, mode = "o", desc = "Remote Flash" }'')
-            (raw ''{ "R", function() require("flash").treesitter_search() end, mode = { "o", "x" }, desc = "Treesitter Search" }'')
-            (raw ''{ "<C-s>", function() require("flash").toggle() end, mode = "c", desc = "Toggle Flash Search" }'')
+            (mkRaw ''{ "s", function() require("flash").jump() end, mode = { "n", "x", "o" }, desc = "Flash" }'')
+            (mkRaw ''{ "S", function() require("flash").treesitter() end, mode = { "n", "x", "o" }, desc = "Flash Treesitter" }'')
+            (mkRaw ''{ "r", function() require("flash").remote() end, mode = "o", desc = "Remote Flash" }'')
+            (mkRaw ''{ "R", function() require("flash").treesitter_search() end, mode = { "o", "x" }, desc = "Treesitter Search" }'')
+            (mkRaw ''{ "<C-s>", function() require("flash").toggle() end, mode = "c", desc = "Toggle Flash Search" }'')
           ];
         };
         settings = {};
@@ -619,10 +619,10 @@ in {
         lazyLoad.settings = {
           event = "DeferredUIEnter";
           keys = [
-            (raw ''{ "<C-Up>", function() require("smart-splits").resize_up() end, mode = { "n", "t" }, desc = "Resize split up" }'')
-            (raw ''{ "<C-Down>", function() require("smart-splits").resize_down() end, mode = { "n", "t" }, desc = "Resize split down" }'')
-            (raw ''{ "<C-Left>", function() require("smart-splits").resize_left() end, mode = { "n", "t" }, desc = "Resize split left" }'')
-            (raw ''{ "<C-Right>", function() require("smart-splits").resize_right() end, mode = { "n", "t" }, desc = "Resize split right" }'')
+            (mkRaw ''{ "<C-Up>", function() require("smart-splits").resize_up() end, mode = { "n", "t" }, desc = "Resize split up" }'')
+            (mkRaw ''{ "<C-Down>", function() require("smart-splits").resize_down() end, mode = { "n", "t" }, desc = "Resize split down" }'')
+            (mkRaw ''{ "<C-Left>", function() require("smart-splits").resize_left() end, mode = { "n", "t" }, desc = "Resize split left" }'')
+            (mkRaw ''{ "<C-Right>", function() require("smart-splits").resize_right() end, mode = { "n", "t" }, desc = "Resize split right" }'')
           ];
         };
         settings.ignored_filetypes = ["SnacksExplorer"];
@@ -645,7 +645,7 @@ in {
           comment = {};
           statusline = {
             use_icons = true;
-            content.active = raw ''
+            content.active = mkRaw ''
               function()
                 local mode, mode_hl = MiniStatusline.section_mode({ trunc_width = 120 })
                 local git = MiniStatusline.section_git({ trunc_width = 40 })
@@ -739,13 +739,13 @@ in {
               }
             ];
             clues = [
-              (raw ''require("mini.clue").gen_clues.square_brackets()'')
-              (raw ''require("mini.clue").gen_clues.builtin_completion()'')
-              (raw ''require("mini.clue").gen_clues.g()'')
-              (raw ''require("mini.clue").gen_clues.marks()'')
-              (raw ''require("mini.clue").gen_clues.registers()'')
-              (raw ''require("mini.clue").gen_clues.windows()'')
-              (raw ''require("mini.clue").gen_clues.z()'')
+              (mkRaw ''require("mini.clue").gen_clues.square_brackets()'')
+              (mkRaw ''require("mini.clue").gen_clues.builtin_completion()'')
+              (mkRaw ''require("mini.clue").gen_clues.g()'')
+              (mkRaw ''require("mini.clue").gen_clues.marks()'')
+              (mkRaw ''require("mini.clue").gen_clues.registers()'')
+              (mkRaw ''require("mini.clue").gen_clues.windows()'')
+              (mkRaw ''require("mini.clue").gen_clues.z()'')
             ];
           };
         };
@@ -757,6 +757,107 @@ in {
         indent.enable = true;
         folding.enable = true;
       };
+
+      treesitter-textobjects = {
+        enable = true;
+
+        settings = {
+          select = {
+            lookahead = true;
+            include_surrounding_whitespace = false;
+          };
+
+          move = {
+            set_jumps = true;
+          };
+        };
+      };
+
+      keymaps = [
+        # select
+        {
+          mode = ["x" "o"];
+          key = "af";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.select")
+                .select_textobject("@function.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["x" "o"];
+          key = "if";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.select")
+                .select_textobject("@function.inner", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["x" "o"];
+          key = "ac";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.select")
+                .select_textobject("@class.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["x" "o"];
+          key = "ic";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.select")
+                .select_textobject("@class.inner", "textobjects")
+            end
+          '';
+        }
+
+        # move
+        {
+          mode = ["n" "x" "o"];
+          key = "]m";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.move")
+                .goto_next_start("@function.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["n" "x" "o"];
+          key = "[m";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.move")
+                .goto_previous_start("@function.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["n" "x" "o"];
+          key = "]]";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.move")
+                .goto_next_start("@class.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["n" "x" "o"];
+          key = "[[";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.move")
+                .goto_previous_start("@class.outer", "textobjects")
+            end
+          '';
+        }
+      ];
 
       friendly-snippets.enable = true;
 
@@ -812,7 +913,7 @@ in {
             ];
             "<Tab>" = [
               "select_next"
-              (raw ''
+              (mkRaw ''
                 function(cmp)
                   local line, col = unpack(vim.api.nvim_win_get_cursor(0))
                   local has_words_before = col ~= 0
@@ -827,7 +928,7 @@ in {
             ];
             "<S-Tab>" = [
               "select_prev"
-              (raw ''
+              (mkRaw ''
                 function(cmp)
                   if vim.api.nvim_get_mode().mode == "c" then
                     return cmp.show()
@@ -851,7 +952,7 @@ in {
               auto_insert = true;
             };
             menu = {
-              auto_show = raw ''
+              auto_show = mkRaw ''
                 function(ctx)
                   return ctx.mode ~= "cmdline"
                 end
@@ -973,7 +1074,7 @@ in {
             untracked.text = "┆";
           };
           current_line_blame = true;
-          on_attach = raw ''
+          on_attach = mkRaw ''
             function(bufnr)
               local gitsigns = require("gitsigns")
 
@@ -1038,7 +1139,7 @@ in {
             "BufWritePost"
             "InsertLeave"
           ];
-          callback = raw ''
+          callback = mkRaw ''
             function()
               require("lint").try_lint()
             end
@@ -1053,7 +1154,7 @@ in {
           event = "BufWritePre";
           cmd = ["ConformInfo"];
           keys = [
-            (raw ''{ "<leader>lf", function() require("conform").format({ async = true, lsp_format = "fallback" }) end, mode = "n", desc = "Format buffer" }'')
+            (mkRaw ''{ "<leader>lf", function() require("conform").format({ async = true, lsp_format = "fallback" }) end, mode = "n", desc = "Format buffer" }'')
           ];
         };
         settings = {
@@ -1096,7 +1197,7 @@ in {
           extra = [
             {
               key = "<leader>ld";
-              action = raw ''
+              action = mkRaw ''
                 function()
                   vim.diagnostic.open_float()
                 end
@@ -1105,7 +1206,7 @@ in {
             }
             {
               key = "gh";
-              action = raw ''
+              action = mkRaw ''
                 function()
                   vim.lsp.buf.typehierarchy()
                 end
@@ -1114,7 +1215,7 @@ in {
             }
             {
               key = "K";
-              action = raw ''
+              action = mkRaw ''
                 function()
                   vim.lsp.buf.hover({ border = "rounded" })
                 end
@@ -1123,7 +1224,7 @@ in {
             }
             {
               key = "<leader>lH";
-              action = raw ''
+              action = mkRaw ''
                 function()
                   local bufnr = vim.api.nvim_get_current_buf()
                   local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
@@ -1168,7 +1269,7 @@ in {
               "sh"
             ];
             rootMarkers = [".git"];
-            settings.bashIde.globPattern = raw ''vim.env.GLOB_PATTERN or "*@(.sh|.inc|.bash|.command)"'';
+            settings.bashIde.globPattern = mkRaw ''vim.env.GLOB_PATTERN or "*@(.sh|.inc|.bash|.command)"'';
             extraOptions.single_file_support = true;
           };
 
@@ -1269,7 +1370,7 @@ in {
               runtime.version = "LuaJIT";
               workspace = {
                 checkThirdParty = false;
-                library = raw ''vim.api.nvim_get_runtime_file("", true)'';
+                library = mkRaw ''vim.api.nvim_get_runtime_file("", true)'';
               };
             };
           };
