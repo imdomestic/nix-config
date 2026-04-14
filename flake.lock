@@ -2373,11 +2373,11 @@
     "zsh-hank": {
       "flake": false,
       "locked": {
-        "lastModified": 1773562434,
-        "narHash": "sha256-9Iu7rBczy/x2ZOQcoShg+/fVT8Q0v8EIpSwkVOkfw78=",
+        "lastModified": 1776150207,
+        "narHash": "sha256-VuAENG2d26qnx0yOjrpuuCjgGK9i4qzrXcRl064rIZ0=",
         "owner": "HCHogan",
         "repo": "zsh",
-        "rev": "dcac76f421a53ca4956c284807154d1ca062cc46",
+        "rev": "4264d92cbbe0526cd449917148a6a5bb42e2f346",
         "type": "github"
       },
       "original": {
