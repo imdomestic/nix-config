@@ -125,6 +125,10 @@ in {
         event = "VimLeavePre";
         callback = raw ''
           function()
+            if vim.uv.guess_handle(vim.v.stderr) ~= "tty" then
+              return
+            end
+
             vim.api.nvim_chan_send(vim.v.stderr, "\x1b[6 q")
           end
         '';
@@ -156,8 +160,6 @@ in {
           "java"
           "json"
           "lua"
-          "make"
-          "makefile"
           "nix"
           "yaml"
         ];
@@ -900,7 +902,7 @@ in {
           cli = {
             mux = {
               enabled = true;
-              backend = "zellij";
+              backend = "tmux";
             };
           };
         };
