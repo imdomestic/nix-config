@@ -364,6 +364,95 @@
     };
   };
 
+  services.xray.enable = true;
+  services.xray.settings = {
+    log.loglevel = "debug";
+
+    reverse = {
+      portals = [
+        {
+          tag = "portal-r5s";
+          domain = "reverse-r5s.hank.internal";
+        }
+      ];
+    };
+
+    inbounds = [
+      {
+        tag = "interconn";
+        port = 2443;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_a6fdbd63f69faa60";
+            shortIds = ["17"];
+          };
+        };
+      }
+
+      {
+        tag = "client-in";
+        port = 54321;
+        protocol = "vless";
+        settings = {
+          clients = [
+            {
+              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
+              flow = "xtls-rprx-vision";
+            }
+          ];
+          decryption = "none";
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            show = false;
+            dest = "www.microsoft.com:443";
+            serverNames = ["www.microsoft.com" "microsoft.com"];
+            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
+            shortIds = ["16"];
+          };
+        };
+      }
+    ];
+
+    outbounds = [
+      {
+        tag = "direct";
+        protocol = "freedom";
+      }
+    ];
+
+    routing.rules = [
+      {
+        type = "field";
+        inboundTag = ["interconn"];
+        outboundTag = "portal-r5s";
+      }
+
+      {
+        type = "field";
+        inboundTag = ["client-in"];
+        outboundTag = "portal-r5s";
+      }
+    ];
+  };
+
   services.dnsmasq.enable = false;
   services.resolved = {
     enable = true;

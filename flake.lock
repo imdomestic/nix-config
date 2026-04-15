@@ -55,11 +55,11 @@
     "dae-config": {
       "flake": false,
       "locked": {
-        "lastModified": 1775750389,
-        "narHash": "sha256-FqCXWqv79iamVcVqbq0zOjMvX0K1NWvm5smkOuQi15M=",
+        "lastModified": 1776233440,
+        "narHash": "sha256-8zNyT2/ESsB8i01/njQ4XGjHuvo1pGC3TYbMKeXS4SU=",
         "ref": "refs/heads/main",
-        "rev": "70ef93e1ed40c0863386460de6dc617e16fcc0b7",
-        "revCount": 45,
+        "rev": "53eebe693d8ed1c29326516d22c70ba929662a84",
+        "revCount": 46,
         "type": "git",
         "url": "ssh://git@github.com/imdomestic/dae"
       },
