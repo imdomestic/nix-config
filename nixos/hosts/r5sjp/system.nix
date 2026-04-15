@@ -41,6 +41,7 @@
 in {
   imports = [
     ../../modules/keyd
+    ../../modules/vlmcsd
   ];
 
   security.acme = {
@@ -570,7 +571,7 @@ in {
   };
 
   services.tailscale.enable = true;
-
+  
   programs.zsh.enable = true;
 
   nixpkgs.hostPlatform = "aarch64-linux";
