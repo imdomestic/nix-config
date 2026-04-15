@@ -244,7 +244,7 @@ in {
 
   services.xray.enable = true;
   services.xray.settings = {
-    log.loglevel = "debug";
+    log.loglevel = "warning";
 
     reverse = {
       portals = [

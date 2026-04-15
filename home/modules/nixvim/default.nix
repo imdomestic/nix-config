@@ -4,7 +4,7 @@
   pkgs-unstable,
   ...
 }: let
-  mkRaw = inputs.nixvim.raw;
+  mkRaw = inputs.nixvim.lib.nixvim.mkRaw;
 in {
   programs.nixvim = {
     enable = true;
