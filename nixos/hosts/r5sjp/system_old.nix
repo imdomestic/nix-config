@@ -41,7 +41,6 @@
 in {
   imports = [
     ../../modules/keyd
-    ../../modules/vlmcsd
   ];
 
   security.acme = {
@@ -345,14 +344,6 @@ in {
           tag = "bridge-sh";
           domain = "reverse-sh.hank.internal";
         }
-        {
-          tag = "bridge-r5s";
-          domain = "reverse-r5s.hank.internal";
-        }
-        {
-          tag = "bridge-r6s";
-          domain = "reverse-r6s.hank.internal";
-        }
       ];
     };
 
@@ -394,65 +385,6 @@ in {
           vnext = [
             {
               address = "rpi4.imdomestic.com";
-              port = 2443;
-              users = [
-                {
-                  id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
-                  flow = "xtls-rprx-vision";
-                  encryption = "none";
-                }
-              ];
-            }
-          ];
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            serverName = "www.microsoft.com";
-            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
-            fingerprint = "chrome";
-            shortId = "17";
-          };
-        };
-      }
-
-      {
-        tag = "interconn-r5s";
-        protocol = "vless";
-        settings = {
-          vnext = [
-            {
-              address = "r5s.imdomestic.com";
-              port = 2443;
-              users = [
-                {
-                  id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
-                  flow = "xtls-rprx-vision";
-                  encryption = "none";
-                }
-              ];
-            }
-          ];
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            serverName = "www.microsoft.com";
-            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
-            fingerprint = "chrome";
-            shortId = "17";
-          };
-        };
-      }
-      {
-        tag = "interconn-r6s";
-        protocol = "vless";
-        settings = {
-          vnext = [
-            {
-              address = "r6s.imdomestic.com";
               port = 2443;
               users = [
                 {
@@ -533,23 +465,11 @@ in {
         domain = ["full:reverse-sh.hank.internal"];
         outboundTag = "interconn-sh";
       }
-      {
-        type = "field";
-        inboundTag = ["bridge-r5s"];
-        domain = ["full:reverse-r5s.hank.internal"];
-        outboundTag = "interconn-r5s";
-      }
-      {
-        type = "field";
-        inboundTag = ["bridge-r6s"];
-        domain = ["full:reverse-r6s.hank.internal"];
-        outboundTag = "interconn-r6s";
-      }
 
       # portal 转发来的“真实流量”（同样从 inboundTag=bridge 进入，但域名不是上面那个）=> 去 out
       {
         type = "field";
-        inboundTag = ["bridge-h610" "bridge-rpi4" "bridge-sh" "bridge-r5s" "bridge-r6s"];
+        inboundTag = ["bridge-h610" "bridge-rpi4" "bridge-sh"];
         outboundTag = "out";
       }
     ];
@@ -571,7 +491,7 @@ in {
   };
 
   services.tailscale.enable = true;
-  
+
   programs.zsh.enable = true;
 
   nixpkgs.hostPlatform = "aarch64-linux";
