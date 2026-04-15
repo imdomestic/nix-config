@@ -353,6 +353,10 @@ in {
           tag = "bridge-r6s";
           domain = "reverse-r6s.hank.internal";
         }
+        {
+          tag = "bridge-r2s";
+          domain = "reverse-r2s.hank.internal";
+        }
       ];
     };
 
@@ -475,7 +479,35 @@ in {
           };
         };
       }
-
+      {
+        tag = "interconn-r2s";
+        protocol = "vless";
+        settings = {
+          vnext = [
+            {
+              address = "r2s.imdomestic.com";
+              port = 2443;
+              users = [
+                {
+                  id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
+                  flow = "xtls-rprx-vision";
+                  encryption = "none";
+                }
+              ];
+            }
+          ];
+        };
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            serverName = "www.microsoft.com";
+            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
+            fingerprint = "chrome";
+            shortId = "17";
+          };
+        };
+      }
       {
         tag = "interconn-sh";
         protocol = "vless";
@@ -545,11 +577,17 @@ in {
         domain = ["full:reverse-r6s.hank.internal"];
         outboundTag = "interconn-r6s";
       }
+      {
+        type = "field";
+        inboundTag = ["bridge-r2s"];
+        domain = ["full:reverse-r2s.hank.internal"];
+        outboundTag = "interconn-r2s";
+      }
 
       # portal 转发来的“真实流量”（同样从 inboundTag=bridge 进入，但域名不是上面那个）=> 去 out
       {
         type = "field";
-        inboundTag = ["bridge-h610" "bridge-rpi4" "bridge-sh" "bridge-r5s" "bridge-r6s"];
+        inboundTag = ["bridge-h610" "bridge-rpi4" "bridge-sh" "bridge-r5s" "bridge-r6s" "bridge-r2s"];
         outboundTag = "out";
       }
     ];
