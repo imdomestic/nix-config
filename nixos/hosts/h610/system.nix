@@ -174,6 +174,10 @@ in {
     };
   };
 
+  systemd.tmpfiles.rules = [
+    "d /var/lib/coturn 0750 root turnserver -"
+  ];
+
   services.dnsmasq.enable = false;
   services.resolved = {
     enable = true;
@@ -498,7 +502,7 @@ in {
     enable = true;
     no-cli = true;
     use-auth-secret = true;
-    static-auth-secret-file = "/var/lib/secrets/coturn/static-auth-secret";
+    static-auth-secret-file = "/var/lib/coturn/static-auth-secret";
     realm = "rtc.imdomestic.com";
     cert = "/var/lib/acme/rtc.imdomestic.com/fullchain.pem";
     pkey = "/var/lib/acme/rtc.imdomestic.com/key.pem";
