@@ -114,6 +114,7 @@ in {
       "d     /data/services   0755 root  root  -"
       "d     /data/nas        0755 hank  users -"
       "d     /data/nas/public 0775 hank  users -"
+      "d     /var/lib/secrets/matrix-synapse 0700 matrix-synapse matrix-synapse -"
       "d     /data/services/matrix-synapse 0700 matrix-synapse matrix-synapse -"
     ];
     services.nix-daemon.environment.TMPDIR = "/data/builds";
