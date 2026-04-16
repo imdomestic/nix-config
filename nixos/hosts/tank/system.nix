@@ -419,10 +419,19 @@ in {
   services.matrix-synapse = {
     enable = true;
     dataDir = "/data/services/matrix-synapse";
+    extraConfigFiles = [
+      "/var/lib/secrets/matrix-synapse/turn.yaml"
+    ];
     settings = {
       server_name = "imdomestic.com";
       public_baseurl = "https://matrix.imdomestic.com:8448";
       sliding_sync.enabled = true;
+      turn_uris = [
+        "turn:rtc.imdomestic.com:3478?transport=udp"
+        "turn:rtc.imdomestic.com:3478?transport=tcp"
+        "turns:rtc.imdomestic.com:5349?transport=tcp"
+      ];
+      turn_user_lifetime = "24h";
 
       listeners = [
         {
