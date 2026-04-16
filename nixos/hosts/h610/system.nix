@@ -202,6 +202,16 @@ in {
     group = "nginx";
   };
 
+  security.acme.certs."rtc.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
+    group = "nginx";
+    reloadServices = [
+      "nginx.service"
+      "coturn.service"
+    ];
+  };
+
   systemd.services.ddns-go = let
     ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
       dnsconf:
@@ -216,6 +226,7 @@ in {
                   - h610:imdomestic.com
                   - tailscale:imdomestic.com
                   - matrix:imdomestic.com
+                  - rtc:imdomestic.com
             ipv6:
               enable: true
               gettype: netInterface
@@ -225,6 +236,7 @@ in {
               ipv6reg: ""
               domains:
                   - matrix:imdomestic.com
+                  - rtc:imdomestic.com
             dns:
               name: cloudflare
               id: ""
@@ -366,6 +378,8 @@ in {
 
   services.cockpit.enable = lib.mkForce false;
 
+  users.users.turnserver.extraGroups = ["nginx"];
+
   programs.zsh = {
     enable = true;
   };
@@ -443,7 +457,7 @@ in {
         region_id = 610;
         region_code = "h610";
         region_name = "H610";
-        stun_listen_addr = "0.0.0.0:3478";
+        stun_listen_addr = "0.0.0.0:3479";
       };
       dns = {
         base_domain = "inner.imdomestic.com";
@@ -479,6 +493,50 @@ in {
   #     };
   #   };
   # };
+
+  services.coturn = {
+    enable = true;
+    no-cli = true;
+    use-auth-secret = true;
+    static-auth-secret-file = "/var/lib/secrets/coturn/static-auth-secret";
+    realm = "rtc.imdomestic.com";
+    cert = "/var/lib/acme/rtc.imdomestic.com/fullchain.pem";
+    pkey = "/var/lib/acme/rtc.imdomestic.com/key.pem";
+    listening-port = 3478;
+    alt-listening-port = 3480;
+    tls-listening-port = 5349;
+    alt-tls-listening-port = 5351;
+    min-port = 49152;
+    max-port = 49999;
+  };
+
+  services.livekit = {
+    enable = true;
+    keyFile = "/var/lib/secrets/livekit/keys.yaml";
+    settings = {
+      port = 7880;
+      room.auto_create = false;
+      rtc = {
+        tcp_port = 7881;
+        port_range_start = 50000;
+        port_range_end = 51000;
+        use_external_ip = true;
+      };
+    };
+  };
+
+  services.lk-jwt-service = {
+    enable = true;
+    keyFile = "/var/lib/secrets/livekit/keys.yaml";
+    port = 8088;
+    livekitUrl = "wss://rtc.imdomestic.com:8448/livekit/sfu";
+  };
+
+  systemd.services.lk-jwt-service = {
+    wants = ["livekit.service"];
+    after = ["livekit.service"];
+    environment.LIVEKIT_FULL_ACCESS_HOMESERVERS = "imdomestic.com";
+  };
 
   services.nginx = {
     enable = true;
@@ -560,6 +618,60 @@ in {
         proxy_read_timeout 600s;
         proxy_send_timeout 600s;
       '';
+    };
+  };
+  services.nginx.virtualHosts."rtc.imdomestic.com" = {
+    serverName = "rtc.imdomestic.com";
+    useACMEHost = "rtc.imdomestic.com";
+    addSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8448;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8448;
+        ssl = true;
+      }
+    ];
+
+    locations."= /livekit/jwt" = {
+      return = "308 /livekit/jwt/";
+    };
+
+    locations."/livekit/jwt/" = {
+      proxyPass = "http://127.0.0.1:8088/";
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
+    };
+
+    locations."= /livekit/sfu" = {
+      return = "308 /livekit/sfu/";
+    };
+
+    locations."/livekit/sfu/" = {
+      proxyPass = "http://127.0.0.1:7880/";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+      '';
+    };
+
+    locations."/" = {
+      return = "404";
     };
   };
 
