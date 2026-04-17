@@ -177,7 +177,7 @@ in {
               "alt-shift-0" = "move-node-to-workspace 0";
 
               "alt-tab" = "workspace-back-and-forth";
-              "alt-shift-tab" = "move-node-to-workspace-back-and-forth";
+              # "alt-shift-tab" = "move-node-to-workspace-back-and-forth";
 
               "alt-shift-semicolon" = "mode service";
             };

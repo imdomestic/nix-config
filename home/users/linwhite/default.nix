@@ -5,6 +5,10 @@
   pkgs,
   ...
 }: {
+  home.packages = with pkgs; [
+    moonlight-qt
+  ];
+
   home.sessionVariables = {
     ZDOTDIR =
       if lib.hasInfix "darwin" system
