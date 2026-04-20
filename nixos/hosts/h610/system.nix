@@ -8,13 +8,14 @@
   matrixUpstream = "http://100.64.0.4:8008";
 in {
   imports = [
-    ../../modules/dae
+    # ../../modules/dae
     ../../modules/keyd
     # ../../modules/minecraft/wuxi.nix
   ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelParams = [
     "pcie_aspm=off"
     "i915.force_probe=!56a5"
