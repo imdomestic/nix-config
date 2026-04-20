@@ -5,8 +5,8 @@
   pkgs,
   ...
 }: {
-  home.packages = with pkgs; [
-    moonlight-qt
+  imports = [
+    ../../modules/tmux
   ];
 
   home.sessionVariables = {
