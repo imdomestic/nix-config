@@ -103,6 +103,7 @@
       # agents
       pkgs-unstable.codex
       pkgs-unstable.gemini-cli
+      pkgs-unstable.claude-code
       pkgs-unstable.opencode
     ]
     ++ lib.optionals (lib.hasInfix "linux" system) [
