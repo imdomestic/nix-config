@@ -6,6 +6,7 @@
   imports = [
     ../../modules/dae
     ./hardware-configuration.nix
+    ../../modules/vlmcsd
   ];
 
   hardware.deviceTree = {
