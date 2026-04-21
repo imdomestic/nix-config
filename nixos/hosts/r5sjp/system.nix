@@ -146,6 +146,7 @@ in {
     ethtool
     mtr
     tailscale
+    wakeonlan
   ];
 
   security.sudo.wheelNeedsPassword = false;
