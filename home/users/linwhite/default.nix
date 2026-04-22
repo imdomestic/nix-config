@@ -16,6 +16,10 @@
       else "/home/linwhite/.config/zsh";
   };
 
+  xdg.configFile = {
+    zsh.source = inputs.zsh-linwhite.outPath;
+    nvim.source = inputs.nvim.outPath;
+  }
   programs.git = {
     enable = true;
     settings = {
