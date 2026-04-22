@@ -92,6 +92,11 @@
       flake = false;
     };
 
+    zsh-linwhite = {
+      url = "github:linwh1te/zsh";
+      flake = false;
+    };
+
     dae-config = {
       url = "git+ssh://git@github.com/imdomestic/dae";
       flake = false;

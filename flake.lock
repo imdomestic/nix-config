@@ -1682,7 +1682,8 @@
         "wg-config": "wg-config",
         "zen-browser": "zen-browser",
         "zjstatus": "zjstatus",
-        "zsh-hank": "zsh-hank"
+        "zsh-hank": "zsh-hank",
+        "zsh-linwhite": "zsh-linwhite"
       }
     },
     "rpi-bluez-firmware-src": {
@@ -2382,6 +2383,22 @@
       },
       "original": {
         "owner": "HCHogan",
+        "repo": "zsh",
+        "type": "github"
+      }
+    },
+    "zsh-linwhite": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1776841732,
+        "narHash": "sha256-TSCd095ssBE4WiwqZevI05iViJd70W24Zj2XBXCoADM=",
+        "owner": "linwh1te",
+        "repo": "zsh",
+        "rev": "08fc649928882b06118ea775e4c0d3e35b98a080",
+        "type": "github"
+      },
+      "original": {
+        "owner": "linwh1te",
         "repo": "zsh",
         "type": "github"
       }

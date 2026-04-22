@@ -18,8 +18,9 @@
 
   xdg.configFile = {
     zsh.source = inputs.zsh-linwhite.outPath;
-    nvim.source = inputs.nvim.outPath;
-  }
+    # nvim.source = inputs.nixvim.outPath;
+  };
+
   programs.git = {
     enable = true;
     settings = {
