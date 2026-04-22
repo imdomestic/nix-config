@@ -212,7 +212,7 @@ in {
             ip6 daddr 2c0f:fb50::/32 reject with icmpv6 type addr-unreachable
 
             # github
-            ip6 daddr 2a0a:a440::/29 reject with icmpv6 type addr-unreachable
+            # ip6 daddr 2a0a:a440::/29 reject with icmpv6 type addr-unreachable
           }
         '';
       };
