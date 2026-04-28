@@ -12,6 +12,10 @@
     sha256 = "sha256-TeQm0gscv4YScuknrutbSdksF/Diu50XP4W/fwFU3VM=";
   };
 in {
+  imports = [
+    ../../modules/zsh
+  ];
+
   programs.git = {
     enable = true;
     settings = {
@@ -473,7 +477,6 @@ in {
 
   xdg.configFile = {
     kvim.source = inputs.kvim.outPath;
-    zsh.source = inputs.zsh-hank.outPath;
     wezterm.source = inputs.wezterm-config.outPath;
     neofetch = {
       source = ../../modules/neofetch;
@@ -484,13 +487,6 @@ in {
     };
   };
 
-  # home.file.".zshenv".source = ../../modules/zsh/.zshenv;
-  home.sessionVariables = {
-    ZDOTDIR =
-      if lib.hasInfix "darwin" system
-      then "/Users/hank/.config/zsh"
-      else "/home/hank/.config/zsh";
-  };
 
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../../../fonts/Recursive-Italic.ttf;
