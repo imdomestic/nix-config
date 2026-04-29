@@ -123,7 +123,7 @@ in {
 
   programs.zellij = {
     enable = true;
-    enableZshIntegration = true;
+    enableZshIntegration = false;
     settings = {
       theme = "evergarden-fall";
       themes = {
