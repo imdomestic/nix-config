@@ -495,39 +495,6 @@ in {
         '';
         options.desc = "Diagnostics";
       }
-      {
-        mode = [
-          "n"
-          "i"
-        ];
-        key = "<M-;>";
-        action = mkRaw ''
-          function()
-            require("sidekick").nes_jump_or_apply()
-          end
-        '';
-        options.desc = "Sidekick NES jump/apply";
-      }
-      {
-        mode = "n";
-        key = "<leader>aa";
-        action = mkRaw ''
-          function()
-            require("sidekick.cli").toggle({ name = "codex", focus = true })
-          end
-        '';
-        options.desc = "Sidekick Codex";
-      }
-      {
-        mode = "n";
-        key = "<leader>as";
-        action = mkRaw ''
-          function()
-            require("sidekick.cli").select({ filter = { installed = true } })
-          end
-        '';
-        options.desc = "Select Sidekick tool";
-      }
     ];
 
     plugins = {
@@ -986,26 +953,6 @@ in {
             "buffer"
           ];
           fuzzy.implementation = "prefer_rust_with_warning";
-        };
-      };
-
-      copilot-lua = {
-        enable = true;
-        settings = {
-          panel.enabled = false;
-          suggestion.enabled = false;
-        };
-      };
-
-      sidekick = {
-        enable = true;
-        settings = {
-          cli = {
-            mux = {
-              enabled = true;
-              backend = "tmux";
-            };
-          };
         };
       };
 
