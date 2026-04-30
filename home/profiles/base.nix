@@ -21,7 +21,6 @@
     eza
     duf
     btop
-    zinit
     nix-output-monitor
     tree
     file
@@ -29,6 +28,9 @@
     which
     wget
     sops
+    gnugrep
+    gnused
+    coreutils
 
     # archives
     zip

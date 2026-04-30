@@ -160,9 +160,6 @@ zle -N _sudo_command_line
 ## Vi-mode Keybindings
 ##
 
-bindkey -v
-bindkey "^?" backward-delete-char
-
 function zle-keymap-select {
   if [[ ${KEYMAP} == vicmd ]] ||
      [[ $1 = 'block' ]]; then
@@ -193,39 +190,7 @@ bindkey "^?" backward-delete-char
 bindkey "^H" backward-delete-char
 bindkey "^U" backward-kill-line
 
-##
-## ZSH Options
-##
-
 umask 022
-
-setopt AUTOCD
-setopt AUTO_MENU
-setopt AUTO_PARAM_SLASH
-setopt COMPLETE_IN_WORD
-setopt NO_MENU_COMPLETE
-setopt HASH_LIST_ALL
-setopt ALWAYS_TO_END
-setopt NOTIFY
-setopt NOHUP
-setopt MAILWARN
-setopt INTERACTIVE_COMMENTS
-setopt NOBEEP
-setopt APPEND_HISTORY
-setopt SHARE_HISTORY
-setopt INC_APPEND_HISTORY
-setopt EXTENDED_HISTORY
-setopt HIST_IGNORE_ALL_DUPS
-setopt HIST_IGNORE_SPACE
-setopt HIST_NO_FUNCTIONS
-setopt HIST_EXPIRE_DUPS_FIRST
-setopt HIST_SAVE_NO_DUPS
-setopt HIST_REDUCE_BLANKS
-
-unsetopt FLOWCONTROL
-unsetopt NOMATCH
-unsetopt CORRECT
-unsetopt EQUALS
 
 ##
 ## Completion Styles
@@ -236,30 +201,6 @@ zstyle ':completion:*:descriptions' format '[%d]'
 zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
 zstyle ':fzf-tab:*' switch-group ',' '.'
-
-##
-## FZF Theme (Catppuccin Mocha)
-##
-
-export FZF_DEFAULT_OPTS="
-  --color fg:#cdd6f4
-  --color fg+:#cdd6f4
-  --color bg:#1e1e2e
-  --color bg+:#313244
-  --color hl:#f38ba8
-  --color hl+:#f38ba8
-  --color info:#cba6f7
-  --color prompt:#cba6f7
-  --color spinner:#f5e0dc
-  --color pointer:#f5e0dc
-  --color marker:#f5e0dc
-  --color border:#1e1e2e
-  --color header:#f38ba8
-  --prompt ' '
-  --pointer ' λ'
-  --layout=reverse
-  --border horizontal
-  --height 40"
 
 ##
 ## LS_COLORS

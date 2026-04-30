@@ -1,8 +1,14 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  lib,
+  ...
+}: {
   home.packages = [pkgs.zsh-completions];
 
   programs.zsh = {
     enableCompletion = true;
+    autocd = true;
+    defaultKeymap = "viins";
 
     autosuggestion = {
       enable = true;
@@ -11,6 +17,11 @@
 
     historySubstringSearch.enable = true;
 
+    syntaxHighlighting = {
+      enable = true;
+      highlighters = ["main" "brackets" "pattern" "cursor" "regexp" "root" "line"];
+    };
+
     history = {
       size = 10000;
       save = 10000;
@@ -18,8 +29,53 @@
       share = true;
       extended = true;
       ignoreSpace = true;
+      ignoreAllDups = true;
+      saveNoDups = true;
       expireDuplicatesFirst = true;
     };
+
+    setOptions = [
+      "AUTO_MENU"
+      "AUTO_PARAM_SLASH"
+      "COMPLETE_IN_WORD"
+      "NO_MENU_COMPLETE"
+      "HASH_LIST_ALL"
+      "ALWAYS_TO_END"
+      "NOTIFY"
+      "NOHUP"
+      "MAILWARN"
+      "INTERACTIVE_COMMENTS"
+      "NOBEEP"
+      "HIST_NO_FUNCTIONS"
+      "HIST_REDUCE_BLANKS"
+      "NO_FLOW_CONTROL"
+      "NO_NOMATCH"
+      "NO_CORRECT"
+      "NO_EQUALS"
+    ];
+
+    plugins = [
+      {
+        name = "zsh-autopair";
+        src = pkgs.zsh-autopair;
+        file = "share/zsh/zsh-autopair/autopair.zsh";
+      }
+      {
+        name = "zsh-you-should-use";
+        src = pkgs.zsh-you-should-use;
+        file = "share/zsh/plugins/you-should-use/you-should-use.plugin.zsh";
+      }
+      {
+        name = "fzf-tab";
+        src = pkgs.zsh-fzf-tab;
+        file = "share/fzf-tab/fzf-tab.plugin.zsh";
+      }
+      {
+        name = "zsh-history-search-multi-word";
+        src = pkgs.zsh-history-search-multi-word;
+        file = "share/zsh/zsh-history-search-multi-word/history-search-multi-word.plugin.zsh";
+      }
+    ];
 
     shellAliases = {
       # jj (jujutsu)
@@ -333,34 +389,18 @@
       export XDG_STATE_HOME="$HOME/.local/state"
     '';
 
-    initExtraFirst = ''
-      # Autosuggestion config (before plugin loads)
-      ZSH_AUTOSUGGEST_USE_ASYNC="true"
-    '';
-
-    initExtraBeforeCompInit = ''
-      zmodload zsh/zle
-      zmodload zsh/zpty
-      zmodload zsh/complist
-    '';
-
-    initExtra = ''
-      # Syntax highlighting config
-      ZSH_HIGHLIGHT_HIGHLIGHTERS=(main brackets pattern cursor regexp root line)
-      ZSH_HIGHLIGHT_MAXLENGTH=512
-
-      # Load zinit and plugins
-      source ${pkgs.zinit}/share/zinit/zinit.zsh
-      zinit light-mode for \
-        hlissner/zsh-autopair \
-        zdharma-continuum/fast-syntax-highlighting \
-        MichaelAquilina/zsh-you-should-use \
-        Aloxaf/fzf-tab
-      zinit ice wait'2' lucid
-      zinit light zdharma-continuum/history-search-multi-word
-
-      # Shell functions, keybindings, and options
-      ${builtins.readFile ./init-extra.zsh}
-    '';
+    initContent = lib.mkMerge [
+      (lib.mkBefore ''
+        ZSH_AUTOSUGGEST_USE_ASYNC="true"
+      '')
+      (lib.mkOrder 550 ''
+        zmodload zsh/zle
+        zmodload zsh/zpty
+        zmodload zsh/complist
+      '')
+      ''
+        ${builtins.readFile ./init-extra.zsh}
+      ''
+    ];
   };
 }
