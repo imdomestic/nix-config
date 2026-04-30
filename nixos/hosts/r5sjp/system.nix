@@ -198,24 +198,24 @@ in {
     nftables = {
       enable = true;
       checkRuleset = true;
-      tables.google-v4-only = {
-        family = "ip6";
-        content = ''
-          chain output {
-            type filter hook output priority 0; policy accept;
-
-            # google
-            ip6 daddr 2404:6800::/32 reject with icmpv6 type addr-unreachable
-            ip6 daddr 2607:f8b0::/32 reject with icmpv6 type addr-unreachable
-            ip6 daddr 2a00:1450::/32 reject with icmpv6 type addr-unreachable
-            ip6 daddr 2800:3f0::/32  reject with icmpv6 type addr-unreachable
-            ip6 daddr 2c0f:fb50::/32 reject with icmpv6 type addr-unreachable
-
-            # github
-            # ip6 daddr 2a0a:a440::/29 reject with icmpv6 type addr-unreachable
-          }
-        '';
-      };
+      # tables.google-v4-only = {
+      #   family = "ip6";
+      #   content = ''
+      #     chain output {
+      #       type filter hook output priority 0; policy accept;
+      #
+      #       # google
+      #       ip6 daddr 2404:6800::/32 reject with icmpv6 type addr-unreachable
+      #       ip6 daddr 2607:f8b0::/32 reject with icmpv6 type addr-unreachable
+      #       ip6 daddr 2a00:1450::/32 reject with icmpv6 type addr-unreachable
+      #       ip6 daddr 2800:3f0::/32  reject with icmpv6 type addr-unreachable
+      #       ip6 daddr 2c0f:fb50::/32 reject with icmpv6 type addr-unreachable
+      #
+      #       # github
+      #       # ip6 daddr 2a0a:a440::/29 reject with icmpv6 type addr-unreachable
+      #     }
+      #   '';
+      # };
     };
   };
   systemd.network = {
