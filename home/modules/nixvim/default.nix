@@ -123,18 +123,6 @@ in {
       }
       {
         event = "VimLeavePre";
-        callback = mkRaw ''
-          function()
-            if vim.uv.guess_handle(vim.v.stderr) ~= "tty" then
-              return
-            end
-
-            vim.api.nvim_chan_send(vim.v.stderr, "\x1b[6 q")
-          end
-        '';
-      }
-      {
-        event = "VimLeavePre";
         group = "terminal-cleanup";
         desc = "Exit: Kill all background terminals automatically";
         callback = mkRaw ''
@@ -1127,6 +1115,10 @@ in {
         enable = true;
         lazyLoad.settings.ft = "typst";
         settings = {};
+      };
+
+      diffview = {
+        enable = true;
       };
 
       lsp = {

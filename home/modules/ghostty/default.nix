@@ -14,7 +14,7 @@ in {
       else if isLinux
       then pkgs.ghostty
       else pkgs.ghostty-bin;
-    # enableZshIntegration = true;
+    enableZshIntegration = true;
     # installBatSyntax = false;
     themes = {
       kanso = {

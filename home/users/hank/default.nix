@@ -26,6 +26,8 @@ in {
       user.signingkey = "~/.ssh/id_ed25519.pub";
       commit.gpgsign = true;
       column.ui = "auto";
+      diff.tool = "nvimdiff";
+      difftool.prompt = false;
     };
   };
 
@@ -58,22 +60,22 @@ in {
     mouse = true;
     plugins = with pkgs.tmuxPlugins; [
       dotbar
-      {
-        plugin = resurrect;
-        extraConfig = ''
-          # set -g @resurrect-strategy-nvim 'session'
-          set -g @resurrect-capture-pane-contents 'on'
-        '';
-      }
-      {
-        plugin = continuum;
-        extraConfig = ''
-          # Tmux 启动时自动恢复最后一次保存的会话
-          set -g @continuum-restore 'on'
-          # 每 15 分钟自动在后台保存一次（默认也是 15）
-          set -g @continuum-save-interval '15'
-        '';
-      }
+      # {
+      #   plugin = resurrect;
+      #   extraConfig = ''
+      #     # set -g @resurrect-strategy-nvim 'session'
+      #     set -g @resurrect-capture-pane-contents 'on'
+      #   '';
+      # }
+      # {
+      #   plugin = continuum;
+      #   extraConfig = ''
+      #     # Tmux 启动时自动恢复最后一次保存的会话
+      #     set -g @continuum-restore 'on'
+      #     # 每 15 分钟自动在后台保存一次（默认也是 15）
+      #     set -g @continuum-save-interval '15'
+      #   '';
+      # }
     ];
     extraConfig = ''
       set-option -ga terminal-overrides ",*256col*:Tc"
