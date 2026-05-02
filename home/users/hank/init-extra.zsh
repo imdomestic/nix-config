@@ -172,6 +172,12 @@ function zle-keymap-select {
   fi
 }
 zle -N zle-keymap-select
+
+function zle-line-init() {
+  echo -ne '\e[5 q'
+}
+zle -N zle-line-init
+
 echo -ne '\e[5 q'
 
 bindkey '^[[H' beginning-of-line
