@@ -16,6 +16,7 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelModules = ["pppoe"];
   powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
@@ -63,6 +64,21 @@
     "net.core.rps_sock_flow_entries" = 32768; # 全局 RFS 流表大小
     "net.ipv4.tcp_fastopen" = 3; # 开启 TCP Fast Open
     "net.ipv4.tcp_mtu_probing" = 1; # 应对黑洞路由，自动探测 MTU
+
+    # TCP buffer (千兆/2.5G 接口建议增大)
+    "net.core.rmem_max" = 16777216;
+    "net.core.wmem_max" = 16777216;
+    "net.ipv4.tcp_rmem" = "4096 87380 16777216";
+    "net.ipv4.tcp_wmem" = "4096 65536 16777216";
+
+    # 连接跟踪表 (做路由器跑代理时容易爆)
+    "net.netfilter.nf_conntrack_max" = 1048576;
+    "net.netfilter.nf_conntrack_buckets" = 262144;
+    "net.netfilter.nf_conntrack_tcp_timeout_established" = 7440;
+
+    # 减少 TIME_WAIT
+    "net.ipv4.tcp_tw_reuse" = 1;
+    "net.ipv4.tcp_fin_timeout" = 15;
   };
 
   systemd.services.network-tuning = {
@@ -79,16 +95,23 @@
         #!${pkgs.bash}/bin/bash
 
         if [ -d /sys/class/net/enP3p49s0/queues/rx-0 ]; then
-          echo ff > /sys/class/net/enP3p49s0/queues/rx-0/rps_cpus
+          echo f0 > /sys/class/net/enP3p49s0/queues/rx-0/rps_cpus
         fi
 
         if [ -d /sys/class/net/enP4p65s0/queues/rx-0 ]; then
-          echo ff > /sys/class/net/enP4p65s0/queues/rx-0/rps_cpus
+          echo f0 > /sys/class/net/enP4p65s0/queues/rx-0/rps_cpus
         fi
 
         if [ -d /sys/class/net/end0/queues/rx-0 ]; then
-          echo ff > /sys/class/net/end0/queues/rx-0/rps_cpus
+          echo f0 > /sys/class/net/end0/queues/rx-0/rps_cpus
         fi
+
+        ${pkgs.ethtool}/bin/ethtool -K end0 gro on gso on tso on
+        ${pkgs.ethtool}/bin/ethtool -K enP3p49s0 gro on gso on tso on
+        ${pkgs.ethtool}/bin/ethtool -K enP4p65s0 gro on gso on tso on
+
+        # 增大 ring buffer（看硬件支持的最大值）
+        ${pkgs.ethtool}/bin/ethtool -G end0 rx 1024 tx 1024 || true
       '';
     };
   };
