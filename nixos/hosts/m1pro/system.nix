@@ -47,6 +47,7 @@
     global.brewfile = true;
     casks = [
       "moonlight"
+      "aldente"
     ];
   };
 
