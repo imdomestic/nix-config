@@ -133,6 +133,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    paneru = {
+      url = "github:karinushka/paneru";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     nix-minecraft.url = "github:Infinidoge/nix-minecraft";
     headplane = {
       url = "github:tale/headplane";
