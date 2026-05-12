@@ -1121,6 +1121,10 @@ in {
         enable = true;
       };
 
+      markview = {
+        enable = true;
+      };
+
       lsp = {
         enable = true;
         keymaps = {
