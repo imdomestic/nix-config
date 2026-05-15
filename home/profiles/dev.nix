@@ -101,9 +101,10 @@
       android-tools
 
       # agents
+      pkgs-unstable.claude-code
+
       pkgs-unstable.codex
       pkgs-unstable.gemini-cli
-      pkgs-unstable.claude-code
       pkgs-unstable.opencode
       pkgs-unstable.pi-coding-agent
     ]
@@ -128,4 +129,11 @@
     enable = lib.mkForce false;
     package = pkgs-unstable.neovim-unwrapped;
   };
+
+  # TODO: update to 26.05
+  # programs.claude-code = {
+  #   enable = true;
+  #   enableMcpIntegration = true;
+  #   package = pkgs-unstable.claude-code;
+  # };
 }

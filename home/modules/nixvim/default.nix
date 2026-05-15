@@ -1125,6 +1125,10 @@ in {
         enable = true;
       };
 
+      todo-comments = {
+        enable = true;
+      };
+
       lsp = {
         enable = true;
         keymaps = {
