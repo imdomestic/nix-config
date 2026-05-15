@@ -120,6 +120,19 @@ in {
       setw -g mode-keys vi
       bind -T copy-mode-vi v send-keys -X begin-selection
       bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
+
+      bind -T root C-g \
+      set prefix None \;\
+      set key-table off \;\
+      set status-style "fg=colour245,bg=colour238" \;\
+      if -F '#{pane_in_mode}' 'send-keys -X cancel' \;\
+      refresh-client -S
+
+      bind -T off C-g \
+      set -u prefix \;\
+      set -u key-table \;\
+      set -u status-style \;\
+      refresh-client -S
     '';
   };
 
