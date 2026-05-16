@@ -482,7 +482,7 @@ in {
 
     autosuggestion = {
       enable = true;
-      highlight = "fg=#585B70,bold";
+      strategy = ["history" "completion"];
     };
 
     historySubstringSearch.enable = true;
