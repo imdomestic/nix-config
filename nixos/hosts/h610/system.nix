@@ -1,5 +1,6 @@
 {
   pkgs,
+  pkgs-unstable,
   inputs,
   config,
   lib,
@@ -383,6 +384,11 @@ in {
 
   services.cockpit.enable = lib.mkForce false;
 
+  services.ollama = {
+    enable = true;
+    package = pkgs-unstable.ollama-vulkan;
+  };
+
   users.users.turnserver.extraGroups = ["nginx"];
 
   programs.zsh = {
@@ -400,9 +406,11 @@ in {
       vpl-gpu-rt
       intel-compute-runtime
       intel-media-driver
+      mesa
     ];
     enable32Bit = true;
   };
+  users.users.hank.extraGroups = ["video" "render"];
 
   environment = {
     variables = {
