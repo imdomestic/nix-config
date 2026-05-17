@@ -16,7 +16,7 @@
   home.packages = with pkgs;
     [
       # neovim dependencies
-      devenv
+      pkgs-unstable.devenv
       codesnap
       lua51Packages.lua
       lua51Packages.luarocks
