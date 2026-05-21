@@ -58,6 +58,8 @@ in {
     enable = true;
     terminal = "tmux-256color";
     mouse = true;
+    clock24 = true;
+    keyMode = "vi";
     plugins = with pkgs.tmuxPlugins; [
       dotbar
       # {
@@ -97,7 +99,7 @@ in {
       set -g visual-activity off
       setw -g monitor-activity off
       setw -g monitor-bell off
-      set -g history-limit 10000
+      set -g history-limit 50000
 
       set -g set-clipboard on
 
@@ -122,17 +124,17 @@ in {
       bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
 
       bind -T root C-g \
-      set prefix None \;\
-      set key-table off \;\
-      set status-style "fg=colour245,bg=colour238" \;\
-      if -F '#{pane_in_mode}' 'send-keys -X cancel' \;\
-      refresh-client -S
+        set prefix None \;\
+        set key-table off \;\
+        set status-style 'fg=colour245,bg=colour238' \;\
+        if -F '#{pane_in_mode}' 'send-keys -X cancel' \;\
+        refresh-client -S \
 
       bind -T off C-g \
-      set -u prefix \;\
-      set -u key-table \;\
-      set -u status-style \;\
-      refresh-client -S
+        set -u prefix \;\
+        set -u key-table \;\
+        set -u status-style \;\
+        refresh-client -S
     '';
   };
 
