@@ -21,7 +21,7 @@ in {
   ];
 
   externalModules = [
-    inputs.vscode-server.nixosModules.default
+    # inputs.vscode-server.nixosModules.default
     inputs.nix-minecraft.nixosModules.minecraft-servers
     inputs.nix-index-database.nixosModules.default
   ];
@@ -40,17 +40,17 @@ in {
         ];
       };
     };
-    fendada = {
-      home = {
-        profiles = with homeProfiles; [
-          core
-          gui.linux
-        ];
-        modules = [
-          userModules.fendada.module
-        ];
-      };
-    };
+    # fendada = {
+    #   home = {
+    #     profiles = with homeProfiles; [
+    #       core
+    #       gui.linux
+    #     ];
+    #     modules = [
+    #       userModules.fendada.module
+    #     ];
+    #   };
+    # };
     linwhite = {
       home = {
         profiles = with homeProfiles; [
