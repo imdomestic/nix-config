@@ -72,6 +72,7 @@ in {
     ../../modules/tuigreet
     ../../modules/keyd
     ../../modules/minecraft/wuxi.nix
+    ../../modules/dae
   ];
 
   boot.initrd.kernelModules = [
@@ -314,20 +315,20 @@ in {
 
   # Enable the X11 windowing system.
   services.xserver.enable = true;
-  services.xserver.videoDrivers = ["nvidia"];
+  # services.xserver.videoDrivers = ["nvidia"];
   # nixpkgs.config.cudaSupport = true;
   hardware.graphics.enable = true;
-  hardware.nvidia = {
-    modesetting.enable = true;
-    open = true;
-    nvidiaSettings = true;
-  };
-  hardware.nvidia-container-toolkit.enable = true;
-  environment.sessionVariables = {
-    LIBVA_DRIVER_NAME = "nvidia";
-    GBM_BACKEND = "nvidia-drm";
-    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
-  };
+  # hardware.nvidia = {
+  #   modesetting.enable = true;
+  #   open = true;
+  #   nvidiaSettings = true;
+  # };
+  # hardware.nvidia-container-toolkit.enable = true;
+  # environment.sessionVariables = {
+  #   LIBVA_DRIVER_NAME = "nvidia";
+  #   GBM_BACKEND = "nvidia-drm";
+  #   __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+  # };
 
   # Enable the GNOME Desktop Environment.
   services.displayManager.gdm.enable = true;
@@ -617,7 +618,7 @@ in {
     corectrl
     # daed
     ddns-go
-    btop-cuda
+    btop
     pkgs.jellyfin
     pkgs.jellyfin-web
     pkgs.jellyfin-ffmpeg
