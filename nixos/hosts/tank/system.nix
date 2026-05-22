@@ -646,7 +646,7 @@ in {
   };
 
   services.openssh.enable = true;
-  services.vscode-server.enable = true;
+  # services.vscode-server.enable = true;
 
   services.iperf3.enable = true;
 
