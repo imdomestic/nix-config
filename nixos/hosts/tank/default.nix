@@ -5,13 +5,14 @@
 in {
   system = "x86_64-linux";
   kind = "nixos";
-  roles = ["desktop" "gui" "server"];
+  roles = ["server"];
   ip = "10.0.0.66";
   sshUser = "root";
 
   profiles = with nixosProfiles; [
     base
-    desktop
+    server
+    # desktop
     virtualisation
   ];
 
@@ -33,29 +34,27 @@ in {
           core
           base
           dev
-          gui.linux
+          # gui.linux
         ];
         modules = [
           userModules.hank.module
         ];
       };
     };
-    # fendada = {
-    #   home = {
-    #     profiles = with homeProfiles; [
-    #       core
-    #       gui.linux
-    #     ];
-    #     modules = [
-    #       userModules.fendada.module
-    #     ];
-    #   };
-    # };
+    fendada = {
+      home = {
+        profiles = with homeProfiles; [
+          core
+        ];
+        modules = [
+          userModules.fendada.module
+        ];
+      };
+    };
     linwhite = {
       home = {
         profiles = with homeProfiles; [
           core
-          gui.linux
         ];
         modules = [
           userModules.linwhite.module
@@ -66,7 +65,6 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          gui.linux
         ];
         modules = [
           userModules.genisys.module
