@@ -541,19 +541,18 @@ in {
   services.spice-vdagentd.enable = true;
 
   services.ollama = {
-    package = pkgs-unstable.ollama;
+    package = pkgs-unstable.ollama-rocm;
     enable = true;
-    # acceleration = "cuda";
-    acceleration = false;
+    # acceleration = "";
     host = "0.0.0.0";
     home = "/data/lib/ollama";
     environmentVariables = {
       OLLAMA_KEEP_ALIVE = "-1";
     };
-    loadModels = [
-      "qwen3:8b"
-    ];
-    syncModels = true;
+    # loadModels = [
+    #   "qwen3:8b"
+    # ];
+    # syncModels = true;
   };
 
   environment = {
@@ -577,6 +576,8 @@ in {
     rdma-core
     # infiniband-diags
     # libibverbs
+
+    pkgs-unstable.llama-cpp-rocm
 
     debootstrap
     cachix
