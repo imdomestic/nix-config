@@ -17,12 +17,12 @@ in {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.kernelParams = [
-    "pcie_aspm=off"
-    "i915.force_probe=!56a5"
-    "xe.force_probe=56a5"
-    "enable_guc=3"
-  ];
+  # boot.kernelParams = [
+  #   "pcie_aspm=off"
+  #   "i915.force_probe=!56a5"
+  #   "xe.force_probe=56a5"
+  #   "enable_guc=3"
+  # ];
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
