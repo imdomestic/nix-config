@@ -28,12 +28,11 @@ in {
       };
     };
 
-
     linwhite = {
       home = {
         profiles = with homeProfiles; [
           core
-	  base
+          base
         ];
         modules = [
           userModules.linwhite.module
