@@ -79,12 +79,12 @@ in {
       enable = false;
       checkReversePath = false;
     };
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00005.conf";
-        autostart = true;
-      };
-    };
+    # wg-quick.interfaces = {
+    #   wg0 = {
+    #     configFile = "${inputs.wg-config.outPath}/client_00005.conf";
+    #     autostart = true;
+    #   };
+    # };
   };
 
   boot.kernel.sysctl = {
@@ -103,7 +103,7 @@ in {
         config = ''
           plugin pppoe.so enp1s0u2
           user "15861587760"
-          password "168168"
+          password "512907"
 
           # usepeerdns
 
