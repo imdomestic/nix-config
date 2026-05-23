@@ -81,7 +81,7 @@ in {
     "dm-cache-default" # when using volumes set up with lvmcache
   ];
   boot.supportedFilesystems = ["xfs" "bcachefs"];
-  boot.kernelPackages = pkgs.linuxPackages_6_18;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
   swapDevices = [
     {
