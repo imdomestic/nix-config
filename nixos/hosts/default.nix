@@ -22,4 +22,5 @@ in {
   r5sjp = callHost "r5sjp";
   gpd = callHost "gpd";
   m16 = callHost "m16";
+  "9950x" = callHost "9950x";
 }
