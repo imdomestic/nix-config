@@ -46,12 +46,12 @@
       interfaces."ppp0".allowedUDPPorts = [546];
       checkReversePath = false;
     };
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00003.conf";
-        autostart = true;
-      };
-    };
+    # wg-quick.interfaces = {
+    #   wg0 = {
+    #     configFile = "${inputs.wg-config.outPath}/client_00003.conf";
+    #     autostart = true;
+    #   };
+    # };
   };
 
   boot.kernel.sysctl = {
