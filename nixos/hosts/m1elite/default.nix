@@ -17,6 +17,7 @@ in {
 
   externalModules = [
     inputs.nix-index-database.darwinModules.nix-index
+    inputs.determinate.darwinModules.default
   ];
 
   users = {

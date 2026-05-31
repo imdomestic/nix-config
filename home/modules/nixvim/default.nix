@@ -488,6 +488,25 @@ in {
     plugins = {
       lz-n.enable = true;
 
+      sleuth.enable = true;
+
+      codesnap = {
+        enable = true;
+        lazyLoad.settings.cmd = [
+          "CodeSnap"
+          "CodeSnapSave"
+          "CodeSnapASCII"
+          "CodeSnapHighlight"
+          "CodeSnapSaveHighlight"
+        ];
+        settings = {
+          has_breadcrumbs = false;
+          has_line_number = true;
+          mac_window_bar = true;
+          save_path = "~/Downloads/";
+        };
+      };
+
       snacks = {
         enable = true;
         settings = {
@@ -715,6 +734,7 @@ in {
 
       treesitter-textobjects = {
         enable = true;
+        lazyLoad.settings.event = "DeferredUIEnter";
 
         settings = {
           select = {
@@ -1119,14 +1139,24 @@ in {
 
       diffview = {
         enable = true;
+        lazyLoad.settings.cmd = [
+          "DiffviewOpen"
+          "DiffviewClose"
+          "DiffviewToggleFiles"
+          "DiffviewFocusFiles"
+          "DiffviewRefresh"
+          "DiffviewFileHistory"
+        ];
       };
 
       markview = {
         enable = true;
+        lazyLoad.settings.ft = ["markdown" "md"];
       };
 
       todo-comments = {
         enable = true;
+        lazyLoad.settings.event = "DeferredUIEnter";
       };
 
       lsp = {

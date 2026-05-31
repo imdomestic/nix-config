@@ -77,12 +77,12 @@
     firewall.enable = false;
     networkmanager.enable = false;
     useNetworkd = true;
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00008.conf";
-        autostart = true;
-      };
-    };
+    # wg-quick.interfaces = {
+    #   wg0 = {
+    #     configFile = "${inputs.wg-config.outPath}/client_00008.conf";
+    #     autostart = true;
+    #   };
+    # };
     nftables = {
       enable = true;
       tables.router = {
