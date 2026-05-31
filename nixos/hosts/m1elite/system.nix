@@ -35,6 +35,7 @@
   environment.systemPackages = with pkgs; [
     iproute2mac
     nixos-rebuild
+    nixos-rebuild-ng
   ];
 
   # host-users
@@ -83,4 +84,39 @@
       ];
     };
   };
+
+  determinateNix = {
+    enable = true;
+    customSettings = {
+      substituters = [
+        "https://cache.nixos.org"
+        "https://mirror.sjtu.edu.cn/nix-channels/store"
+      ];
+      cores = 0;
+      eval-cores = 0;
+      trusted-users = [
+        "root"
+        "hank"
+      ];
+    };
+  };
+
+  # environment.etc."nix/registry.json".text = builtins.toJSON {
+  #   version = 2;
+  #   flakes = [
+  #     {
+  #       from = {
+  #         type = "indirect";
+  #         id = "nixpkgs";
+  #       };
+  #       to = {
+  #         type = "path";
+  #         path = inputs.nixpkgs.outPath;
+  #         lastModified = inputs.nixpkgs.lastModified;
+  #         narHash = inputs.nixpkgs.narHash;
+  #         rev = inputs.nixpkgs.rev;
+  #       };
+  #     }
+  #   ];
+  # };
 }
