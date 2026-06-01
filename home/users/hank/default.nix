@@ -895,8 +895,8 @@ in {
   xdg.configFile = {
     kvim.source = inputs.kvim.outPath;
     wezterm.source = inputs.wezterm-config.outPath;
-    neofetch = {
-      source = ../../modules/neofetch;
+    fastfetch = {
+      source = ../../modules/fastfetch;
       recursive = true;
     };
     "starship.toml" = {

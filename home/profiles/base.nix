@@ -14,7 +14,6 @@
     just
     tmux
     bat
-    neofetch
     fastfetch
     ripgrep
     fd
@@ -46,6 +45,7 @@
 
   programs.yazi = {
     enable = true;
+    shellWrapperName = "y";
     settings = {
       theme = {
         flavor = {

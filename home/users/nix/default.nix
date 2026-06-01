@@ -38,8 +38,8 @@
     nvim.source = inputs.kvim.outPath;
     hvim.source = inputs.hvim.outPath;
     zsh.source = inputs.zsh-hank.outPath;
-    neofetch = {
-      source = ../../modules/neofetch;
+    fastfetch = {
+      source = ../../modules/fastfetch;
       recursive = true;
     };
     "starship.toml" = {
