@@ -9,11 +9,14 @@ in {
   programs.nixvim = {
     enable = true;
     enableMan = true;
-    nixpkgs.pkgs = pkgs-unstable;
-    package = pkgs-unstable.neovim-unwrapped;
+    # nixpkgs.pkgs = pkgs-unstable;
+    nixpkgs.pkgs = pkgs;
+    # package = pkgs-unstable.neovim-unwrapped;
+    package = pkgs.neovim-unwrapped;
 
     extraPlugins = [
-      pkgs-unstable.vimPlugins."evergarden-nvim"
+      # pkgs-unstable.vimPlugins."evergarden-nvim"
+      pkgs.vimPlugins."evergarden-nvim"
     ];
 
     extraPackages = [

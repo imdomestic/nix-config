@@ -1,0 +1,46 @@
+// Ported from the previous neofetch config (chick2d/chatsagnik theme).
+// https://github.com/fastfetch-cli/fastfetch/wiki/Configuration
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "padding": {
+      "top": 2,
+      "right": 3
+    }
+  },
+  "display": {
+    "separator": ": ",
+    "size": {
+      "binaryPrefix": "iec"
+    }
+  },
+  "modules": [
+    "break",
+    "break",
+    "break",
+    "break",
+    {
+      "type": "title"
+    },
+    {
+      "type": "separator",
+      "string": "━"
+    },
+    { "type": "os",       "key": "󰍹 OS ", "keyColor": "red" },
+    { "type": "kernel",   "key": "󰒋 VER", "keyColor": "green" },
+    { "type": "uptime",   "key": "󰥔 UP ", "keyColor": "yellow" },
+    { "type": "packages", "key": "󰏗 PKG", "keyColor": "blue" },
+    { "type": "cpu",      "key": "󰻠 CPU", "keyColor": "magenta" },
+    { "type": "gpu",      "key": "󰢮 GPU", "keyColor": "cyan" },
+    { "type": "memory",   "key": "󰍛 MEM", "keyColor": "white" },
+    { "type": "de",       "key": "󰧨 DE ", "keyColor": "default" },
+    {
+      "type": "separator",
+      "string": "━"
+    },
+    {
+      "type": "colors",
+      "symbol": "circle"
+    }
+  ]
+}
