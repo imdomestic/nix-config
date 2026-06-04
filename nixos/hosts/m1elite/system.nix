@@ -92,6 +92,12 @@
         "https://cache.nixos.org"
         "https://mirror.sjtu.edu.cn/nix-channels/store"
       ];
+      extra-substituters = [
+        "https://cache.iog.io"
+      ];
+      extra-trusted-public-keys = [
+        "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
+      ];
       cores = 0;
       eval-cores = 0;
       trusted-users = [
