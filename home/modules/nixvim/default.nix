@@ -1,10 +1,20 @@
 {
   inputs,
+  lib,
+  config,
   pkgs,
   pkgs-unstable,
   ...
 }: let
   mkRaw = inputs.nixvim.lib.nixvim.mkRaw;
+
+  isLinwhite =
+
+    (config.home.username or null) == "linwhite";
+
+  enableImSelect =
+
+    isLinwhite && pkgs.stdenv.isDarwin;
 in {
   programs.nixvim = {
     enable = true;
@@ -17,6 +27,8 @@ in {
     extraPlugins = [
       # pkgs-unstable.vimPlugins."evergarden-nvim"
       pkgs.vimPlugins."evergarden-nvim"
+    ] ++ lib.optionals enableImSelect [
+      pkgs-unstable.vimPlugins.im-select-nvim
     ];
 
     extraPackages = [
@@ -1444,6 +1456,27 @@ in {
         },
       })
       vim.cmd.colorscheme("evergarden")
+    '';
+
+    extraConfigLua = lib.optionalString enableImSelect ''
+      require("im_select").setup({
+        default_im_select = "com.apple.keylayout.ABC",
+        default_command = "im-select",
+
+        set_default_events = {
+          "VimEnter",
+          "FocusGained",
+          "InsertLeave",
+          "CmdlineLeave",
+        },
+
+        set_previous_events = {
+          "InsertEnter",
+        },
+
+        keep_quiet_on_no_binary = false,
+        async_switch_im = true,
+       })
     '';
   };
 }
