@@ -1,4 +1,8 @@
-{pkgs, ...}: {
+{
+  pkgs,
+  pkgs-unstable,
+  ...
+}: {
   imports = [
     ../../modules/kitty
     ../../modules/ghostty
@@ -14,6 +18,11 @@
     # harper
     # emacs
   ];
+
+  # services.ollama = {
+  #   enable = true;
+  #   package = pkgs-unstable.ollama;
+  # };
 
   programs.direnv = {
     enable = true;
