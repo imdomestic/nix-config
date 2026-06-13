@@ -7,10 +7,9 @@
   ...
 }: {
   imports = [
-    inputs.nixvim.homeModules.nixvim
-    ../modules/vim
-    ../modules/helix
-    ../modules/nixvim
+    # inputs.nixvim.homeModules.nixvim
+    # ../modules/vim
+    # ../modules/helix
   ];
 
   home.packages = with pkgs;

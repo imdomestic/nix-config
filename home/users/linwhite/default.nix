@@ -6,6 +6,8 @@
   ...
 }: {
   imports = [
+    inputs.nixvim.homeModules.nixvim
+    ../../modules/nixvim/linwhite
     ../../modules/tmux
   ];
 
