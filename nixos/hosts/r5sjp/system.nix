@@ -331,10 +331,10 @@ in {
   services.resolved = {
     enable = true;
     fallbackDns = ["223.5.5.5"];
-    extraConfig = ''
-      DNSStubListener=yes
-      DNSStubListenerExtra=::
-    '';
+    Settings = {
+      DNSStubListener = "yes";
+      DNSStubListenerExtra = "::";
+    };
   };
   services.openssh = {
     enable = true;
