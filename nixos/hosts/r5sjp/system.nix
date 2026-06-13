@@ -331,9 +331,9 @@ in {
   services.resolved = {
     enable = true;
     fallbackDns = ["223.5.5.5"];
-    settings = {
+    settings.Resolve = {
       DNSStubListener = "yes";
-      DNSStubListenerExtra = "::";
+      DNSStubListenerExtra = ["::"];
     };
   };
   services.openssh = {
