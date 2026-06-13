@@ -331,7 +331,7 @@ in {
   services.resolved = {
     enable = true;
     fallbackDns = ["223.5.5.5"];
-    Settings = {
+    settings = {
       DNSStubListener = "yes";
       DNSStubListenerExtra = "::";
     };
