@@ -292,13 +292,10 @@
     enable = true;
     dnssec = "false";
     fallbackDns = ["223.5.5.5"];
-    extraConfig = ''
-      # DNS=127.0.0.1:1053
-      # Domains=~.
-      DNSStubListener=yes
-      DNSStubListenerExtra=192.168.22.1
-      DNSStubListenerExtra=::
-    '';
+    settings.Resolve = {
+      DNSStubListener = "yes";
+      DNSStubListenerExtra = ["192.168.22.1" "::"];
+    };
   };
 
   services.xray.enable = true;
