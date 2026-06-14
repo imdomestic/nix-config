@@ -14,7 +14,7 @@
 in {
   imports = [
     inputs.nixvim.homeModules.nixvim
-    ../../modules/nixvim
+    ../../modules/nixvim/hank
   ];
 
   programs.git = {

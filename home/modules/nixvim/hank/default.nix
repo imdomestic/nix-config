@@ -1,7 +1,5 @@
 {
   inputs,
-  lib,
-  config,
   pkgs,
   pkgs-unstable,
   ...
@@ -15,11 +13,11 @@ in {
     nixpkgs.pkgs = pkgs;
     # package = pkgs-unstable.neovim-unwrapped;
     package = pkgs.neovim-unwrapped;
+    performance.byteCompileLua.enable = true;
 
     extraPlugins = [
-      # pkgs-unstable.vimPlugins."evergarden-nvim"
       pkgs.vimPlugins."evergarden-nvim"
-      pkgs-unstable.vimPlugins.im-select-nvim
+      # pkgs.vimPlugins.kanso-nvim
     ];
 
     extraPackages = [
@@ -1449,25 +1447,18 @@ in {
       vim.cmd.colorscheme("evergarden")
     '';
 
-    extraConfigLua = ''
-      require("im_select").setup({
-        default_im_select = "com.apple.keylayout.ABC",
-        default_command = "im-select",
-
-        set_default_events = {
-          "VimEnter",
-          "FocusGained",
-          "InsertLeave",
-          "CmdlineLeave",
-        },
-
-        set_previous_events = {
-          "InsertEnter",
-        },
-
-        keep_quiet_on_no_binary = false,
-        async_switch_im = true,
-       })
-    '';
+    # extraConfigLuaPost = ''
+    #   require('kanso').setup {
+    #     -- compile = true,
+    #     transparent = false,
+    #     keywordStyle = { italic = false, bold = true },
+    #     overrides = function(colors)
+    #       return {
+    #         WinSeparator = { fg = colors.palette.inkBg2, bold = false },
+    #       }
+    #     end,
+    #   }
+    #   vim.cmd("colorscheme kanso-zen")
+    # '';
   };
 }
