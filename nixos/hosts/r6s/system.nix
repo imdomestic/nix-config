@@ -290,9 +290,9 @@
   services.dnsmasq.enable = false;
   services.resolved = {
     enable = true;
-    dnssec = "false";
-    fallbackDns = ["223.5.5.5"];
     settings.Resolve = {
+      FallbackDNS = ["223.5.5.5"];
+      DNSSEC = "false";
       DNSStubListener = "yes";
       DNSStubListenerExtra = ["192.168.22.1" "::"];
     };
