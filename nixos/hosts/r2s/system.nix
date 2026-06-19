@@ -47,7 +47,7 @@
         configurationLimit = 15;
       };
     };
-    kernelPackages = pkgs.linuxPackages_6_18;
+    kernelPackages = pkgs.linuxPackages_latest;
     kernelModules = [
       "tcp_bbr"
       "nf_conntrack"
@@ -271,12 +271,12 @@
   services.dnsmasq.enable = false;
   services.resolved = {
     enable = true;
-    fallbackDns = ["223.5.5.5"];
-    extraConfig = ''
-      DNSStubListener=yes
-      DNSStubListenerExtra=192.168.4.1
-      DNSStubListenerExtra=::
-    '';
+    settings.Resolve = {
+      FallbackDNS = ["223.5.5.5"];
+      DNSSEC = "false";
+      DNSStubListener = "yes";
+      DNSStubListenerExtra = ["192.168.4.1" "::"];
+    };
   };
   services.irqbalance.enable = false;
 
