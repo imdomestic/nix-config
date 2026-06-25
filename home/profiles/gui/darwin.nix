@@ -19,13 +19,12 @@
     # emacs
   ];
 
+  programs.zathura = {
+    enable = false;
+  };
+
   # services.ollama = {
   #   enable = true;
   #   package = pkgs-unstable.ollama;
   # };
-
-  programs.direnv = {
-    enable = true;
-    nix-direnv.enable = true;
-  };
 }

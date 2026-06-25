@@ -1011,6 +1011,8 @@ in {
 
       haskell-tools.enable = true;
 
+      cornelis.enable = true;
+
       lean = {
         enable = true;
         lazyLoad.settings.ft = "lean";
