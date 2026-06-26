@@ -457,11 +457,10 @@
   services.resolved = {
     enable = true;
     fallbackDns = ["223.5.5.5"];
-    extraConfig = ''
-      DNSStubListener=yes
-      DNSStubListenerExtra=192.168.3.1
-      DNSStubListenerExtra=::
-    '';
+    settings.Resolve = {
+      DNSStubListener = "yes";
+      DNSStubListenerExtra = ["192.168.3.1" "::"];
+    };
   };
   services.irqbalance.enable = true;
   services.openssh = {
