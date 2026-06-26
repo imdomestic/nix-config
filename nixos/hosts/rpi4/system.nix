@@ -44,7 +44,8 @@ in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    ../../modules/dae
+    # ../../modules/dae
+    ../../modules/singbox
     ../../modules/tuigreet
     ../../modules/keyd
   ];
@@ -204,11 +205,10 @@ in {
   services.resolved = {
     enable = true;
     fallbackDns = ["223.5.5.5"];
-    extraConfig = ''
-      DNSStubListener=yes
-      DNSStubListenerExtra=192.168.20.1
-      DNSStubListenerExtra=::
-    '';
+    settings.Resolve = {
+      DNSStubListener = "yes";
+      DNSStubListenerExtra = ["192.168.20.1" "::"];
+    };
   };
   # services.irqbalance.enable = true;
   services.udev.extraRules = ''

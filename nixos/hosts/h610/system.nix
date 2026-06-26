@@ -184,11 +184,10 @@ in {
   services.resolved = {
     enable = true;
     fallbackDns = ["223.5.5.5"];
-    extraConfig = ''
-      DNSStubListener=yes
-      DNSStubListenerExtra=10.0.1.1
-      DNSStubListenerExtra=::
-    '';
+    settings.Resolve = {
+      DNSStubListener = "yes";
+      DNSStubListenerExtra = ["10.0.1.1" "::"];
+    };
   };
 
   security.acme = {
