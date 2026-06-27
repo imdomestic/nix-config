@@ -13,7 +13,7 @@
   };
 in {
   imports = [
-    inputs.nixvim.homeModules.nixvim
+    # inputs.nixvim.homeModules.nixvim
   ];
 
   programs.git = {
