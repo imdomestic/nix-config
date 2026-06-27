@@ -81,7 +81,6 @@ in {
             tag = "alidns";
             type = "udp";
             server = "223.5.5.5";
-            detour = "direct";
           }
           {
             tag = "google";
