@@ -304,8 +304,8 @@ in {
           security = "reality";
           realitySettings = {
             show = false;
-            dest = "www.microsoft.com:443";
-            serverNames = ["www.microsoft.com" "microsoft.com"];
+            dest = "www.apple.com:443";
+            serverNames = ["www.apple.com" "apple.com"];
             privateKey = "SFXrsyrENIJqHMgk9Chjc-cA4MlzaTOBlF9OBAuSY0w";
             shortIds = ["16"];
           };
@@ -341,8 +341,8 @@ in {
           security = "reality";
           realitySettings = {
             show = false;
-            dest = "www.microsoft.com:443";
-            serverNames = ["www.microsoft.com" "microsoft.com"];
+            dest = "www.apple.com:443";
+            serverNames = ["www.apple.com" "apple.com"];
             privateKey = "SFXrsyrENIJqHMgk9Chjc-cA4MlzaTOBlF9OBAuSY0w";
             shortIds = ["16"];
           };

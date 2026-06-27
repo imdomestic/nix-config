@@ -402,7 +402,7 @@ in {
           network = "tcp";
           security = "reality";
           realitySettings = {
-            serverName = "www.microsoft.com";
+            serverName = "www.apple.com";
             publicKey = "2oMfAnRmOiZN3ra85D05Zhr8ehI8hRSRqzpJ0oJUcgM";
             fingerprint = "chrome";
             shortId = "16";
@@ -432,7 +432,7 @@ in {
           network = "tcp";
           security = "reality";
           realitySettings = {
-            serverName = "www.microsoft.com";
+            serverName = "www.apple.com";
             publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
             fingerprint = "chrome";
             shortId = "17";
@@ -462,7 +462,7 @@ in {
           network = "tcp";
           security = "reality";
           realitySettings = {
-            serverName = "www.microsoft.com";
+            serverName = "www.apple.com";
             publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
             fingerprint = "chrome";
             shortId = "17";
@@ -491,7 +491,7 @@ in {
           network = "tcp";
           security = "reality";
           realitySettings = {
-            serverName = "www.microsoft.com";
+            serverName = "www.apple.com";
             publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
             fingerprint = "chrome";
             shortId = "17";
@@ -520,7 +520,7 @@ in {
           network = "tcp";
           security = "reality";
           realitySettings = {
-            serverName = "www.microsoft.com";
+            serverName = "www.apple.com";
             publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
             fingerprint = "chrome";
             shortId = "17";
@@ -549,7 +549,7 @@ in {
           network = "tcp";
           security = "reality";
           realitySettings = {
-            serverName = "www.microsoft.com";
+            serverName = "www.apple.com";
             publicKey = "GWoWYGsFBtkpzl_PqTSPrU2sfBlT36RNZMPSW20liww";
             fingerprint = "chrome";
             shortId = "16";
