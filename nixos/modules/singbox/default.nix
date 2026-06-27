@@ -95,7 +95,8 @@ in {
             server = "alidns";
           }
         ];
-        final = "google";
+        # final = "google";
+        final = "alidns";
         strategy = "prefer_ipv4";
       };
 
