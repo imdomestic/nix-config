@@ -18,7 +18,7 @@ in {
   ];
 
   externalModules = [
-    inputs.headplane.nixosModules.headplane
+    # inputs.headplane.nixosModules.headplane
   ];
 
   users = {

@@ -139,10 +139,10 @@
     };
 
     nix-minecraft.url = "github:Infinidoge/nix-minecraft";
-    headplane = {
-      url = "github:tale/headplane";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    # headplane = {
+    #   url = "github:tale/headplane";
+    #   inputs.nixpkgs.follows = "nixpkgs";
+    # };
 
     walker.url = "github:abenz1267/walker";
 
