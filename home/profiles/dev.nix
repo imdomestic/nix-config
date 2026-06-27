@@ -7,7 +7,8 @@
   ...
 }: {
   imports = [
-    # inputs.nixvim.homeModules.nixvim
+    inputs.nixvim.homeModules.nixvim
+    ../modules/nixvim/hank
     # ../modules/vim
     # ../modules/helix
   ];
