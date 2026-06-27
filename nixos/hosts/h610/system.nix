@@ -197,19 +197,19 @@ in {
 
   security.acme.certs."tailscale.imdomestic.com" = {
     dnsProvider = "cloudflare";
-    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
+    environmentFile = "/var/lib/secrets/acme/cloudflare.env";
     group = "nginx";
   };
 
   security.acme.certs."matrix.imdomestic.com" = {
     dnsProvider = "cloudflare";
-    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
+    environmentFile = "/var/lib/secrets/acme/cloudflare.env";
     group = "nginx";
   };
 
   security.acme.certs."rtc.imdomestic.com" = {
     dnsProvider = "cloudflare";
-    credentialsFile = "/var/lib/secrets/acme/cloudflare.env";
+    environmentFile = "/var/lib/secrets/acme/cloudflare.env";
     group = "nginx";
     reloadServices = [
       "nginx.service"
