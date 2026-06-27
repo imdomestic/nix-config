@@ -7,8 +7,8 @@
 }: {
   imports = [
     ./hardware-configuration.nix
-    # ../../modules/dae
-    ../../modules/singbox
+    ../../modules/dae
+    # ../../modules/singbox
     ../../modules/tuigreet
     ../../modules/keyd
   ];
