@@ -163,7 +163,7 @@
     ];
   };
 
-  i18n.defaultLocale = "en_GB.UTF-8";
+  i18n.defaultLocale = "en_US.UTF-8";
   environment.etc = {
     "systemd/journald.conf.d/99-storage.conf".text = ''
       [Journal]
