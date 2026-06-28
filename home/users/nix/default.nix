@@ -17,8 +17,10 @@
 
   programs.git = {
     enable = true;
-    userName = "Hank Hogan";
-    userEmail = "ysh2291939848@outlook.com";
+    settings = {
+      user.name = "Hank Hogan";
+      user.email = "ysh2291939848@outlook.com";
+    };
   };
 
   programs.neovim = {

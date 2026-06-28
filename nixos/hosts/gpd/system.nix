@@ -98,7 +98,7 @@ in {
 
   services.resolved = {
     enable = true;
-    fallbackDns = ["223.5.5.5"];
+    settings.Resolve.FallbackDNS = ["223.5.5.5"];
   };
 
   xdg.portal.wlr.enable = true;
@@ -176,6 +176,8 @@ in {
   };
 
   services.openssh.enable = true;
+
+  catppuccin.autoEnable = false;
 
   system.stateVersion = "26.05"; # Did you read the comment?
 }

@@ -189,8 +189,8 @@ in {
   services.dnsmasq.enable = false;
   services.resolved = {
     enable = true;
-    fallbackDns = ["223.5.5.5"];
     settings.Resolve = {
+      FallbackDNS = ["223.5.5.5"];
       DNSStubListener = "yes";
       DNSStubListenerExtra = ["10.0.1.1" "::"];
     };
@@ -384,8 +384,8 @@ in {
     ];
   };
 
-  services.xserver.displayManager.gdm.enable = false;
-  services.xserver.desktopManager.gnome.enable = false;
+  services.displayManager.gdm.enable = false;
+  services.desktopManager.gnome.enable = false;
 
   services.cockpit.enable = lib.mkForce false;
 

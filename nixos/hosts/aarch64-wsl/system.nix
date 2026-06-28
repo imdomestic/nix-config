@@ -59,7 +59,7 @@
 
   services.resolved = {
     enable = true;
-    fallbackDns = ["223.5.5.5"];
+    settings.Resolve.FallbackDNS = ["223.5.5.5"];
   };
   services.openssh.enable = true;
   services.tailscale = {
