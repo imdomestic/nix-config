@@ -2,7 +2,12 @@
   inputs,
   pkgs,
   ...
-}: {
+}: let
+  wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
+    conf = "${inputs.wg-config.outPath}/client_00008.conf";
+    address = "10.0.0.9/24";
+  };
+in {
   imports = [
     ../../modules/dae
     ../../modules/keyd
@@ -176,12 +181,6 @@
     firewall.enable = false;
     networkmanager.enable = false;
     useNetworkd = true;
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00008.conf";
-        autostart = true;
-      };
-    };
     nftables = {
       enable = true;
       checkRuleset = false;
@@ -213,6 +212,8 @@
   };
   systemd.network = {
     enable = true;
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
     links = {
       "10-wan0" = {
         matchConfig = {

@@ -4,7 +4,12 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
+    conf = "${inputs.wg-config.outPath}/client_00003.conf";
+    address = "10.0.0.4/24";
+  };
+in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/dae
@@ -46,12 +51,6 @@
       interfaces."ppp0".allowedUDPPorts = [546];
       checkReversePath = false;
     };
-    # wg-quick.interfaces = {
-    #   wg0 = {
-    #     configFile = "${inputs.wg-config.outPath}/client_00003.conf";
-    #     autostart = true;
-    #   };
-    # };
   };
 
   boot.kernel.sysctl = {
@@ -163,6 +162,10 @@
         Name = "br-lan";
       };
     };
+
+    # wireguard
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
 
     # LAN1
     networks."20-lan1-uplink" = {

@@ -7,7 +7,12 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
+    conf = "${inputs.wg-config.outPath}/client_00006.conf";
+    address = "10.0.0.7/24";
+  };
+in {
   imports = [
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
@@ -35,12 +40,6 @@
       # 必须关闭 rpfilter (反向路径过滤)，否则 dae 的透明代理可能会被丢包
       checkReversePath = false;
     };
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00006.conf";
-        autostart = true;
-      };
-    };
   };
 
   # --- 2. 内核参数 (路由器的自我修养) ---
@@ -64,6 +63,10 @@
         Name = "br-lan";
       };
     };
+
+    # wireguard
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
 
     # LAN
     networks."20-lan-uplink" = {

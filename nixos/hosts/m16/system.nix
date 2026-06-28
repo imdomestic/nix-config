@@ -2,7 +2,12 @@
   pkgs,
   inputs,
   ...
-}: {
+}: let
+  wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
+    conf = "${inputs.wg-config.outPath}/client_00024.conf";
+    address = "10.0.0.25/24";
+  };
+in {
   imports = [
     ./hardware-configuration.nix
     ./dosuspend.nix
@@ -27,14 +32,6 @@
     nameservers = ["1.1.1.1" "8.8.8.8"];
   };
 
-  #   wg-quick.interfaces = {
-  #     wg0 = {
-  #       configFile = "${inputs.wg-config.outPath}/client_00024.conf";
-  #       autostart = true;
-  #     };
-  #   };
-  # };
-
   # Configure network proxy if necessary
   # networking.proxy.default = "http://127.0.0.1:7890";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
@@ -42,6 +39,8 @@
   systemd.network = {
     wait-online.enable = false;
     enable = true;
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
     networks."wlan" = {
       matchConfig.Name = "wlan0";
       networkConfig = {
