@@ -130,7 +130,12 @@ in {
     enable = true;
   };
 
-  services.resolved.enable = true;
+  services.resolved = {
+    enable = true;
+    # Without a fallback resolver, tailscale/MagicDNS taking over the resolver
+    # leaves no working upstream and breaks public DNS. Matches the routers.
+    fallbackDns = ["223.5.5.5"];
+  };
   services.qemuGuest.enable = true;
 
   services.iperf3.enable = true;
