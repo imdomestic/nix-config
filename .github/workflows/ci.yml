@@ -62,8 +62,6 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             ${{ matrix.arch == 'aarch64' && 'extra-platforms = aarch64-linux' || '' }}
 
-      - uses: DeterminateSystems/magic-nix-cache-action@v2
-
       - name: Build Toplevel (Dry Run)
         run: |
           echo "Checking configuration for host: ${{ matrix.host }}..."
