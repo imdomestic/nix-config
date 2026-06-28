@@ -28,17 +28,17 @@ in {
       };
     };
 
-    # linwhite = {
-    #   home = {
-    #     profiles = with homeProfiles; [
-    #       core
-    #       base
-    #     ];
-    #     modules = [
-    #       userModules.linwhite.module
-    #     ];
-    #   };
-    # };
+    linwhite = {
+      home = {
+        profiles = with homeProfiles; [
+          core
+          base
+        ];
+        modules = [
+          userModules.linwhite.module
+        ];
+      };
+    };
 
     hank = {
       home = {
