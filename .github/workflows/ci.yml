@@ -75,12 +75,24 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Install Nix
+      # Linux runners: the classic installer is proven for these jobs.
+      - name: Install Nix (Linux)
+        if: runner.os == 'Linux'
         uses: cachix/install-nix-action@v27
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             ${{ matrix.arch == 'aarch64' && 'extra-platforms = aarch64-linux' || '' }}
+
+      # macOS runners ship a build group / _nixbld users, which makes the
+      # classic installer abort with eDSRecordAlreadyExists. The Determinate
+      # installer handles pre-existing installs cleanly.
+      - name: Install Nix (macOS)
+        if: runner.os == 'macOS'
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
       - name: Build (Dry Run)
         run: |
