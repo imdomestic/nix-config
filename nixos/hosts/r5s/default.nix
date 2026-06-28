@@ -6,6 +6,8 @@ in {
   system = "aarch64-linux";
   kind = "nixos";
   roles = ["server"];
+  ip = "10.0.0.9";
+  sshUser = "root";
 
   profiles = with nixosProfiles; [
     base

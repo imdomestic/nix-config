@@ -16,6 +16,12 @@
     systemConfigs = systemManagers;
     hosts = hosts;
     deploy.nodes = deployNodes;
+
+    # `nix flake check` validates every deploy node's schema.
+    checks =
+      builtins.mapAttrs
+      (system: deployLib: deployLib.deployChecks self.deploy)
+      inputs.deploy-rs.lib;
   };
 
   inputs = {
@@ -32,6 +38,11 @@
     };
 
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";
+
+    deploy-rs = {
+      url = "github:serokell/deploy-rs";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
 
