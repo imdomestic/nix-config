@@ -21,11 +21,11 @@ in {
         profiles = with homeProfiles; [
           core
           base
-          dev
           gui.darwin
         ];
         modules = [
           userModules.linwhite.module
+          userModules.linwhite.dev
         ];
       };
     };

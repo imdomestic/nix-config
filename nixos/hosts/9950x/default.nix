@@ -26,11 +26,11 @@ in {
         profiles = with homeProfiles; [
           core
           base
-          dev
           gui.linux
         ];
         modules = [
           userModules.linwhite.module
+          userModules.linwhite.dev
         ];
       };
     };

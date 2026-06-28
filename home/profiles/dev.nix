@@ -1,18 +1,13 @@
 {
-  inputs,
   pkgs,
   pkgs-unstable,
   lib,
   system,
   ...
 }: {
-  imports = [
-    inputs.nixvim.homeModules.nixvim
-    ../modules/nixvim/hank
-    # ../modules/vim
-    # ../modules/helix
-  ];
-
+  # 用户无关的共享 dev 工具链(LSP / CLI / direnv)。
+  # 编辑器(nixvim)是按用户的,放在各自的 home/users/<user>/dev.nix 里,
+  # 由那里 import 本文件复用这套工具链。
   home.packages = with pkgs;
     [
       # neovim dependencies
@@ -124,11 +119,6 @@
     enableBashIntegration = true;
     nix-direnv.enable = true;
     enableNushellIntegration = true;
-  };
-
-  programs.neovim = {
-    enable = lib.mkForce false;
-    package = pkgs-unstable.neovim-unwrapped;
   };
 
   # TODO: update to 26.05

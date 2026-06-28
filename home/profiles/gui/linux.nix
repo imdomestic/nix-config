@@ -60,7 +60,6 @@
     spotify
     qq
     wechat-uos
-    cider
     sioyek
     upscayl
     sioyek

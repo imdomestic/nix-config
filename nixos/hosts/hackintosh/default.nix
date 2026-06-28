@@ -20,11 +20,11 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          dev
           gui.darwin
         ];
         modules = [
           userModules.hank.module
+          userModules.hank.dev
         ];
       };
     };

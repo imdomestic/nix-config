@@ -31,12 +31,12 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          dev
           base
           gui.linux
         ];
         modules = [
           userModules.linwhite.module
+          userModules.linwhite.dev
         ];
       };
     };

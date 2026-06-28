@@ -19,10 +19,10 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          dev
         ];
         modules = [
           userModules.hank.module
+          userModules.hank.dev
         ];
       };
     };
