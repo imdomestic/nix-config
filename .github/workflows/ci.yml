@@ -8,41 +8,61 @@ on:
 
 jobs:
   check-configurations:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - host: wsl
             arch: x86_64
+            os: ubuntu-latest
           - host: shanghai
             arch: x86_64
+            os: ubuntu-latest
           - host: x470
             arch: x86_64
+            os: ubuntu-latest
           - host: tank
             arch: x86_64
+            os: ubuntu-latest
           - host: h610
             arch: x86_64
+            os: ubuntu-latest
           - host: gpd
             arch: x86_64
+            os: ubuntu-latest
           - host: m16
             arch: x86_64
-          
+            os: ubuntu-latest
+
           - host: r2s
             arch: aarch64
+            os: ubuntu-latest
           - host: r5sjp
             arch: aarch64
+            os: ubuntu-latest
           - host: r5s
             arch: aarch64
+            os: ubuntu-latest
           - host: r6s
             arch: aarch64
+            os: ubuntu-latest
           - host: aarch64-wsl
             arch: aarch64
+            os: ubuntu-latest
           - host: rpi4
             arch: aarch64
+            os: ubuntu-latest
+
+          - host: m1elite
+            arch: aarch64-darwin
+            os: macos-latest
+          - host: m1pro
+            arch: aarch64-darwin
+            os: macos-latest
 
     name: Check ${{ matrix.host }} (${{ matrix.arch }})
-    
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,7 +82,11 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             ${{ matrix.arch == 'aarch64' && 'extra-platforms = aarch64-linux' || '' }}
 
-      - name: Build Toplevel (Dry Run)
+      - name: Build (Dry Run)
         run: |
           echo "Checking configuration for host: ${{ matrix.host }}..."
-          nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --dry-run
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            nix build .#darwinConfigurations.${{ matrix.host }}.system --dry-run
+          else
+            nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --dry-run
+          fi
