@@ -204,11 +204,11 @@ in {
   services.openssh.enable = true;
   services.tailscale.enable = true;
 
-  services.ollama = {
-    enable = true;
-    acceleration = "cuda";
-    host = "0.0.0.0";
-  };
+  # services.ollama = {
+  #   enable = true;
+  #   host = "0.0.0.0";
+  #   package = pkgs.ollama-vulkan;
+  # };
 
   systemd.settings.Manager.RebootWatchdogSec = 60;
   systemd.settings.Manager.RuntimeWatchdogSec = 60;
