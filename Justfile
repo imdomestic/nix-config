@@ -37,6 +37,26 @@ up:
 upp input:
   nix flake update {{input}}
 
+# -------- deploy-rs (push servers/routers over the wireguard mesh) --------
+# Run these from the build host (h610). Targets are every host with an `ip`
+# in nixos/hosts/<name>/default.nix: shanghai, tank, x470, b650, h610, n100,
+# r5s, r6s, rpi4.
+
+# Build + activate every configured node
+deploy:
+  deploy .
+
+# Deploy a single node, e.g. just deploy-host tank
+deploy-host host:
+  deploy .#"{{host}}"
+
+# Deploy everything but skip the flake checks (faster)
+deploy-fast:
+  deploy . --skip-checks
+
+# Update all inputs, then deploy everything
+update-deploy: up deploy
+
 history:
   nix profile history --profile /nix/var/nix/profiles/system
 
