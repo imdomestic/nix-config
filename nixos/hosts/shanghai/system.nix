@@ -113,10 +113,17 @@ in {
       matchConfig.Name = "br-lan";
       networkConfig = {
         DHCP = "yes";
+        # The ISP's DHCP hands out DNS servers inside 100.64.0.0/10 (CGNAT),
+        # the same range tailscale uses for the tailnet. Once tailscale is up
+        # it routes 100.64.0.0/10 into tailscale0, so those DNS IPs become
+        # unreachable and all resolution fails. Pin public resolvers outside
+        # that range instead of trusting DHCP DNS.
+        DNS = ["223.5.5.5" "119.29.29.29"];
       };
       dhcpV4Config = {
         UseRoutes = false;
         UseGateway = true;
+        UseDNS = false;
       };
       linkConfig = {
         RequiredForOnline = "routable";
