@@ -35,8 +35,12 @@
   networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
   services.resolved = {
     enable = true;
-    fallbackDns = ["223.5.5.5"];
+    settings.Resolve.FallbackDNS = ["223.5.5.5"];
   };
+
+  # Required so Home Manager (useUserPackages) xdg-desktop-portal definitions
+  # are linked into the system environment.
+  environment.pathsToLink = ["/share/applications" "/share/xdg-desktop-portal"];
 
   time.timeZone = "Asia/Shanghai";
 

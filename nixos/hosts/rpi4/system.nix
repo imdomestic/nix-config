@@ -205,8 +205,8 @@ in {
   services.dnsmasq.enable = false;
   services.resolved = {
     enable = true;
-    fallbackDns = ["223.5.5.5"];
     settings.Resolve = {
+      FallbackDNS = ["223.5.5.5"];
       DNSStubListener = "yes";
       DNSStubListenerExtra = ["192.168.20.1" "::"];
     };
@@ -338,6 +338,7 @@ in {
   systemd.services.network-tuning = {
     description = "Optimize Network Performance (RPS)";
     wantedBy = ["multi-user.target"];
+    wants = ["network-online.target"];
     after = ["network-online.target"];
     serviceConfig = {
       Type = "oneshot";

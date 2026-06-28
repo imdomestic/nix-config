@@ -210,5 +210,7 @@ in {
 
   services.openssh.enable = true;
 
+  catppuccin.autoEnable = false;
+
   system.stateVersion = "24.11"; # Did you read the comment?
 }
