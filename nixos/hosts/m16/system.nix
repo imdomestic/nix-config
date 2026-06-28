@@ -80,7 +80,10 @@ in {
   services.spice-vdagentd.enable = true;
   services.blueman.enable = true;
 
-  services.resolved.enable = true;
+  services.resolved = {
+    enable = true;
+    fallbackDns = ["223.5.5.5"];
+  };
 
   xdg.portal.wlr.enable = true;
 
