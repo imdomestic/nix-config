@@ -7,6 +7,10 @@
   ...
 }: let
   matrixUpstream = "http://100.64.0.4:8008";
+  wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
+    conf = "${inputs.wg-config.outPath}/client_00004.conf";
+    address = "10.0.0.5/24";
+  };
 in {
   imports = [
     # ../../modules/dae
@@ -59,12 +63,6 @@ in {
       interfaces."ppp0".allowedUDPPorts = [546];
       checkReversePath = false;
     };
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00004.conf";
-        autostart = true;
-      };
-    };
   };
 
   services.pppd = {
@@ -112,6 +110,10 @@ in {
         Name = "br-lan";
       };
     };
+
+    # wireguard
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
 
     # LAN
     networks."20-lan-uplink" = {

@@ -2,7 +2,12 @@
   pkgs,
   inputs,
   ...
-}: {
+}: let
+  wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
+    conf = "${inputs.wg-config.outPath}/client_00067.conf";
+    address = "10.0.0.68/24";
+  };
+in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
@@ -41,12 +46,6 @@
       trustedInterfaces = ["eno1" "br-lan"];
       checkReversePath = false;
     };
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/client_00067.conf";
-        autostart = true;
-      };
-    };
   };
   # Configure network proxy if necessary
   # networking.proxy.default = "http://127.0.0.1:7890";
@@ -60,6 +59,8 @@
         Name = "br-lan";
       };
     };
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
 
     networks."20-lan-uplink" = {
       matchConfig.Name = "eno1";

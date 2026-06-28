@@ -40,6 +40,11 @@
     notallowwanaccess: false
     lang: zh
   '';
+
+  wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
+    conf = "${inputs.wg-config.outPath}/client_00005.conf";
+    address = "10.0.0.6/24";
+  };
 in {
   imports = [
     ./hardware-configuration.nix
@@ -80,12 +85,6 @@ in {
       enable = false;
       checkReversePath = false;
     };
-    # wg-quick.interfaces = {
-    #   wg0 = {
-    #     configFile = "${inputs.wg-config.outPath}/client_00005.conf";
-    #     autostart = true;
-    #   };
-    # };
   };
 
   boot.kernel.sysctl = {
@@ -138,6 +137,8 @@ in {
         Name = "br-lan";
       };
     };
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
 
     networks."20-lan-uplink" = {
       matchConfig.Name = "end0";

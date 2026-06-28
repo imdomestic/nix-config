@@ -1,8 +1,14 @@
 {
   inputs,
   pkgs,
+  lib,
   ...
-}: {
+}: let
+  wg = import ../../../lib/wgServer.nix {inherit pkgs lib;} {
+    conf = "${inputs.wg-config.outPath}/server.conf";
+    address = "10.0.0.1/24";
+  };
+in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/dae
@@ -68,11 +74,20 @@
           }
         '';
       };
-    };
-    wg-quick.interfaces = {
-      wg0 = {
-        configFile = "${inputs.wg-config.outPath}/server.conf";
-        autostart = true;
+      # Replaces the server.conf PostUp:
+      #   iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+      # so WireGuard clients (10.0.0.0/24) reach the internet via the WAN (br-lan).
+      tables.wireguard = {
+        name = "wireguard";
+        enable = true;
+        family = "inet";
+        content = ''
+          chain postrouting {
+            type nat hook postrouting priority 100; policy accept;
+
+            ip saddr 10.0.0.0/24 oifname "br-lan" masquerade
+          }
+        '';
       };
     };
   };
@@ -85,6 +100,8 @@
         Name = "br-lan";
       };
     };
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
 
     networks."20-lan-uplink" = {
       matchConfig.Name = "ens5";
