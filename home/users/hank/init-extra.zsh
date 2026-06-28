@@ -243,7 +243,7 @@ fi
 if [ "$(uname)" = "Darwin" ]; then
   source ~/.orbstack/shell/init.zsh 2>/dev/null || :
   alias matlabcli="/Applications/MATLAB_R2025a.app/bin/matlab -nodesktop -nosplash"
-  export HOMEBREW_BOTTLE_DOMAIN=https://mirrors.ustc.edu.cn/homebrew-bottles
+  export HOMEBREW_BOTTLE_DOMAIN=https://mirror.sjtu.edu.cn/homebrew-bottles
   if [ "$(uname -m)" = "x86_64" ]; then
     eval "$(/usr/local/bin/brew shellenv)"
   else

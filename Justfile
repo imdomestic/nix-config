@@ -1,6 +1,6 @@
 set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 
-substituters := "https://mirrors.ustc.edu.cn/nix-channels/store https://cache.nixos.org"
+substituters := "https://mirror.sjtu.edu.cn/nix-channels/store https://cache.nixos.org"
 
 default:
   @just --list
