@@ -57,7 +57,10 @@
     defaultNetwork.settings.dns_enabled = true;
   };
 
-  services.resolved.enable = true;
+  services.resolved = {
+    enable = true;
+    fallbackDns = ["223.5.5.5"];
+  };
   services.openssh.enable = true;
   services.tailscale = {
     enable = true;

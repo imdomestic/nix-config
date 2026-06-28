@@ -33,7 +33,10 @@
   networking.hostName = hostname;
   networking.proxy.default = "http://127.0.0.1:7897";
   networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-  services.resolved.enable = true;
+  services.resolved = {
+    enable = true;
+    fallbackDns = ["223.5.5.5"];
+  };
 
   time.timeZone = "Asia/Shanghai";
 
