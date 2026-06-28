@@ -33,11 +33,11 @@ in {
         profiles = with homeProfiles; [
           core
           base
-          dev
           # gui.linux
         ];
         modules = [
           userModules.hank.module
+          userModules.hank.dev
         ];
       };
     };

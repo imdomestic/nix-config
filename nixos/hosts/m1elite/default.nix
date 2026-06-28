@@ -26,11 +26,11 @@ in {
         profiles = with homeProfiles; [
           core
           base
-          dev
           gui.darwin
         ];
         modules = [
           userModules.hank.module
+          userModules.hank.dev
         ];
       };
     };
