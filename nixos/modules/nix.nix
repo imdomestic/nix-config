@@ -51,12 +51,13 @@
   # ];
 
   nix.settings = {
+    # 数字越小越优先:SJTU 镜像加速 -> 官方源兜底 -> 其余专用 cache
     substituters = [
-      "https://mirrors.ustc.edu.cn/nix-channels/store"
-      "https://cache.garnix.io"
-      "https://cache.iog.io"
-      "https://mirror.sjtu.edu.cn/nix-channels/store"
-      "https://cache.nixos-cuda.org"
+      "https://mirror.sjtu.edu.cn/nix-channels/store?priority=10"
+      "https://cache.nixos.org?priority=20"
+      "https://cache.garnix.io?priority=30"
+      "https://cache.iog.io?priority=40"
+      "https://cache.nixos-cuda.org?priority=50"
     ];
     trusted-public-keys = [
       "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="

@@ -88,12 +88,13 @@
   determinateNix = {
     enable = true;
     customSettings = {
+      # 数字越小越优先:SJTU 镜像加速 -> 官方源兜底
       substituters = [
-        "https://cache.nixos.org"
-        "https://mirror.sjtu.edu.cn/nix-channels/store"
+        "https://mirror.sjtu.edu.cn/nix-channels/store?priority=10"
+        "https://cache.nixos.org?priority=20"
       ];
       extra-substituters = [
-        "https://cache.iog.io"
+        "https://cache.iog.io?priority=40"
       ];
       extra-trusted-public-keys = [
         "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
