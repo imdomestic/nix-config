@@ -21,6 +21,10 @@ in {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  # This host is the deploy-rs build box; emulate aarch64 so it can build the
+  # SBC (r6s/rpi4/r5s) closures locally before pushing them.
+  boot.binfmt.emulatedSystems = ["aarch64-linux"];
   # boot.kernelParams = [
   #   "pcie_aspm=off"
   #   "i915.force_probe=!56a5"
@@ -424,6 +428,7 @@ in {
     neovim
     nginx
     intel-gpu-tools
+    deploy-rs
   ];
 
   environment.sessionVariables = {
