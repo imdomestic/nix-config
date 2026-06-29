@@ -341,15 +341,15 @@ in {
         };
       }
 
-      {
-        tag = "socks-in";
-        port = 10800;
-        protocol = "socks";
-        settings = {
-          auth = "noauth";
-          udp = true;
-        };
-      }
+      # {
+      #   tag = "socks-in";
+      #   port = 10800;
+      #   protocol = "socks";
+      #   settings = {
+      #     auth = "noauth";
+      #     udp = true;
+      #   };
+      # }
 
       {
         tag = "client-in";
@@ -386,11 +386,11 @@ in {
     ];
 
     routing.rules = [
-      {
-        type = "field";
-        inboundTag = ["socks-in"];
-        outboundTag = "portal-r6s";
-      }
+      # {
+      #   type = "field";
+      #   inboundTag = ["socks-in"];
+      #   outboundTag = "portal-r6s";
+      # }
 
       {
         type = "field";
