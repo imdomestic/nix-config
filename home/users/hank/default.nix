@@ -909,5 +909,7 @@ in {
   home.file.".local/share/fonts/Recursive-Regular.ttf".source = ../../../fonts/Recursive-Regular.ttf;
   # home.file.wallpapers.source = ../../../wallpapers;
 
-  home.packages = [pkgs.zsh-completions];
+  home.packages = [
+    pkgs.zsh-completions
+  ];
 }
