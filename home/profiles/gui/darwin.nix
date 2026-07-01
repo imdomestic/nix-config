@@ -9,10 +9,10 @@
   ];
   home.packages = with pkgs; [
     swiftlint
-    raycast
     jdk
     wezterm
     sioyek
+    pkgs-unstable.raycast
     # spotify
     # discord
     # harper
