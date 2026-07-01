@@ -15,6 +15,9 @@ in {
     package = pkgs.neovim-unwrapped;
     performance.byteCompileLua.enable = true;
 
+    # Ruby provider pulls a full clang/llvm toolchain (~800 MiB) and is unused.
+    withRuby = false;
+
     extraPlugins = [
       pkgs.vimPlugins."evergarden-nvim"
       # pkgs.vimPlugins.kanso-nvim
@@ -488,6 +491,8 @@ in {
         options.desc = "Diagnostics";
       }
     ];
+
+    dependencies.lean.enable = false;
 
     plugins = {
       lz-n.enable = true;
@@ -1009,7 +1014,12 @@ in {
         };
       };
 
-      haskell-tools.enable = true;
+      haskell-tools = {
+        enable = true;
+        # Don't bundle HLS+GHC (~5 GiB) into the editor closure; use HLS from
+        # a per-project devshell (found on PATH) instead.
+        hlsPackage = null;
+      };
 
       cornelis.enable = true;
 
@@ -1221,7 +1231,8 @@ in {
         servers = {
           basedpyright = {
             enable = true;
-            packageFallback = true;
+            # Don't bundle basedpyright; use it from PATH/devshell.
+            package = null;
             cmd = [
               "basedpyright-langserver"
               "--stdio"
@@ -1258,7 +1269,8 @@ in {
 
           clangd = {
             enable = true;
-            packageFallback = true;
+            # Don't bundle LLVM/clang (~1.9 GiB); use clangd from PATH/devshell.
+            package = null;
             cmd = [
               "clangd"
               "--background-index"
