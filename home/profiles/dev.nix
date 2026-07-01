@@ -37,9 +37,11 @@
       # sqlite
       # sqlite-interactive
       imagemagick
+      ghostscript
       fd
       mermaid-cli
       tectonic
+      resvg
       # texliveTeTeX
 
       cachix
