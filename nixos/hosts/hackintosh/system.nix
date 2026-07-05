@@ -37,44 +37,44 @@
   system.defaults.smb.NetBIOSName = hostname;
   system.primaryUser = "hank";
 
-  homebrew = {
-    enable = true;
-    caskArgs.no_quarantine = true;
-    global.brewfile = true;
-    casks = [
-      "zed"
-      # "orbstack"
-      # "kitty"
-      # "goldendict"
-    ];
-  };
+  # homebrew = {
+  #   enable = true;
+  #   caskArgs.no_quarantine = true;
+  #   global.brewfile = true;
+  #   casks = [
+  #     "zed"
+  #     # "orbstack"
+  #     # "kitty"
+  #     # "goldendict"
+  #   ];
+  # };
 
-  services.postgresql = {
-    enable = true;
-    enableTCPIP = true;
-    package = pkgs.postgresql_17;
-    authentication = pkgs.lib.mkOverride 10 ''
-      #type database  DBuser  auth-method
-      local all       all     trust
-    '';
-    settings.timezone = "UTC";
-  };
+  # services.postgresql = {
+  #   enable = true;
+  #   enableTCPIP = true;
+  #   package = pkgs.postgresql_17;
+  #   authentication = pkgs.lib.mkOverride 10 ''
+  #     #type database  DBuser  auth-method
+  #     local all       all     trust
+  #   '';
+  #   settings.timezone = "UTC";
+  # };
 
-  networking.wg-quick.interfaces = {
-    wg0 = {
-      autostart = true;
-      address = ["10.0.0.62/24"];
-      listenPort = 50722;
-      privateKeyFile = "/Users/hank/Documents/privatekey";
-      peers = [
-        {
-          publicKey = "i9ZU3WdqNxUyqtaM9F8Rbrs4ophdNpQ6wZeO/bV/jjQ=";
-          presharedKeyFile = "/Users/hank/Documents/presharedkey";
-          allowedIPs = ["10.0.0.0/24"];
-          endpoint = "sh.imdomestic.com:50722";
-          persistentKeepalive = 25;
-        }
-      ];
-    };
-  };
+  # networking.wg-quick.interfaces = {
+  #   wg0 = {
+  #     autostart = true;
+  #     address = ["10.0.0.62/24"];
+  #     listenPort = 50722;
+  #     privateKeyFile = "/Users/hank/Documents/privatekey";
+  #     peers = [
+  #       {
+  #         publicKey = "i9ZU3WdqNxUyqtaM9F8Rbrs4ophdNpQ6wZeO/bV/jjQ=";
+  #         presharedKeyFile = "/Users/hank/Documents/presharedkey";
+  #         allowedIPs = ["10.0.0.0/24"];
+  #         endpoint = "sh.imdomestic.com:50722";
+  #         persistentKeepalive = 25;
+  #       }
+  #     ];
+  #   };
+  # };
 }
