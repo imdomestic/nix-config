@@ -55,6 +55,7 @@
       gnumake
       gh
       elan
+      rustup
       lazygit
 
       # utils

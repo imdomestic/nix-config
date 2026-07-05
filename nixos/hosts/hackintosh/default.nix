@@ -20,6 +20,7 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
+          base
           gui.darwin
         ];
         modules = [
