@@ -103,7 +103,7 @@
       pkgs-unstable.claude-code
 
       # pkgs-unstable.codex
-      pkgs-unstable.opencode
+      # pkgs-unstable.opencode
       # pkgs-unstable.pi-coding-agent
     ]
     ++ lib.optionals (lib.hasInfix "linux" system) [

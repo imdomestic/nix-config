@@ -613,7 +613,7 @@ in {
       la = "ls -a";
       lla = "ls -la";
       lt = "ls --tree";
-      cat = "bat --color always --plain";
+      # cat = "bat --color always --plain";
       grep = "grep --color=auto --exclude-dir={.bzr,CVS,.git,.hg,.svn,.idea,.tox}";
       mv = "mv -v";
       cp = "cp -vr";
