@@ -1028,7 +1028,10 @@ in {
         lazyLoad.settings.ft = "lean";
         settings = {
           mappings = true;
-          infoview.orientation = "vertical";
+          infoview = {
+            orientation = "vertical";
+            width = 40;
+          };
         };
       };
 
