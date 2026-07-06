@@ -1,5 +1,6 @@
 {inputs}: {hosts}: let
   lib = inputs.nixpkgs.lib;
+  myHost = import ./my-host.nix;
   defaultNixpkgsConfig = {
     allowUnfree = true;
     allowUnfreePredicate = _: true;
@@ -41,7 +42,9 @@
       ++ (sysman.modules or [])
       ++ (sysman.extraModules or []);
   in
-    [platformModule] ++ moduleList;
+    myHost.mkModules {inherit hostName host;}
+    ++ [platformModule]
+    ++ moduleList;
 
   mkSystemConfig = hostName: host: let
     sysman = host.systemManager or {};

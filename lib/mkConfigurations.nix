@@ -1,17 +1,13 @@
 {inputs}: {hosts}: let
   lib = inputs.nixpkgs.lib;
+  myHost = import ./my-host.nix;
   defaultNixpkgsConfig = {
     allowUnfree = true;
     allowUnfreePredicate = _: true;
   };
 
   mkSpecialArgs = hostName: host: let
-    hostUsers = host.users or {};
     hostSystem = host.system or (throw "Host ${hostName} must define a system");
-    usernames =
-      if host ? usernames
-      then host.usernames
-      else builtins.attrNames hostUsers;
     pkgsUnstable = import inputs.nixpkgs-unstable {
       system = hostSystem;
       overlays = (host.overlays or []) ++ [inputs.nur.overlays.default];
@@ -19,18 +15,37 @@
     };
   in
     {
-      inherit inputs hostName hostUsers usernames;
-      hostname = hostName;
-      hostRoles = host.roles or [];
+      # `system` stays a specialArg because base profiles branch on it in
+      # `imports`, which cannot depend on config. Everything else lives in
+      # `config.my.host` (see modules/shared/host-options.nix).
+      inherit inputs;
       system = hostSystem;
-      host = host;
       pkgsUnstable = pkgsUnstable;
       "pkgs-unstable" = pkgsUnstable;
     }
     // (host.extraSpecialArgs or {});
 
-  mkModules = host: let
-    system = host.system or (throw "Host ${host} must define a system");
+  # Legacy bridge: modules still declaring hostName/usernames/... as function
+  # args get them derived from `config.my.host`, keeping a single source of
+  # truth until every consumer reads config directly.
+  argsBridgeModule = {
+    config,
+    lib,
+    ...
+  }: {
+    _module.args = {
+      hostName = config.my.host.name;
+      hostname = config.my.host.name;
+      hostRoles = config.my.host.roles;
+      usernames = config.my.host.usernames;
+      hostUsers =
+        lib.genAttrs config.my.host.usernames (_: {})
+        // config.my.host.users;
+    };
+  };
+
+  mkModules = hostName: host: let
+    system = host.system or (throw "Host ${hostName} must define a system");
     isDarwin = lib.hasInfix "darwin" system;
     enableHomeManager =
       if host ? withHomeManager
@@ -44,7 +59,9 @@
         else inputs.home-manager.nixosModules.home-manager
       else null;
   in
-    lib.unique (
+    myHost.mkModules {inherit hostName host;}
+    ++ [argsBridgeModule]
+    ++ lib.unique (
       (host.profiles or [])
       ++ (host.modules or [])
       ++ (host.hardwareModules or [])
@@ -63,7 +80,7 @@
   in
     builder {
       inherit system;
-      modules = mkModules host;
+      modules = mkModules hostName host;
       specialArgs = mkSpecialArgs hostName host;
     };
 

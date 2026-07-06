@@ -1,10 +1,7 @@
 {
   lib,
-  inputs,
-  hostName,
+  config,
   system,
-  usernames ? [],
-  hostUsers ? {},
   ...
 }: {
   imports = [
@@ -13,16 +10,8 @@
     ../../nixos/modules/home-manager.nix
   ];
 
-  networking.hostName = lib.mkDefault hostName;
+  # Host metadata comes from config.my.host (see modules/shared/host-options.nix);
+  # legacy module args are bridged centrally in lib/mkConfigurations.nix.
+  networking.hostName = lib.mkDefault config.my.host.name;
   nixpkgs.hostPlatform = lib.mkDefault system;
-
-  _module.args = {
-    inherit inputs system hostName;
-    usernames =
-      if usernames != []
-      then usernames
-      else builtins.attrNames hostUsers;
-    hostUsers = hostUsers // lib.genAttrs usernames (_: {});
-    hostname = hostName;
-  };
 }

@@ -1,13 +1,11 @@
 {
-  inputs,
   lib,
-  system,
-  hostUsers ? {},
-  usernames ? [],
+  pkgs,
+  config,
   ...
 }: let
-  pkgs = inputs.nixpkgs.legacyPackages.${system};
-  isDarwin = lib.hasSuffix "darwin" system;
+  inherit (config.my.host) users usernames;
+  isDarwin = lib.hasSuffix "darwin" config.my.host.system;
   defaultGroups =
     [
       "wheel"
@@ -26,11 +24,11 @@
 
   allUsers = lib.unique (
     usernames
-    ++ builtins.attrNames hostUsers
+    ++ builtins.attrNames users
   );
 
   mkUser = name: let
-    overrides = hostUsers.${name} or {};
+    overrides = users.${name} or {};
     explicitGroups =
       if overrides ? extraGroups
       then overrides.extraGroups

@@ -1,5 +1,6 @@
 {inputs}: let
   lib = inputs.nixpkgs.lib;
+  myHost = import ./my-host.nix;
   defaultNixpkgsConfig = {
     allowUnfree = true;
     allowUnfreePredicate = _: true;
@@ -27,7 +28,8 @@ in {
       config = home.nixpkgsConfig or defaultNixpkgsConfig;
     };
     modules =
-      (home.profiles or [])
+      myHost.mkModules {inherit hostName host system;}
+      ++ (home.profiles or [])
       ++ (home.modules or [])
       ++ (home.extraModules or []);
     extraImports = home.extraImports or [];

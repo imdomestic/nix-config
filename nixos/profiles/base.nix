@@ -1,11 +1,8 @@
 {
-  pkgs,
   lib,
   inputs,
-  hostName,
+  config,
   system,
-  usernames ? [],
-  hostUsers ? {},
   ...
 }: {
   imports =
@@ -21,22 +18,10 @@
       inputs.sops-nix.darwinModules.sops
     ];
 
-  # Provide host metadata to downstream modules
+  # Host metadata comes from config.my.host (see modules/shared/host-options.nix);
+  # legacy module args are bridged centrally in lib/mkConfigurations.nix.
   nixpkgs.hostPlatform = lib.mkDefault system;
-
-  # Make hostName available as an option for other modules that expect it.
-  networking.hostName = lib.mkDefault hostName;
-
-  # Allow modules that still rely on the usernames list to work
-  _module.args = {
-    inherit inputs system hostName;
-    usernames =
-      if usernames != []
-      then usernames
-      else builtins.attrNames hostUsers;
-    hostUsers = hostUsers // lib.genAttrs usernames (_: {});
-    hostname = hostName;
-  };
+  networking.hostName = lib.mkDefault config.my.host.name;
 
   sops = {
     defaultSopsFile = ../../secrets/secrets.yaml;
