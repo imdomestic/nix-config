@@ -66,7 +66,8 @@
   '';
 
   wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
-    conf = "${inputs.wg-config.outPath}/client_00065.conf";
+    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
+    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
     address = "10.0.0.66/24";
   };
 in {
@@ -79,6 +80,9 @@ in {
     ../../modules/minecraft/wuxi.nix
     ../../modules/dae
   ];
+
+  sops.secrets."wireguard/private_key".owner = "systemd-network";
+  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
   boot.initrd.kernelModules = [
     "dm-snapshot" # when you are using snapshots
