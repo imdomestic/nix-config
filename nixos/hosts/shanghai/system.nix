@@ -2,10 +2,14 @@
   inputs,
   pkgs,
   lib,
+  config,
   ...
 }: let
+  wgPeers = import ./wg-peers.nix;
   wg = import ../../../lib/wgServer.nix {inherit pkgs lib;} {
-    conf = "${inputs.wg-config.outPath}/server.conf";
+    peers = wgPeers;
+    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
+    pskFileFor = idx: config.sops.secrets."wireguard/psk/${toString idx}".path;
     address = "10.0.0.1/24";
   };
 in {
@@ -14,6 +18,16 @@ in {
     ../../modules/dae
     ../../modules/minecraft/sh.nix
   ];
+
+  sops.secrets =
+    {
+      "wireguard/private_key".owner = "systemd-network";
+    }
+    // lib.listToAttrs (lib.imap0 (idx: _: {
+        name = "wireguard/psk/${toString idx}";
+        value = {owner = "systemd-network";};
+      })
+      wgPeers);
 
   networking.hostName = "shanghai";
   time.timeZone = "Asia/Shanghai";

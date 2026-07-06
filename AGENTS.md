@@ -30,4 +30,6 @@
 
 ## Security & Configuration Tips
 - Do not embed secrets; reference paths or environment variables and prefer `age`/`sops` managed files when needed.
+- Secrets workflow: per-host files at `secrets/hosts/<host>.yaml` (auto-selected as `sops.defaultSopsFile` by `nixos/profiles/base.nix`), shared values in `secrets/secrets.yaml`. Edit with `sops secrets/hosts/<host>.yaml` (hank's age key derives from `~/.ssh/id_ed25519`, cached at `~/.config/sops/age/keys.txt`). Onboard a new host: `ssh-keyscan -t ed25519 <ip> | ssh-to-age`, add the recipient + creation rule to `.sops.yaml`, then create its secrets file. Hosts decrypt via their ssh host key; no extra key material to deploy.
+- WireGuard: hosts with onboarded keys pass `privateKeyFile`/`presharedKeyFile` (sops paths, `owner = "systemd-network"`) to `lib/wgClient.nix`; the server passes `peers` (see `nixos/hosts/shanghai/wg-peers.nix`) + `pskFileFor`. The legacy `conf = wg-config input` mode extracts keys into the world-readable nix store — do not use it for new hosts.
 - When adding external inputs, pin them in `flake.nix` with clear names and update policies; document why the input is needed in a nearby comment.

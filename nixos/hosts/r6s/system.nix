@@ -6,7 +6,8 @@
   ...
 }: let
   wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
-    conf = "${inputs.wg-config.outPath}/client_00003.conf";
+    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
+    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
     address = "10.0.0.4/24";
   };
 in {
@@ -17,6 +18,9 @@ in {
     ../../modules/tuigreet
     ../../modules/keyd
   ];
+
+  sops.secrets."wireguard/private_key".owner = "systemd-network";
+  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

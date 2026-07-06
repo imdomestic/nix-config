@@ -1,7 +1,40 @@
 keys:
-  - &hank age175594x5r5ngze8rs5n2ga0976e0flh0xq2aqjq3xaldr28e703sqlcy9n6
+  # hank: derived from ~/.ssh/id_ed25519 via ssh-to-age; private half lives at
+  # ~/.config/sops/age/keys.txt (regenerate: ssh-to-age -private-key -i ~/.ssh/id_ed25519)
+  - &hank age1xeeg8yu74aqn5x0vzevsuxmsd4nem3cfw2gjwc82ke4mjvep3pxq5p99lh
+  # legacy standalone age key (kept in case its private half still exists somewhere)
+  - &hank_legacy age175594x5r5ngze8rs5n2ga0976e0flh0xq2aqjq3xaldr28e703sqlcy9n6
+  # host keys: ssh-keyscan -t ed25519 <ip> | ssh-to-age
+  - &host_shanghai age1q9r44n8y323qs4yyke49pgqpv9xa75qwtjx9x4z49rmdfm584dxq2lwm2a
+  - &host_h610 age1m70ml5ff2cxswwqy8vz8al9ptjd4sfqmmk7mufem9gejgk5t34tqp7v7zr
+  - &host_r6s age1spxgjvmk89lxzu56nrssy3hsgkzkc79w9pkncesxdjmugk2t9vus56esfj
+  - &host_r5s age1weu2ymkv0pa79n3f5rcxj90dya57lktk42q2kwl5ytug646dgfdqpgrzw5
+  - &host_tank age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs
+
 creation_rules:
-  - path_regex: secrets/secrets.yaml$
+  - path_regex: secrets/hosts/shanghai\.yaml$
+    key_groups:
+      - age: [*hank, *hank_legacy, *host_shanghai]
+  - path_regex: secrets/hosts/h610\.yaml$
+    key_groups:
+      - age: [*hank, *hank_legacy, *host_h610]
+  - path_regex: secrets/hosts/r6s\.yaml$
+    key_groups:
+      - age: [*hank, *hank_legacy, *host_r6s]
+  - path_regex: secrets/hosts/r5s\.yaml$
+    key_groups:
+      - age: [*hank, *hank_legacy, *host_r5s]
+  - path_regex: secrets/hosts/tank\.yaml$
+    key_groups:
+      - age: [*hank, *hank_legacy, *host_tank]
+  # shared secrets: encrypted to every known host
+  - path_regex: secrets/.*\.yaml$
     key_groups:
       - age:
-        - *hank
+          - *hank
+          - *hank_legacy
+          - *host_shanghai
+          - *host_h610
+          - *host_r6s
+          - *host_r5s
+          - *host_tank

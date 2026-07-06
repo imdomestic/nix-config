@@ -23,8 +23,17 @@
   nixpkgs.hostPlatform = lib.mkDefault system;
   networking.hostName = lib.mkDefault config.my.host.name;
 
+  # Per-host secrets live in secrets/hosts/<name>.yaml (encrypted to that
+  # host's ssh-derived age key, see .sops.yaml); fall back to the shared file.
   sops = {
-    defaultSopsFile = ../../secrets/secrets.yaml;
+    defaultSopsFile = let
+      perHost = ../../secrets/hosts + "/${config.my.host.name}.yaml";
+    in
+      lib.mkDefault (
+        if builtins.pathExists perHost
+        then perHost
+        else ../../secrets/secrets.yaml
+      );
     defaultSopsFormat = "yaml";
   };
 }
