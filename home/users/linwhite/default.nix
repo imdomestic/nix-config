@@ -7,6 +7,8 @@
 }: {
   imports = [
     ../../modules/tmux
+    # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
+    ../../modules/nixvim/linwhite.nix
   ];
 
   home.sessionVariables = {
