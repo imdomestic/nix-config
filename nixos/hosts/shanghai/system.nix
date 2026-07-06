@@ -22,6 +22,10 @@ in {
   sops.secrets =
     {
       "wireguard/private_key".owner = "systemd-network";
+      "xray/vless_uuid" = {};
+      "xray/interconn_private_key" = {};
+      "xray/client_private_key" = {};
+      "k3s/token" = {};
     }
     // lib.listToAttrs (lib.imap0 (idx: _: {
         name = "wireguard/psk/${toString idx}";
@@ -172,7 +176,7 @@ in {
   services.k3s = {
     enable = false;
     role = "agent";
-    token = "hbhbhb";
+    tokenFile = config.sops.secrets."k3s/token".path;
     serverAddr = "https://10.0.0.66:6443";
     extraFlags = [
       "--node-name=shanghai"
@@ -185,92 +189,98 @@ in {
   };
 
   services.xray.enable = true;
-  services.xray.settings = {
-    log.loglevel = "warning";
+  # Reality private keys and the vless UUID live in sops
+  # (secrets/hosts/shanghai.yaml); the config is rendered at activation.
+  services.xray.settingsFile = config.sops.templates."xray-config.json".path;
+  sops.templates."xray-config.json" = {
+    restartUnits = ["xray.service"];
+    content = builtins.toJSON {
+      log.loglevel = "warning";
 
-    reverse = {
-      portals = [
+      reverse = {
+        portals = [
+          {
+            tag = "portal-sh";
+            domain = "reverse-sh.hank.internal";
+          }
+        ];
+      };
+
+      inbounds = [
         {
-          tag = "portal-sh";
-          domain = "reverse-sh.hank.internal";
+          tag = "interconn";
+          port = 3443;
+          protocol = "vless";
+          settings = {
+            clients = [
+              {
+                id = config.sops.placeholder."xray/vless_uuid";
+                flow = "xtls-rprx-vision";
+              }
+            ];
+            decryption = "none";
+          };
+          streamSettings = {
+            network = "tcp";
+            security = "reality";
+            realitySettings = {
+              show = false;
+              dest = "www.apple.com:443";
+              serverNames = ["www.apple.com" "apple.com"];
+              privateKey = config.sops.placeholder."xray/interconn_private_key";
+              shortIds = ["16"];
+            };
+          };
+        }
+
+        {
+          tag = "client-in";
+          port = 54321;
+          protocol = "vless";
+          settings = {
+            clients = [
+              {
+                id = config.sops.placeholder."xray/vless_uuid";
+                flow = "xtls-rprx-vision";
+              }
+            ];
+            decryption = "none";
+          };
+          streamSettings = {
+            network = "tcp";
+            security = "reality";
+            realitySettings = {
+              show = false;
+              dest = "www.apple.com:443";
+              serverNames = ["www.apple.com" "apple.com"];
+              privateKey = config.sops.placeholder."xray/client_private_key";
+              shortIds = ["16"];
+            };
+          };
+        }
+      ];
+
+      outbounds = [
+        {
+          tag = "direct";
+          protocol = "freedom";
+        }
+      ];
+
+      routing.rules = [
+        {
+          type = "field";
+          inboundTag = ["interconn"];
+          outboundTag = "portal-sh";
+        }
+
+        {
+          type = "field";
+          inboundTag = ["client-in"];
+          outboundTag = "portal-sh";
         }
       ];
     };
-
-    inbounds = [
-      {
-        tag = "interconn";
-        port = 3443;
-        protocol = "vless";
-        settings = {
-          clients = [
-            {
-              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
-              flow = "xtls-rprx-vision";
-            }
-          ];
-          decryption = "none";
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            show = false;
-            dest = "www.apple.com:443";
-            serverNames = ["www.apple.com" "apple.com"];
-            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_20fd86f4d5e342b3";
-            shortIds = ["16"];
-          };
-        };
-      }
-
-      {
-        tag = "client-in";
-        port = 54321;
-        protocol = "vless";
-        settings = {
-          clients = [
-            {
-              id = "REMOVED_SECRET_VLESS_CLIENT_UUID_63a5353352a6c3d3";
-              flow = "xtls-rprx-vision";
-            }
-          ];
-          decryption = "none";
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            show = false;
-            dest = "www.apple.com:443";
-            serverNames = ["www.apple.com" "apple.com"];
-            privateKey = "REMOVED_SECRET_REALITY_PRIVATE_KEY_9c213acc25f34bcd";
-            shortIds = ["16"];
-          };
-        };
-      }
-    ];
-
-    outbounds = [
-      {
-        tag = "direct";
-        protocol = "freedom";
-      }
-    ];
-
-    routing.rules = [
-      {
-        type = "field";
-        inboundTag = ["interconn"];
-        outboundTag = "portal-sh";
-      }
-
-      {
-        type = "field";
-        inboundTag = ["client-in"];
-        outboundTag = "portal-sh";
-      }
-    ];
   };
 
   security.sudo.wheelNeedsPassword = false;
