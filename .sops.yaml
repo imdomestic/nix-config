@@ -2,6 +2,8 @@ keys:
   # hank: derived from ~/.ssh/id_ed25519 via ssh-to-age; private half lives at
   # ~/.config/sops/age/keys.txt (regenerate: ssh-to-age -private-key -i ~/.ssh/id_ed25519)
   - &hank age1xeeg8yu74aqn5x0vzevsuxmsd4nem3cfw2gjwc82ke4mjvep3pxq5p99lh
+  # hank's second machine, same derivation from its ~/.ssh/id_ed25519
+  - &hank_pc2 age1uumwl2zvv6sk2yysjtd29yfffjj8xfus6z95eu0ftxt40mnyh9aq3g5f2c
   # legacy standalone age key (kept in case its private half still exists somewhere)
   - &hank_legacy age175594x5r5ngze8rs5n2ga0976e0flh0xq2aqjq3xaldr28e703sqlcy9n6
   # host keys: ssh-keyscan -t ed25519 <ip> | ssh-to-age
@@ -14,24 +16,25 @@ keys:
 creation_rules:
   - path_regex: secrets/hosts/shanghai\.yaml$
     key_groups:
-      - age: [*hank, *hank_legacy, *host_shanghai]
+      - age: [*hank, *hank_pc2, *hank_legacy, *host_shanghai]
   - path_regex: secrets/hosts/h610\.yaml$
     key_groups:
-      - age: [*hank, *hank_legacy, *host_h610]
+      - age: [*hank, *hank_pc2, *hank_legacy, *host_h610]
   - path_regex: secrets/hosts/r6s\.yaml$
     key_groups:
-      - age: [*hank, *hank_legacy, *host_r6s]
+      - age: [*hank, *hank_pc2, *hank_legacy, *host_r6s]
   - path_regex: secrets/hosts/r5s\.yaml$
     key_groups:
-      - age: [*hank, *hank_legacy, *host_r5s]
+      - age: [*hank, *hank_pc2, *hank_legacy, *host_r5s]
   - path_regex: secrets/hosts/tank\.yaml$
     key_groups:
-      - age: [*hank, *hank_legacy, *host_tank]
+      - age: [*hank, *hank_pc2, *hank_legacy, *host_tank]
   # shared secrets: encrypted to every known host
   - path_regex: secrets/.*\.yaml$
     key_groups:
       - age:
           - *hank
+          - *hank_pc2
           - *hank_legacy
           - *host_shanghai
           - *host_h610
