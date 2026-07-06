@@ -1,10 +1,9 @@
 {
   inputs,
-  usernames,
-  system,
+  config,
   ...
 }: {
-  nix.settings.trusted-users = usernames;
+  nix.settings.trusted-users = config.my.host.usernames;
   # nix.optimise.automatic = true;
 
   # nix.gc = {

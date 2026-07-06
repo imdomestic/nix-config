@@ -1,20 +1,18 @@
 {
   lib,
   inputs,
-  host ? {},
-  hostName ? "",
+  config,
   ...
 }: let
   homeUtils = import ../../lib/home-utils.nix {inherit inputs;};
-  users = host.users or {};
-  actualHostName =
-    if hostName != ""
-    then hostName
-    else (host.name or "");
+  hostMeta = config.my.host;
   mkUser = userName: user: let
     spec = homeUtils.mkHomeSpec {
-      inherit host userName user;
-      hostName = actualHostName;
+      host = {
+        inherit (hostMeta) system roles users homeOverlays;
+      };
+      hostName = hostMeta.name;
+      inherit userName user;
     };
     argsModule = {
       _module.args =
@@ -26,7 +24,7 @@
   in {
     imports = [argsModule] ++ spec.modules ++ spec.extraImports;
   };
-  hmUsers = lib.mapAttrs mkUser users;
+  hmUsers = lib.mapAttrs mkUser hostMeta.users;
   hasUsers = hmUsers != {};
 in
   lib.mkIf hasUsers {
@@ -35,8 +33,8 @@ in
     home-manager.backupFileExtension = "backup";
     home-manager.extraSpecialArgs = {
       inherit inputs;
-      hostName = actualHostName;
-      hostname = actualHostName;
+      hostName = hostMeta.name;
+      hostname = hostMeta.name;
     };
     home-manager.users = hmUsers;
   }

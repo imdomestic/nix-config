@@ -1,7 +1,8 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- Entry points: `flake.nix` and `flake.lock` declare inputs and assemble outputs. Shared helpers live under `lib/` (`mkConfigurations.nix`, `mkHomeConfigurations.nix`, `mkSystemManagerConfigurations.nix`, `mkDeployNodes.nix`).
+- Entry points: `flake.nix` and `flake.lock` declare inputs and assemble outputs. Shared helpers live under `lib/` (`mkConfigurations.nix`, `mkHomeConfigurations.nix`, `mkSystemManagerConfigurations.nix`, `mkDeployNodes.nix`, `my-host.nix`).
+- Host metadata: `config.my.host` (declared in `modules/shared/host-options.nix`, injected by the `lib/` builders into every NixOS/darwin/home-manager/system-manager eval) is the single source of truth for `name`, `system`, `roles`, `users`, `usernames`. New modules must read `config.my.host.*`; the legacy module args (`hostName`, `hostname`, `usernames`, `hostUsers`, `hostRoles`) are a compat bridge in `lib/mkConfigurations.nix` and must not gain new consumers. `specialArgs` only carry `inputs`, `system`, `pkgsUnstable`.
 - Hosts: `nixos/hosts/<name>/` holds `system.nix` plus `hardware-configuration.nix`; set `kind = "home"` for HM-only targets. Host registry is `nixos/hosts/default.nix`.
 - Profiles & modules: reusable system modules in `nixos/modules/`, profiles in `nixos/profiles/`; macOS-specific bits in `darwin/profiles/`. Home Manager modules in `home/modules/`, shared profiles in `home/profiles/`, user tweaks in `home/users/<name>/`.
 - Assets: fonts in `fonts/`, wallpapers in `wallpapers/`. License and top-level docs live at repo root.
