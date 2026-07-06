@@ -22,6 +22,12 @@ in {
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
+  # Service secrets (were hand-placed under /var/lib/secrets); all consumers
+  # read them via systemd LoadCredential, so root-owned is enough.
+  sops.secrets."acme/cloudflare_env" = {};
+  sops.secrets."coturn/static_auth_secret" = {};
+  sops.secrets."livekit/keys_yaml" = {};
+
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
@@ -207,19 +213,19 @@ in {
 
   security.acme.certs."tailscale.imdomestic.com" = {
     dnsProvider = "cloudflare";
-    environmentFile = "/var/lib/secrets/acme/cloudflare.env";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
     group = "nginx";
   };
 
   security.acme.certs."matrix.imdomestic.com" = {
     dnsProvider = "cloudflare";
-    environmentFile = "/var/lib/secrets/acme/cloudflare.env";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
     group = "nginx";
   };
 
   security.acme.certs."rtc.imdomestic.com" = {
     dnsProvider = "cloudflare";
-    environmentFile = "/var/lib/secrets/acme/cloudflare.env";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
     group = "nginx";
     reloadServices = [
       "nginx.service"
@@ -521,7 +527,7 @@ in {
     enable = true;
     no-cli = true;
     use-auth-secret = true;
-    static-auth-secret-file = "/var/lib/coturn/static-auth-secret";
+    static-auth-secret-file = config.sops.secrets."coturn/static_auth_secret".path;
     realm = "rtc.imdomestic.com";
     cert = "/var/lib/acme/rtc.imdomestic.com/fullchain.pem";
     pkey = "/var/lib/acme/rtc.imdomestic.com/key.pem";
@@ -535,7 +541,7 @@ in {
 
   services.livekit = {
     enable = true;
-    keyFile = "/var/lib/secrets/livekit/keys.yaml";
+    keyFile = config.sops.secrets."livekit/keys_yaml".path;
     settings = {
       port = 7880;
       room.auto_create = false;
@@ -550,7 +556,7 @@ in {
 
   services.lk-jwt-service = {
     enable = true;
-    keyFile = "/var/lib/secrets/livekit/keys.yaml";
+    keyFile = config.sops.secrets."livekit/keys_yaml".path;
     port = 8088;
     livekitUrl = "wss://rtc.imdomestic.com:8448/livekit/sfu";
   };

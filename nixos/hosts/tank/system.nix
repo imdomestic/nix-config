@@ -428,7 +428,8 @@ in {
     enable = true;
     dataDir = "/data/services/matrix-synapse";
     extraConfigFiles = [
-      "/var/lib/secrets/matrix-synapse/turn.yaml"
+      # turn shared secret (was hand-placed at /var/lib/secrets/matrix-synapse/turn.yaml)
+      config.sops.secrets."matrix/turn_yaml".path
       # registration_shared_secret, rendered from sops
       config.sops.templates."matrix-registration.yaml".path
     ];
@@ -666,6 +667,7 @@ in {
   sops.secrets."matrix/registration_shared_secret" = {};
   sops.secrets."murmur/password" = {};
   sops.secrets."k3s/token" = {};
+  sops.secrets."matrix/turn_yaml".owner = "matrix-synapse";
 
   sops.templates."ddns-go-config.yaml" = {
     content = ddnsConfig;
