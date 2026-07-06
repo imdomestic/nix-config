@@ -1,19 +1,11 @@
-{
-  inputs,
-  lib,
-  pkgs-unstable,
-  ...
-}: {
-  # hank 的 dev profile:共享工具链 + hank 自己的 nixvim。
-  # host 只需把 userModules.hank.dev 加进该用户的 home.modules 即可按需开启。
+{...}: {
+  # hank 的 dev profile:共享工具链 + 打开 nixvim 的 dev 插件。
+  # host 只需把 userModules.hank.dev 加进该用户的 home.modules 即可按需开启;
+  # 没有 dev 的机器由 hank/default.nix 提供精简版 nixvim(保留 nix 支持)。
   imports = [
-    inputs.nixvim.homeModules.nixvim
     ../../profiles/dev.nix
-    ../../modules/nixvim/hank
+    ../../modules/nixvim
   ];
 
-  programs.neovim = {
-    enable = lib.mkForce false;
-    package = pkgs-unstable.neovim-unwrapped;
-  };
+  my.nixvim.dev.enable = true;
 }

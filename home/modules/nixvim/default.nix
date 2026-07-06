@@ -1,25 +1,41 @@
 {
   inputs,
+  pkgs,
   lib,
   config,
-  pkgs,
-  pkgs-unstable,
   ...
 }: let
   mkRaw = inputs.nixvim.lib.nixvim.mkRaw;
+  # Dev machines (importing home/users/<user>/dev.nix) get the full setup;
+  # everything gated on `dev` below stays out of the closure elsewhere.
+  dev = config.my.nixvim.dev.enable;
 in {
+  imports = [
+    inputs.nixvim.homeModules.nixvim
+    ./options.nix
+  ];
+
+  # nixvim replaces the plain neovim enabled by home/profiles/base.nix
+  programs.neovim.enable = lib.mkForce false;
+
   programs.nixvim = {
     enable = true;
     enableMan = true;
+    defaultEditor = true;
+    # viAlias = true;
+    # vimAlias = true;
     # nixpkgs.pkgs = pkgs-unstable;
     nixpkgs.pkgs = pkgs;
     # package = pkgs-unstable.neovim-unwrapped;
     package = pkgs.neovim-unwrapped;
+    performance.byteCompileLua.enable = true;
+
+    # Ruby provider pulls a full clang/llvm toolchain (~800 MiB) and is unused.
+    withRuby = false;
 
     extraPlugins = [
-      # pkgs-unstable.vimPlugins."evergarden-nvim"
       pkgs.vimPlugins."evergarden-nvim"
-      pkgs-unstable.vimPlugins.im-select-nvim
+      # pkgs.vimPlugins.kanso-nvim
     ];
 
     extraPackages = [
@@ -27,8 +43,8 @@ in {
     ];
 
     extraFiles = {
-      # "snippets/package.json".source = ./nvim-snippets/package.json;
-      # "snippets/rust.json".source = ./nvim-snippets/rust.json;
+      "snippets/package.json".source = ./nvim-snippets/package.json;
+      "snippets/rust.json".source = ./nvim-snippets/rust.json;
     };
 
     globals = {
@@ -179,6 +195,8 @@ in {
           end
         '';
       }
+    ]
+    ++ lib.optionals dev [
       {
         event = "FileType";
         group = "haskell-extra";
@@ -491,13 +509,15 @@ in {
       }
     ];
 
+    dependencies.lean.enable = false;
+
     plugins = {
       lz-n.enable = true;
 
       sleuth.enable = true;
 
       codesnap = {
-        enable = true;
+        enable = dev;
         lazyLoad.settings.cmd = [
           "CodeSnap"
           "CodeSnapSave"
@@ -736,6 +756,21 @@ in {
         highlight.enable = true;
         indent.enable = true;
         folding.enable = true;
+        # Non-dev machines only carry grammars for config editing; dev keeps
+        # the nixvim default (all grammars).
+        grammarPackages = lib.mkIf (!dev) (with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
+          bash
+          json
+          lua
+          markdown
+          markdown_inline
+          nix
+          regex
+          toml
+          vim
+          vimdoc
+          yaml
+        ]);
       };
 
       treesitter-textobjects = {
@@ -971,7 +1006,7 @@ in {
       };
 
       rustaceanvim = {
-        enable = true;
+        enable = dev;
         settings.server.default_settings."rust-analyzer" = {
           files = {
             watcher = "client";
@@ -1011,14 +1046,24 @@ in {
         };
       };
 
-      haskell-tools.enable = true;
+      haskell-tools = {
+        enable = dev;
+        # Don't bundle HLS+GHC (~5 GiB) into the editor closure; use HLS from
+        # a per-project devshell (found on PATH) instead.
+        hlsPackage = null;
+      };
+
+      cornelis.enable = dev;
 
       lean = {
-        enable = true;
+        enable = dev;
         lazyLoad.settings.ft = "lean";
         settings = {
           mappings = true;
-          infoview.orientation = "vertical";
+          infoview = {
+            orientation = "vertical";
+            width = 40;
+          };
         };
       };
 
@@ -1088,7 +1133,7 @@ in {
       };
 
       lint = {
-        enable = true;
+        enable = dev;
         lintersByFt = {
           swift = ["swiftlint"];
           python = ["ruff"];
@@ -1138,7 +1183,7 @@ in {
       };
 
       typst-preview = {
-        enable = true;
+        enable = dev;
         lazyLoad.settings.ft = "typst";
         settings = {};
       };
@@ -1220,8 +1265,9 @@ in {
         };
         servers = {
           basedpyright = {
-            enable = true;
-            packageFallback = true;
+            enable = dev;
+            # Don't bundle basedpyright; use it from PATH/devshell.
+            package = null;
             cmd = [
               "basedpyright-langserver"
               "--stdio"
@@ -1241,7 +1287,7 @@ in {
           };
 
           bashls = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             cmd = [
               "bash-language-server"
@@ -1257,8 +1303,9 @@ in {
           };
 
           clangd = {
-            enable = true;
-            packageFallback = true;
+            enable = dev;
+            # Don't bundle LLVM/clang (~1.9 GiB); use clangd from PATH/devshell.
+            package = null;
             cmd = [
               "clangd"
               "--background-index"
@@ -1275,7 +1322,7 @@ in {
           };
 
           cssls = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             filetypes = [
               "css"
@@ -1295,7 +1342,7 @@ in {
           };
 
           elmls = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             filetypes = ["elm"];
             rootMarkers = ["elm.json"];
@@ -1308,7 +1355,7 @@ in {
           };
 
           html = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             filetypes = [
               "html"
@@ -1333,7 +1380,7 @@ in {
           };
 
           jsonls = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             filetypes = [
               "json"
@@ -1344,7 +1391,7 @@ in {
           };
 
           lua_ls = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             cmd = ["lua-language-server"];
             filetypes = ["lua"];
@@ -1359,7 +1406,7 @@ in {
           };
 
           neocmake = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             cmd = [
               "neocmakelsp"
@@ -1388,7 +1435,7 @@ in {
           };
 
           taplo = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             cmd = [
               "taplo"
@@ -1404,7 +1451,7 @@ in {
           };
 
           tinymist = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             cmd = ["tinymist"];
             filetypes = ["typst"];
@@ -1412,7 +1459,7 @@ in {
           };
 
           yamlls = {
-            enable = true;
+            enable = dev;
             packageFallback = true;
             cmd = [
               "yaml-language-server"
@@ -1449,25 +1496,18 @@ in {
       vim.cmd.colorscheme("evergarden")
     '';
 
-    extraConfigLua = ''
-      require("im_select").setup({
-        default_im_select = "com.apple.keylayout.ABC",
-        default_command = "im-select",
-
-        set_default_events = {
-          "VimEnter",
-          "FocusGained",
-          "InsertLeave",
-          "CmdlineLeave",
-        },
-
-        set_previous_events = {
-          "InsertEnter",
-        },
-
-        keep_quiet_on_no_binary = false,
-        async_switch_im = true,
-       })
-    '';
+    # extraConfigLuaPost = ''
+    #   require('kanso').setup {
+    #     -- compile = true,
+    #     transparent = false,
+    #     keywordStyle = { italic = false, bold = true },
+    #     overrides = function(colors)
+    #       return {
+    #         WinSeparator = { fg = colors.palette.inkBg2, bold = false },
+    #       }
+    #     end,
+    #   }
+    #   vim.cmd("colorscheme kanso-zen")
+    # '';
   };
 }
