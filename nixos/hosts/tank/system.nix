@@ -6,7 +6,8 @@
   inputs,
   ...
 }: let
-  ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+  # Rendered via sops.templates (cloudflare tokens + web password from sops).
+  ddnsConfig = ''
     dnsconf:
         - name: "sanuki"
           ipv4:
@@ -29,7 +30,7 @@
           dns:
             name: cloudflare
             id: ""
-            secret: smQyUYNVLeoAAAQ-REg7TViTxAU_lkkzwnSNBlpP
+            secret: ${config.sops.placeholder."ddns/cloudflare_token_sanuki"}
           ttl: ""
         - name: "imdomestic"
           ipv4:
@@ -52,11 +53,11 @@
           dns:
             name: cloudflare
             id: ""
-            secret: WY4F4gK8O-VgV1P7dGnic4yNSxmtPBep5OXuh2Js
+            secret: ${config.sops.placeholder."ddns/cloudflare_token_imdomestic"}
           ttl: ""
     user:
         username: genisys
-        password: $2a$10$TsaVL35GpATzwiW8fefl4uL78HbZ3Ukj4ThdwaFSW26DTIuwZoPdW
+        password: ${config.sops.placeholder."ddns/web_password_bcrypt"}
     webhook:
         webhookurl: ""
         webhookrequestbody: ""
@@ -428,6 +429,8 @@ in {
     dataDir = "/data/services/matrix-synapse";
     extraConfigFiles = [
       "/var/lib/secrets/matrix-synapse/turn.yaml"
+      # registration_shared_secret, rendered from sops
+      config.sops.templates."matrix-registration.yaml".path
     ];
     settings = {
       server_name = "imdomestic.com";
@@ -467,7 +470,6 @@ in {
       };
 
       enable_registration = false;
-      registration_shared_secret = "hbhbhb";
       max_upload_size = "50M";
     };
   };
@@ -475,7 +477,9 @@ in {
   services.murmur = {
     enable = true;
     registerName = "imdomestic";
-    password = "hbhbhb";
+    # substituted from environmentFile (murmur.env sops template)
+    password = "$MURMURD_PASSWORD";
+    environmentFile = config.sops.templates."murmur.env".path;
     port = 64738;
     bandwidth = 128000;
   };
@@ -483,7 +487,7 @@ in {
   services.k3s = {
     enable = false;
     role = "server";
-    token = "hbhbhb";
+    tokenFile = config.sops.secrets."k3s/token".path;
     clusterInit = true;
     extraFlags = [
       "--node-ip=10.0.0.66"
@@ -656,6 +660,27 @@ in {
 
   services.iperf3.enable = true;
 
+  sops.secrets."ddns/cloudflare_token_sanuki" = {};
+  sops.secrets."ddns/cloudflare_token_imdomestic" = {};
+  sops.secrets."ddns/web_password_bcrypt" = {};
+  sops.secrets."matrix/registration_shared_secret" = {};
+  sops.secrets."murmur/password" = {};
+  sops.secrets."k3s/token" = {};
+
+  sops.templates."ddns-go-config.yaml" = {
+    content = ddnsConfig;
+    restartUnits = ["ddns-go.service"];
+  };
+  sops.templates."matrix-registration.yaml" = {
+    content = ''registration_shared_secret: "${config.sops.placeholder."matrix/registration_shared_secret"}"'';
+    owner = "matrix-synapse";
+    restartUnits = ["matrix-synapse.service"];
+  };
+  sops.templates."murmur.env" = {
+    content = ''MURMURD_PASSWORD=${config.sops.placeholder."murmur/password"}'';
+    restartUnits = ["murmur.service"];
+  };
+
   systemd.services.ddns-go = {
     enable = true;
     description = "ddns";
@@ -665,7 +690,7 @@ in {
     after = ["network-online.target"];
 
     serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
       Restart = "always";
       RestartSec = 5;
     };
