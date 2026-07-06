@@ -4,6 +4,7 @@
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ/MFKoIlH1i0YDAnIoHQKmKEKFGcKa1V4gET/bYifcd ysh2291939848@outlook.com"
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG290WBMVGWxpye7MliOTbiCZAd3mbi/Q9sFkBLE2Vno ysh2291939848@outlook.com"
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILUdWAJA+GYaOtVHVkrvrEpwGpK//0hYdAYjYq/rzvtn ysh2291939848@outlook.com" # m1elite
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBY3nWjTRRfjPPtriUf6Ot5Qg83/3u2SA6ih8x5jrLYX ysh2291939848@outlook.com" # hackintosh
   ];
 in {
   environment.etc."ssh/authorized_keys.d/master" = {
