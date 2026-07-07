@@ -233,8 +233,12 @@ in {
     ];
   };
 
-  systemd.services.ddns-go = let
-    ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+  # ddns-go cloudflare token + web password rendered from sops.
+  sops.secrets."ddns/cloudflare_token" = {};
+  sops.secrets."ddns/web_password" = {};
+  sops.templates."ddns-go-config.yaml" = {
+    restartUnits = ["ddns-go.service"];
+    content = ''
       dnsconf:
           - name: "h610"
             ipv4:
@@ -261,11 +265,11 @@ in {
             dns:
               name: cloudflare
               id: ""
-              secret: WY4F4gK8O-VgV1P7dGnic4yNSxmtPBep5OXuh2Js
+              secret: ${config.sops.placeholder."ddns/cloudflare_token"}
             ttl: ""
       user:
           username: hank
-          password: $2a$10$t8pMXiYscv9Zi4SEUjw9S.1H0XeGbDrSxcC8O0hvjDphPd./2Anh.
+          password: ${config.sops.placeholder."ddns/web_password"}
       webhook:
           webhookurl: ""
           webhookrequestbody: ""
@@ -273,7 +277,9 @@ in {
       notallowwanaccess: false
       lang: zh
     '';
-  in {
+  };
+
+  systemd.services.ddns-go = {
     enable = true;
     description = "ddns-go";
 
@@ -282,7 +288,7 @@ in {
     after = ["network-online.target"];
 
     serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
       Restart = "always";
       RestartSec = 5;
     };
