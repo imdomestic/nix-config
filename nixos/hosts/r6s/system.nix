@@ -243,8 +243,12 @@ in {
       };
     };
   };
-  systemd.services.ddns-go = let
-    ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+  # ddns-go cloudflare token + web password rendered from sops.
+  sops.secrets."ddns/cloudflare_token" = {};
+  sops.secrets."ddns/web_password" = {};
+  sops.templates."ddns-go-config.yaml" = {
+    restartUnits = ["ddns-go.service"];
+    content = ''
       dnsconf:
           - name: ""
             ipv4:
@@ -267,11 +271,11 @@ in {
             dns:
               name: cloudflare
               id: ""
-              secret: REMOVED_SECRET_CLOUDFLARE_API_TOKEN_1e6e67ea94941305
+              secret: ${config.sops.placeholder."ddns/cloudflare_token"}
             ttl: ""
       user:
           username: hank
-          password: REMOVED_SECRET_DDNS_BCRYPT_PASSWORD_HASH_05f4b998098acd58
+          password: ${config.sops.placeholder."ddns/web_password"}
       webhook:
           webhookurl: ""
           webhookrequestbody: ""
@@ -279,7 +283,9 @@ in {
       notallowwanaccess: false
       lang: zh
     '';
-  in {
+  };
+
+  systemd.services.ddns-go = {
     enable = true;
     description = "ddns-go";
 
@@ -288,7 +294,7 @@ in {
     after = ["network-online.target"];
 
     serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
       Restart = "always";
       RestartSec = 5;
     };

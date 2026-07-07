@@ -5,42 +5,6 @@
   pkgs,
   ...
 }: let
-  ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
-    dnsconf:
-        - name: ""
-          ipv4:
-            enable: false
-            gettype: url
-            url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-            netinterface: wan0
-            cmd: ""
-            domains:
-                - ""
-          ipv6:
-            enable: true
-            gettype: netInterface
-            url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-            netinterface: ppp0
-            cmd: ""
-            ipv6reg: ""
-            domains:
-                - rpi4:imdomestic.com
-          dns:
-            name: cloudflare
-            id: ""
-            secret: REMOVED_SECRET_CLOUDFLARE_API_TOKEN_1e6e67ea94941305
-          ttl: ""
-    user:
-        username: hank
-        password: REMOVED_SECRET_DDNS_BCRYPT_PASSWORD_HASH_05f4b998098acd58
-    webhook:
-        webhookurl: ""
-        webhookrequestbody: ""
-        webhookheaders: ""
-    notallowwanaccess: false
-    lang: zh
-  '';
-
   wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
     conf = "${inputs.wg-config.outPath}/client_00005.conf";
     address = "10.0.0.6/24";
@@ -228,6 +192,48 @@ in {
     port = 9100;
   };
 
+  # ddns-go cloudflare token + web password rendered from sops.
+  sops.secrets."ddns/cloudflare_token" = {};
+  sops.secrets."ddns/web_password" = {};
+  sops.templates."ddns-go-config.yaml" = {
+    restartUnits = ["ddns-go.service"];
+    content = ''
+      dnsconf:
+          - name: ""
+            ipv4:
+              enable: false
+              gettype: url
+              url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
+              netinterface: wan0
+              cmd: ""
+              domains:
+                  - ""
+            ipv6:
+              enable: true
+              gettype: netInterface
+              url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
+              netinterface: ppp0
+              cmd: ""
+              ipv6reg: ""
+              domains:
+                  - rpi4:imdomestic.com
+            dns:
+              name: cloudflare
+              id: ""
+              secret: ${config.sops.placeholder."ddns/cloudflare_token"}
+            ttl: ""
+      user:
+          username: hank
+          password: ${config.sops.placeholder."ddns/web_password"}
+      webhook:
+          webhookurl: ""
+          webhookrequestbody: ""
+          webhookheaders: ""
+      notallowwanaccess: false
+      lang: zh
+    '';
+  };
+
   systemd.services.ddns-go = {
     enable = true;
     description = "ddns";
@@ -237,7 +243,7 @@ in {
     after = ["network-online.target"];
 
     serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
       Restart = "always";
       RestartSec = 5;
     };
