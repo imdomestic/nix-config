@@ -6,7 +6,8 @@
   ...
 }: let
   wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
-    conf = "${inputs.wg-config.outPath}/client_00005.conf";
+    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
+    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
     address = "10.0.0.6/24";
   };
 in {
@@ -193,6 +194,8 @@ in {
   };
 
   # ddns-go cloudflare token + web password rendered from sops.
+  sops.secrets."wireguard/private_key".owner = "systemd-network";
+  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
   sops.secrets."ddns/cloudflare_token" = {};
   sops.secrets."ddns/web_password" = {};
   sops.templates."ddns-go-config.yaml" = {
