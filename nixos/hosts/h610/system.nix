@@ -22,10 +22,13 @@ in {
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
-  # Service secrets (were hand-placed under /var/lib/secrets); all consumers
-  # read them via systemd LoadCredential, so root-owned is enough.
+  # Service secrets (were hand-placed under /var/lib/secrets).
+  # acme (root, via systemd EnvironmentFile) and livekit/lk-jwt (LoadCredential)
+  # read as root, so root-owned is enough. coturn is different: its
+  # static-auth-secret-file is consumed by a `replace-secret` ExecStartPre that
+  # runs as the turnserver user, so that secret must be owned by turnserver.
   sops.secrets."acme/cloudflare_env" = {};
-  sops.secrets."coturn/static_auth_secret" = {};
+  sops.secrets."coturn/static_auth_secret".owner = "turnserver";
   sops.secrets."livekit/keys_yaml" = {};
 
   boot.loader.systemd-boot.enable = true;
