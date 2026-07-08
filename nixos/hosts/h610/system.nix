@@ -153,6 +153,9 @@ in {
       networkConfig = {
         IPv6AcceptRA = true;
         DHCP = "ipv6";
+        # pppd installs the IPv4 (IPCP) address; keep it across networkd
+        # restarts so `nixos-rebuild switch` doesn't flush it.
+        KeepConfiguration = "yes";
       };
       linkConfig = {
         RequiredForOnline = "carrier";
