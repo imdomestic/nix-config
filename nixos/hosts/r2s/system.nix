@@ -155,6 +155,9 @@ in {
         # IPv6 配置 (PPPoE 也能获取 IPv6)
         IPv6AcceptRA = true;
         DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
+        # pppd 通过 IPCP 装上 IPv4;networkd 重启时保留它,
+        # 否则 `nixos-rebuild switch` 会把 ppp0 的 IPv4 冲掉。
+        KeepConfiguration = "yes";
       };
       linkConfig = {
         RequiredForOnline = "carrier";
