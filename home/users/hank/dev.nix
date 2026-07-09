@@ -7,5 +7,10 @@
     ../../modules/nixvim
   ];
 
+  home.sessionVariables = {
+    LAKE_ARTIFACT_CACHE = "1";
+    LAKE_RESTORE_ARTIFACTS = "0";
+  };
+
   my.nixvim.dev.enable = true;
 }
