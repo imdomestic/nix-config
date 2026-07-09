@@ -13,7 +13,8 @@ in {
       then pkgs.emptyDirectory
       else if isLinux
       then pkgs.ghostty
-      else pkgs.ghostty-bin;
+      # else pkgs.ghostty-bin;
+      else pkgs.emptyDirectory;
     enableZshIntegration = true;
     # installBatSyntax = false;
     themes = {
