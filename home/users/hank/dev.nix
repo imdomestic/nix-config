@@ -10,6 +10,7 @@
   home.sessionVariables = {
     LAKE_ARTIFACT_CACHE = "1";
     LAKE_RESTORE_ARTIFACTS = "0";
+    OPENCODE_ENABLE_EXA= "1";
   };
 
   my.nixvim.dev.enable = true;

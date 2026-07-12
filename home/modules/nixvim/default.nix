@@ -127,7 +127,7 @@ in {
       highlight-yank.clear = true;
       terminal-cleanup.clear = true;
       indent-two.clear = true;
-      indent-rust.clear = true;
+      indent-four.clear = true;
       haskell-extra.clear = true;
       rust-extra.clear = true;
     };
@@ -171,6 +171,7 @@ in {
           "json"
           "lua"
           "nix"
+          "lean"
           "yaml"
         ];
         callback = mkRaw ''
@@ -184,8 +185,16 @@ in {
       }
       {
         event = "FileType";
-        group = "indent-rust";
-        pattern = "rust";
+        group = "indent-four";
+        pattern = [
+          "rust"
+          "zig"
+          "python"
+          "php"
+          "csharp"
+          "kotlin"
+          "java"
+        ];
         callback = mkRaw ''
           function()
             vim.bo.expandtab = true
