@@ -11,6 +11,7 @@
     swiftlint
     jdk
     wezterm
+    # spotatui
     sioyek
     pkgs-unstable.raycast
     # spotify
