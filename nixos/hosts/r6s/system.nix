@@ -15,7 +15,6 @@ in {
     ./hardware-configuration.nix
     ../../modules/dae
     # ../../modules/singbox
-    ../../modules/tuigreet
     ../../modules/keyd
   ];
 
@@ -465,8 +464,6 @@ in {
   ];
 
   programs.zsh.enable = true;
-
-  services.pipewire.enable = true;
 
   services.openssh.enable = true;
 
