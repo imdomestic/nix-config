@@ -68,7 +68,7 @@ in {
   #   };
   # };
 
-  time.timeZone = "Hongkong";
+  time.timeZone = "Asia/Hong_Kong";
 
   users.users.linwhite = {
     isNormalUser = true;

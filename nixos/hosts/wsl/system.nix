@@ -35,7 +35,7 @@
     settings.Resolve.FallbackDNS = ["223.5.5.5"];
   };
 
-  time.timeZone = "Asia/Shanghai";
+  time.timeZone = "Asia/Hong_Kong";
 
   users.users.hank = {
     isNormalUser = true;

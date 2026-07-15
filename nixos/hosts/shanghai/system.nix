@@ -34,7 +34,7 @@ in {
       wgPeers);
 
   networking.hostName = "shanghai";
-  time.timeZone = "Asia/Shanghai";
+  time.timeZone = "Asia/Hong_Kong";
 
   boot.loader.grub.enable = true;
   boot.loader.grub.useOSProber = false;

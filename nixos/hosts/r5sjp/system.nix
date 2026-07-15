@@ -98,7 +98,7 @@
     };
   };
 
-  time.timeZone = "Asia/Shanghai";
+  time.timeZone = "Asia/Hong_Kong";
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
