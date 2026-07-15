@@ -317,7 +317,7 @@ in {
   };
 
   # Set your time zone.
-  time.timeZone = "Hongkong";
+  time.timeZone = "Asia/Hong_Kong";
 
   # Enable the X11 windowing system.
   services.xserver.enable = true;

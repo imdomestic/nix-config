@@ -83,7 +83,7 @@ in {
     };
   };
 
-  time.timeZone = "Asia/Shanghai";
+  time.timeZone = "Asia/Hong_Kong";
 
   powerManagement.cpuFreqGovernor = "performance";
   services.displayManager.gdm.enable = false;

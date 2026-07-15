@@ -26,7 +26,7 @@
   networking.networkmanager.enable = true; # Easiest to use and most distros use this by default.
 
   # Set your time zone.
-  time.timeZone = "Hongkong";
+  time.timeZone = "Asia/Hong_Kong";
 
   # Configure network proxy if necessary
   networking.proxy.default = "http://127.0.0.1:7890";

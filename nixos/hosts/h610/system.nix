@@ -51,7 +51,7 @@ in {
     "net.ipv4.tcp_congestion_control" = "bbr";
   };
 
-  time.timeZone = "Hongkong";
+  time.timeZone = "Asia/Hong_Kong";
 
   networking = {
     hostName = "h610"; # Define your hostname.

@@ -136,7 +136,7 @@ in {
   };
 
   # Set your time zone.
-  time.timeZone = "Asia/Shanghai";
+  time.timeZone = "Asia/Hong_Kong";
 
   # networking.proxy.default = "http://192.168.1.25:7890";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";

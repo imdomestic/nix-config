@@ -347,7 +347,7 @@ in {
 
             datetime          "{format}"
             datetime_format   "%Y-%m-%d %H:%M"
-            datetime_timezone "Asia/Shanghai"
+            datetime_timezone "Asia/Hong_Kong"
           }
         }
       }

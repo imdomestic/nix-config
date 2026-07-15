@@ -42,7 +42,7 @@
   # are linked into the system environment.
   environment.pathsToLink = ["/share/applications" "/share/xdg-desktop-portal"];
 
-  time.timeZone = "Asia/Shanghai";
+  time.timeZone = "Asia/Hong_Kong";
 
   users.users.linwhite = {
     isNormalUser = true;

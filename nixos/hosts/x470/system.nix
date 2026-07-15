@@ -122,7 +122,7 @@ in {
   };
 
   # Set your time zone.
-  time.timeZone = "Hongkong";
+  time.timeZone = "Asia/Hong_Kong";
   services.xserver.enable = true;
   services.xserver.videoDrivers = ["nvidia"];
   hardware.nvidia = {
