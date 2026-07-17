@@ -437,7 +437,12 @@ in {
     ];
     enable32Bit = true;
   };
-  users.users.hank.extraGroups = ["video" "render"];
+  users.users.hank.extraGroups = ["video" "render" "docker"];
+
+  # max bot: the Haskell code shells out to the real docker CLI and the
+  # napcat compose file relies on host-gateway, so use Docker here rather
+  # than the podman/dockerCompat setup other hosts use.
+  virtualisation.docker.enable = true;
 
   environment = {
     variables = {
@@ -451,6 +456,7 @@ in {
     nginx
     intel-gpu-tools
     deploy-rs
+    docker-compose
   ];
 
   environment.sessionVariables = {
