@@ -443,6 +443,10 @@ in {
   # napcat compose file relies on host-gateway, so use Docker here rather
   # than the podman/dockerCompat setup other hosts use.
   virtualisation.docker.enable = true;
+  # The host resolv.conf points at the systemd-resolved stub, so docker
+  # falls back to 8.8.8.8 — which resolves CN sites to overseas CDNs that
+  # don't load from here. Pin domestic resolvers for containers instead.
+  virtualisation.docker.daemon.settings.dns = ["223.5.5.5" "119.29.29.29"];
 
   environment = {
     variables = {
