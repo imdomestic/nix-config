@@ -14,7 +14,7 @@
   };
 in {
   imports = [
-    # ../../modules/dae
+    ../../modules/dae
     ../../modules/keyd
     # ../../modules/minecraft/wuxi.nix
   ];
