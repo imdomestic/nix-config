@@ -69,5 +69,16 @@ in {
         ];
       };
     };
+    fendada = {
+      home = {
+        profiles = with homeProfiles; [
+          core
+          base
+        ];
+        modules = [
+          userModules.fendada.module
+        ];
+      };
+    };
   };
 }
