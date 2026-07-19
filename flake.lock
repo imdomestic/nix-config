@@ -1441,11 +1441,11 @@
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1784429158,
-        "narHash": "sha256-ekUnZ9wFfSagrhQp9aJqNaS/qPyLLvzixFF6kHSSDXE=",
+        "lastModified": 1784430638,
+        "narHash": "sha256-oOqNtXnPHvMUi8+13UgRketori2ntk+Xe2kttquvavc=",
         "ref": "refs/heads/main",
-        "rev": "b8f0560e443b3d9f3c7fabb30628ea04d3527a28",
-        "revCount": 53,
+        "rev": "ccc8a2958d4432b3bca49b989cfdd8450ba6aa57",
+        "revCount": 54,
         "type": "git",
         "url": "ssh://git@github.com/HCHogan/max"
       },
