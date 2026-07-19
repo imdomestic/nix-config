@@ -742,5 +742,31 @@ in {
     };
   };
 
+  # Passwordless deploy from this box (it rebuilds itself, often driven
+  # by an agent without a tty).  nixos-rebuild/nh only ever sudo three
+  # things: `nix-env --set` on the system profile, the systemd-run
+  # wrapper, and the generation's switch-to-configuration.  Deliberately
+  # narrower than a blanket wheel NOPASSWD, though not a hard privilege
+  # boundary — treat it as convenience, not containment.
+  security.sudo.extraRules = lib.mkAfter [
+    {
+      users = ["hank"];
+      commands = [
+        {
+          command = "/run/current-system/sw/bin/nix-env";
+          options = ["NOPASSWD"];
+        }
+        {
+          command = "/run/current-system/sw/bin/systemd-run";
+          options = ["NOPASSWD"];
+        }
+        {
+          command = "/nix/store/*/bin/switch-to-configuration";
+          options = ["NOPASSWD"];
+        }
+      ];
+    }
+  ];
+
   system.stateVersion = "25.11";
 }
