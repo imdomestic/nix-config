@@ -9,6 +9,9 @@
   fendada = {
     module = import ./fendada/default.nix;
   };
+  kenneth = {
+    module = import ./kenneth/default.nix;
+  };
   linwhite = {
     module = import ./linwhite/default.nix;
     dev = import ./linwhite/dev.nix;
