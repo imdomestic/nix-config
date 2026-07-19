@@ -500,6 +500,7 @@ in {
             "hank@imdomestic.com"
             "linwhite@imdomestic.com"
             "fendada@imdomestic.com"
+            "kenneth@imdomestic.com"
           ];
         };
 
