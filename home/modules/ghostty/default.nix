@@ -54,7 +54,13 @@ in {
       font-family =
         if isLinux
         then "Recursive"
-        else "RecMonoSmCasual Nerd Font Mono";
+        # Recursive/Nerd Font has no CJK glyphs; without an explicit fallback
+        # Ghostty's own font matching lands on a Song/Kai-style face instead
+        # of the system cascade (PingFang SC). Order matters: first hit wins.
+        else [
+          "RecMonoSmCasual Nerd Font Mono"
+          "PingFang SC"
+        ];
       background-opacity = 0.85;
       background-blur-radius = 20;
       macos-option-as-alt = true;
