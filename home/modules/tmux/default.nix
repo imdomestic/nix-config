@@ -32,6 +32,7 @@
       # Keep terminal features and low-latency key handling.
       set-option -ga terminal-overrides ",*256col*:Tc"
       set -ga terminal-overrides ',*:Ss=\E[%p1%d q:Se=\E[6 q'
+      set -g set-clipboard on
       set -sg escape-time 0
       set -g history-limit 100000
 

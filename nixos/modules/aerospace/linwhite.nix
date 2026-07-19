@@ -12,6 +12,19 @@
     "on-focused-monitor-changed" = ["move-mouse monitor-lazy-center"];
     "automatically-unhide-macos-hidden-apps" = false;
     "on-window-detected" = [
+      # LTspice uses many independent editor/plot/dialog windows; keep them outside tiling.
+      {
+        "if" = {
+          app-id = "com.analog.LTspice.App";
+        };
+        run = "layout floating";
+      }
+      {
+        "if" = {
+          app-id = "com.analog.ltspice";
+        };
+        run = "layout floating";
+      }
       # Keep WeChat main window tiled; float all other WeChat windows (popups, dialogs).
       {
         "if" = {
@@ -76,6 +89,7 @@
         binding = {
           "alt-slash" = "layout tiles horizontal vertical";
           "alt-comma" = "layout accordion horizontal vertical";
+          "alt-shift-space" = "layout floating tiling";
 
           "alt-h" = "focus left";
           "alt-j" = "focus down";
