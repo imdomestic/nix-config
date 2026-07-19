@@ -39,14 +39,6 @@
   system.defaults.smb.NetBIOSName = hostname;
   system.primaryUser = "linwhite";
 
-  # services.tailscale.enable = true;
-
-  # The standalone tailscaled used by nix-darwin does not register the
-  # tailnet's MagicDNS suffix with macOS. Route it to Quad100 explicitly.
-  environment.etc."resolver/inner.imdomestic.com".text = ''
-    nameserver 100.100.100.100
-  '';
-
   homebrew = {
     enable = true;
     caskArgs.no_quarantine = true;
