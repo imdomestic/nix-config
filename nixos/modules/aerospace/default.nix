@@ -1,10 +1,10 @@
 {
   lib,
-  usernames ? [],
+  config,
   pkgs,
   ...
 }: let
-  resolvedUsernames = usernames;
+  resolvedUsernames = config.my.host.usernames;
   hasUser = needle: lib.any (u: lib.hasInfix needle u) resolvedUsernames;
   linwhiteAerospace = import ./linwhite.nix;
 in {

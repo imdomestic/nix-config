@@ -1,8 +1,9 @@
 {
   pkgs,
-  hostname,
+  config,
   ...
 }: let
+  hostname = config.my.host.name;
   isLinux = hostname != "m1elite" && hostname != "hackintosh" && hostname != "m1pro";
   isHome = hostname == "aarch64-headless" || hostname == "x86_64-headless";
 in {

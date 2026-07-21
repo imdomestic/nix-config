@@ -1,7 +1,7 @@
 {
   inputs,
   pkgs,
-  hostname,
+  config,
   ...
 }: {
   # Used for backwards compatibility, please read the changelog before changing.
@@ -39,9 +39,8 @@
   ];
 
   # host-users
-  networking.hostName = hostname;
-  networking.computerName = hostname;
-  system.defaults.smb.NetBIOSName = hostname;
+  networking.computerName = config.my.host.name;
+  system.defaults.smb.NetBIOSName = config.my.host.name;
   system.primaryUser = "hank";
 
   homebrew = {

@@ -27,7 +27,6 @@
     LD_LIBRARY_PATH = "/run/opengl-driver/lib:/usr/lib/wsl/lib";
   };
 
-  networking.hostName = "wsl";
   networking.proxy.default = "http://127.0.0.1:7897";
   networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
   services.resolved = {

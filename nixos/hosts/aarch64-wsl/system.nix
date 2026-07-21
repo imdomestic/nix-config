@@ -3,7 +3,6 @@
   pkgs,
   ...
 }: {
-  networking.hostName = "aarch64-wsl";
   wsl = {
     enable = true;
     defaultUser = "hank";

@@ -6,13 +6,15 @@
 }: let
   homeUtils = import ../../lib/home-utils.nix {inherit inputs;};
   hostMeta = config.my.host;
+  hostSpec = {
+    inherit (hostMeta) system roles users homeOverlays;
+  };
+  basePkgs = homeUtils.mkBasePkgs {host = hostSpec;};
   mkUser = userName: user: let
     spec = homeUtils.mkHomeSpec {
-      host = {
-        inherit (hostMeta) system roles users homeOverlays;
-      };
+      host = hostSpec;
       hostName = hostMeta.name;
-      inherit userName user;
+      inherit userName user basePkgs;
     };
     argsModule = {
       _module.args =
@@ -33,8 +35,6 @@ in
     home-manager.backupFileExtension = "backup";
     home-manager.extraSpecialArgs = {
       inherit inputs;
-      hostName = hostMeta.name;
-      hostname = hostMeta.name;
     };
     home-manager.users = hmUsers;
   }

@@ -2,10 +2,11 @@
 {
   inputs,
   pkgs,
-  hostname,
+  config,
   ...
 }: let
   lib = pkgs.lib;
+  hostname = config.my.host.name;
 in {
   programs.hyprpanel = {
     enable = hostname == "7540u" || hostname == "b650";

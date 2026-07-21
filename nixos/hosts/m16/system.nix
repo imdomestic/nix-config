@@ -23,7 +23,6 @@ in {
   };
 
   networking = {
-    hostName = "m16"; # Define your hostname.
     networkmanager.enable = false;
     wireless.iwd.enable = true;
 

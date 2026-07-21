@@ -28,7 +28,6 @@ in {
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
   networking = {
-    hostName = "n100"; # Define your hostname.
     networkmanager.enable = false; # Easiest to use and most distros use this by default.
     useDHCP = false;
     useNetworkd = true;

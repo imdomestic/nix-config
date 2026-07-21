@@ -15,34 +15,14 @@
     };
   in
     {
-      # `system` stays a specialArg because base profiles branch on it in
-      # `imports`, which cannot depend on config. Everything else lives in
+      # `system` and `inputs` stay specialArgs because base profiles use them
+      # in `imports`, which cannot depend on config. Everything else lives in
       # `config.my.host` (see modules/shared/host-options.nix).
       inherit inputs;
       system = hostSystem;
-      pkgsUnstable = pkgsUnstable;
       "pkgs-unstable" = pkgsUnstable;
     }
     // (host.extraSpecialArgs or {});
-
-  # Legacy bridge: modules still declaring hostName/usernames/... as function
-  # args get them derived from `config.my.host`, keeping a single source of
-  # truth until every consumer reads config directly.
-  argsBridgeModule = {
-    config,
-    lib,
-    ...
-  }: {
-    _module.args = {
-      hostName = config.my.host.name;
-      hostname = config.my.host.name;
-      hostRoles = config.my.host.roles;
-      usernames = config.my.host.usernames;
-      hostUsers =
-        lib.genAttrs config.my.host.usernames (_: {})
-        // config.my.host.users;
-    };
-  };
 
   mkModules = hostName: host: let
     system = host.system or (throw "Host ${hostName} must define a system");
@@ -60,7 +40,6 @@
       else null;
   in
     myHost.mkModules {inherit hostName host;}
-    ++ [argsBridgeModule]
     ++ lib.unique (
       (host.profiles or [])
       ++ (host.modules or [])

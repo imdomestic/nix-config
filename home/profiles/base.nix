@@ -1,10 +1,6 @@
 {
-  inputs,
   pkgs,
-  pkgs-unstable,
-  lib,
-  system,
-  username,
+  config,
   ...
 }: {
   home.packages = with pkgs; [
@@ -84,9 +80,6 @@
     enable = true;
     clean.enable = false;
     clean.extraArgs = "--keep-since 4d --keep 3";
-    flake =
-      if lib.hasInfix "linux" system
-      then "/home/${username}/.config/nix-config"
-      else "/Users/${username}/.config/nix-config";
+    flake = "${config.home.homeDirectory}/.config/nix-config";
   };
 }

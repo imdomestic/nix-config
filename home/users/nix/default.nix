@@ -1,9 +1,7 @@
 {
   lib,
   inputs,
-  system,
   pkgs,
-  username,
   ...
 }: {
   home.packages = with pkgs; [
@@ -51,7 +49,7 @@
 
   home.sessionVariables = {
     ZDOTDIR =
-      if lib.hasInfix "darwin" system
+      if pkgs.stdenv.isDarwin
       then "/Users/nix/.config/zsh"
       else "/home/nix/.config/zsh";
   };

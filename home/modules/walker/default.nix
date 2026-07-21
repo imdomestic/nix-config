@@ -1,8 +1,10 @@
 {
-  hostname,
+  config,
   pkgs,
   ...
-}: {
+}: let
+  hostname = config.my.host.name;
+in {
   programs.walker = {
     package = pkgs.walker;
     enable = hostname == "b660" || hostname == "7540u";
