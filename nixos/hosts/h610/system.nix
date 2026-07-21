@@ -54,7 +54,6 @@ in {
   time.timeZone = "Asia/Hong_Kong";
 
   networking = {
-    hostName = "h610"; # Define your hostname.
     networkmanager.enable = false; # Easiest to use and most distros use this by default.
     useDHCP = false;
     useNetworkd = true;

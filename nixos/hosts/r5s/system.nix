@@ -188,7 +188,6 @@ in {
   };
 
   networking = {
-    hostName = "r5s";
     firewall.enable = false;
     networkmanager.enable = false;
     useNetworkd = true;

@@ -3,9 +3,9 @@
   hmLib = inputs.home-manager.lib;
   homeUtils = import ./home-utils.nix {inherit inputs;};
 
-  mkHome = hostName: host: userName: user: let
+  mkHome = hostName: host: userName: user: basePkgs: let
     spec = homeUtils.mkHomeSpec {
-      inherit host hostName userName user;
+      inherit host hostName userName user basePkgs;
     };
   in
     hmLib.homeManagerConfiguration {
@@ -22,11 +22,12 @@
         hostName = hostEntry.name;
         host = hostEntry.value;
         users = host.users or {};
+        basePkgs = homeUtils.mkBasePkgs {inherit host;};
       in
         lib.mapAttrsToList
         (userName: user: {
           name = "hosts/${hostName}/${userName}";
-          value = mkHome hostName host userName user;
+          value = mkHome hostName host userName user basePkgs;
         })
         users
     )

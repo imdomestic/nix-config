@@ -8,11 +8,6 @@
 
   mkSpecialArgs = hostName: host: let
     sysman = host.systemManager or {};
-    hostUsers = host.users or {};
-    usernames =
-      if host ? usernames
-      then host.usernames
-      else builtins.attrNames hostUsers;
     hostSystem = host.system or (throw "Host ${hostName} must define a system");
     pkgsUnstable = import inputs.nixpkgs-unstable {
       system = hostSystem;
@@ -21,11 +16,8 @@
     };
   in
     {
-      inherit inputs hostName host hostUsers usernames;
-      hostname = hostName;
-      hostRoles = host.roles or [];
+      inherit inputs;
       system = hostSystem;
-      pkgsUnstable = pkgsUnstable;
       "pkgs-unstable" = pkgsUnstable;
     }
     // (sysman.extraSpecialArgs or {});

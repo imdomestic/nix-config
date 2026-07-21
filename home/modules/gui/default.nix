@@ -1,11 +1,10 @@
 {
   pkgs,
-  hostname,
+  lib,
+  config,
   ...
-}:
-if (hostname == "b650" || hostname == "7540u")
-then {
-  home.packages = with pkgs; [
+}: {
+  home.packages = lib.mkIf (config.my.host.name == "b650" || config.my.host.name == "7540u") (with pkgs; [
     blueman
     spotify
     nix-output-monitor
@@ -23,6 +22,5 @@ then {
     vlc
     wezterm
     nautilus
-  ];
+  ]);
 }
-else {}

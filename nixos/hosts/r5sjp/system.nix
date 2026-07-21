@@ -156,7 +156,6 @@
   # };
 
   networking = {
-    hostName = "r5sjp";
     firewall.enable = false;
     networkmanager.enable = false;
     useNetworkd = true;

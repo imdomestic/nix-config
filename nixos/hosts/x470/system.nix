@@ -63,7 +63,6 @@ in {
   # ];
 
   networking = {
-    hostName = "x470";
     networkmanager.enable = false;
     useDHCP = false;
     useNetworkd = true;

@@ -23,7 +23,6 @@ in {
   };
 
   networking = {
-    hostName = "gpd"; # Define your hostname.
     networkmanager.enable = false;
     wireless.iwd.enable = true;
 

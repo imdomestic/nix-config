@@ -79,7 +79,6 @@ in {
   };
 
   networking = {
-    hostName = "r2s";
     firewall.enable = false;
     networkmanager.enable = false;
     useNetworkd = true;

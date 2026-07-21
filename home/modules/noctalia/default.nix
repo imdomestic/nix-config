@@ -1,10 +1,11 @@
 {
   inputs,
   pkgs,
-  hostname,
+  config,
   ...
 }: let
   lib = pkgs.lib;
+  hostname = config.my.host.name;
 in {
   services.hyprpaper = {
     enable = true;

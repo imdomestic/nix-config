@@ -259,7 +259,6 @@ in {
   };
 
   networking = {
-    hostName = "tank"; # Define your hostname.
     networkmanager.enable = false; # Easiest to use and most distros use this by default.
     useDHCP = false;
     useNetworkd = true;
