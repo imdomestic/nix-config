@@ -1,11 +1,10 @@
 {
-  pkgs,
   config,
+  pkgs,
   ...
 }: let
-  hostname = config.my.host.name;
-  isLinux = hostname != "m1elite" && hostname != "hackintosh" && hostname != "m1pro";
-  isHome = hostname == "aarch64-headless" || hostname == "x86_64-headless";
+  isLinux = pkgs.stdenv.isLinux;
+  isHome = config.my.host.name == "aarch64-headless" || config.my.host.name == "x86_64-headless";
 in {
   programs.ghostty = {
     enable = true;
@@ -99,4 +98,3 @@ in {
 # inspector               S-C-i
 # toggle fullscreen       C-Enter
 # goto tab [1-9]          C-[1-9]
-
