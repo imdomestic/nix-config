@@ -1,0 +1,136 @@
+# ~/.config/starship.toml
+right_format = """$time$battery"""
+command_timeout = 1000
+add_newline = true
+
+[container]
+format = '[$symbol \[$name\]]($style) '
+symbol = '⬢'
+
+[terraform]
+format = '[🏎💨 $version$workspace]($style) '
+
+[battery]
+full_symbol = '🔋 '
+charging_symbol = '⚡️ '
+discharging_symbol = '💀 '
+
+[[battery.display]]
+threshold = 20
+style = 'bold red'
+
+[[battery.display]]
+threshold = 50
+style = 'bold yellow'
+
+[[battery.display]]
+threshold = 100
+style = 'bold green'
+
+
+[sudo]
+style = 'bold green'
+symbol = '👩‍💻 '
+disabled = false
+
+[time]
+disabled = false
+format = '🕙[\[ $time \]]($style) '
+time_format = '%H:%M'
+utc_time_offset = '+8'
+time_range = '00:00:00-24:00:00'
+
+[os]
+format = "[$symbol]($style) "
+style = "bold blue"
+disabled = false
+
+
+
+[c]
+format = 'via [$symbol $version]($style)'
+detect_extensions = ["c", "h", "cc", "cpp", "hh", "hpp"]
+symbol = " "
+
+
+[cmake]
+format = 'via [$symbol($version )]($style)'
+symbol = ' '
+
+[directory]
+read_only = " 󰌾"
+
+[docker_context]
+symbol = " "
+
+[fossil_branch]
+symbol = " "
+
+[git_branch]
+symbol = " "
+
+[lua]
+format = 'via [$symbol($version )]($style)'
+symbol = '🌙 '
+#symbol = " "
+
+[memory_usage]
+symbol = "󰍛 "
+
+[nodejs]
+symbol = " "
+
+[os.symbols]
+Alpaquita = " "
+Alpine = " "
+Amazon = " "
+Android = " "
+Arch = " "
+Artix = " "
+CentOS = " "
+Debian = " "
+DragonFly = " "
+Emscripten = " "
+EndeavourOS = " "
+Fedora = " "
+FreeBSD = " "
+Garuda = "󰛓 "
+Gentoo = " "
+HardenedBSD = "󰞌 "
+Illumos = "󰈸 "
+Linux = " "
+Mabox = " "
+Macos = " "
+Manjaro = " "
+Mariner = " "
+MidnightBSD = " "
+Mint = " "
+NetBSD = " "
+NixOS = " "
+OpenBSD = "󰈺 "
+openSUSE = " "
+OracleLinux = "󰌷 "
+Pop = " "
+Raspbian = " "
+Redhat = " "
+RedHatEnterprise = " "
+Redox = "󰀘 "
+Solus = "󰠳 "
+SUSE = " "
+Ubuntu = " "
+Unknown = " "
+Windows = "󰍲 "
+
+[package]
+symbol = "󰏗 "
+
+[python]
+format = 'via [${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
+symbol = '🐍 '
+#symbol = " "
+
+
+[rust]
+format = 'via [$symbol $version](red bold)'
+symbol = '🦀'
+#symbol = " "

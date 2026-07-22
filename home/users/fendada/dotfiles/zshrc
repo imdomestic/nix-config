@@ -1,0 +1,66 @@
+#PS1='Fendada-> '
+eval "$(starship init zsh)"
+alias e="nvim"
+alias ls="eza --icons"
+source $(brew --prefix)/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+function chpwd(){
+    emulate -L zsh
+    ls
+}
+source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+#export PATH="$PATH:/home/$USER/.local/bin"
+alias lvim="/Users/a123456_1_2/.local/bin/lvim"
+alias vd="neovide"
+#alias "g++"="clang"
+# export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+# export PATH="/opt/homebrew/Cellar/llvm/17.0.6_1/bin:$PATH"
+# Toolchain PATH entries
+path_prepend() {
+  case ":$PATH:" in
+    *":$1:"*) ;;
+    *) [ -d "$1" ] && export PATH="$1:$PATH" ;;
+  esac
+}
+path_prepend "/opt/homebrew/opt/llvm/bin"
+path_prepend "/opt/llvm/bin"
+path_prepend "/opt/homebrew/opt/ruby/bin"
+path_prepend "/opt/homebrew/opt/python@3.14/libexec/bin"
+path_prepend "$HOME/.moon/bin"
+path_prepend "$HOME/.ghcup/bin"
+path_prepend "$HOME/.cabal/bin"
+
+
+# moonbit
+eval "$(direnv hook zsh)"
+
+# 代理管理函数
+proxy()
+{
+    export http_proxy="http://127.0.0.1:7892"
+    export https_proxy="http://127.0.0.1:7892"
+    export all_proxy="socks5://127.0.0.1:7892"
+
+    export HTTP_PROXY="$http_proxy"
+    export HTTPS_PROXY="$https_proxy"
+    export ALL_PROXY="$all_proxy"
+
+    echo "Shell proxy enabled (127.0.0.1:7892)"
+}
+
+unproxy()
+{
+    unset http_proxy
+    unset https_proxy
+    unset all_proxy
+
+    unset HTTP_PROXY
+    unset HTTPS_PROXY
+    unset ALL_PROXY
+
+    echo "Shell proxy disabled"
+}
+
+proxy-status()
+{
+    env | grep -i proxy
+}

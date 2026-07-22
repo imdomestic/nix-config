@@ -11,6 +11,7 @@ in {
   m1elite = callHost "m1elite";
   m1pro = callHost "m1pro";
   hackintosh = callHost "hackintosh";
+  macbook-pro-3 = callHost "macbook-pro-3";
   x86_64-headless = callHost "x86_64-headless";
   "aarch64-headless" = callHost "aarch64-headless";
   n100 = callHost "n100";
