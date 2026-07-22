@@ -436,7 +436,8 @@ in {
     ];
     enable32Bit = true;
   };
-  users.users.hank.extraGroups = ["video" "render" "docker"];
+  # max-bot membership lets hank edit the config/env files under /var/lib/max-bot
+  users.users.hank.extraGroups = ["video" "render" "docker" "max-bot"];
 
   # max bot: the Haskell code shells out to the real docker CLI and the
   # napcat compose file relies on host-gateway, so use Docker here rather
