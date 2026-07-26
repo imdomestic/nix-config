@@ -903,6 +903,20 @@ in {
     };
   };
 
+  # Claude Code 的状态栏脚本。只托管脚本,不托管 settings.json:
+  # /model、/effort 会在运行时写回 settings.json,那个文件一旦变成 store 里的
+  # 只读软链,这些斜杠命令就存不下来了。settings.json 里按这个路径引用:
+  #   "statusLine": {
+  #     "type": "command",
+  #     "command": "bash /home/hank/.claude/statusline-command.sh",
+  #     "refreshInterval": 1
+  #   }
+  # refreshInterval 是必须的:窗口 resize 不会触发状态栏重绘,而右对齐要靠 COLUMNS。
+  home.file.".claude/statusline-command.sh" = {
+    source = ../../modules/claude-code/statusline.sh;
+    executable = true;
+  };
+
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../../../fonts/Recursive-Italic.ttf;
   home.file.".local/share/fonts/Recursive-Regular.ttf".source = ../../../fonts/Recursive-Regular.ttf;
