@@ -52,6 +52,12 @@ in {
   };
 
   boot.kernel.sysctl = {
+    # NixOS 按配置里的内核生成 /etc/sysctl.d/55-nixos-aslr-entropy.conf，mainline
+    # aarch64 (VA_BITS=48) 写 33，而树莓派官方内核 (VA_BITS=39) 上限只有 24。在两者
+    # 之间切换时旧内核会拒绝 33，systemd-sysctl 失败进而让 deploy-rs 回滚。24 在两个
+    # 内核上都合法；60-nixos.conf 排在 55 之后，会覆盖掉那个值。
+    "vm.mmap_rnd_bits" = 24;
+
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
     "net.core.default_qdisc" = "fq";
