@@ -455,7 +455,6 @@ in {
     enable = true;
     configFile = "/var/lib/max-bot/max.yaml";
     environmentFile = "/var/lib/max-bot/max-bot.env"; # MAX_ACCESS_TOKEN
-    settings.log_color = "always";
     napcat = {
       enable = true;
       qq = "2107570581";
@@ -469,7 +468,10 @@ in {
   };
   # headscale owns 127.0.0.1:8080, so bind the OneBot WS on the docker
   # bridge only; napcat reaches it via host.docker.internal (host-gateway).
-  systemd.services.max.environment.MAX_WS_HOST = "172.17.0.1";
+  systemd.services.max.environment = {
+    MAX_WS_HOST = "172.17.0.1";
+    MAX_LOG_COLOR = "always";
+  };
 
   environment = {
     variables = {
