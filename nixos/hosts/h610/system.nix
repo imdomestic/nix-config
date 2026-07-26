@@ -451,24 +451,25 @@ in {
   # max QQ bot (module from the max flake). The yaml is full of LLM API
   # keys, so it lives on disk under /var/lib/max-bot rather than in
   # `settings` (world-readable store).
-  services.max-bot = {
+  services.max = {
     enable = true;
     configFile = "/var/lib/max-bot/max.yaml";
     environmentFile = "/var/lib/max-bot/max-bot.env"; # MAX_ACCESS_TOKEN
+    settings.log_color = "always";
     napcat = {
       enable = true;
       qq = "2107570581";
       environmentFiles = ["/var/lib/max-bot/napcat.env"]; # NAPCAT_ACCESS_TOKEN
     };
     wechatpad = {
-      enable = true;
+      enable = false;
       adminKey = "hbhbhb";
       webBindAddress = "100.64.0.3";
     };
   };
   # headscale owns 127.0.0.1:8080, so bind the OneBot WS on the docker
   # bridge only; napcat reaches it via host.docker.internal (host-gateway).
-  systemd.services.max-bot.environment.MAX_WS_HOST = "172.17.0.1";
+  systemd.services.max.environment.MAX_WS_HOST = "172.17.0.1";
 
   environment = {
     variables = {
