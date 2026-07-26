@@ -124,7 +124,7 @@ in {
         autostart = true;
         enable = true;
         config = ''
-          plugin pppoe.so end0
+          plugin pppoe.so enP3p49s0
           user "wx10158998"
           password "14725836"
 
@@ -171,7 +171,7 @@ in {
 
     # LAN1
     networks."20-lan1-uplink" = {
-      matchConfig.Name = "enP3p49s0";
+      matchConfig.Name = "end0";
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
@@ -184,7 +184,7 @@ in {
     };
 
     networks."20-wan-uplink" = {
-      matchConfig.Name = "end0";
+      matchConfig.Name = "enP3p49s0";
       linkConfig.RequiredForOnline = "no";
       networkConfig = {
         LinkLocalAddressing = "no";
