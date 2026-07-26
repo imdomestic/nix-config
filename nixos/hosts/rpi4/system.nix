@@ -22,7 +22,7 @@ in {
 
   boot.loader.grub.enable = false;
   boot.loader.generic-extlinux-compatible.enable = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages = pkgs.linuxPackages_6_12;
   powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
