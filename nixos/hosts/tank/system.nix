@@ -625,7 +625,7 @@ in {
     win-spice
     adwaita-icon-theme
     radeontop
-    corectrl
+    # corectrl
     # daed
     ddns-go
     btop
