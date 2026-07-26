@@ -586,7 +586,7 @@ in {
     # infiniband-diags
     # libibverbs
 
-    pkgs-unstable.llama-cpp-rocm
+    # pkgs-unstable.llama-cpp-rocm
 
     debootstrap
     cachix
