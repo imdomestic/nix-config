@@ -75,7 +75,6 @@ in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    ../../modules/grub
     ../../modules/tuigreet
     ../../modules/keyd
     ../../modules/minecraft/wuxi.nix
@@ -85,26 +84,43 @@ in {
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
+  # 从 GRUB 换成 systemd-boot：GRUB 读不了 bcachefs，根搬过去后就找不到内核了。
+  # 代价是 Windows 在 sdb1 自己的 ESP 上，不会出现在启动菜单里，要走固件 F11/F12。
+  boot.loader.systemd-boot = {
+    enable = true;
+    # ESP 只有 1G，systemd initrd + bcachefs-tools 的 initrd 不小，别留太多代。
+    configurationLimit = 5;
+  };
+  boot.loader.efi.canTouchEfiVariables = true;
+
   boot.initrd.kernelModules = [
     "dm-snapshot" # when you are using snapshots
     "dm-raid" # e.g. when you are configuring raid1 via: `lvconvert -m1 /dev/pool/home`
     "dm-cache-default" # when using volumes set up with lvmcache
   ];
-  boot.supportedFilesystems = ["xfs" "bcachefs"];
+  boot.supportedFilesystems = ["xfs" "bcachefs" "ntfs"];
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
-  swapDevices = [
-    {
-      device = "/var/lib/swapfile";
-      size = 16 * 1024;
-    }
-  ];
 
-  fileSystems."/data" = {
-    device = "UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1";
-    fsType = "bcachefs";
-    options = ["defaults" "nofail" "compression=zstd" "noatime"];
+  # 26.05 里 systemd initrd 已经是默认（这行是 no-op），但显式钉住：多设备 bcachefs
+  # 当根不能走 script initrd —— 那条路径只等设备列表里的第一块盘
+  # （nixpkgs tasks/filesystems/bcachefs.nix 的 firstDevice），默认翻回去就起不来了。
+  boot.initrd.systemd.enable = true;
+  boot.initrd.supportedFilesystems = ["bcachefs"];
+
+  # 根现在也在 bcachefs 上了，月度 scrub 校验一遍 checksum。
+  services.bcachefs.autoScrub.enable = true;
+
+  # bcachefs 没有 swapfile 支持，原来的 /var/lib/swapfile 用不了了。
+  # Phase 2 把 sdd 重分区后换成真正的 swap 分区。
+  swapDevices = [];
+  zramSwap = {
+    enable = true;
+    memoryPercent = 25;
   };
+
+  # /data 不再是独立挂载点：bcachefs 文件系统根本身就是 /，
+  # 原来 /data 下的内容搬到了它的 data/ 子目录，所有 /data/... 路径原样保留。
 
   # rdma
   # boot.kernelModules = [
