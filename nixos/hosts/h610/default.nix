@@ -21,7 +21,7 @@ in {
 
   externalModules = [
     # inputs.headplane.nixosModules.headplane
-    inputs.max.nixosModules.max-bot
+    inputs.max.nixosModules.max
   ];
 
   users = {
