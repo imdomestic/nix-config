@@ -126,7 +126,6 @@
     ddns-go
     btop-rocm
 
-    inputs.zen-browser.packages."${system}".default
     inputs.noctalia.packages.${system}.default
   ];
 

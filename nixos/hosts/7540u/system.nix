@@ -201,7 +201,7 @@
     gnomeExtensions.gsconnect
     gnomeExtensions.forge
 
-    inputs.zen-browser.packages."${system}".default
+    # inputs.zen-browser.packages."${system}".default
     google-chrome
   ];
 

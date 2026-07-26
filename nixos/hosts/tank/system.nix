@@ -633,8 +633,6 @@ in {
     pkgs.jellyfin-web
     pkgs.jellyfin-ffmpeg
 
-    inputs.zen-browser.packages."${system}".default
-
     # pkgsCross.riscv64.gcc14
 
     # make waybar happy

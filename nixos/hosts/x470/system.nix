@@ -195,8 +195,6 @@ in {
 
     steam-run
     steamcmd
-
-    inputs.zen-browser.packages."${system}".default
   ];
 
   services.iperf3.enable = true;
