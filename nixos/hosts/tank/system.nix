@@ -75,7 +75,6 @@ in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    ../../modules/grub
     ../../modules/tuigreet
     ../../modules/keyd
     ../../modules/minecraft/wuxi.nix
@@ -85,26 +84,79 @@ in {
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
+  # 从 GRUB 换成 systemd-boot：GRUB 读不了 bcachefs，根搬过去后就找不到内核了。
+  # 代价是 Windows 在 sdb1 自己的 ESP 上，不会出现在启动菜单里，要走固件 F11/F12。
+  boot.loader.systemd-boot = {
+    enable = true;
+    # ESP 只有 1G，systemd initrd + bcachefs-tools 的 initrd 不小，别留太多代。
+    configurationLimit = 5;
+  };
+  boot.loader.efi.canTouchEfiVariables = true;
+
   boot.initrd.kernelModules = [
     "dm-snapshot" # when you are using snapshots
     "dm-raid" # e.g. when you are configuring raid1 via: `lvconvert -m1 /dev/pool/home`
     "dm-cache-default" # when using volumes set up with lvmcache
   ];
-  boot.supportedFilesystems = ["xfs" "bcachefs"];
+  boot.supportedFilesystems = ["xfs" "bcachefs" "ntfs"];
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
-  swapDevices = [
-    {
-      device = "/var/lib/swapfile";
-      size = 16 * 1024;
-    }
-  ];
 
-  fileSystems."/data" = {
-    device = "UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1";
-    fsType = "bcachefs";
-    options = ["defaults" "nofail" "compression=zstd" "noatime"];
+  # 26.05 里 systemd initrd 已经是默认（这行是 no-op），但显式钉住：多设备 bcachefs
+  # 当根不能走 script initrd —— 那条路径只等设备列表里的第一块盘
+  # （nixpkgs tasks/filesystems/bcachefs.nix 的 firstDevice），默认翻回去就起不来了。
+  boot.initrd.systemd.enable = true;
+  boot.initrd.supportedFilesystems = ["bcachefs"];
+
+  # 救援用的 initrd sshd。tank 没有 IPMI，而 `ssh tank` 走的是 tailscale——
+  # 根挂不上的话 tailscale 起不来，就彻底进不去了。rpi4 是这个 LAN 的网关
+  # (192.168.20.1) 且能独立访问，所以从 Mac 跳板进来：
+  #     ssh -J rpi4 -p 2222 root@192.168.20.50
+  #
+  # 192.168.20.50 是静态的，选在 rpi4 的 DHCP 池 (100-199) 之外。
+  # initrd 里直接用物理口，不要重建 br-lan。
+  boot.initrd.network = {
+    enable = true;
+    ssh = {
+      enable = true;
+      port = 2222;
+      # 专用 key，不要复用系统 host key：走 boot.initrd.secrets，systemd-boot
+      # 会在装引导器时把它追加进 ESP 上的 initrd（不进 nix store，但明文躺在
+      # sdd1 那个 vfat 分区上）。必须在 nixos-rebuild boot 之前先生成：
+      #   ssh-keygen -t ed25519 -N "" -f /etc/secrets/initrd/ssh_host_ed25519_key
+      hostKeys = ["/etc/secrets/initrd/ssh_host_ed25519_key"];
+      # 默认值是 users.users.root.openssh.authorizedKeys.keys，本仓库是空的
+      # ——key 是通过 /etc/ssh/authorized_keys.d/master 发的，而那个文件在
+      # 还没挂上的根文件系统里。所以必须显式给。
+      authorizedKeys = import ../../modules/ssh/keys.nix;
+    };
   };
+
+  boot.initrd.systemd.network = {
+    enable = true;
+    networks."10-initrd-lan" = {
+      matchConfig.Name = "enp5s0";
+      networkConfig = {
+        Address = "192.168.20.50/24";
+        Gateway = "192.168.20.1";
+      };
+      linkConfig.RequiredForOnline = "no";
+    };
+  };
+
+  # 根现在也在 bcachefs 上了，月度 scrub 校验一遍 checksum。
+  services.bcachefs.autoScrub.enable = true;
+
+  # bcachefs 没有 swapfile 支持，原来的 /var/lib/swapfile 用不了了。
+  # Phase 2 把 sdd 重分区后换成真正的 swap 分区。
+  swapDevices = [];
+  zramSwap = {
+    enable = true;
+    memoryPercent = 25;
+  };
+
+  # /data 不再是独立挂载点：bcachefs 文件系统根本身就是 /，
+  # 原来 /data 下的内容搬到了它的 data/ 子目录，所有 /data/... 路径原样保留。
 
   # rdma
   # boot.kernelModules = [

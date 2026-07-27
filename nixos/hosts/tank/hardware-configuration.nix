@@ -12,21 +12,27 @@
     (modulesPath + "/installer/scan/not-detected.nix")
   ];
 
-  boot.initrd.availableKernelModules = ["ahci" "xhci_pci" "ehci_pci" "usbhid" "uas" "sd_mod"];
+  # r8169 = enp5s0，initrd 里的救援 sshd 要用它上网，别删。
+  boot.initrd.availableKernelModules = ["ahci" "xhci_pci" "ehci_pci" "usbhid" "uas" "sd_mod" "r8169"];
   boot.initrd.kernelModules = [];
   boot.kernelModules = ["kvm-intel"];
   boot.extraModulePackages = [];
   boot.kernelParams = ["mitigations=off" "libata.force=3.00:disable"];
 
+  # 根在 sdc(ssd.fast) + sda(hdd.14t) 组成的 bcachefs 上。必须写 UUID= 形式：
+  # mount.bcachefs 会用它扫描出所有成员设备，写 /dev/sdX 会在盘符漂移时挂不上。
   fileSystems."/" = {
-    device = "/dev/disk/by-uuid/d237c051-0e23-4021-a313-b1af5f6bbfbc";
-    fsType = "ext4";
+    device = "UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1";
+    fsType = "bcachefs";
+    options = ["noatime"];
   };
 
-  fileSystems."/efi" = {
+  # sdd1，唯一还留在旧系统盘上的东西。systemd-boot 直接把内核放这里，
+  # 引导器就不需要会读 bcachefs（GRUB 不会，所以从 GRUB 换掉了）。
+  fileSystems."/boot" = {
     device = "/dev/disk/by-uuid/59E1-040D";
     fsType = "vfat";
-    options = ["fmask=0022" "dmask=0022"];
+    options = ["fmask=0077" "dmask=0077"];
   };
 
   swapDevices = [];
