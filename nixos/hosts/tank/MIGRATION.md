@@ -131,6 +131,26 @@ sudo nixos-rebuild boot --flake ~/.config/nix-config#tank
 必须先 remount：新配置里 `efiSysMountPoint = /boot`，不 remount 的话 systemd-boot 会装进
 ext4 根的 /boot 目录里，白装。
 
+### ⚠️ `File system "/dev/sda1" has wrong type for an EFI System Partition (ESP)`
+
+2026-07-27 实际踩到。这个 ESP 是当年配 GRUB 时建的，GPT 分区类型 GUID 是
+`0fc63daf-...`（Linux filesystem）而不是 `c12a7328-...`（EFI System）。GRUB 不校验
+类型码所以一直没暴露，`bootctl` 校验。文件系统是 vfat、分区表是 GPT，都没问题，
+**只需要改类型码，纯元数据操作，不碰文件系统和分区边界**：
+
+```bash
+SGDISK=$(nix build --no-link --print-out-paths nixpkgs#gptfdisk)/bin/sgdisk
+sudo $SGDISK --backup=/root/sda-gpt-backup.bin $SYS
+sudo $SGDISK -t 1:EF00 $SYS
+sudo $SGDISK -p $SYS                       # Code 列必须变成 EF00，亲眼确认
+sudo partx -u $SYS
+sudo udevadm trigger --settle $SYS-part1
+lsblk -o NAME,FSTYPE,PARTTYPE,PARTTYPENAME $(readlink -f $SYS)
+```
+
+不会影响现有的 GRUB 引导：EFI NVRAM 启动项的设备路径用的是 PARTUUID + 分区号，
+不是类型 GUID。
+
 装完确认一下：
 
 ```bash
@@ -281,13 +301,16 @@ lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT $(readlink -f $SYS)   # 必须是 238.5G �
 sudo wipefs -a $SYS-part2
 
 # 2. 重分区: part1 保持 1G ESP 不动，part2 → 16G swap, part3 → 剩余 ~220G
-#    （sgdisk/partprobe 系统里没装，用 nix shell -c 一次性跑完，别开子 shell 再 sudo）
-nix shell nixpkgs#gptfdisk nixpkgs#parted -c sudo sh -c "
-  sgdisk -d 2 $SYS
-  sgdisk -n 2:0:+16G -t 2:8200 -c 2:tankswap $SYS
-  sgdisk -n 3:0:0    -t 3:8300 -c 3:bcachefs-ssd2 $SYS
-  partprobe $SYS
-"
+#    sgdisk 系统里没装。⚠️ 不要写 `nix shell nixpkgs#gptfdisk -c sudo sgdisk ...`：
+#    sudo 会重置 PATH，sgdisk 找不到，命令静默失败而磁盘毫无变化（2026-07-27 踩过）。
+#    先解析出绝对路径再 sudo：
+SGDISK=$(nix build --no-link --print-out-paths nixpkgs#gptfdisk)/bin/sgdisk
+
+sudo $SGDISK -d 2 $SYS
+sudo $SGDISK -n 2:0:+16G -t 2:8200 -c 2:tankswap $SYS
+sudo $SGDISK -n 3:0:0    -t 3:8300 -c 3:bcachefs-ssd2 $SYS
+sudo $SGDISK -p $SYS          # ← 必须亲眼确认 Code 列对了再往下走
+sudo partx -u $SYS
 sudo mkswap -L tankswap $SYS-part2
 
 # 3. 剩余空间并进 ssd.fast
