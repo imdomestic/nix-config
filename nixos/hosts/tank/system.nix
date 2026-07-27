@@ -108,6 +108,42 @@ in {
   boot.initrd.systemd.enable = true;
   boot.initrd.supportedFilesystems = ["bcachefs"];
 
+  # 救援用的 initrd sshd。tank 没有 IPMI，而 `ssh tank` 走的是 tailscale——
+  # 根挂不上的话 tailscale 起不来，就彻底进不去了。rpi4 是这个 LAN 的网关
+  # (192.168.20.1) 且能独立访问，所以从 Mac 跳板进来：
+  #     ssh -J rpi4 -p 2222 root@192.168.20.50
+  #
+  # 192.168.20.50 是静态的，选在 rpi4 的 DHCP 池 (100-199) 之外。
+  # initrd 里直接用物理口，不要重建 br-lan。
+  boot.initrd.network = {
+    enable = true;
+    ssh = {
+      enable = true;
+      port = 2222;
+      # 专用 key，不要复用系统 host key：走 boot.initrd.secrets，systemd-boot
+      # 会在装引导器时把它追加进 ESP 上的 initrd（不进 nix store，但明文躺在
+      # sdd1 那个 vfat 分区上）。必须在 nixos-rebuild boot 之前先生成：
+      #   ssh-keygen -t ed25519 -N "" -f /etc/secrets/initrd/ssh_host_ed25519_key
+      hostKeys = ["/etc/secrets/initrd/ssh_host_ed25519_key"];
+      # 默认值是 users.users.root.openssh.authorizedKeys.keys，本仓库是空的
+      # ——key 是通过 /etc/ssh/authorized_keys.d/master 发的，而那个文件在
+      # 还没挂上的根文件系统里。所以必须显式给。
+      authorizedKeys = import ../../modules/ssh/keys.nix;
+    };
+  };
+
+  boot.initrd.systemd.network = {
+    enable = true;
+    networks."10-initrd-lan" = {
+      matchConfig.Name = "enp5s0";
+      networkConfig = {
+        Address = "192.168.20.50/24";
+        Gateway = "192.168.20.1";
+      };
+      linkConfig.RequiredForOnline = "no";
+    };
+  };
+
   # 根现在也在 bcachefs 上了，月度 scrub 校验一遍 checksum。
   services.bcachefs.autoScrub.enable = true;
 
