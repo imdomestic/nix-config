@@ -284,10 +284,30 @@ mkdir -p /mnt && mount /dev/disk/by-uuid/d237c051-0e23-4021-a313-b1af5f6bbfbc /m
 **initrd sshd 覆盖不了的情况**：内核 panic、r8169 没加载出来、systemd-boot 自己起不来。
 这些还是只能到机器跟前。
 
-### 回滚
+### 回滚（⚠️ 第 5 步之后就不再是干净回滚了）
 
-老 ext4 根一个字节没动。固件启动菜单选 "NixOS GRUB (rescue)" 就回到迁移前的系统
-（它的 /etc/fstab 仍然是 ext4 根 + /efi，只是 /efi 那块盘现在装的是 systemd-boot，无所谓）。
+老 ext4 根一个字节没动，仍然可以从固件菜单选 GRUB 那条进去。**但第 5 步重排 `/data`
+之后，启动老系统会产生副作用**：老配置把 bcachefs 挂在 `/data`，而内容已经移进了
+fs 根的 `data/` 子目录，所以老系统看到的 `/data/lib/postgresql` 等路径全是空的：
+
+```
+老系统以为的 /data/lib/postgresql  →  bcachefs 根的 /lib/postgresql    ← 空
+数据实际在                          →  bcachefs 根的 /data/lib/postgresql
+```
+
+`systemd.tmpfiles.rules` 会造一堆空目录，postgres 会对着空 dataDir 跑 initdb 建全新
+空集群，matrix-synapse 同理，nix-minecraft 可能生成新世界。真数据不丢（都在 `data/`
+下），但会留垃圾且服务全空。
+
+**所以迁移成功后第一件事就是把 BootOrder 翻过来**，让老系统只能被主动选中：
+
+```bash
+EFIBM=$(nix build --no-link --print-out-paths 'nixpkgs#efibootmgr^out')/bin/efibootmgr
+sudo $EFIBM                                      # 找到 Linux Boot Manager 的 ID
+sudo $EFIBM -o 0004,0003,0000,0001,0002          # systemd-boot 排第一
+```
+
+真要回老系统：`sudo $EFIBM -n 0003` 一次性启动，或固件菜单里手选。
 
 ---
 
@@ -419,6 +439,37 @@ sudo bcachefs subvolume snapshot -r /data/srv/minecraft /data/snapshots/minecraf
   `ncurses/share/terminfo/l/linux`，本地 store 里实际叫 `l~nix~case~hack~1`）——
   失败的是 aarch64-linux 那台的 initrd，跟本改动无关，main 上同样挂。
   → 真正的验证是 Phase 1 第 1 步在 tank 上 `nix build`，**别跳过**。
+
+---
+
+## 迁移结果（2026-07-27 完成）
+
+Generation 269 起来了。
+
+| | |
+|---|---|
+| 根 | bcachefs（Samsung 860 EVO 250G + WDC 14T），`/data` 是普通目录 |
+| `/boot` | NIXBOOT ESP，UUID `59E1-040D` |
+| swap | zram 15.7G |
+| 回滚 | 老 ext4 根 `LABEL=NIXROOT` 完好，**Phase 2 之前别动** |
+| bcachefs | 313G / 11.9T，无降级 |
+
+途中踩到、已写进上面各步骤的坑：ESP 分区类型 GUID 要改 EF00、
+`nixos-rebuild boot` 要带 `--install-bootloader`、`sudo` 会吃掉 `nix shell` 的 PATH、
+nix-daemon 的停止时机、`--delete` 要保护 `data/`。
+
+**盘符在这次迁移期间变了三次**（sda↔sdd 对调过，重启后系统盘又变成 sdb）。
+配置全用 UUID 所以没出事。Phase 2 的 `$SYS` 用的是 by-id 序列号，仍然有效，
+但执行前务必用 `lsblk` 再核对一遍。
+
+两个遗留问题：
+
+- `services.nfs.server` 只设了 `exports` 没设 `enable = true`，所以 `/data/rdma`
+  这个导出**从来没生效过**（不是这次迁移搞的）。要用就补 `enable = true`，
+  路径迁移后仍然有效。
+- 迁移后第一次启动 `systemd-analyze` 报固件耗时 **24min 53s**。多半是改了 ESP
+  类型码 + 新增 EFI 启动项之后固件做了一次全盘重扫，一次性的。但如果这个数字
+  一直在，说明靠断电重启救援要等 25 分钟，得重新评估救援方案。
 
 ---
 
