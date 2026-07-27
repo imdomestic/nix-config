@@ -6,6 +6,7 @@
 }: {
   imports = [
     ../../nixos/modules/nix.nix
+    ../../nixos/modules/nix-registry-etc.nix
     ../../nixos/modules/users.nix
     ../../nixos/modules/home-manager.nix
   ];

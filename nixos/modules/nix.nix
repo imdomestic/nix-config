@@ -1,15 +1,11 @@
-{
-  inputs,
-  config,
-  ...
-}: {
-  nix.settings.trusted-users = config.my.host.usernames;
-  # nix.optimise.automatic = true;
-
-  # nix.gc = {
-  #   automatic = true;
-  #   options = "--delete-older-than 1w";
-  # };
+{inputs, ...}: let
+  registryPins = import ../../lib/nixpkgs-registry.nix {inherit inputs;};
+in {
+  # The options below come from nixpkgs' config/nix-flakes.nix,
+  # config/nix-channel.nix and config/nix-remote-build.nix, none of which
+  # system-manager imports — hence the split. system-manager hosts take
+  # nix-settings.nix plus nix-registry-etc.nix instead of this module.
+  imports = [./nix-settings.nix];
 
   nixpkgs = {
     overlays = [
@@ -25,12 +21,17 @@
     };
   };
 
+  # nix.optimise.automatic = true;
+
+  # nix.gc = {
+  #   automatic = true;
+  #   options = "--delete-older-than 1w";
+  # };
+
   nix = {
-    registry = {
-      nixpkgs.flake = inputs.nixpkgs;
-      nixpkgs-local.flake = inputs.nixpkgs;
-      nixpkgs-unstable.flake = inputs.nixpkgs-unstable;
-    };
+    # See lib/nixpkgs-registry.nix for why these are github refs and not the
+    # `flake = inputs.nixpkgs` shorthand.
+    registry = registryPins.registry;
     nixPath = [
       "nixpkgs=${inputs.nixpkgs}"
       "nixpkgs-unstable=${inputs.nixpkgs-unstable}"
@@ -48,22 +49,4 @@
   #     supportedFeatures = ["nixos-test" "benchmark" "big-parallel" "kvm"];
   #   }
   # ];
-
-  nix.settings = {
-    # 数字越小越优先:SJTU 镜像加速 -> 官方源兜底 -> 其余专用 cache
-    substituters = [
-      "https://mirror.sjtu.edu.cn/nix-channels/store?priority=10"
-      "https://cache.nixos.org?priority=20"
-      "https://cache.garnix.io?priority=30"
-      "https://cache.iog.io?priority=40"
-      "https://cache.nixos-cuda.org?priority=50"
-    ];
-    trusted-public-keys = [
-      "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-      "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
-      "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
-    ];
-    experimental-features = ["nix-command" "flakes"];
-    allow-import-from-derivation = true;
-  };
 }
