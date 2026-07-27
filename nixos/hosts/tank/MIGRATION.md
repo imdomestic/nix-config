@@ -125,11 +125,18 @@ sshd 不在停的列表里，全程不会断。`nixos-rebuild boot` 只写引导
 ```bash
 sudo umount /efi
 sudo mount /dev/disk/by-uuid/59E1-040D /boot
-sudo nixos-rebuild boot --flake ~/.config/nix-config#tank
+sudo nixos-rebuild boot --install-bootloader --flake ~/.config/nix-config#tank
 ```
 
 必须先 remount：新配置里 `efiSysMountPoint = /boot`，不 remount 的话 systemd-boot 会装进
 ext4 根的 /boot 目录里，白装。
+
+**`--install-bootloader` 不能省。** 这是从 GRUB 切到 systemd-boot，而 NixOS 的
+systemd-boot 安装脚本只在 `NIXOS_INSTALL_BOOTLOADER=1` 时才跑 `bootctl install`；
+否则走"更新"分支，要求 ESP 里已经有 systemd-boot，必然抛
+`Could not find any previously installed systemd-boot`。
+报错信息里建议的是 `switch`，**别用 switch** —— 迁移做到一半激活新配置会换掉 fstab、
+拆掉 /data 挂载单元、重启一堆服务。`--install-bootloader` 配 `boot` 就行。
 
 ### ⚠️ `File system "/dev/sda1" has wrong type for an EFI System Partition (ESP)`
 
