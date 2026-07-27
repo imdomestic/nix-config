@@ -8,6 +8,7 @@
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAVka3wlxrH8v1fFxiTGxd8cnoAtbLyWDrb5xibOtDg4 linwhite@linwhite.top"
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII6G+ioInToTcwGDI+Tnoq5/X/GpmEucCilJH6pkZOdJ 1823215739@qq.com" # fendada
     "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAhXv+E5zF8pdF9SqxGMc21iAZYOuxPgP5rEx1DbtAsK 3526452465@qq.com" # kenneth
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIP1Di9E4SJsZnzwdarzU4ZUvCVxRddW91/nNyO+t4l4O user@b850" # kenneth b850
   ];
 in {
   environment.etc."ssh/authorized_keys.d/master" = {
