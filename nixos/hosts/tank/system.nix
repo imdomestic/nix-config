@@ -78,7 +78,7 @@ in {
     ../../modules/tuigreet
     ../../modules/keyd
     ../../modules/minecraft/wuxi.nix
-    ../../modules/dae
+    # ../../modules/dae
   ];
 
   sops.secrets."wireguard/private_key".owner = "systemd-network";
@@ -709,6 +709,11 @@ in {
       Restart = "always";
       RestartSec = 5;
     };
+  };
+
+  systemd.services.systemd-vconsole-setup = {
+    overrideStrategy = "asDropin";
+    serviceConfig.TimeoutStartSec = "15s";
   };
 
   systemd.settings.Manager.RebootWatchdogSec = 60;
