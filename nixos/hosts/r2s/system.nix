@@ -462,9 +462,9 @@ in {
   programs.zsh.enable = true;
 
   security.sudo.wheelNeedsPassword = false;
+  # Delta only: this option merges definitions, so root arrives from nixpkgs'
+  # nix module and the host's usernames from nixos/modules/nix-settings.nix.
   nix.settings.trusted-users = [
-    "root"
-    "hank"
     "nixos"
     "@wheel"
   ];

@@ -48,5 +48,11 @@
     ];
   };
 
+  # Nix here is Determinate's, so nix-darwin must not manage it. Without the
+  # module below that left nix.conf and the flake registry unmanaged entirely:
+  # `nix.enable = false` drops every `nix.settings` definition on the floor and
+  # nothing else was picking them up.
   nix.enable = false;
+
+  determinateNix.enable = true;
 }

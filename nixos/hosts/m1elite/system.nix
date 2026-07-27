@@ -3,9 +3,7 @@
   pkgs,
   config,
   ...
-}: let
-  registryPins = import ../../../lib/nixpkgs-registry.nix {inherit inputs;};
-in {
+}: {
   # Used for backwards compatibility, please read the changelog before changing.
   # $ darwin-rebuild changelog
   imports = [
@@ -89,30 +87,13 @@ in {
   determinateNix = {
     enable = true;
 
-    # `nix.enable = false` (below) takes nix-darwin's own `nix.registry` out of
-    # play, so the pin has to go through Determinate's module instead. It writes
-    # the same /etc/nix/registry.json, hence system-wide: root and sudo included.
-    # See lib/nixpkgs-registry.nix for why these are github refs.
-    registry = registryPins.registry;
-
+    # The registry pins and the nix.conf settings both arrive from
+    # nixos/modules/nix-settings.nix, which routes them here rather than to
+    # `nix.registry` / `nix.settings` once Determinate is in charge. Only what is
+    # genuinely specific to this machine belongs below.
     customSettings = {
-      # 数字越小越优先:SJTU 镜像加速 -> 官方源兜底
-      substituters = [
-        "https://mirror.sjtu.edu.cn/nix-channels/store?priority=10"
-        "https://cache.nixos.org?priority=20"
-      ];
-      extra-substituters = [
-        "https://cache.iog.io?priority=40"
-      ];
-      extra-trusted-public-keys = [
-        "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-      ];
       cores = 0;
       eval-cores = 0;
-      trusted-users = [
-        "root"
-        "hank"
-      ];
     };
   };
 }

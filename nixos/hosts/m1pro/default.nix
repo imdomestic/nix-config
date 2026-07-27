@@ -15,6 +15,10 @@ in {
     ./system.nix
   ];
 
+  externalModules = [
+    inputs.determinate.darwinModules.default
+  ];
+
   users = {
     linwhite = {
       home = {
