@@ -40,12 +40,18 @@ sudo nix-store --optimise
 df -hT /            # 看看降到多少
 ```
 
-记下 UUID（配置里已经写死这两个，别用 /dev/sdX，盘符会漂）：
+### ⚠️ 盘符会漂，一律用 UUID / by-id
+
+2026-07-26 到 07-27 之间 tank 重启了两次，**`sda` 和 `sdd` 就对调了**
+（系统盘 MZNTY256 从 sdd 变成 sda，14T WDC 从 sda 变成 sdd）。
+本文档里所有磁盘一律用 UUID 或 by-id，**任何时候看到 `/dev/sdX` 都先 `lsblk` 核对一遍**。
+Phase 2 要往系统盘写分区表，写错盘就是 14T 数据没了。
 
 ```
-bcachefs fs : 2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1
-ESP (sdd1)  : 59E1-040D
-老 ext4 根   : d237c051-0e23-4021-a313-b1af5f6bbfbc   ← 救援用，别忘
+bcachefs fs   : UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1   (Samsung 860 EVO 250G + WDC 14T)
+ESP           : UUID=59E1-040D                              (系统盘 part1)
+老 ext4 根     : UUID=d237c051-0e23-4021-a313-b1af5f6bbfbc   ← 救援用，别忘
+系统盘 (by-id) : /dev/disk/by-id/ata-SAMSUNG_MZNTY256HDHP-000HW_S3CHNB0HA00646
 ```
 
 ---
@@ -197,7 +203,8 @@ ls /data/var/lib/mysql /data/home/hank
 ```bash
 nix shell nixpkgs#efibootmgr -c sudo efibootmgr -v          # 先看老的 NixOS-efi 项还在不在
 # 不在的话补一个，它会读 sdd2 ext4 上的 /boot/grub/grub.cfg 起老系统
-nix shell nixpkgs#efibootmgr -c sudo efibootmgr -c -d /dev/sdd -p 1 \
+nix shell nixpkgs#efibootmgr -c sudo efibootmgr -c \
+  -d /dev/disk/by-id/ata-SAMSUNG_MZNTY256HDHP-000HW_S3CHNB0HA00646 -p 1 \
   -L "NixOS GRUB (rescue, ext4 root)" -l '\EFI\NixOS-efi\grubx64.efi'
 ```
 
@@ -212,7 +219,7 @@ sudo reboot
 正常的话 tailscale 会回来，`ssh tank` 直接能上：
 
 ```bash
-findmnt /                 # bcachefs, source 应该是 /dev/sdc:/dev/sda
+findmnt /                 # bcachefs, source 是两块盘 "/dev/sdX:/dev/sdY"（盘符别照字面对）
 findmnt /boot             # vfat sdd1
 bcachefs fs usage -h /
 systemctl --failed
@@ -257,27 +264,34 @@ mkdir -p /mnt && mount /dev/disk/by-uuid/d237c051-0e23-4021-a313-b1af5f6bbfbc /m
 
 ---
 
-## Phase 2 — 跑稳 1～2 周之后，回收 sdd2
+## Phase 2 — 跑稳 1～2 周之后，回收系统盘剩余空间
 
 确认 bcachefs 根没出过问题、内核也升过一次之后再做。
 
+⚠️ **这一步会往磁盘写分区表。全程用 by-id，写错盘 = 14T 数据没了。**
+动手前先核对一遍：
+
 ```bash
-# 1. 老 ext4 根不要了
-sudo wipefs -a /dev/sdd2
+SYS=/dev/disk/by-id/ata-SAMSUNG_MZNTY256HDHP-000HW_S3CHNB0HA00646
+lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT $(readlink -f $SYS)   # 必须是 238.5G 那块，part1=/boot
+```
 
-# 2. 重分区: sdd1 保持 1G ESP 不动，sdd2 → 16G swap, sdd3 → 剩余 ~220G
+```bash
+# 1. 老 ext4 根不要了（part2）
+sudo wipefs -a $SYS-part2
+
+# 2. 重分区: part1 保持 1G ESP 不动，part2 → 16G swap, part3 → 剩余 ~220G
 #    （sgdisk/partprobe 系统里没装，用 nix shell -c 一次性跑完，别开子 shell 再 sudo）
-nix shell nixpkgs#gptfdisk nixpkgs#parted -c sudo sh -c '
-  sgdisk -d 2 /dev/sdd
-  sgdisk -n 2:0:+16G -t 2:8200 -c 2:tankswap /dev/sdd
-  sgdisk -n 3:0:0    -t 3:8300 -c 3:bcachefs-ssd2 /dev/sdd
-  partprobe /dev/sdd
-'
-sudo mkswap -L tankswap /dev/sdd2
+nix shell nixpkgs#gptfdisk nixpkgs#parted -c sudo sh -c "
+  sgdisk -d 2 $SYS
+  sgdisk -n 2:0:+16G -t 2:8200 -c 2:tankswap $SYS
+  sgdisk -n 3:0:0    -t 3:8300 -c 3:bcachefs-ssd2 $SYS
+  partprobe $SYS
+"
+sudo mkswap -L tankswap $SYS-part2
 
-# 3. 剩余空间并进 ssd.fast（用 by-id，别用 sdX）
-sudo bcachefs device add --label=ssd.fast / \
-  /dev/disk/by-id/ata-SAMSUNG_MZNTY256HDHP-000HW_S3CHNB0HA00646-part3
+# 3. 剩余空间并进 ssd.fast
+sudo bcachefs device add --label=ssd.fast / $SYS-part3
 bcachefs fs usage -h /      # ssd.fast 应该从 231G 变成 ~450G
 ```
 
