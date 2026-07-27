@@ -18,9 +18,20 @@ sdb  466G      Windows          →  不动（走固件 F11/F12 进 Windows）
 
 ## Phase 0 — 开工前必须准备
 
-- [ ] **做一个 NixOS 安装 U 盘**，插在机器上。这是唯一的兜底，不要省。
+- [ ] **生成 initrd 救援 sshd 的专用 host key**（远程操作的话这是命根子，见下）
 - [ ] `/data/nas` 里的重要数据、postgres/mysql 有单独备份（迁移动了它们的父目录）
-- [ ] 物理接触 / IPMI / 显示器键盘可用（第一次重启大概率要看 initrd 输出）
+- [ ] 如果人在现场：做一个 NixOS 安装 U 盘插上。tank 没有 IPMI/BMC，
+      内核 panic 或 r8169 加载失败的时候 initrd sshd 也救不了你。
+
+### initrd 救援 sshd 的 host key（**必须在 `nixos-rebuild boot` 之前**）
+
+```bash
+sudo mkdir -p /etc/secrets/initrd
+sudo ssh-keygen -t ed25519 -N "" -f /etc/secrets/initrd/ssh_host_ed25519_key
+```
+
+不生成的话 `nixos-rebuild boot` 会在追加 initrd secrets 那步直接报错。
+**不要复用系统的 host key** —— 它会明文躺在 sdd1 那个 vfat ESP 上。
 
 ```bash
 # 瘦身，155G 里 /nix 占 126G
@@ -93,11 +104,15 @@ sudo systemctl stop \
   postgresql mysql matrix-synapse murmur ollama filebrowser \
   nginx smbd nmbd nfs-server minecraft-server-* \
   libvirtd machines.target systemd-nspawn@debian-guest
-sudo systemctl stop nix-daemon.socket nix-daemon.service
 ```
+
+**这里先别停 `nix-daemon`** —— 第 4 步的 `nixos-rebuild boot` 还要用它。
+它的 `TMPDIR = /data/builds` 会在第 5 步被搬走，所以停它的时机是第 4 步之后、第 5 步之前。
 
 （`services.postgresql.dataDir = /data/lib/postgresql`、`matrix-synapse.dataDir = /data/services/…`、
 minecraft `dataDir = /data/srv/minecraft`、ollama `home = /data/lib/ollama` —— 全都在要动的目录下面）
+
+sshd 不在停的列表里，全程不会断。`nixos-rebuild boot` 只写引导项不激活，也不会断。
 
 ### 4. 把 ESP 换到 /boot 再装引导器
 
@@ -116,6 +131,15 @@ ext4 根的 /boot 目录里，白装。
 ls /boot/EFI/            # 应该有 systemd/ BOOT/ nixos/，以及残留的 NixOS-efi/（GRUB，留着当救援）
 ls /boot/loader/entries/ # nixos-generation-*.conf
 df -h /boot              # 1G ESP，configurationLimit=5，看看占了多少
+```
+
+⚠️ 如果这一步报 `failed to create initrd secrets`，是 Phase 0 那把 initrd host key
+没生成。补上再重跑，**别带着这个错误往下走**——那样 initrd 里就没有救援 sshd。
+
+### 4b. 现在才停 nix-daemon
+
+```bash
+sudo systemctl stop nix-daemon.socket nix-daemon.service
 ```
 
 ### 5. 重排 /data 布局
@@ -184,7 +208,8 @@ sudo reboot
 ### 8. 首次启动验证
 
 最容易出问题的地方：initrd 里两块盘（sdc + sda）要都被认出来 mount.bcachefs 才能挂上。
-卡住的话看 initrd 里 `bcachefs-wait-devices@` 的输出。
+
+正常的话 tailscale 会回来，`ssh tank` 直接能上：
 
 ```bash
 findmnt /                 # bcachefs, source 应该是 /dev/sdc:/dev/sda
@@ -195,6 +220,35 @@ swapon --show             # zram
 ls /data/nas /data/lib/postgresql
 systemctl status postgresql mysql matrix-synapse smbd nfs-server
 ```
+
+### 8b. 起不来的话：从 rpi4 跳进 initrd 抢救
+
+`ssh tank` 走 tailscale，根挂不上的时候 tailscale 起不来，所以那条路是死的。
+走 LAN：rpi4 就是 192.168.20.1，能独立访问。
+
+```bash
+ssh -J rpi4 -p 2222 root@192.168.20.50
+```
+
+进去之后（这是 initrd 里的 systemd，根还没挂）：
+
+```bash
+systemctl status sysroot.mount          # 看它到底卡在哪
+journalctl -b | tail -50
+bcachefs mount UUID=2dc8bfeb-1f02-4c70-94dc-ecd07593e7f1 /sysroot   # 手动试
+lsblk -o NAME,SIZE,FSTYPE,UUID          # 两块盘都认出来了吗
+systemctl start initrd-cleanup.service  # 挂上之后让它继续启动
+```
+
+实在救不回来，就在 initrd 里挂老 ext4 根，把 `fileSystems."/"` 改回去再重装引导器：
+
+```bash
+mkdir -p /mnt && mount /dev/disk/by-uuid/d237c051-0e23-4021-a313-b1af5f6bbfbc /mnt
+# 或者直接重启后从固件菜单选 "NixOS GRUB (rescue, ext4 root)"
+```
+
+**initrd sshd 覆盖不了的情况**：内核 panic、r8169 没加载出来、systemd-boot 自己起不来。
+这些还是只能到机器跟前。
 
 ### 回滚
 
@@ -305,6 +359,15 @@ sudo bcachefs subvolume snapshot -r /data/srv/minecraft /data/snapshots/minecraf
   initrd 里有 bcachefs 内核模块和 mount.bcachefs / autoScrub.fileSystems=["/"]`。
 - `boot.initrd.systemd.enable = true` 在 26.05 里**已经是默认值**，这行是 no-op，
   留着只是防默认翻回去（tank 现在跑的就已经是 systemd initrd）。
+- initrd 救援 sshd 实测求值结果：`boot.initrd.secrets` 里确实是
+  `/etc/secrets/initrd/ssh_host_ed25519_key`（走 ESP 追加，不进 nix store）、
+  `authorizedKeys` 8 把（默认值是空的，必须显式给，见下）、
+  `systemd.network` 里 enp5s0 = 192.168.20.50/24 gw 192.168.20.1、
+  `r8169` 在 `availableKernelModules` 里、`af_packet` 在 `initrd.kernelModules` 里。
+- 注意本仓库的 SSH key 是通过 `/etc/ssh/authorized_keys.d/master` 发的，
+  `users.users.root.openssh.authorizedKeys.keys` 是**空的** —— 而那正是
+  `boot.initrd.network.ssh.authorizedKeys` 的默认值。所以 key 列表抽到了
+  `nixos/modules/ssh/keys.nix`，两边共用。
 - **没有在 Linux 上真正构建过。** 在 Mac 上跑 `just check` 没意义：`nix flake check`
   会打印 "omitted these incompatible systems: aarch64-linux, x86_64-darwin,
   x86_64-linux"，只跑 `checks.aarch64-darwin.*`，压根没碰 tank；而且它会因为 macOS

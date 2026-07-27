@@ -12,7 +12,8 @@
     (modulesPath + "/installer/scan/not-detected.nix")
   ];
 
-  boot.initrd.availableKernelModules = ["ahci" "xhci_pci" "ehci_pci" "usbhid" "uas" "sd_mod"];
+  # r8169 = enp5s0，initrd 里的救援 sshd 要用它上网，别删。
+  boot.initrd.availableKernelModules = ["ahci" "xhci_pci" "ehci_pci" "usbhid" "uas" "sd_mod" "r8169"];
   boot.initrd.kernelModules = [];
   boot.kernelModules = ["kvm-intel"];
   boot.extraModulePackages = [];
