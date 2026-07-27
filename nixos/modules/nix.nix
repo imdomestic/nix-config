@@ -1,10 +1,8 @@
-{inputs, ...}: let
-  registryPins = import ../../lib/nixpkgs-registry.nix {inherit inputs;};
-in {
-  # The options below come from nixpkgs' config/nix-flakes.nix,
-  # config/nix-channel.nix and config/nix-remote-build.nix, none of which
-  # system-manager imports — hence the split. system-manager hosts take
-  # nix-settings.nix plus nix-registry-etc.nix instead of this module.
+{inputs, ...}: {
+  # The options below come from nixpkgs' config/nix-channel.nix and
+  # config/nix-remote-build.nix, neither of which system-manager imports — hence
+  # the split. system-manager hosts take nix-settings.nix on its own, which
+  # carries the nix.conf settings and the registry pins.
   imports = [./nix-settings.nix];
 
   nixpkgs = {
@@ -29,9 +27,6 @@ in {
   # };
 
   nix = {
-    # See lib/nixpkgs-registry.nix for why these are github refs and not the
-    # `flake = inputs.nixpkgs` shorthand.
-    registry = registryPins.registry;
     nixPath = [
       "nixpkgs=${inputs.nixpkgs}"
       "nixpkgs-unstable=${inputs.nixpkgs-unstable}"

@@ -157,10 +157,9 @@ in {
   ];
 
   security.sudo.wheelNeedsPassword = false;
-  nix.settings.trusted-users = [
-    "root"
-    "@wheel"
-  ];
+  # Delta only: this option merges definitions, so root arrives from nixpkgs'
+  # nix module and the host's usernames from nixos/modules/nix-settings.nix.
+  nix.settings.trusted-users = ["@wheel"];
 
   users.users.nix = {
     isNormalUser = true;

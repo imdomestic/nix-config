@@ -10,7 +10,6 @@ in {
     enable = true;
     modules = [
       ../../modules/nix-settings.nix
-      ../../modules/nix-registry-etc.nix
       ./system-manager.nix
     ];
   };
