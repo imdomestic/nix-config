@@ -9,7 +9,8 @@ in {
   systemManager = {
     enable = true;
     modules = [
-      ../../modules/nix.nix
+      ../../modules/nix-settings.nix
+      ../../modules/nix-registry-etc.nix
       ./system-manager.nix
     ];
   };

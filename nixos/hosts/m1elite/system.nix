@@ -3,7 +3,9 @@
   pkgs,
   config,
   ...
-}: {
+}: let
+  registryPins = import ../../../lib/nixpkgs-registry.nix {inherit inputs;};
+in {
   # Used for backwards compatibility, please read the changelog before changing.
   # $ darwin-rebuild changelog
   imports = [
@@ -86,6 +88,13 @@
 
   determinateNix = {
     enable = true;
+
+    # `nix.enable = false` (below) takes nix-darwin's own `nix.registry` out of
+    # play, so the pin has to go through Determinate's module instead. It writes
+    # the same /etc/nix/registry.json, hence system-wide: root and sudo included.
+    # See lib/nixpkgs-registry.nix for why these are github refs.
+    registry = registryPins.registry;
+
     customSettings = {
       # 数字越小越优先:SJTU 镜像加速 -> 官方源兜底
       substituters = [
@@ -106,23 +115,4 @@
       ];
     };
   };
-
-  # environment.etc."nix/registry.json".text = builtins.toJSON {
-  #   version = 2;
-  #   flakes = [
-  #     {
-  #       from = {
-  #         type = "indirect";
-  #         id = "nixpkgs";
-  #       };
-  #       to = {
-  #         type = "path";
-  #         path = inputs.nixpkgs.outPath;
-  #         lastModified = inputs.nixpkgs.lastModified;
-  #         narHash = inputs.nixpkgs.narHash;
-  #         rev = inputs.nixpkgs.rev;
-  #       };
-  #     }
-  #   ];
-  # };
 }
