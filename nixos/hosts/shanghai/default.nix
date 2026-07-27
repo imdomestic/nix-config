@@ -58,5 +58,16 @@ in {
         ];
       };
     };
+    kenneth = {
+      home = {
+        profiles = with homeProfiles; [
+          core
+          base
+        ];
+        modules = [
+          userModules.kenneth.module
+        ];
+      };
+    };
   };
 }
