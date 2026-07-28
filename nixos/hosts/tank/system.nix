@@ -77,7 +77,7 @@ in {
     # ../../modules/mihomo
     ../../modules/tuigreet
     ../../modules/keyd
-    ../../modules/minecraft/wuxi.nix
+    # ../../modules/minecraft/wuxi.nix
     # ../../modules/dae
   ];
 
