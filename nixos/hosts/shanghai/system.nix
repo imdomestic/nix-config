@@ -241,7 +241,9 @@ in {
         reverse.portals = [
           {
             tag = "portal-sh";
-            domain = "reverse-shanghai.hank.internal";
+            # 这台的目录名是 shanghai,但隧道两端一直用短名 sh：r5sjp 的
+            # bridge-sh 注册的是 reverse-sh.hank.internal,两边必须一字不差。
+            domain = "reverse-sh.hank.internal";
           }
         ];
 
