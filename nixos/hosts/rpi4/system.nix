@@ -281,16 +281,30 @@ in {
     content = let
       s = config.sops.placeholder;
 
-      reality = privateKey: shortId: {
+      # 偷谁。老入口继续用 apple 保活,新入口换 aliyun:
+      #   www.microsoft.com 的证书记录实测 8256B,超过 REALITY 硬编码的 8192
+      #     上限(Xray #6356,v26.7.28 仍未修),握手会挂且报错极具误导性;
+      #   www.apple.com 能用(3360B),但它是全网最被滥用的 SNI,xray 为此告警;
+      #   www.aliyun.com 2845B,从 h610 实测解析到江苏电信段,dest 拨号不出省。
+      apple = {
+        dest = "www.apple.com:443";
+        serverNames = ["www.apple.com" "apple.com"];
+      };
+      aliyun = {
+        dest = "www.aliyun.com:443";
+        serverNames = ["www.aliyun.com"];
+      };
+
+      reality = target: privateKey: shortId: {
         network = "tcp";
         security = "reality";
-        realitySettings = {
-          show = false;
-          dest = "www.apple.com:443";
-          serverNames = ["www.apple.com" "apple.com"];
-          inherit privateKey;
-          shortIds = [shortId];
-        };
+        realitySettings =
+          target
+          // {
+            show = false;
+            inherit privateKey;
+            shortIds = [shortId];
+          };
       };
 
       vision = id: {
@@ -321,20 +335,20 @@ in {
           # 老入口:私钥和 UUID 都已随公开仓库泄露,只为过渡期保活,Step 5 删。
           (vlessIn "interconn" 2443
             [(vision s."xray/legacy_uuid")]
-            (reality s."xray/legacy_private_key" s."xray/legacy_short_id"))
+            (reality apple s."xray/legacy_private_key" s."xray/legacy_short_id"))
           (vlessIn "client-in" 54321
             [(vision s."xray/legacy_uuid")]
-            (reality s."xray/legacy_private_key" s."xray/legacy_short_id"))
+            (reality apple s."xray/legacy_private_key" s."xray/legacy_short_id"))
 
           # r5sjp 的 bridge 拨进来的新落点(Step 4 切换)。
           (vlessIn "interconn2" 2444
             [(vision s."xray/interconn2_uuid")]
-            (reality s."xray/reality_private_key" s."xray/interconn2_short_id"))
+            (reality aliyun s."xray/reality_private_key" s."xray/interconn2_short_id"))
 
           # 自己用的新入口,凭据与老的完全无关。
           (vlessIn "client-in2" 54322
             [(vision s."xray/client_in2_uuid")]
-            (reality s."xray/reality_private_key" s."xray/client_in2_short_id"))
+            (reality aliyun s."xray/reality_private_key" s."xray/client_in2_short_id"))
         ];
 
         outbounds = [

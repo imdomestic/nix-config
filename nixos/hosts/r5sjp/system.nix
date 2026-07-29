@@ -342,7 +342,12 @@
       s = config.sops.placeholder;
 
       # 每个 portal 一条 outbound:r5sjp 主动拨过去,把反向隧道建起来。
-      interconn = tag: address: port: uuid: publicKey: shortId: {
+      # 金丝雀:先只把 rpi4 换到 aliyun,其余四台维持 apple。dest 和客户端 sni
+      # 必须同时变,没有只加不改的路径,所以逐台切、每切一台验一次。
+      apple = "www.apple.com";
+      aliyun = "www.aliyun.com";
+
+      interconn = tag: address: port: serverName: uuid: publicKey: shortId: {
         inherit tag;
         protocol = "vless";
         settings.vnext = [
@@ -361,15 +366,15 @@
           network = "tcp";
           security = "reality";
           realitySettings = {
-            serverName = "www.apple.com";
+            inherit serverName;
             fingerprint = "chrome";
             inherit publicKey shortId;
           };
         };
       };
 
-      peer = host: address: port:
-        interconn "interconn-${host}" address port
+      peer = host: address: port: serverName:
+        interconn "interconn-${host}" address port serverName
         s."xray/peers/${host}/uuid"
         s."xray/peers/${host}/public_key"
         s."xray/peers/${host}/short_id";
@@ -387,12 +392,12 @@
           hosts;
 
         outbounds = [
-          (peer "h610" "h610.imdomestic.com" 1444)
-          (peer "rpi4" "rpi4.imdomestic.com" 2444)
-          (peer "sh" "sh.imdomestic.com" 3444)
-          (peer "r5s" "r5s.imdomestic.com" 2444)
-          (peer "r6s" "r6s.imdomestic.com" 2444)
-          (interconn "interconn-r2s" "r2s.imdomestic.com" 2443
+          (peer "h610" "h610.imdomestic.com" 1444 apple)
+          (peer "rpi4" "rpi4.imdomestic.com" 2444 aliyun)
+          (peer "sh" "sh.imdomestic.com" 3444 apple)
+          (peer "r5s" "r5s.imdomestic.com" 2444 apple)
+          (peer "r6s" "r6s.imdomestic.com" 2444 apple)
+          (interconn "interconn-r2s" "r2s.imdomestic.com" 2443 apple
             s."xray/legacy/uuid"
             s."xray/legacy/public_key"
             s."xray/legacy/short_id")
