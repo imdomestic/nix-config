@@ -441,6 +441,10 @@ in {
       test = {
         quotaGB = 100;
         expires = "2026-08-31";
+
+      bordersaki = {
+        quotaGB = 200;
+        expires = "2026-09-31";
       };
     };
   };
