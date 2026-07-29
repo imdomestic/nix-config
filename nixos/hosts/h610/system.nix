@@ -314,8 +314,6 @@ in {
   # 订阅服务要把这两个值写进给客户端的配置里,所以 airport 用户得读得到。
   sops.secrets."xray/friends_short_id".owner = "airport";
   sops.secrets."xray/reality_public_key".owner = "airport";
-  sops.secrets."xray/legacy_private_key" = {};
-  sops.secrets."xray/legacy_uuid" = {};
 
   services.xray.enable = true;
   services.xray.settingsFile = config.sops.templates."xray-config.json".path;
@@ -341,18 +339,6 @@ in {
       };
 
       # 老密钥对。私钥和 UUID 都已随公开仓库泄露,只为过渡期保活,Step 5 删。
-      legacyReality = {
-        network = "tcp";
-        security = "reality";
-        realitySettings = {
-          show = false;
-          dest = "www.apple.com:443";
-          serverNames = ["www.apple.com" "apple.com"];
-          privateKey = s."xray/legacy_private_key";
-          shortIds = ["16"];
-        };
-      };
-
       vision = id: {
         inherit id;
         flow = "xtls-rprx-vision";
@@ -398,10 +384,6 @@ in {
         ];
 
         inbounds = [
-          # 老入口:泄露的凭据,过渡期保活。
-          (vlessIn "interconn" 1443 [(vision s."xray/legacy_uuid")] legacyReality)
-          (vlessIn "client-in" 54321 [(vision s."xray/legacy_uuid")] legacyReality)
-
           # r5sjp 的 bridge 拨进来的新落点(Step 4 切换)。
           (vlessIn "interconn2" 1444
             [(vision s."xray/interconn2_uuid")]
@@ -428,7 +410,7 @@ in {
         routing.rules = [
           {
             type = "field";
-            inboundTag = ["interconn" "client-in" "interconn2" "client-in2" "friends-in"];
+            inboundTag = ["interconn2" "client-in2" "friends-in"];
             outboundTag = "portal-h610";
           }
         ];
