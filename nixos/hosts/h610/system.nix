@@ -240,6 +240,12 @@ in {
     ];
   };
 
+  security.acme.certs."max.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
+  };
+
   # ddns-go cloudflare token + web password rendered from sops.
   sops.secrets."ddns/cloudflare_token" = {};
   sops.secrets."ddns/web_password" = {};
@@ -259,6 +265,7 @@ in {
                   - tailscale:imdomestic.com
                   - matrix:imdomestic.com
                   - rtc:imdomestic.com
+                  - max:imdomestic.com
             ipv6:
               enable: true
               gettype: netInterface
@@ -441,6 +448,7 @@ in {
       test = {
         quotaGB = 100;
         expires = "2026-08-31";
+      };
 
       bordersaki = {
         quotaGB = 200;
@@ -503,10 +511,22 @@ in {
   # max QQ bot (module from the max flake). The yaml is full of LLM API
   # keys, so it lives on disk under /var/lib/max-bot rather than in
   # `settings` (world-readable store).
+  # 管理面板的开关走环境变量而不是 services.max.settings:这台机器用的是
+  # 手工管理的 configFile,settings 会被整个忽略(module 自己会 warn)。
+  # env 在 opt-env-conf 里压过文件,所以这两行无论 max.yaml 怎么写都生效。
+  #
+  # 只绑回环:公网入口是 nginx 那个 max.imdomestic.com vhost,面板自己
+  # 不该直接对外。MAX_ADMIN_TOKEN 放在 max-bot.env 里(不要写进 nix,
+  # 会进 world-readable 的 nix store)。
+  systemd.services.max.environment = {
+    MAX_ADMIN_HOST = "127.0.0.1";
+    MAX_ADMIN_PORT = "7700";
+  };
+
   services.max = {
     enable = true;
     configFile = "/var/lib/max-bot/max.yaml";
-    environmentFile = "/var/lib/max-bot/max-bot.env"; # MAX_ACCESS_TOKEN
+    environmentFile = "/var/lib/max-bot/max-bot.env"; # MAX_ACCESS_TOKEN, MAX_ADMIN_TOKEN
     napcat = {
       enable = true;
       qq = "2107570581";
@@ -690,6 +710,10 @@ in {
     # 别让人拿这个公网端口慢慢撞。
     appendHttpConfig = ''
       limit_req_zone $binary_remote_addr zone=airportsub:1m rate=10r/m;
+      # max 管理面板的唯一凭据是一个 bearer token,而它挂在公网上,
+      # 所以给 /api/ 一个桶:正常用起来一次翻页也就几个请求,
+      # 但撞 token 需要的量级远在这之上。
+      limit_req_zone $binary_remote_addr zone=maxapi:1m rate=60r/m;
     '';
   };
 
@@ -723,6 +747,56 @@ in {
     };
     locations."/" = {
       extraConfig = "return 404;";
+    };
+  };
+
+  # max 管理面板。和别的一样挂 8443(电信封了 443),SNI 分流。
+  #
+  # 面板本身跑在 bot 进程里,只绑 127.0.0.1,所以进出这台机器的唯一
+  # 通道就是这个 vhost。它自己不做 TLS、没有用户体系,认证只有一个
+  # bearer token —— token 在 /var/lib/max-bot/max-bot.env 里设
+  # MAX_ADMIN_TOKEN,别写进 max.yaml。
+  #
+  # 静态资源(HTML/JS/CSS)是不需要 token 的:<script> 标签带不了
+  # Authorization 头。它们不含任何数据,所有状态都要过 /api/,而
+  # /api/ 每一条都验 token。
+  services.nginx.virtualHosts."max.imdomestic.com" = {
+    serverName = "max.imdomestic.com";
+    useACMEHost = "max.imdomestic.com";
+    forceSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8443;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8443;
+        ssl = true;
+      }
+    ];
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:7700";
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
+    };
+    # 数据面单独限速。burst 给到 20 是因为切一次标签页会并发拉
+    # overview + 列表 + 两张图,一次操作打出小几个请求很正常。
+    locations."/api/" = {
+      proxyPass = "http://127.0.0.1:7700";
+      extraConfig = ''
+        limit_req zone=maxapi burst=20 nodelay;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
     };
   };
 
