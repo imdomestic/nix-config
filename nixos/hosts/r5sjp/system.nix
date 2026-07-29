@@ -380,7 +380,7 @@
       hosts = ["h610" "rpi4" "sh" "r5s" "r6s"];
     in
       builtins.toJSON {
-        log.loglevel = "warning";
+        log.loglevel = "debug";
 
         reverse.bridges =
           map (h: {
