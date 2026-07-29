@@ -22,9 +22,18 @@ in {
   sops.secrets =
     {
       "wireguard/private_key".owner = "systemd-network";
-      "xray/vless_uuid" = {};
-      "xray/interconn_private_key" = {};
-      "xray/client_private_key" = {};
+      # 新的一套凭据。老的三个键(vless_uuid / interconn_private_key /
+      # client_private_key)已随凭据轮换从 sops 里换掉,见下面的 legacy_*。
+      "xray/reality_private_key" = {};
+      "xray/interconn2_uuid" = {};
+      "xray/interconn2_short_id" = {};
+      "xray/client_in2_uuid" = {};
+      "xray/client_in2_short_id" = {};
+      # 老入口的凭据,已泄露,过渡期保活,Step 5 连同 inbound 一起删。
+      "xray/legacy_uuid" = {};
+      "xray/legacy_short_id" = {};
+      "xray/legacy_interconn_private_key" = {};
+      "xray/legacy_client_private_key" = {};
       "k3s/token" = {};
     }
     // lib.listToAttrs (lib.imap0 (idx: _: {
@@ -187,99 +196,91 @@ in {
     ];
   };
 
+  # Xray 的凭据全部走 sops。内联到 `settings` 会把 UUID 和 Reality 私钥同时写进
+  # 这个公开仓库和 world-readable 的 nix store,所以整份 config 改由
+  # sops.templates 渲染,再用 settingsFile 交给 xray。xray.service 是
+  # DynamicUser + LoadCredential:systemd 先以 root 读取渲染结果,再投给动态用户,
+  # 所以 root-only 的 /run/secrets/rendered 够用。
   services.xray.enable = true;
-  # Reality private keys and the vless UUID live in sops
-  # (secrets/hosts/shanghai.yaml); the config is rendered at activation.
   services.xray.settingsFile = config.sops.templates."xray-config.json".path;
+
   sops.templates."xray-config.json" = {
     restartUnits = ["xray.service"];
-    content = builtins.toJSON {
-      log.loglevel = "warning";
+    content = let
+      s = config.sops.placeholder;
 
-      reverse = {
-        portals = [
+      reality = privateKey: shortId: {
+        network = "tcp";
+        security = "reality";
+        realitySettings = {
+          show = false;
+          dest = "www.apple.com:443";
+          serverNames = ["www.apple.com" "apple.com"];
+          inherit privateKey;
+          shortIds = [shortId];
+        };
+      };
+
+      vision = id: {
+        inherit id;
+        flow = "xtls-rprx-vision";
+      };
+
+      vlessIn = tag: port: clients: streamSettings: {
+        inherit tag port streamSettings;
+        protocol = "vless";
+        settings = {
+          inherit clients;
+          decryption = "none";
+        };
+      };
+    in
+      builtins.toJSON {
+        log.loglevel = "warning";
+
+        reverse.portals = [
           {
             tag = "portal-sh";
-            domain = "reverse-sh.hank.internal";
+            domain = "reverse-shanghai.hank.internal";
+          }
+        ];
+
+        inbounds = [
+          # 老入口:私钥和 UUID 都已随公开仓库泄露,只为过渡期保活,Step 5 删。
+          (vlessIn "interconn" 3443
+            [(vision s."xray/legacy_uuid")]
+            (reality s."xray/legacy_interconn_private_key" s."xray/legacy_short_id"))
+          (vlessIn "client-in" 54321
+            [(vision s."xray/legacy_uuid")]
+            (reality s."xray/legacy_client_private_key" s."xray/legacy_short_id"))
+
+          # r5sjp 的 bridge 拨进来的新落点(Step 4 切换)。
+          (vlessIn "interconn2" 3444
+            [(vision s."xray/interconn2_uuid")]
+            (reality s."xray/reality_private_key" s."xray/interconn2_short_id"))
+
+          # 自己用的新入口,凭据与老的完全无关。
+          (vlessIn "client-in2" 54322
+            [(vision s."xray/client_in2_uuid")]
+            (reality s."xray/reality_private_key" s."xray/client_in2_short_id"))
+        ];
+
+        outbounds = [
+          {
+            tag = "direct";
+            protocol = "freedom";
+          }
+        ];
+
+        # 四个入口一律丢进反向隧道,从 r5sjp 的日本出口出去。
+        routing.rules = [
+          {
+            type = "field";
+            inboundTag = ["interconn" "client-in" "interconn2" "client-in2"];
+            outboundTag = "portal-sh";
           }
         ];
       };
-
-      inbounds = [
-        {
-          tag = "interconn";
-          port = 3443;
-          protocol = "vless";
-          settings = {
-            clients = [
-              {
-                id = config.sops.placeholder."xray/vless_uuid";
-                flow = "xtls-rprx-vision";
-              }
-            ];
-            decryption = "none";
-          };
-          streamSettings = {
-            network = "tcp";
-            security = "reality";
-            realitySettings = {
-              show = false;
-              dest = "www.apple.com:443";
-              serverNames = ["www.apple.com" "apple.com"];
-              privateKey = config.sops.placeholder."xray/interconn_private_key";
-              shortIds = ["16"];
-            };
-          };
-        }
-
-        {
-          tag = "client-in";
-          port = 54321;
-          protocol = "vless";
-          settings = {
-            clients = [
-              {
-                id = config.sops.placeholder."xray/vless_uuid";
-                flow = "xtls-rprx-vision";
-              }
-            ];
-            decryption = "none";
-          };
-          streamSettings = {
-            network = "tcp";
-            security = "reality";
-            realitySettings = {
-              show = false;
-              dest = "www.apple.com:443";
-              serverNames = ["www.apple.com" "apple.com"];
-              privateKey = config.sops.placeholder."xray/client_private_key";
-              shortIds = ["16"];
-            };
-          };
-        }
-      ];
-
-      outbounds = [
-        {
-          tag = "direct";
-          protocol = "freedom";
-        }
-      ];
-
-      routing.rules = [
-        {
-          type = "field";
-          inboundTag = ["interconn"];
-          outboundTag = "portal-sh";
-        }
-
-        {
-          type = "field";
-          inboundTag = ["client-in"];
-          outboundTag = "portal-sh";
-        }
-      ];
-    };
   };
 
   security.sudo.wheelNeedsPassword = false;
