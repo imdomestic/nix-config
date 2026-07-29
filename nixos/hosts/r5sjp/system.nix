@@ -309,270 +309,117 @@
     clientMaxBodySize = "50m";
   };
 
+  # Xray 的凭据全部走 sops。内联到 `settings` 会把每个 portal 的 UUID 写进这个
+  # 公开仓库和 world-readable 的 nix store,所以整份 config 改由 sops.templates
+  # 渲染,再用 settingsFile 交给 xray。
+  sops.secrets."xray/peers/h610/uuid" = {};
+  sops.secrets."xray/peers/h610/public_key" = {};
+  sops.secrets."xray/peers/h610/short_id" = {};
+  sops.secrets."xray/peers/rpi4/uuid" = {};
+  sops.secrets."xray/peers/rpi4/public_key" = {};
+  sops.secrets."xray/peers/rpi4/short_id" = {};
+  sops.secrets."xray/peers/sh/uuid" = {};
+  sops.secrets."xray/peers/sh/public_key" = {};
+  sops.secrets."xray/peers/sh/short_id" = {};
+  sops.secrets."xray/peers/r5s/uuid" = {};
+  sops.secrets."xray/peers/r5s/public_key" = {};
+  sops.secrets."xray/peers/r5s/short_id" = {};
+  sops.secrets."xray/peers/r6s/uuid" = {};
+  sops.secrets."xray/peers/r6s/public_key" = {};
+  sops.secrets."xray/peers/r6s/short_id" = {};
+  # r2s 离线,仍停在老端口和已泄露的凭据上。它恢复并照其余几台处理之后,
+  # 这三个键和下面那条 interconn-r2s 一起删。
+  sops.secrets."xray/legacy/uuid" = {};
+  sops.secrets."xray/legacy/public_key" = {};
+  sops.secrets."xray/legacy/short_id" = {};
+
   services.xray.enable = true;
-  services.xray.settings = {
-    log.loglevel = "warning";
+  services.xray.settingsFile = config.sops.templates."xray-config.json".path;
 
-    reverse = {
-      bridges = [
-        {
-          tag = "bridge-h610";
-          domain = "reverse-h610.hank.internal";
-        }
-        {
-          tag = "bridge-rpi4";
-          domain = "reverse-rpi4.hank.internal";
-        }
-        {
-          tag = "bridge-sh";
-          domain = "reverse-sh.hank.internal";
-        }
-        {
-          tag = "bridge-r5s";
-          domain = "reverse-r5s.hank.internal";
-        }
-        {
-          tag = "bridge-r6s";
-          domain = "reverse-r6s.hank.internal";
-        }
-        {
-          tag = "bridge-r2s";
-          domain = "reverse-r2s.hank.internal";
-        }
-      ];
-    };
+  sops.templates."xray-config.json" = {
+    restartUnits = ["xray.service"];
+    content = let
+      s = config.sops.placeholder;
 
-    outbounds = [
-      {
-        tag = "interconn-h610";
+      # 每个 portal 一条 outbound:r5sjp 主动拨过去,把反向隧道建起来。
+      interconn = tag: address: port: uuid: publicKey: shortId: {
+        inherit tag;
         protocol = "vless";
-        settings = {
-          vnext = [
-            {
-              address = "h610.imdomestic.com";
-              port = 1443;
-              users = [
-                {
-                  id = "2cac4128-2151-4a28-8102-ea1806f9c12b";
-                  flow = "xtls-rprx-vision";
-                  encryption = "none";
-                }
-              ];
-            }
-          ];
-        };
+        settings.vnext = [
+          {
+            inherit address port;
+            users = [
+              {
+                id = uuid;
+                flow = "xtls-rprx-vision";
+                encryption = "none";
+              }
+            ];
+          }
+        ];
         streamSettings = {
           network = "tcp";
           security = "reality";
           realitySettings = {
             serverName = "www.apple.com";
-            publicKey = "2oMfAnRmOiZN3ra85D05Zhr8ehI8hRSRqzpJ0oJUcgM";
             fingerprint = "chrome";
-            shortId = "16";
+            inherit publicKey shortId;
           };
         };
-      }
+      };
 
-      {
-        tag = "interconn-rpi4";
-        protocol = "vless";
-        settings = {
-          vnext = [
+      peer = host: address: port:
+        interconn "interconn-${host}" address port
+        s."xray/peers/${host}/uuid"
+        s."xray/peers/${host}/public_key"
+        s."xray/peers/${host}/short_id";
+
+      hosts = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
+    in
+      builtins.toJSON {
+        log.loglevel = "warning";
+
+        reverse.bridges =
+          map (h: {
+            tag = "bridge-${h}";
+            domain = "reverse-${h}.hank.internal";
+          })
+          hosts;
+
+        outbounds = [
+          (peer "h610" "h610.imdomestic.com" 1444)
+          (peer "rpi4" "rpi4.imdomestic.com" 2444)
+          (peer "sh" "sh.imdomestic.com" 3444)
+          (peer "r5s" "r5s.imdomestic.com" 2444)
+          (peer "r6s" "r6s.imdomestic.com" 2444)
+          (interconn "interconn-r2s" "r2s.imdomestic.com" 2443
+            s."xray/legacy/uuid"
+            s."xray/legacy/public_key"
+            s."xray/legacy/short_id")
+          {
+            tag = "out";
+            protocol = "freedom";
+          }
+        ];
+
+        routing.rules =
+          # 每条隧道的控制信道:发往该 portal 内部域名的流量回到它自己那条 outbound
+          map (h: {
+            type = "field";
+            inboundTag = ["bridge-${h}"];
+            domain = ["full:reverse-${h}.hank.internal"];
+            outboundTag = "interconn-${h}";
+          })
+          hosts
+          ++ [
+            # 其余经隧道进来的流量一律从本机直出 —— 这就是日本出口
             {
-              address = "rpi4.imdomestic.com";
-              port = 2443;
-              users = [
-                {
-                  id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
-                  flow = "xtls-rprx-vision";
-                  encryption = "none";
-                }
-              ];
+              type = "field";
+              inboundTag = map (h: "bridge-${h}") hosts;
+              outboundTag = "out";
             }
           ];
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            serverName = "www.apple.com";
-            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
-            fingerprint = "chrome";
-            shortId = "17";
-          };
-        };
-      }
-
-      {
-        tag = "interconn-r5s";
-        protocol = "vless";
-        settings = {
-          vnext = [
-            {
-              address = "r5s.imdomestic.com";
-              port = 2443;
-              users = [
-                {
-                  id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
-                  flow = "xtls-rprx-vision";
-                  encryption = "none";
-                }
-              ];
-            }
-          ];
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            serverName = "www.apple.com";
-            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
-            fingerprint = "chrome";
-            shortId = "17";
-          };
-        };
-      }
-      {
-        tag = "interconn-r6s";
-        protocol = "vless";
-        settings = {
-          vnext = [
-            {
-              address = "r6s.imdomestic.com";
-              port = 2443;
-              users = [
-                {
-                  id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
-                  flow = "xtls-rprx-vision";
-                  encryption = "none";
-                }
-              ];
-            }
-          ];
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            serverName = "www.apple.com";
-            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
-            fingerprint = "chrome";
-            shortId = "17";
-          };
-        };
-      }
-      {
-        tag = "interconn-r2s";
-        protocol = "vless";
-        settings = {
-          vnext = [
-            {
-              address = "r2s.imdomestic.com";
-              port = 2443;
-              users = [
-                {
-                  id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
-                  flow = "xtls-rprx-vision";
-                  encryption = "none";
-                }
-              ];
-            }
-          ];
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            serverName = "www.apple.com";
-            publicKey = "pfPKRWuFm6pJ6Lb7y6n5HW_YTNArhbtliYbQ3kSjkXo";
-            fingerprint = "chrome";
-            shortId = "17";
-          };
-        };
-      }
-      {
-        tag = "interconn-sh";
-        protocol = "vless";
-        settings = {
-          vnext = [
-            {
-              address = "sh.imdomestic.com";
-              port = 3443;
-              users = [
-                {
-                  id = "2cac4128-2151-4a28-8102-ea1806f9c12b";
-                  flow = "xtls-rprx-vision";
-                  encryption = "none";
-                }
-              ];
-            }
-          ];
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            serverName = "www.apple.com";
-            publicKey = "GWoWYGsFBtkpzl_PqTSPrU2sfBlT36RNZMPSW20liww";
-            fingerprint = "chrome";
-            shortId = "16";
-          };
-        };
-      }
-
-      {
-        tag = "out";
-        protocol = "freedom";
-      }
-      # 如果你想转发到本机 Web 服务：把上面 out 改成
-      # { tag="out"; protocol="freedom"; settings.redirect="127.0.0.1:80"; }
-    ];
-
-    routing.rules = [
-      {
-        type = "field";
-        inboundTag = ["bridge-h610"];
-        domain = ["full:reverse-h610.hank.internal"];
-        outboundTag = "interconn-h610";
-      }
-      {
-        type = "field";
-        inboundTag = ["bridge-rpi4"];
-        domain = ["full:reverse-rpi4.hank.internal"];
-        outboundTag = "interconn-rpi4";
-      }
-      {
-        type = "field";
-        inboundTag = ["bridge-sh"];
-        domain = ["full:reverse-sh.hank.internal"];
-        outboundTag = "interconn-sh";
-      }
-      {
-        type = "field";
-        inboundTag = ["bridge-r5s"];
-        domain = ["full:reverse-r5s.hank.internal"];
-        outboundTag = "interconn-r5s";
-      }
-      {
-        type = "field";
-        inboundTag = ["bridge-r6s"];
-        domain = ["full:reverse-r6s.hank.internal"];
-        outboundTag = "interconn-r6s";
-      }
-      {
-        type = "field";
-        inboundTag = ["bridge-r2s"];
-        domain = ["full:reverse-r2s.hank.internal"];
-        outboundTag = "interconn-r2s";
-      }
-
-      # portal 转发来的“真实流量”（同样从 inboundTag=bridge 进入，但域名不是上面那个）=> 去 out
-      {
-        type = "field";
-        inboundTag = ["bridge-h610" "bridge-rpi4" "bridge-sh" "bridge-r5s" "bridge-r6s" "bridge-r2s"];
-        outboundTag = "out";
-      }
-    ];
+      };
   };
 
   # ddns-go cloudflare token + web password rendered from sops.
