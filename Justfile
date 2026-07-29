@@ -37,6 +37,13 @@ check-trace:
 check-sops *hosts:
   ./scripts/check-sops.sh {{hosts}}
 
+# Cross-check the xray reverse-proxy domains: r5sjp is the bridge side, the
+# portals are everyone else, and the reverse-*.hank.internal names have to match
+# exactly. A mismatch is silent — both ends start fine, ports listen, Reality
+# falls back normally — traffic just dies at the portal.
+check-tunnels:
+  ./scripts/check-tunnels.sh
+
 up:
   nix flake update
 
