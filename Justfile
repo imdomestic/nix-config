@@ -44,6 +44,15 @@ check-sops *hosts:
 check-tunnels:
   ./scripts/check-tunnels.sh
 
+# Hand every host's generated xray config to `xray -test`. Neither `nix eval`
+# nor check-tunnels catches semantic breakage — an empty realitySettings block
+# evaluates fine and renders valid JSON, then xray refuses to start with
+# `empty "password"` and the node is down. sops placeholders are replaced with
+# structurally valid dummies, so no decryption key is needed.
+# usage: just check-xray [host...]
+check-xray *hosts:
+  ./scripts/check-xray.sh {{hosts}}
+
 up:
   nix flake update
 
