@@ -29,6 +29,14 @@ check:
 check-trace:
   nix --show-trace flake check --option substituters '{{substituters}}'
 
+# Verify every sops.secrets key a host declares actually exists in its
+# secrets/hosts/<host>.yaml. Without this, a mismatch only surfaces during
+# activation — sops-install-secrets fails after services have already been
+# restarted. Needs an age key that can decrypt the files.
+# usage: just check-sops [host...]   (no args = every host with a sops file)
+check-sops *hosts:
+  ./scripts/check-sops.sh {{hosts}}
+
 up:
   nix flake update
 
