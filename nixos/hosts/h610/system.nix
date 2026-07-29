@@ -456,6 +456,10 @@ in {
       #   quotaGB = 100;
       #   expires = "2026-12-31";
       # };
+      test = {
+        quotaGB = 100;
+        expires = "2026-08-31";
+      };
     };
   };
 
