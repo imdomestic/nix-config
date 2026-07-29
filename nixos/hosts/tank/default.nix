@@ -59,6 +59,7 @@ in {
         ];
         modules = [
           userModules.linwhite.module
+          userModules.linwhite.dev
         ];
       };
     };
