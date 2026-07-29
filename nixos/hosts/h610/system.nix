@@ -452,7 +452,7 @@ in {
 
       bordersaki = {
         quotaGB = 200;
-        expires = "2026-09-31";
+        expires = "2026-09-30";
       };
     };
   };
