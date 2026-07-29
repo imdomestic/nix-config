@@ -326,13 +326,15 @@ in {
       s = config.sops.placeholder;
 
       # 三个新入口共用 h610 这台的新密钥对,各自一个 shortId。
+      # 新入口换 aliyun:www.apple.com 是全网最被滥用的 SNI(xray 为此告警),
+      # 而 www.aliyun.com 证书记录 2845B、解析到江苏电信段、dest 拨号不出省。
       reality = shortId: {
         network = "tcp";
         security = "reality";
         realitySettings = {
           show = false;
-          dest = "www.apple.com:443";
-          serverNames = ["www.apple.com" "apple.com"];
+          dest = "www.aliyun.com:443";
+          serverNames = ["www.aliyun.com"];
           privateKey = s."xray/reality_private_key";
           shortIds = [shortId];
         };

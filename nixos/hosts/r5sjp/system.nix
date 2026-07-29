@@ -327,11 +327,6 @@
   sops.secrets."xray/peers/r6s/uuid" = {};
   sops.secrets."xray/peers/r6s/public_key" = {};
   sops.secrets."xray/peers/r6s/short_id" = {};
-  # r2s 离线,仍停在老端口和已泄露的凭据上。它恢复并照其余几台处理之后,
-  # 这三个键和下面那条 interconn-r2s 一起删。
-  sops.secrets."xray/legacy/uuid" = {};
-  sops.secrets."xray/legacy/public_key" = {};
-  sops.secrets."xray/legacy/short_id" = {};
 
   services.xray.enable = true;
   services.xray.settingsFile = config.sops.templates."xray-config.json".path;
@@ -342,9 +337,8 @@
       s = config.sops.placeholder;
 
       # 每个 portal 一条 outbound:r5sjp 主动拨过去,把反向隧道建起来。
-      # 金丝雀:先只把 rpi4 换到 aliyun,其余四台维持 apple。dest 和客户端 sni
-      # 必须同时变,没有只加不改的路径,所以逐台切、每切一台验一次。
-      apple = "www.apple.com";
+      # dest 和客户端 sni 必须同时变,没有只加不改的路径。先拿 rpi4 做过金丝雀
+      # (30/30 建连成功、零握手错误)才推平其余几台。
       aliyun = "www.aliyun.com";
 
       interconn = tag: address: port: serverName: uuid: publicKey: shortId: {
@@ -379,7 +373,11 @@
         s."xray/peers/${host}/public_key"
         s."xray/peers/${host}/short_id";
 
-      hosts = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
+      # r2s 不在这里:它长期离线,而 r2s.imdomestic.com 这条 DDNS 记录现在
+      # 解析到的已经不是它(端口能建连但 SSH 和 TLS 都不响应,住宅 v6 前缀轮换
+      # 后多半落到了别人的设备上)。留着只会让 bridge 每几秒往一台陌生主机
+      # 发一次带认证材料的 ClientHello。等它真回来了再加回去。
+      hosts = ["h610" "rpi4" "sh" "r5s" "r6s"];
     in
       builtins.toJSON {
         log.loglevel = "warning";
@@ -392,15 +390,11 @@
           hosts;
 
         outbounds = [
-          (peer "h610" "h610.imdomestic.com" 1444 apple)
+          (peer "h610" "h610.imdomestic.com" 1444 aliyun)
           (peer "rpi4" "rpi4.imdomestic.com" 2444 aliyun)
-          (peer "sh" "sh.imdomestic.com" 3444 apple)
-          (peer "r5s" "r5s.imdomestic.com" 2444 apple)
-          (peer "r6s" "r6s.imdomestic.com" 2444 apple)
-          (interconn "interconn-r2s" "r2s.imdomestic.com" 2443 apple
-            s."xray/legacy/uuid"
-            s."xray/legacy/public_key"
-            s."xray/legacy/short_id")
+          (peer "sh" "sh.imdomestic.com" 3444 aliyun)
+          (peer "r5s" "r5s.imdomestic.com" 2444 aliyun)
+          (peer "r6s" "r6s.imdomestic.com" 2444 aliyun)
           {
             tag = "out";
             protocol = "freedom";
