@@ -415,8 +415,13 @@ in {
       reality = target: privateKey: shortId: {
         network = "tcp";
         security = "reality";
-        realitySettings = {
-        };
+        realitySettings =
+          target
+          // {
+            show = false;
+            inherit privateKey;
+            shortIds = [shortId];
+          };
       };
 
       vision = id: {
