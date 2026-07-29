@@ -14,6 +14,7 @@
   };
 in {
   imports = [
+    ../../modules/airport
     ../../modules/dae
     ../../modules/keyd
     ../../modules/qq-deepseek-bot
@@ -310,7 +311,9 @@ in {
   sops.secrets."xray/interconn2_short_id" = {};
   sops.secrets."xray/client_in2_uuid" = {};
   sops.secrets."xray/client_in2_short_id" = {};
-  sops.secrets."xray/friends_short_id" = {};
+  # 订阅服务要把这两个值写进给客户端的配置里,所以 airport 用户得读得到。
+  sops.secrets."xray/friends_short_id".owner = "airport";
+  sops.secrets."xray/reality_public_key".owner = "airport";
   sops.secrets."xray/legacy_private_key" = {};
   sops.secrets."xray/legacy_uuid" = {};
 
@@ -365,6 +368,26 @@ in {
       builtins.toJSON {
         log.loglevel = "warning";
 
+        # 每用户流量计数 + 运行时增删用户,airport 控制器靠这两个接口干活。
+        # 只有带 email 的 client 才会产生 user>>> 计数,所以 client-in2 和
+        # interconn2 那些不带 email 的连接不会被统计。
+        stats = {};
+        api = {
+          tag = "api";
+          listen = "127.0.0.1:10085";
+          services = ["StatsService" "HandlerService"];
+        };
+        policy = {
+          levels."0" = {
+            statsUserUplink = true;
+            statsUserDownlink = true;
+          };
+          system = {
+            statsInboundUplink = true;
+            statsInboundDownlink = true;
+          };
+        };
+
         reverse.portals = [
           {
             tag = "portal-h610";
@@ -408,6 +431,38 @@ in {
           }
         ];
       };
+  };
+
+  # 朋友的订阅服务。UUID 和订阅 token 由控制器在运行时签发,存在
+  # /var/lib/airport,所以这里只声明配额和到期,加人不用碰 sops。
+  services.airport = {
+    enable = true;
+    server = {
+      address = "h610.imdomestic.com";
+      port = 54323;
+      name = "imdomestic-jp";
+      publicKeyFile = config.sops.secrets."xray/reality_public_key".path;
+      shortIdFile = config.sops.secrets."xray/friends_short_id".path;
+    };
+    # 电信把 80/443 入站掐了,所以订阅和 headscale 一起挂在 8443,靠 SNI 分流。
+    subscription.baseUrl = "https://h610.imdomestic.com:8443";
+
+    users = {
+      # 示例,按需增删。quotaGB 是上下行合计,用完为止不自动重置;
+      # 想续期就改数字重新部署,或者跑 `airport reset <用户>`。
+      # alice = {
+      #   quotaGB = 100;
+      #   expires = "2026-12-31";
+      # };
+    };
+  };
+
+  # 订阅走已有的 8443,证书用现成的 Cloudflare DNS-01 签。h610.imdomestic.com
+  # 本来就由 ddns-go 在更新,所以不用额外加 DNS 记录。
+  security.acme.certs."h610.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
   };
 
   services.displayManager.gdm.enable = false;
@@ -639,7 +694,46 @@ in {
   services.nginx = {
     enable = true;
     clientMaxBodySize = "50m";
+    # 订阅端点唯一的认证就是路径里那段 token,所以给它一个限速桶,
+    # 别让人拿这个公网端口慢慢撞。
+    appendHttpConfig = ''
+      limit_req_zone $binary_remote_addr zone=airportsub:1m rate=10r/m;
+    '';
   };
+
+  # 订阅端点。和 headscale 共用 8443,靠 SNI 分流。
+  services.nginx.virtualHosts."h610.imdomestic.com" = {
+    serverName = "h610.imdomestic.com";
+    useACMEHost = "h610.imdomestic.com";
+    forceSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8443;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8443;
+        ssl = true;
+      }
+    ];
+    # 只开 /sub/,其余一律 404,不暴露这台机器上还有别的东西。
+    locations."/sub/" = {
+      proxyPass = "http://127.0.0.1:8081";
+      extraConfig = ''
+        limit_req zone=airportsub burst=5 nodelay;
+        proxy_set_header Host $host;
+        # 订阅客户端靠这个响应头显示已用/总量/到期,别被过滤掉
+        proxy_pass_header Subscription-Userinfo;
+      '';
+    };
+    locations."/" = {
+      extraConfig = "return 404;";
+    };
+  };
+
   services.nginx.virtualHosts."tailscale.imdomestic.com" = {
     serverName = "tailscale.imdomestic.com";
     useACMEHost = "tailscale.imdomestic.com";
