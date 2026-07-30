@@ -3,6 +3,7 @@
   inputs,
   system,
   pkgs,
+  config,
   ...
 }: {
   imports = [
@@ -42,5 +43,7 @@
     enable = true;
     enableTransience = true;
     enableZshIntegration = true;
+
+    configPath = "${config.xdg.configHome}/zsh/starship.toml";
   };
 }
