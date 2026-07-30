@@ -53,6 +53,16 @@ check-tunnels:
 check-xray *hosts:
   ./scripts/check-xray.sh {{hosts}}
 
+# Same idea for sing-box. 1.13 turned several "deprecated but not yet removed"
+# spellings into fatal-at-startup errors (legacy DNS servers, missing
+# default_domain_resolver) — the config looks fine and the service simply never
+# comes up, which on a router means the whole house is offline. The check runs
+# on the target host: tun/auto_redirect are Linux-only, so running it on macOS
+# fails for platform reasons and yields nothing but false alarms.
+# usage: just check-singbox [host...]
+check-singbox *hosts:
+  ./scripts/check-singbox.sh {{hosts}}
+
 up:
   nix flake update
 
