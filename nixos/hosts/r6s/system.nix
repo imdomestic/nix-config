@@ -13,11 +13,11 @@
 in {
   imports = [
     ./hardware-configuration.nix
-    # dae -> sing-box 试点。dae 和 sing-box 不能并存:两者都要接管转发流量,
-    # 一个走 eBPF/tc 一个走 nftables+tun。回滚就是把这两行换回来再 switch,
-    # 或者直接 nixos-rebuild --rollback。
-    # ../../modules/dae
-    ../../modules/singbox
+    # dae -> sing-box 的试点已回滚(2026-07-31 凌晨断网)。modules/singbox 本身
+    # 留着,凭据也已经进了 sops,但 auto_redirect 两种取值都有问题,见
+    # docs/proxy-todo.md「sing-box 迁移」一节。重新试之前先解决那个问题。
+    ../../modules/dae
+    # ../../modules/singbox
     ../../modules/keyd
   ];
 
