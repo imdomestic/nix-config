@@ -4,6 +4,8 @@
   pkgs,
   ...
 }: let
+  cfg = config.my.singbox;
+
   # 五台 portal 的 client-in2 凭据。这个文件按 .sops.yaml 的兜底 creation_rule
   # 加密给全部 admin + 全部 host，所以任何一台路由器都能解出全部五个节点,
   # urltest 才有得挑。绝不能写死在这里 —— 本仓库是公开的。
@@ -85,7 +87,36 @@
   toDirect = rule: rule // {action = "route"; outbound = "direct";};
   toProxy = rule: rule // {action = "route"; outbound = "im";};
 in {
-  sops.secrets = lib.listToAttrs (lib.concatMap (node:
+  options.my.singbox.autoRedirect = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = ''
+      是否启用 tun 的 auto_redirect。上游一律推荐开(性能比 tproxy 好,还能把
+      LAN 客户端发往路由器 53 端口的 DNS 一并 DNAT 进来),所以默认开。
+
+      **但是 WAN 地址落在 100.64.0.0/10 的机器必须关掉。** auto_redirect 对
+      本机发出的 TCP 是在 nat output 链里 `redirect to :<port>`,内核会把目的
+      地址改写成 127.0.0.1 再从 lo 投递;此时源地址仍是 WAN 地址。而 tailscale
+      在 filter INPUT 里挂了一条反欺骗规则:
+
+          ip saddr 100.64.0.0/10 iifname != "tailscale0" drop
+
+      电信 PPPoE 下发的正是 CGNAT 地址(r6s 拿到的是 100.84.115.12),于是本机
+      自己发起的 IPv4 TCP 全部被这条规则吃掉——SYN 在 lo 上反复重传,没有 RST,
+      沿途没有任何日志。IPv6 不受影响(tailscale 那条对应规则用的是
+      fd7a:115c:a1e0::/48),LAN 转发流量也不受影响(prerouting 的 redirect
+      改写成的是 br-lan 地址,源是 192.168.22.x)。所以症状是「只有路由器自己
+      上不了 v4」,极具迷惑性。
+
+      关掉之后走纯 auto_route 策略路由:本机和转发流量都进 tun0,不经 lo,
+      也就不碰 tailscale 那条规则。代价是性能略低,以及 LAN 的 DNS 不再被
+      DNAT——但本机 systemd-resolved 已经在 192.168.22.1:53 上服务 LAN,它的
+      上游查询照样进 tun 被 hijack-dns 接管,分流策略不变,和之前 dae 的路径
+      完全一样。
+    '';
+  };
+
+  config.sops.secrets = lib.listToAttrs (lib.concatMap (node:
     map (field: {
       name = "imdomestic/${node}/${field}";
       value = {
@@ -96,7 +127,7 @@ in {
     nodeFields)
   nodeNames);
 
-  services.sing-box = {
+  config.services.sing-box = {
     enable = true;
     settings = {
       log = {
@@ -162,11 +193,9 @@ in {
           # 同理没有 v6 地址就不会生成 v6 的劫持规则,而本机 LAN 是 SLAAC。
           address = ["172.19.0.1/30" "fdfe:dcba:9876::1/126"];
           auto_route = true;
-          # auto_redirect 在 Linux 上不是可选项:它用 nftables 在 prerouting
-          # 做 DNAT,既接管 LAN 转发流量,也是"LAN 客户端把 192.168.22.1 当 DNS"
-          # 这种本机目的流量唯一会被劫持的路径(本机目的走 local 表,优先级 0,
-          # 根本轮不到 auto_route 在 9000+ 的策略路由)。
-          auto_redirect = true;
+          # 见 my.singbox.autoRedirect 的说明:开着更好,但 WAN 是 CGNAT 地址
+          # 的机器会撞上 tailscale 的反欺骗规则,只能关。
+          auto_redirect = cfg.autoRedirect;
           strict_route = true;
           stack = "system";
           # tailscale 整段不进 tun。这是唯一不依赖代理的回退通道 —— 一旦
