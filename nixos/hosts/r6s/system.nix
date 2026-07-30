@@ -13,8 +13,11 @@
 in {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/dae
-    # ../../modules/singbox
+    # dae -> sing-box 试点。dae 和 sing-box 不能并存:两者都要接管转发流量,
+    # 一个走 eBPF/tc 一个走 nftables+tun。回滚就是把这两行换回来再 switch,
+    # 或者直接 nixos-rebuild --rollback。
+    # ../../modules/dae
+    ../../modules/singbox
     ../../modules/keyd
   ];
 
