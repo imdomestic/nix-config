@@ -21,6 +21,11 @@ in {
     ../../modules/keyd
   ];
 
+  # 电信 PPPoE 给 r6s 的是 CGNAT 地址(100.84.115.12),和 tailscale 认领的
+  # 100.64.0.0/10 撞在一起,auto_redirect 的 lo 重定向会被 tailscale 的反欺骗
+  # 规则整段丢掉。详见 my.singbox.autoRedirect 的说明。
+  my.singbox.autoRedirect = false;
+
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
