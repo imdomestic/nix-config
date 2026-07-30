@@ -42,9 +42,6 @@
       source = ../../modules/fastfetch;
       recursive = true;
     };
-    "starship.toml" = {
-      source = ../../modules/starship/starship.toml;
-    };
   };
 
   home.sessionVariables = {
