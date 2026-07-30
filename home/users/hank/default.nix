@@ -83,6 +83,8 @@ in {
       set -ga terminal-overrides ',*:Ss=\E[%p1%d q:Se=\E[6 q'
 
       set -g allow-passthrough on
+      set -s extended-keys on
+      set -as terminal-features 'xterm*:extkeys'
       set -ga update-environment TERM
       set -ga update-environment TERM_PROGRAM
 
@@ -889,6 +891,9 @@ in {
     enable = true;
     enableTransience = true;
     enableZshIntegration = true;
+    settings = {
+      add_newline = false;
+    };
   };
 
   xdg.configFile = {
@@ -897,9 +902,6 @@ in {
     fastfetch = {
       source = ../../modules/fastfetch;
       recursive = true;
-    };
-    "starship.toml" = {
-      source = ../../modules/starship/starship.toml;
     };
   };
 
