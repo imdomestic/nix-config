@@ -2,20 +2,26 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }: let
   cfg = config.services.cliproxy;
+  configPath = config.sops.templates."cli-proxy-api.yaml".path;
 in {
   options.services.cliproxy = {
     enable = lib.mkEnableOption "CLIProxyAPI:把 Codex/Claude 等订阅制 CLI 的 OAuth 凭据包装成 OpenAI 兼容 API";
 
-    image = lib.mkOption {
-      type = lib.types.str;
-      default = "eceasy/cli-proxy-api:v7.2.111";
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.cli-proxy-api;
+      defaultText = lib.literalExpression "inputs.llm-agents.packages.\${system}.cli-proxy-api";
       description = ''
-        必须钉死版本。上游 2026 年 7 月一个月发了 64 个 release(v7.2.104 到
-        v7.2.111 全在 7 月 28-30 三天里),`latest` 等于每次重启都换一个不知道
-        改了什么的二进制。nixpkgs 里没有这个包,所以走官方镜像。
+        来自 numtide/llm-agents.nix。nixpkgs 里没有这个包,而上游发版极快
+        (2026-07 一个月 64 个 release),自己维护 vendorHash 跟不动。
+
+        那个 flake 故意没有 follows 我们的 nixpkgs:follow 之后 Go 工具链和全部
+        依赖都会换掉,derivation hash 跟着变,他们预构建的产物一个都命不中。
+        对应的 substituter(cache.numtide.com)写在 modules/nix-settings.nix。
       '';
     };
 
@@ -23,15 +29,12 @@ in {
       type = lib.types.str;
       example = "100.64.0.3";
       description = ''
-        程序自己绑的地址。**必须是 tailscale 地址,不要填 0.0.0.0。**
+        **必须是 tailscale 地址,不要填 0.0.0.0。**
 
-        这个端点背后是一个真人的 ChatGPT 订阅凭据,谁能连上谁就能拿你的账号
-        跑量,而拿订阅当 API 用本身已经是违反 OpenAI ToS 的,被人刷到量就是
-        封号。只绑 tailscale 地址意味着公网 IP 上压根没有这个监听,比"开在
-        公网再靠一个 token 拦"强一个数量级。
-
-        注意容器跑的是 host 网络(见下面 extraOptions 的说明),所以这里填什么
-        就真的绑什么,没有 docker 的端口映射兜底。
+        这个端点背后是一个真人的 ChatGPT 订阅凭据,谁能连上谁就能拿这个账号
+        跑量,而拿订阅当 API 用本身已经违反 OpenAI ToS,被人刷到量就是封号。
+        只绑 tailscale 地址意味着公网 IP 上压根没有这个监听,比"开在公网再靠
+        一个 token 拦"强一个数量级。
       '';
     };
 
@@ -40,37 +43,32 @@ in {
       default = 8317;
       description = "上游默认端口。";
     };
-
-    stateDir = lib.mkOption {
-      type = lib.types.path;
-      default = "/var/lib/cli-proxy-api";
-      description = ''
-        OAuth 凭据落盘的地方。**不能放 nix store,也不能用 sops 管。**
-        token 是运行时刷新并回写的(Codex 提前 5 天续期),所以这个目录必须
-        可写且跨重启保留。
-      '';
-    };
-
   };
 
   config = lib.mkIf cfg.enable {
-    virtualisation.oci-containers.backend = lib.mkDefault "docker";
-
     # 客户端调用本代理时要出示的 key。键名固定,`just check-sops` 会检查它
     # 在 secrets/hosts/<host>.yaml 里真的存在。
     sops.secrets."cliproxy/api_key" = {};
 
+    users.users.cliproxy = {
+      isSystemUser = true;
+      group = "cliproxy";
+    };
+    users.groups.cliproxy = {};
+
     # 整份 config.yaml 由 sops 渲染:里面唯一的秘密是 api-keys,而 store 是
-    # world-readable。渲染结果在 /run/secrets/rendered 下,root-only,容器以
-    # root 跑,读得到。
+    # world-readable。owner 给服务用户,因为进程要读它。
     sops.templates."cli-proxy-api.yaml" = {
-      restartUnits = ["docker-cli-proxy-api.service"];
+      owner = "cliproxy";
+      restartUnits = ["cliproxy.service"];
       content = ''
         # 由 nixos/modules/cliproxy 生成,不要手改 —— 每次 rebuild 都会覆盖。
         host: "${cfg.bindAddress}"
         port: ${toString cfg.port}
 
-        auth-dir: "/auths"
+        # OAuth token 是运行时刷新并回写的(Codex 提前 5 天续期),所以这里必须
+        # 是可写且跨重启保留的目录,不能是 store 路径,也不能用 sops 管。
+        auth-dir: "/var/lib/cli-proxy-api/auths"
 
         api-keys:
           - "${config.sops.placeholder."cliproxy/api_key"}"
@@ -81,7 +79,7 @@ in {
           # 这不只是"少开一个接口":secret-key 一旦填了明文,程序会在每次启动时
           # 把它 bcrypt 之后**回写 config.yaml**,而管理接口的每个写操作也会回写。
           # 我们这份 config 是 sops 渲染的只读文件,回写要么失败要么被下次 rebuild
-          # 冲掉。留空之后它一次都不会写,只读挂载才是安全的。
+          # 冲掉。留空之后它一次都不会写。
           secret-key: ""
           allow-remote: false
           # 管理面板是运行时从 GitHub Releases 下载到 static/ 的,还会定期自更新。
@@ -92,38 +90,45 @@ in {
       '';
     };
 
-    virtualisation.oci-containers.containers.cli-proxy-api = {
-      image = cfg.image;
-
-      # host 网络是必须的,不是图省事。
-      #
-      # 实测:默认 bridge 网络下容器访问 auth.openai.com 得到 403,host 网络下
-      # 得到 200 —— 同样的 UA,差别只在出口 IP。dae 是透明代理,只接管本机流量;
-      # 容器走 bridge 时是被"转发"出去的,dae 不管,于是用国内 IP 直连 OpenAI,
-      # 被挡。host 网络下容器和宿主同一个 netns,dae 正常接管,经 r5sjp 从日本出去。
-      #
-      # 代价是没有 docker 的端口映射,绑哪个地址完全由上面 config.yaml 的 host
-      # 决定 —— 所以 bindAddress 写错就是直接暴露在公网上。
-      extraOptions = ["--network=host"];
-
-      volumes = [
-        "${config.sops.templates."cli-proxy-api.yaml".path}:/CLIProxyAPI/config.yaml:ro"
-        "${cfg.stateDir}/auths:/auths"
-      ];
-    };
-
+    # 这套原先是跑在 docker 里的,容器以 root 跑,所以 auths/ 下已有的凭据是
+    # root 属主。换成原生服务之后进程是 cliproxy 用户,读不到也写不回去 ——
+    # token 到期续不上就直接失效。Z 是递归改属主/权限且幂等,所以这条长期留着
+    # 也无害。
     systemd.tmpfiles.rules = [
-      "d ${cfg.stateDir} 0700 root root -"
-      "d ${cfg.stateDir}/auths 0700 root root -"
+      "Z /var/lib/cli-proxy-api 0700 cliproxy cliproxy -"
     ];
 
-    systemd.services.docker-cli-proxy-api = {
+    systemd.services.cliproxy = {
+      description = "CLIProxyAPI";
+      wantedBy = ["multi-user.target"];
       # 绑的是 tailscale 地址,tailscaled 没起来的话这个地址还不存在,bind 会失败。
-      after = ["tailscaled.service"];
-      wants = ["tailscaled.service"];
+      after = ["network-online.target" "tailscaled.service"];
+      wants = ["network-online.target" "tailscaled.service"];
+
       serviceConfig = {
-        Restart = lib.mkOverride 90 "always";
+        User = "cliproxy";
+        Group = "cliproxy";
+        StateDirectory = "cli-proxy-api";
+        StateDirectoryMode = "0700";
+        WorkingDirectory = "/var/lib/cli-proxy-api";
+        # -config 显式给路径。不给的话它按 $PWD/config.yaml 找,依赖 cwd 太隐晦。
+        ExecStart = "${lib.getExe cfg.package} -config ${configPath}";
+        Restart = "always";
         RestartSec = "10s";
+
+        # 它只需要读 config、读写 auth-dir、对外发 HTTPS。
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        PrivateDevices = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ProtectKernelTunables = true;
+        ProtectKernelModules = true;
+        ProtectControlGroups = true;
+        RestrictAddressFamilies = ["AF_INET" "AF_INET6" "AF_UNIX"];
+        RestrictNamespaces = true;
+        LockPersonality = true;
+        SystemCallArchitectures = "native";
       };
     };
 
@@ -135,23 +140,21 @@ in {
     environment.systemPackages = [
       (pkgs.writeShellScriptBin "cliproxy-login" ''
         set -euo pipefail
-        if [ "$(id -u)" -ne 0 ]; then
-          echo "要 root:凭据写在 ${cfg.stateDir}/auths(0700)" >&2
-          exec sudo -E "$0" "$@"
-        fi
         provider="''${1:-codex}"
         case "$provider" in
           codex)  flag=-codex-device-login ;;
           claude) flag=-claude-login ;;
           *) echo "用法: cliproxy-login [codex|claude]" >&2; exit 1 ;;
         esac
-        echo "== 用 ${cfg.image} 跑 $flag =="
-        echo "== 凭据会写进 ${cfg.stateDir}/auths,登完 systemctl restart docker-cli-proxy-api =="
-        exec ${config.virtualisation.oci-containers.backend} run --rm -it \
-          --network=host \
-          -v "${config.sops.templates."cli-proxy-api.yaml".path}:/CLIProxyAPI/config.yaml:ro" \
-          -v "${cfg.stateDir}/auths:/auths" \
-          ${cfg.image} ./CLIProxyAPI "$flag"
+        # 必须以服务用户身份跑:凭据文件的属主要和服务一致,否则它后台续期时
+        # 写不回去,token 过期就直接失效了。
+        if [ "$(id -un)" != "cliproxy" ]; then
+          exec sudo -u cliproxy -- "$0" "$@"
+        fi
+        cd /var/lib/cliproxy
+        echo "== 跑 $flag,凭据写进 /var/lib/cli-proxy-api/auths =="
+        echo "== 登完执行: sudo systemctl restart cliproxy =="
+        exec ${lib.getExe cfg.package} -config ${configPath} "$flag"
       '')
     ];
   };
