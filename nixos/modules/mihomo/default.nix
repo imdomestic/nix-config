@@ -170,23 +170,62 @@ in {
             route-exclude-address = ["100.64.0.0/10" "fd7a:115c:a1e0::/48"];
           };
 
-        # fake-ip 映射持久化。不存的话 mihomo 一重启映射全变,而上游
-        # systemd-resolved 还缓存着旧的 198.18.x.x,那些地址就成了死的。
-        profile.store-fake-ip = true;
-
+        # redir-host 而不是 fake-ip。三个理由,都不是洁癖:
+        #
+        # 1. **mihomo 停掉后还能上网。** fake-ip 返回的 198.18.x.x 一旦被上游
+        #    systemd-resolved 缓存,mihomo 一停这些地址就全成了死的,连本来能
+        #    直连的国内站点也跟着不通。redir-host 给的是真实 IP,停了照样用。
+        # 2. **不留指纹。** 198.18.0.0/15 是 RFC 2544 的基准测试保留段,正常
+        #    网络里不该出现,看到就知道在跑代理。
+        # 3. **LAN 设备自己开代理时不打架。** tun 上的 dns-hijack 会截下所有
+        #    经过的 53 端口流量,包括 LAN 里某台机器自己的 clash 去问 223.5.5.5。
+        #    fake-ip 模式下它拿回的是 r6s 的假 IP,会被它当成"真实 IP"记进自己
+        #    那张表;要是它也用默认的 198.18.0.0/15,它的 tun 还会把 r6s 的假 IP
+        #    当成自己的去反查,查出来是毫不相干的域名。redir-host 只给真实 IP,
+        #    对下层而言和没有代理一样,叠加就没有语义冲突。
+        #
+        # 代价(机制决定,配置绕不过):IP->域名 的还原表是一张 4096 条的 LRU
+        # (dns/enhancer.go:188),淘汰掉就只能退化成按 IP 匹配;CDN 上几十个域名
+        # 共用一个 IP 时表是 last-writer-wins,反查可能串。fake-ip 每个域名一个
+        # 独占假 IP,没这两个问题 —— 这是实打实的取舍,不是纯赚。
+        #
+        # 最要紧的是:redir-host 必须真的把域名解析对,拿到毒 IP 就会去连毒 IP。
+        # 所以下面那套分流 + 投毒检测不是可选项,是它能安全工作的前提。
         dns = {
           enable = true;
           ipv6 = true;
           listen = "0.0.0.0:1053";
-          enhanced-mode = "fake-ip";
-          fake-ip-range = "198.18.0.1/16";
-          # 自建域名不能进 fake-ip:下面 imdomestic.com 走 DIRECT,需要真实 IP。
-          fake-ip-filter = ["*.imdomestic.com"];
+          enhanced-mode = "redir-host";
+
+          # 默认走国内。
           nameserver = ["223.5.5.5" "119.29.29.29"];
-          # 解析代理服务器地址本身用的 DNS。这几个节点都是 imdomestic.com 的
-          # 域名、都在国内,必须用国内 DNS 直接解析,不能绕回代理 —— 否则就是
-          # 「要连代理得先问代理」的死循环。
+
+          # 解析代理节点地址本身用的 DNS。节点都是 imdomestic.com 的域名、都在
+          # 国内,必须直接解析,不能绕回代理 —— 否则是「要连代理得先问代理」的
+          # 死循环。开了 respect-rules 之后这项非空是**强制**的,留空启动即报错
+          # (config.go:1426)。
           proxy-server-nameserver = ["223.5.5.5" "119.29.29.29"];
+
+          # DNS 查询本身也走路由规则,这样下面 fallback 那几个国外 DNS 才会
+          # 经代理出去,而不是明文直连(直连必被投毒,那 fallback 就没意义了)。
+          respect-rules = true;
+
+          # 明确分流,对应 dae 的 `qname(geosite:cn,...) -> alidns`。
+          nameserver-policy = {
+            "geosite:cn,private,apple@cn,google@cn" = ["223.5.5.5" "119.29.29.29"];
+            "geosite:geolocation-!cn" = ["tls://8.8.8.8" "tls://1.1.1.1"];
+          };
+
+          # 投毒检测,对应 dae 的
+          # `response { ip(geoip:private) && !qname(geosite:cn) -> googledns }`。
+          # 国内 DNS 的答案如果落在 CN 段之外,就采信 fallback 的结果。
+          fallback = ["tls://8.8.8.8" "tls://1.1.1.1"];
+          fallback-filter = {
+            geoip = true;
+            geoip-code = "CN";
+            # 240/4 是保留段,GFW 投毒常返回这类地址。
+            ipcidr = ["240.0.0.0/4" "0.0.0.0/32"];
+          };
         };
 
         proxies = map mkProxy nodeNames;
