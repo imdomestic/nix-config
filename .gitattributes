@@ -1,0 +1,2 @@
+# Other users still have Lua dotfiles; keep them out of GitHub language statistics.
+*.lua linguist-detectable=false
