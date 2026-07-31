@@ -201,6 +201,8 @@ in {
           "-1"
           "-stun-port"
           "3478"
+          "-c"
+          "/var/lib/derper/derper.key"
           "-hostname"
           "sh.imdomestic.com"
           "-certmode"
