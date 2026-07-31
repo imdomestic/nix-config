@@ -1,24 +1,20 @@
 {
   config,
-  lib,
   pkgs,
   ...
-}: let
-  isDarwin = pkgs.stdenv.isDarwin;
-in {
+}: {
+  imports = [
+    ../../modules/nixvim/kenneth.nix
+    ../../modules/wezterm
+  ];
+
   home = {
-    packages =
-      [
-        pkgs.git
-        pkgs.gnumake
-        pkgs.lazygit
-        pkgs.nodejs
-        pkgs.pnpm
-        pkgs.subversion
-      ]
-      ++ lib.optionals isDarwin [
-        pkgs.wezterm
-      ];
+    packages = [
+      pkgs.gnumake
+      pkgs.nodejs
+      pkgs.pnpm
+      pkgs.subversion
+    ];
 
     sessionPath = [
       "$HOME/.local/bin"
@@ -26,19 +22,27 @@ in {
 
     sessionVariables = {
       EDITOR = "nvim";
+      LESS = "--RAW-CONTROL-CHARS";
+      LESS_TERMCAP_mb = builtins.fromJSON ''"\u001b[1;32m"'';
+      LESS_TERMCAP_md = builtins.fromJSON ''"\u001b[1;32m"'';
+      LESS_TERMCAP_me = builtins.fromJSON ''"\u001b[0m"'';
+      LESS_TERMCAP_se = builtins.fromJSON ''"\u001b[0m"'';
+      LESS_TERMCAP_so = builtins.fromJSON ''"\u001b[01;33m"'';
+      LESS_TERMCAP_ue = builtins.fromJSON ''"\u001b[0m"'';
+      LESS_TERMCAP_us = builtins.fromJSON ''"\u001b[1;4;31m"'';
+      MANPAGER = "less -s -M +Gg";
       VISUAL = "nvim";
     };
   };
 
   xdg.enable = true;
 
-  xdg.configFile =
-    {
-      nvim.source = ./config/nvim;
-    }
-    // lib.optionalAttrs isDarwin {
-      wezterm.source = ./config/wezterm;
-    };
+  programs.git.enable = true;
+
+  programs.lazygit = {
+    enable = true;
+    enableZshIntegration = false;
+  };
 
   programs.starship = {
     enable = true;
@@ -48,9 +52,39 @@ in {
     };
   };
 
+  programs.btop = {
+    enable = true;
+    settings = {
+      color_theme = "Default";
+      graph_symbol = "braille";
+      shown_boxes = "cpu mem net proc";
+      update_ms = 500;
+    };
+  };
+
+  programs.tmux = {
+    enable = true;
+    terminal = "tmux-256color";
+    mouse = true;
+    clock24 = true;
+    keyMode = "vi";
+    baseIndex = 1;
+    escapeTime = 0;
+    historyLimit = 50000;
+    plugins = with pkgs.tmuxPlugins; [dotbar];
+    extraConfig = ''
+      set-option -ga terminal-overrides ",*256col*:Tc"
+      set -g allow-passthrough on
+      set -g set-clipboard on
+      set-option -g renumber-windows on
+    '';
+  };
+
   programs.zsh = {
     enable = true;
     dotDir = "${config.xdg.configHome}/zsh";
+    autocd = true;
+    defaultKeymap = "emacs";
 
     autosuggestion = {
       enable = true;
@@ -82,11 +116,40 @@ in {
       ignoreSpace = true;
       path = "${config.xdg.cacheHome}/zsh/.zhistory";
       save = 10000;
+      saveNoDups = true;
       share = true;
       size = 10000;
     };
 
     historySubstringSearch.enable = true;
+
+    localVariables = {
+      background = "#1E1E2E";
+      foreground = "#CDD6F4";
+      color8 = "#585B70";
+      ZSH_AUTOSUGGEST_USE_ASYNC = "true";
+      ZSH_HIGHLIGHT_MAXLENGTH = 512;
+    };
+
+    setOptions = [
+      "AUTO_MENU"
+      "AUTO_PARAM_SLASH"
+      "COMPLETE_IN_WORD"
+      "NO_MENU_COMPLETE"
+      "HASH_LIST_ALL"
+      "ALWAYS_TO_END"
+      "NOTIFY"
+      "NOHUP"
+      "MAILWARN"
+      "INTERACTIVE_COMMENTS"
+      "NO_BEEP"
+      "HIST_NO_FUNCTIONS"
+      "HIST_REDUCE_BLANKS"
+      "NO_FLOW_CONTROL"
+      "NO_NOMATCH"
+      "NO_CORRECT"
+      "NO_EQUALS"
+    ];
 
     shellAliases = {
       ".." = "cd ..";
@@ -163,20 +226,6 @@ in {
 
       autoload -Uz colors add-zsh-hook
       colors
-
-      background='#1E1E2E'
-      foreground='#CDD6F4'
-      color8='#585B70'
-
-      ZSH_AUTOSUGGEST_USE_ASYNC="true"
-      ZSH_HIGHLIGHT_MAXLENGTH=512
-
-      setopt AUTOCD AUTO_MENU AUTO_PARAM_SLASH COMPLETE_IN_WORD
-      setopt NO_MENU_COMPLETE HASH_LIST_ALL ALWAYS_TO_END NOTIFY NOHUP MAILWARN
-      setopt INTERACTIVE_COMMENTS NOBEEP APPEND_HISTORY SHARE_HISTORY INC_APPEND_HISTORY
-      setopt EXTENDED_HISTORY HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_NO_FUNCTIONS
-      setopt HIST_EXPIRE_DUPS_FIRST HIST_SAVE_NO_DUPS HIST_REDUCE_BLANKS
-      unsetopt FLOWCONTROL NOMATCH CORRECT EQUALS
 
       function git_current_branch() {
         git branch --show-current 2>/dev/null
@@ -308,7 +357,6 @@ in {
       zle -N zle-line-init
       echo -ne '\e[5 q'
 
-      bindkey -e
       bindkey '^[[H' beginning-of-line
       bindkey '^[[F' end-of-line
       bindkey -s '^K' 'ls^M'
@@ -324,16 +372,6 @@ in {
       zstyle ':completion:*:git-checkout:*' sort false
       zstyle ':completion:*:descriptions' format '[%d]'
       zstyle ':completion:*' list-colors ''${(s.:.)LS_COLORS}
-
-      export LESS="--RAW-CONTROL-CHARS"
-      export MANPAGER="less -s -M +Gg"
-      export LESS_TERMCAP_mb=$'\e[1;32m'
-      export LESS_TERMCAP_md=$'\e[1;32m'
-      export LESS_TERMCAP_me=$'\e[0m'
-      export LESS_TERMCAP_se=$'\e[0m'
-      export LESS_TERMCAP_so=$'\e[01;33m'
-      export LESS_TERMCAP_ue=$'\e[0m'
-      export LESS_TERMCAP_us=$'\e[1;4;31m'
 
       if [[ -f "$HOME/.cargo/env" ]]; then
         . "$HOME/.cargo/env"
