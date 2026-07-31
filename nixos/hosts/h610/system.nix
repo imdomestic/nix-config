@@ -15,6 +15,7 @@
 in {
   imports = [
     ../../modules/airport
+    ../../modules/cliproxy
     ../../modules/dae
     ../../modules/keyd
     ../../modules/qq-deepseek-bot
@@ -23,6 +24,13 @@ in {
 
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
+
+  # 把 ChatGPT 订阅包成 OpenAI 兼容 API。只绑 tailscale 地址 —— 见模块里
+  # bindAddress 的说明,公网上不该有这个监听。
+  services.cliproxy = {
+    enable = true;
+    bindAddress = "100.64.0.3";
+  };
 
   # Service secrets (were hand-placed under /var/lib/secrets).
   # acme (root, via systemd EnvironmentFile) and livekit/lk-jwt (LoadCredential)
