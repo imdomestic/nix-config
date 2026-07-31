@@ -1509,22 +1509,6 @@
         "url": "ssh://git@github.com/HCHogan/max"
       }
     },
-    "mihomo-config": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1739799233,
-        "narHash": "sha256-nN9zex4f43Pcqa8puNnblq+06x/wLly301uhWFFEfDQ=",
-        "ref": "refs/heads/main",
-        "rev": "2e7256a1cec404c2211416b9df31f95579fc02b8",
-        "revCount": 3,
-        "type": "git",
-        "url": "ssh://git@github.com/HCHogan/mihomo-config"
-      },
-      "original": {
-        "type": "git",
-        "url": "ssh://git@github.com/HCHogan/mihomo-config"
-      }
-    },
     "niri": {
       "inputs": {
         "niri-stable": "niri-stable",
@@ -2736,7 +2720,6 @@
         "kvim": "kvim",
         "llm-agents": "llm-agents",
         "max": "max",
-        "mihomo-config": "mihomo-config",
         "niri": "niri",
         "nix-darwin": "nix-darwin",
         "nix-index-database": "nix-index-database",
