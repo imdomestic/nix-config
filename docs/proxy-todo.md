@@ -113,69 +113,162 @@ LAN 客户端的 tailscale UDP 也被卷进了 tun（日志里大量
 
 ## 6. 隧道抽风的根因（2026-07-31 实测）
 
-症状：浏览器开网页"秒死"，过一阵自己好。**已定位到跨境链路质量，不是配置问题。**
+症状：浏览器开网页"秒死"，过一阵自己好。
 
-### 实测数据
+### 结论：是 h610 单独那一条跨境链路差，不是整体
+
+从 r5sjp 用 iperf3 打每个 portal（TCP 基线 + UDP 丢包）：
+
+    portal      运营商    TCP 吞吐          UDP@30M 丢包
+    shanghai    阿里云    220 / 211 Mbit/s  0.31%
+    rpi4        移动      191 / 180 Mbit/s  0%
+    r5s                   131 / 112 Mbit/s  6%
+    r6s                    69 /  54 Mbit/s  4.8%
+    h610        电信      4.82 / 3.64 Mbit/s  13%     <- 唯一的异类
+
+**h610 比最好的慢 40 倍。** 而它的 RTT 是 89ms——在任何延迟检查里都健康，
+这正是它能骗过所有按延迟选路的策略的原因。
+
+> 早先这一节写的是「根因是 r5sjp 那条路的丢包」，依据是 r5sjp 上 5.5% 的累计
+> TCP 重传率。那个结论**已被上面的对比推翻**：5.5% 是所有对端混在一起的数字，
+> 而 h610 流量第二大、路最差，那个统计基本是它一家撑起来的。教训是聚合指标
+> 不能用来给单条链路定罪。
+
+### 用户可见的影响
 
 从 h610 同时测直连和走隧道，各 160 次、间隔 2 秒：
 
     直连 www.baidu.com     失败   0/160  ( 0.0%)
     走隧道 1.1.1.1         失败  32/160  (20.0%)
-    两者同时失败                0        <- h610 自己的上行没问题
-    只有隧道失败               32        <- 全部集中在隧道段
+    两者同时失败                0        <- 上行没问题
+    只有隧道失败               32
 
-失败不是均匀分布，而是成段的：17:33:57 到 17:34:20 每 2 秒一次全失败，
-持续 25 秒以上；另一轮抓到 17:26:02→17:27:11 约 70 秒。dae 侧 12 小时的
-统计与之吻合：591 次判死、112 个"五节点同时全死"的窗口，累计 5577 秒，
-**占 12 小时的 12.9%**。
-
-### 根因：r5sjp 那条路的丢包
-
-r5sjp 上的 TCP 统计（累计 23 天）：
-
-    TcpOutSegs               217,311,927
-    TcpRetransSegs            12,030,311   -> 5.5% 重传率
-    TcpExtTCPLostRetransmit    5,411,399   重传包本身又丢
-
-实时 60 秒采样：重传率 1.56%，**TcpExtTCPTimeouts 209 次/分钟**（每秒 3.5 次
-RTO 超时）。到各 portal 的 RTT 68~145ms，但 mdev 高达 106ms —— 抖动比延迟本身
-还大。正常网络重传率应在 0.5% 以下。
-
-放大机制：xray 的 reverse 把大量逻辑流复用在少数几条 TCP 连接上，一条卡住就
-**队头阻塞**，挂在上面的全部连接一起死；RTO 指数退避让恢复要几十秒。这就是
-"秒死几十秒然后自己好"的由来。
+失败成段出现（抓到 25 秒和 70 秒两个窗口）。20% 这个数字值得注意：dae 在五个
+节点间分摊，**正好 1/5**——如果 h610 是唯一的坏路，数字完全对得上。这个假设
+没有单独验证过。
 
 ### 已排除
 
-- h610 自身上行（直连 0/160 失败）
-- r5sjp 的 CPU/内存（load 0.00，3.1G 可用，xray 从未重启）
-- r5sjp 出网（直连 cp.cloudflare.com 60/60、1.1.1.1 30/30 全通）
-- 网卡硬件（errors/dropped 全 0）
-- 检查目标本身抽风
-- 流量压在单个节点上（实测五个 bridge 分布均匀：sh 2245 / h610 1928 /
-  rpi4 1724 / r5s 1596 / r6s 1560，一小时）
+h610 自身上行（直连 0/160 失败）、r5sjp 的 CPU/内存（load 0.00）、r5sjp 出网
+（直连 60/60 全通）、网卡（errors/dropped 全 0）、检查目标本身、以及"流量压在
+单个节点上"（实测五个 bridge 分布均匀，但注意那个计数里绝大部分是 dae 自己的
+健康检查，不是用户流量，所以这条排除得不彻底）。
 
-### 没查清
+### UDP 在这条路上远好于 TCP
 
-- 丢包是 GFW 干扰还是 r5sjp 家宽的线路质量。想区分要在黑洞窗口内同时抓
-  隧道口和 SSH 口 —— 试了两轮都没撞上窗口（每次约 5 分钟）。
-- 单次黑洞的触发条件。
+同一条 h610 链路：
+
+    TCP        3.64 Mbit/s（10 秒内 431 次重传）
+    UDP@10M    8.99 Mbit/s（9.2% 丢包）
+    UDP@30M   25.8 Mbit/s（13% 丢包）
+
+**UDP 送达是 TCP 的 7 倍。** TCP 把丢包当拥塞信号疯狂退避，而这里的丢包不是
+拥塞造成的。这说明 hysteria2 那种带 FEC、拒绝退避的 UDP 传输在这条路上会有
+数量级的改善。
+
+**但 hysteria2 建不起来**：它是严格的 client→server，没有 xray `reverse` 那种
+反向拨号，而 r5sjp 的 IPv4 在 NAT 后（10.1.2.107）、IPv6 入站被 linwhite 家的
+路由器挡着（实测发 UDP 到它两个公网 v6 地址都收不到）。要用得先请他开一个
+UDP 端口。开了之后 r5sjp 当 server、各 portal 当 client，反向隧道那套可以整个
+拆掉。
 
 ### 结构性问题
 
-**五个节点共用一个出口，冗余是假的。** 五台分处不同运营商、不同省份，看起来
-是五路冗余，但全部汇聚到 r5sjp 这一个出口，任何 r5sjp 侧或跨境段的问题都会
-让五个同时死 —— 实测数据里"112 个全死窗口"就是这个结论的直接证据。dae 的
-存活检查再怎么调都救不了，因为没有一个健康的可切。
+**五个节点共用一个出口，冗余是假的。** 任何 r5sjp 侧或跨境段的整体问题都会让
+五个同时失效，没有健康节点可切。选路策略再聪明也救不了这一类。
 
-### 可能的方向（都没做）
+## 7. 选路：延迟指标看不见这个问题
 
-- **换传输协议**：TCP 在 5% 丢包下必然崩。KCP/QUIC/hysteria 这类带 FEC 的
-  UDP 传输对丢包容忍度高一个量级，是最对症的。代价是 UDP 在国内容易被 QoS。
-- **降低队头阻塞**：调 xray mux 的并发数，让单条 TCP 卡住时影响面小一些。
-  治标，但改动小。
-- **加第二个出口**：结构性地解决"冗余是假的"。
-- 存活检查调参基本没用，理由见上。
+h610 RTT 89ms、吞吐 4.8 Mbit/s、丢包 13%，而按延迟选路的策略认为它健康。
+调研过的客户端里只有三个把质量纳入实时评分：
+
+    vernesong/mihomo smart   延迟 + 丢包(TCP重传) + 吞吐
+    Surge Smart Group        延迟 + 抖动 + 丢包（明确排除吞吐）
+    Egern smart              延迟 + 抖动 + 成功率
+
+upstream mihomo / sing-box / dae / Shadowrocket / Clash Verge / Karing /
+Hiddify / NekoBox / Loon / v2rayA 全是纯延迟。dae 的五个策略
+（random/fixed/min/min_avg10/min_moving_avg）没有任何丢包或带宽维度，
+**指望调 dae 的 policy 解决这个问题是不可能的**。
+
+上游 mihomo 明确不做：Clash Verge Rev 的 issue #7646 提了同样需求，维护者回复
+「Mihomo Core 印象中没有直接提供测量带宽的 API…我对此 Issue 持否决态度」。
+
+注意网上有博客声称 Hiddify「实时权衡丢包、RTT 和抖动」——**那是假的**，它的
+`URLTestHistory` 结构体里只有 `Delay`，没有 loss 和 jitter 字段。
+
+删节点不是解法：实测同一天内 rpi4 的延迟从 66ms 涨到 4.4 秒，而它的吞吐是
+五条里最好的之一。链路质量随运营商、时段、v4/v6 大幅波动，要的是能感知质量的
+选路，不是更短的节点列表。
+
+## 8. r6s: dae -> mihomo(smart) 迁移记（2026-07-31 完成）
+
+三次踩坑，都不是配置解析问题——**三次 `-t` 校验全过，服务全起不来或不通**：
+
+1. **geodata。** mihomo 启动时找不到 GeoSite.dat 就联网下载，而这时 dae 已被
+   替换掉、没有可用代理，下载卡死、全家断网。dae 模块本来就有
+   `assets = [v2ray-geoip v2ray-domain-list-community]`，写 mihomo 模块时漏了。
+   修法：`geo-auto-update: false` + ExecStartPre 把 store 里的 .dat 软链进
+   `/var/lib/private/mihomo`（要带 `+` 以 root 跑，服务是 DynamicUser，
+   普通 tmpfiles 在 StateDirectory 建好前就跑了）。
+2. **DNS 根本没流经 mihomo。** `dns-hijack` 只劫持**进入 tun** 的流量，而本机查
+   127.0.0.53 走回环、LAN 客户端查网关 IP 是本机目的地址，两者都不进 tun，
+   于是查询直接落到 resolved 配的国内上游拿回投毒结果。dae 没这问题是因为它在
+   eBPF 层连本机查询一起拦。修法：把 resolved 的上游指向 `127.0.0.1:1053`。
+3. **换 DNS 模式后必须 `resolvectl flush-caches`。** 两次"还是坏的"都是缓存
+   残留（旧的投毒记录 / 旧的 fake-ip），不是配置没生效。
+
+### auto-redirect：mihomo 和 sing-box 的关键差异
+
+sing-box 那次断网是因为 `auto_redirect` 把本机 TCP 重定向到 lo，源地址仍是
+CGNAT 的 100.84.115.12，撞上 tailscale 的
+`ip saddr 100.64.0.0/10 iifname != "tailscale0" drop`。
+
+mihomo 用 metacubex/sing-tun v0.4.21，选项名一样，但那条 lo 重定向
+（redirect_nftables.go:63 的 `nftablesCreateRedirect`）被 `if AutoRedirectMarkMode`
+包着，而 mihomo **只在用了 `route-address-set` / `route-exclude-address-set`
+（rule-set 形式）时才开 mark mode**（listener/sing_tun/server.go:468），
+sing-box 1.13 则是在 Linux 上无条件开启。
+
+所以：用普通的 `route-exclude-address` 前缀列表排除 tailscale 段是安全的，
+**绝不要**换成 `-set` 形式。已实测确认本机 IPv4 正常。
+
+### 为什么用 redir-host 而不是 fake-ip
+
+三个诉求指向同一个选择：
+
+- **mihomo 停掉后还能上网**：fake-ip 的 198.18.x.x 被 resolved 缓存后，
+  mihomo 一停全成死地址，连国内站点也不通。
+- **不留指纹**：198.18.0.0/15 是 RFC 2544 保留段，正常网络里不该出现。
+- **LAN 设备自己开代理不打架**：tun 的 dns-hijack 会截下 LAN 里某台机器自己的
+  clash 发给 223.5.5.5 的查询。fake-ip 下它拿回 r6s 的假 IP 当成"真实 IP"，
+  要是它也用默认的 198.18.0.0/15，它的 tun 还会把这些当成自己的假 IP 反查，
+  查出毫不相干的域名。
+
+代价（机制决定，配置绕不过）：IP->域名 的还原表是 4096 条 LRU
+（dns/enhancer.go:188），淘汰后退化成按 IP 匹配；CDN 上几十个域名共用一个 IP
+时 last-writer-wins，反查可能串。fake-ip 每域名一个独占假 IP 没这两个问题。
+
+redir-host 必须把域名解析对（拿到毒 IP 就会去连毒 IP），所以配套的分流 DNS
+不是可选项。一比一照搬 dae：
+
+    dae qname(geosite:cn,...) -> alidns          ->  nameserver-policy
+    dae fallback: alidns                          ->  nameserver
+    dae response{ip(geoip:private)&&!qname(cn)}   ->  fallback + fallback-filter
+    dae 国外 DNS 经代理                            ->  respect-rules: true
+
+`respect-rules` 开了之后 `proxy-server-nameserver` 必须非空否则启动报错
+（config.go:1426）——这个约束正好防住"要连代理得先问代理"的死循环。
+
+### 迁移后实测
+
+    google.com    200  0.86s     解析 142.251.23.113（真实，之前是投毒的 157.240.7.20）
+    youtube.com   200  2.42s     AAAA 2404:6800:...（真实，之前是 2001::1）
+    github.com    200  0.84s
+    baidu.com     200  0.05s     直连
+
+走代理失败率 4/160 (2.5%)。**但这不能和之前的 20% 直接比**——那是在 h610 上用
+dae 测的，主机和软件两个变量都变了。要干净归因得在同一台上做 dae/mihomo 对比。
 
 ---
 
