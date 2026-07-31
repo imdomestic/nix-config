@@ -86,6 +86,24 @@ in {
       description = "插在默认规则之前的额外规则。";
     };
 
+    controllerAddress = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "100.64.0.5:9090";
+      description = ''
+        对外开放 RESTful API + metacubexd 面板的地址,访问 http://<地址>/ui。
+        留空(默认)则只绑 127.0.0.1,本机之外连不上。
+
+        **只填 tailscale 地址,不要填 0.0.0.0。** 这几台路由器的
+        `networking.firewall.enable` 都是 false,绑 0.0.0.0 等于把一个能改
+        选路策略、能看到全部连接的 API 直接挂在公网 ppp0 上。API 本身有
+        secret 保护,但那是最后一道而不是唯一一道。
+
+        绑的是 tailscale 地址,所以 mihomo 必须在 tailscaled 之后启动,见下面
+        systemd 那段的 after/wants。
+      '';
+    };
+
     router = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -112,7 +130,13 @@ in {
   };
 
   config = {
-    sops.secrets = lib.listToAttrs (lib.concatMap (node:
+    sops.secrets =
+      {
+        # 面板/API 的访问口令。只在开了 controllerAddress 时才有意义,但无条件
+        # 声明更简单 —— 反正 check-sops 会保证它在 sops 文件里存在。
+        "mihomo/api_secret" = {restartUnits = ["mihomo.service"];};
+      }
+      // lib.listToAttrs (lib.concatMap (node:
       map (field: {
         name = "imdomestic/${node}/${field}";
         value = {
@@ -120,8 +144,8 @@ in {
           restartUnits = ["mihomo.service"];
         };
       })
-      nodeFields)
-    nodeNames);
+        nodeFields)
+      nodeNames);
 
     # 整份配置由 sops 渲染。里面有五个节点的 UUID 和 Reality 公钥,内联进
     # `settings` 会同时写进这个公开仓库和 world-readable 的 nix store。
@@ -137,7 +161,12 @@ in {
         mode = "rule";
         log-level = "info";
         ipv6 = true;
-        external-controller = "127.0.0.1:9090";
+        # 默认只绑回环;填了 controllerAddress 才对外(见那个选项的说明)。
+        external-controller =
+          if cfg.controllerAddress == null
+          then "127.0.0.1:9090"
+          else cfg.controllerAddress;
+        secret = config.sops.placeholder."mihomo/api_secret";
 
         # geodata 从 nix store 提供,绝不能让它自己去下载。
         #
@@ -319,7 +348,12 @@ in {
     # 用 ExecStartPre 带 `+` 前缀以 root 执行:服务是 DynamicUser,普通
     # tmpfiles 规则在 StateDirectory 建好之前就跑了,时机对不上。软链而不是
     # 复制,这样包更新时自动跟着换。
-    systemd.services.mihomo.serviceConfig.ExecStartPre = [
+    systemd.services.mihomo = {
+      # 绑的是 tailscale 地址,tailscaled 没起来的话这个地址还不存在,bind 会失败。
+      after = lib.optionals (cfg.controllerAddress != null) ["tailscaled.service"];
+      wants = lib.optionals (cfg.controllerAddress != null) ["tailscaled.service"];
+
+      serviceConfig.ExecStartPre = [
       "+${pkgs.writeShellScript "mihomo-geodata" ''
         set -eu
         d=/var/lib/private/mihomo
@@ -327,6 +361,7 @@ in {
         ln -sf ${pkgs.v2ray-domain-list-community}/share/v2ray/geosite.dat "$d/GeoSite.dat"
         ln -sf ${pkgs.v2ray-geoip}/share/v2ray/geoip.dat "$d/GeoIP.dat"
       ''}"
-    ];
+      ];
+    };
   };
 }
