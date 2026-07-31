@@ -1,6 +1,7 @@
 {
   pkgs,
   pkgs-unstable,
+  inputs,
   lib,
   system,
   ...
@@ -102,6 +103,7 @@
 
       # agents
       pkgs-unstable.claude-code
+      inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex
 
       # pkgs-unstable.opencode
 
