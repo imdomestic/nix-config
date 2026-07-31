@@ -35,6 +35,19 @@
 
   nodeTags = map (n: "imdomestic-${n}") nodeNames;
 
+  # 国外 DNS,经代理出去(respect-rules)。
+  #
+  # **用 tcp:// 而不是 tls://。** 流量已经在 VLESS 隧道里加密了,DoT 只是白白多
+  # 一次 TLS 握手 —— 而这条跨境链路丢包严重(h610 实测 13%),多一次往返就经常
+  # 超时。2026-07-31 h610 上就是栽在这:日志里全是
+  # `dial im --> 1.1.1.1:853 error: ... operation was canceled`,fallback 一失败
+  # 就退回国内 DNS 的结果,于是 chatgpt.com 被解析成 157.240.8.50(Facebook 的段),
+  # cliproxy 连不上 OpenAI。dae 当初用的也是 `tcp+udp://dns.google.com:53`,没有 TLS。
+  #
+  # 不用 udp:// 是因为反向隧道(portal/bridge)对 UDP 支持差,这一点 dae 的配置
+  # 注释里也写过。
+  foreignDns = ["tcp://8.8.8.8" "tcp://1.1.1.1"];
+
   # 主策略组的类型。smart 是 vernesong fork 独有的,上游 mihomo 会直接报
   # `unsupported type: smart` 而拒绝启动 —— 所以这两个开关必须一起动,
   # 不能只开一个。
@@ -242,13 +255,16 @@ in {
           # 明确分流,对应 dae 的 `qname(geosite:cn,...) -> alidns`。
           nameserver-policy = {
             "geosite:cn,private,apple@cn,google@cn" = ["223.5.5.5" "119.29.29.29"];
-            "geosite:geolocation-!cn" = ["tls://8.8.8.8" "tls://1.1.1.1"];
+            "geosite:geolocation-!cn" = foreignDns;
+            # geosite 的分类表更新有滞后,chatgpt.com 这类较新的域名不一定在
+            # geolocation-!cn 里,漏了就会落到默认的国内 DNS 上被投毒。显式钉住。
+            "+.openai.com,+.chatgpt.com,+.oaistatic.com,+.oaiusercontent.com" = foreignDns;
           };
 
           # 投毒检测,对应 dae 的
           # `response { ip(geoip:private) && !qname(geosite:cn) -> googledns }`。
           # 国内 DNS 的答案如果落在 CN 段之外,就采信 fallback 的结果。
-          fallback = ["tls://8.8.8.8" "tls://1.1.1.1"];
+          fallback = foreignDns;
           fallback-filter = {
             geoip = true;
             geoip-code = "CN";
