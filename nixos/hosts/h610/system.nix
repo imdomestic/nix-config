@@ -33,7 +33,11 @@ in {
   imports = [
     ../../modules/airport
     ../../modules/cliproxy
-    ../../modules/dae
+    # dae -> mihomo。两者不能并存:都要接管转发流量,dae 走 eBPF/tc,
+    # mihomo 走 nftables+tun。回滚就是把这两行换回来再 switch,
+    # 或者 nixos-rebuild --rollback。
+    # ../../modules/dae
+    ../../modules/mihomo
     ../../modules/keyd
     ../../modules/qq-deepseek-bot
     # ../../modules/minecraft/wuxi.nix
@@ -48,6 +52,14 @@ in {
     enable = true;
     bindAddress = "100.64.0.3";
   };
+
+  # 这台也是网关(br-lan 10.0.1.1/24),要接管 LAN 转发流量。
+  my.mihomo.router = true;
+  # 用 smart 组:h610 自己那条跨境链路是五条里最差的(4.8 Mbit/s、13% 丢包),
+  # 但 RTT 89ms 看着健康,纯延迟策略分辨不出来。
+  my.mihomo.smart = true;
+  # metacubexd 面板: http://100.64.0.3:9090/ui —— 只绑 tailscale。
+  my.mihomo.controllerAddress = "100.64.0.3:9090";
 
   # Service secrets (were hand-placed under /var/lib/secrets).
   # acme (root, via systemd EnvironmentFile) and livekit/lk-jwt (LoadCredential)

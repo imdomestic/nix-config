@@ -30,6 +30,9 @@ in {
   my.mihomo.smart = true;
   # 这台是网关,要接管 LAN 转发流量。
   my.mihomo.router = true;
+  # metacubexd 面板: http://100.64.0.5:9090/ui —— 只绑 tailscale,
+  # 这台 firewall.enable = false,绑 0.0.0.0 等于挂公网上。
+  my.mihomo.controllerAddress = "100.64.0.5:9090";
 
   # 重新启用 modules/singbox 时,这台要一并加上
   #   my.singbox.autoRedirect = false;
