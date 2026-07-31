@@ -139,6 +139,19 @@ in {
         ipv6 = true;
         external-controller = "127.0.0.1:9090";
 
+        # geodata 从 nix store 提供,绝不能让它自己去下载。
+        #
+        # 2026-07-31 就是栽在这里:r6s 上 dae 停掉、mihomo 启动,日志停在
+        # `Can't find GeoSite.dat, start download` —— 它要下 geodata,而这时
+        # 唯一的代理刚被自己替换掉,下载卡死、服务起不来、全家断网。死锁。
+        # dae 模块本来就有 `assets = [v2ray-geoip v2ray-domain-list-community]`,
+        # 我写这个模块时漏了等价的东西。
+        #
+        # 注意 `mihomo -t` 不会触发下载,所以配置校验全绿也发现不了 ——
+        # 「能解析」和「能启动」是两回事。
+        geodata-mode = true; # 用 .dat 而不是 .metadb
+        geo-auto-update = false;
+
         tun =
           {
             enable = true;
@@ -237,5 +250,22 @@ in {
       webui = pkgs.metacubexd;
       configFile = config.sops.templates."mihomo-config.yaml".path;
     };
+
+    # 把 geodata 摆进 mihomo 的工作目录。上游模块跑的是
+    # `mihomo -d /var/lib/private/mihomo`,而它会在那个目录里找 GeoSite.dat /
+    # GeoIP.dat,找不到就联网下载(见上面 geo-auto-update 那段的说明)。
+    #
+    # 用 ExecStartPre 带 `+` 前缀以 root 执行:服务是 DynamicUser,普通
+    # tmpfiles 规则在 StateDirectory 建好之前就跑了,时机对不上。软链而不是
+    # 复制,这样包更新时自动跟着换。
+    systemd.services.mihomo.serviceConfig.ExecStartPre = [
+      "+${pkgs.writeShellScript "mihomo-geodata" ''
+        set -eu
+        d=/var/lib/private/mihomo
+        mkdir -p "$d"
+        ln -sf ${pkgs.v2ray-domain-list-community}/share/v2ray/geosite.dat "$d/GeoSite.dat"
+        ln -sf ${pkgs.v2ray-geoip}/share/v2ray/geoip.dat "$d/GeoIP.dat"
+      ''}"
+    ];
   };
 }
