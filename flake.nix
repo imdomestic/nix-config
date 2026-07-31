@@ -62,6 +62,16 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # CLIProxyAPI(h610 上把 ChatGPT 订阅包成 OpenAI 兼容 API)。nixpkgs 里没有
+    # 这个包,而上游发版极快(2026-07 一个月 64 个 release),自己维护 vendorHash
+    # 跟不动;numtide 这个仓库有现成的 derivation 并且跟着上游自动更新。
+    #
+    # **故意不 follows 我们的 nixpkgs。** follow 之后 Go 工具链和全部依赖都换成
+    # 我们这份,derivation hash 跟着变,他们预构建的产物就一个都命不中,等于每次
+    # 都在本地从源码编一个 Go 项目。用他们锁的那份 nixpkgs 才能吃到二进制缓存。
+    # 代价是多下一份 nixpkgs 求值用的源码(不参与构建,不进 system closure)。
+    llm-agents.url = "github:numtide/llm-agents.nix";
+
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";

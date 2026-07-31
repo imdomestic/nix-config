@@ -19,12 +19,19 @@
     "https://cache.garnix.io?priority=30"
     "https://cache.iog.io?priority=40"
     "https://cache.nixos-cuda.org?priority=50"
+    # llm-agents(cli-proxy-api)。这个 flake 自己的 nixConfig 里声明了这个
+    # substituter,但 flake input 的 nixConfig 不会被应用,只有把它当顶层 flake
+    # 跑才会提示 --accept-flake-config,所以必须在这里显式写一遍。
+    # 少了它,llm-agents 就得在本地从源码编 —— 那正是不 follows 我们 nixpkgs
+    # 的全部意义所在。
+    "https://cache.numtide.com?priority=60"
   ];
 
   publicKeys = [
     "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
     "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
     "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
+    "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
   ];
 
   # Hosts that hand Nix to Determinate set `nix.enable = false`, which drops
