@@ -30,6 +30,7 @@ in {
       "xray/client_in2_uuid" = {};
       "xray/client_in2_short_id" = {};
       "k3s/token" = {};
+      "acme/cloudflare_env" = {};
     }
     // lib.listToAttrs (lib.imap0 (idx: _: {
         name = "wireguard/psk/${toString idx}";
@@ -153,6 +154,77 @@ in {
   };
 
   services.tailscale.enable = true;
+
+  # Standalone DERP relay advertised by the Headscale instance on h610.
+  # Client admission is checked against Headscale so this is not a public relay.
+  users.groups.derper = {};
+  users.users.derper = {
+    isSystemUser = true;
+    group = "derper";
+  };
+
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "hankchogan@gmail.com";
+    certs."sh.imdomestic.com" = {
+      dnsProvider = "cloudflare";
+      environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+      group = "derper";
+      reloadServices = ["derper.service"];
+    };
+  };
+
+  systemd.services.derper = {
+    description = "Tailscale DERP relay";
+    wantedBy = ["multi-user.target"];
+    wants = ["network-online.target"];
+    after = [
+      "network-online.target"
+      "acme-sh.imdomestic.com.service"
+    ];
+    requires = ["acme-sh.imdomestic.com.service"];
+    preStart = ''
+      install -d -m 0750 /var/lib/derper/certs
+      ln -sfn /var/lib/acme/sh.imdomestic.com/fullchain.pem /var/lib/derper/certs/sh.imdomestic.com.crt
+      ln -sfn /var/lib/acme/sh.imdomestic.com/key.pem /var/lib/derper/certs/sh.imdomestic.com.key
+    '';
+    serviceConfig = {
+      User = "derper";
+      Group = "derper";
+      StateDirectory = "derper";
+      StateDirectoryMode = "0750";
+      ExecStart = let
+        args = [
+          "-a"
+          ":8443"
+          "-http-port"
+          "-1"
+          "-stun-port"
+          "3478"
+          "-hostname"
+          "sh.imdomestic.com"
+          "-certmode"
+          "manual"
+          "-certdir"
+          "/var/lib/derper/certs"
+          "-verify-client-url"
+          "https://tailscale.imdomestic.com:8443/verify"
+          "-verify-client-url-fail-open=false"
+        ];
+      in "${lib.getExe' pkgs.tailscale.derper "derper"} ${lib.escapeShellArgs args}";
+      Restart = "on-failure";
+      RestartSec = "5s";
+      CapabilityBoundingSet = [];
+      NoNewPrivileges = true;
+      PrivateDevices = true;
+      PrivateTmp = true;
+      ProtectControlGroups = true;
+      ProtectHome = true;
+      ProtectKernelModules = true;
+      ProtectKernelTunables = true;
+      ProtectSystem = "strict";
+    };
+  };
 
   services.nginx = {
     enable = true;

@@ -7,6 +7,24 @@
   ...
 }: let
   matrixUpstream = "http://100.64.0.4:8008";
+  headscaleDerpMap = (pkgs.formats.yaml {}).generate "headscale-derp-map.yaml" {
+    regions."611" = {
+      regionid = 611;
+      regioncode = "shanghai";
+      regionname = "Shanghai";
+      nodes = [
+        {
+          name = "611a";
+          regionid = 611;
+          hostname = "sh.imdomestic.com";
+          ipv4 = "101.132.183.117";
+          ipv6 = "none";
+          derpport = 8443;
+          stunport = 3478;
+        }
+      ];
+    };
+  };
   wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
     privateKeyFile = config.sops.secrets."wireguard/private_key".path;
     presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
@@ -632,6 +650,7 @@ in {
         region_name = "H610";
         stun_listen_addr = "0.0.0.0:3479";
       };
+      derp.paths = [headscaleDerpMap];
       dns = {
         base_domain = "inner.imdomestic.com";
         magic_dns = true;
