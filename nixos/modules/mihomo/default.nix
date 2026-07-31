@@ -85,6 +85,30 @@ in {
       default = [];
       description = "插在默认规则之前的额外规则。";
     };
+
+    router = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        这台是网关,要接管 LAN 客户端的转发流量,而不只是本机流量。
+
+        打开 `auto-redirect`,它用 nftables 在 prerouting 做 DNAT,才能接管
+        被转发的流量;`auto-route` 那套策略路由主要管本机发出的。
+
+        **不要同时使用 `route-address-set` / `route-exclude-address-set`。**
+        那两个(rule-set 形式)会让 mihomo 打开 sing-tun 的 AutoRedirectMarkMode
+        (listener/sing_tun/server.go:468),而 mark mode 一开,output 链里就会多
+        一条把本机 TCP 重定向到 lo 的规则(redirect_nftables.go:63 那个
+        `if AutoRedirectMarkMode` 包着的 nftablesCreateRedirect)。重定向后源地址
+        仍是 WAN 地址,而电信 PPPoE 给 r6s 的是 CGNAT 的 100.84.115.12,正好落在
+        tailscale 那条 `ip saddr 100.64.0.0/10 iifname != "tailscale0" drop` 里,
+        于是本机 IPv4 全挂 —— 没有 RST、没有日志,只在 lo 上看到 SYN 重传。
+        sing-box 1.13 是无条件开 mark mode 的,所以那次一定踩;mihomo 默认不开,
+        只要不碰那两个 `-set` 选项就没事。详见 docs/proxy-todo.md 第 5 节。
+
+        下面用的是普通的 `route-exclude-address`(前缀列表),不触发 mark mode。
+      '';
+    };
   };
 
   config = {
@@ -115,13 +139,23 @@ in {
         ipv6 = true;
         external-controller = "127.0.0.1:9090";
 
-        tun = {
-          enable = true;
-          stack = "system";
-          auto-route = true;
-          auto-detect-interface = true;
-          dns-hijack = ["any:53"];
-        };
+        tun =
+          {
+            enable = true;
+            stack = "system";
+            auto-route = true;
+            auto-detect-interface = true;
+            dns-hijack = ["any:53"];
+          }
+          // lib.optionalAttrs cfg.router {
+            # 接管 LAN 转发流量,见 my.mihomo.router 的说明。
+            auto-redirect = true;
+            # tailscale 整段不进 tun。到 r6s 的 ssh 走的就是 100.64.0.5,
+            # 配错了还得靠它进来回滚,这条路不能断。
+            # 用普通前缀列表而不是 route-exclude-address-set —— 后者会触发
+            # AutoRedirectMarkMode,进而生成打死本机 IPv4 的 lo 重定向。
+            route-exclude-address = ["100.64.0.0/10" "fd7a:115c:a1e0::/48"];
+          };
 
         dns = {
           enable = true;
