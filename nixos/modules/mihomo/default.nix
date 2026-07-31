@@ -170,6 +170,10 @@ in {
             route-exclude-address = ["100.64.0.0/10" "fd7a:115c:a1e0::/48"];
           };
 
+        # fake-ip 映射持久化。不存的话 mihomo 一重启映射全变,而上游
+        # systemd-resolved 还缓存着旧的 198.18.x.x,那些地址就成了死的。
+        profile.store-fake-ip = true;
+
         dns = {
           enable = true;
           ipv6 = true;
@@ -179,6 +183,10 @@ in {
           # 自建域名不能进 fake-ip:下面 imdomestic.com 走 DIRECT,需要真实 IP。
           fake-ip-filter = ["*.imdomestic.com"];
           nameserver = ["223.5.5.5" "119.29.29.29"];
+          # 解析代理服务器地址本身用的 DNS。这几个节点都是 imdomestic.com 的
+          # 域名、都在国内,必须用国内 DNS 直接解析,不能绕回代理 —— 否则就是
+          # 「要连代理得先问代理」的死循环。
+          proxy-server-nameserver = ["223.5.5.5" "119.29.29.29"];
         };
 
         proxies = map mkProxy nodeNames;
@@ -250,6 +258,20 @@ in {
       webui = pkgs.metacubexd;
       configFile = config.sops.templates."mihomo-config.yaml".path;
     };
+
+    # DNS 必须真的流经 mihomo,否则整套分流都是空的。
+    #
+    # `dns-hijack` 只劫持**进入 tun** 的流量。而本机查 127.0.0.53 走的是回环、
+    # LAN 客户端查 192.168.22.1:53 是本机目的地址,两者都不进 tun —— 于是查询
+    # 直接落到 systemd-resolved 配的国内上游,google.com 拿回投毒结果
+    # (实测解析到 157.240.7.20 这个 Facebook 的地址和 2001::1 这个 Teredo 前缀),
+    # 然后 wget 卡死。dae 没这问题是因为它在 eBPF 层连本机查询一起拦。
+    #
+    # 把 resolved 的上游指向 mihomo:LAN 继续查 192.168.22.1:53,resolved 转发
+    # 给 mihomo,由 mihomo 做 fake-ip 和分流。DHCP/RA 通告的东西一个都不用动。
+    # FallbackDNS 保持不变 —— mihomo 挂了至少还能解析,代价是那时会拿到投毒
+    # 结果,但那种状态下本来也上不了网。
+    services.resolved.settings.Resolve.DNS = lib.mkIf cfg.router ["127.0.0.1:1053"];
 
     # 把 geodata 摆进 mihomo 的工作目录。上游模块跑的是
     # `mihomo -d /var/lib/private/mihomo`,而它会在那个目录里找 GeoSite.dat /
