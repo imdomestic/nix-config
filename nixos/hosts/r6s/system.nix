@@ -13,13 +13,26 @@
 in {
   imports = [
     ./hardware-configuration.nix
-    # dae -> sing-box 的试点已回滚(2026-07-31 凌晨断网)。modules/singbox 本身
-    # 留着,凭据也已经进了 sops,但 auto_redirect 两种取值都有问题,见
-    # docs/proxy-todo.md「sing-box 迁移」一节。重新试之前先解决那个问题。
-    ../../modules/dae
+    # dae -> mihomo。三者不能并存:都要接管转发流量,dae 走 eBPF/tc,
+    # mihomo 和 sing-box 走 nftables+tun。回滚就是把 dae 换回来再 switch,
+    # 或者直接 nixos-rebuild --rollback。
+    # ../../modules/dae
+    ../../modules/mihomo
+    # sing-box 那次试点已回滚(2026-07-31 凌晨断网),两个坑都没解决,
+    # 见 docs/proxy-todo.md 第 5 节。
     # ../../modules/singbox
     ../../modules/keyd
   ];
+
+  # 用 vernesong fork 的 smart 策略组:实测这台到 r5sjp 的链路里,h610 那条
+  # RTT 89ms 看着健康但吞吐只有 4.8 Mbit/s、丢包 13%,纯延迟指标分辨不出来,
+  # 约 1/5 的流量会被送进去。smart 同时看 latency 和 lossRate。
+  my.mihomo.smart = true;
+  # 这台是网关,要接管 LAN 转发流量。
+  my.mihomo.router = true;
+  # metacubexd 面板: http://100.64.0.5:9090/ui —— 只绑 tailscale,
+  # 这台 firewall.enable = false,绑 0.0.0.0 等于挂公网上。
+  my.mihomo.controllerAddress = "100.64.0.5:9090";
 
   # 重新启用 modules/singbox 时,这台要一并加上
   #   my.singbox.autoRedirect = false;
