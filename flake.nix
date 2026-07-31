@@ -124,11 +124,6 @@
       flake = false;
     };
 
-    mihomo-config = {
-      url = "git+ssh://git@github.com/HCHogan/mihomo-config";
-      flake = false;
-    };
-
     wg-config = {
       url = "git+ssh://git@github.com/imdomestic/wgconfigs";
       flake = false;
