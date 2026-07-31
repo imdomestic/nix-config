@@ -270,6 +270,56 @@ redir-host 必须把域名解析对（拿到毒 IP 就会去连毒 IP），所�
 走代理失败率 4/160 (2.5%)。**但这不能和之前的 20% 直接比**——那是在 h610 上用
 dae 测的，主机和软件两个变量都变了。要干净归因得在同一台上做 dae/mihomo 对比。
 
+## 9. h610 试 mihomo 失败并回滚（2026-07-31）
+
+r6s 迁移成功之后把 h610 也切过去，**cliproxy 随即不可用**，回滚到 dae。
+r6s 保持 mihomo 不变。
+
+症状：`POST /v1/chat/completions` 先是 500（超时 1m21s），随后大量 3ms 的 503。
+cliproxy 报的是
+
+    Post "https://chatgpt.com/backend-api/codex/responses": EOF
+
+### 排除掉的（下次不用重查）
+
+- **不是 DNS。** 一开始确实是 DNS：chatgpt.com 被解析到 `157.240.8.50` 和
+  `2a03:2880:...face:b00c:...`（Facebook 的段，典型投毒）。根因是 fallback 用了
+  DoT（`tls://8.8.8.8:853`）经代理出去，而这条链路丢包 13%，TLS 握手那次多余的
+  往返经常超时，fallback 一失败就退回国内 DNS 的投毒结果。改成 `tcp://` 之后
+  解析恢复正常（真实 Cloudflare 地址），**但 EOF 依旧**。
+- **不是路由。** mihomo 日志明确记录
+  `cli-proxy-api → chatgpt.com:443 match Match using im[...]`，流量确实经代理。
+- **不是容器网络。** 容器 `--network=host` 出网正常，cliproxy 自己刷新 GitHub 上
+  的模型目录成功。
+- **不是凭据。** `1 clients (1 auth entries)` 正常加载。
+- **不是节点。** 一度以为是：钉到 sh 成功、钉到 rpi4/h610 失败。但十分钟后同样
+  钉 sh 也失败了 —— **那次成功是偶然，单次采样不足以下结论**。
+
+### 没定论的
+
+EOF 只发生在 `POST /backend-api/codex/responses` 这个长请求上，普通 GET 正常
+（403 是 Cloudflare 对裸 curl 的正常防护响应）。dae 时代这个请求也要 6~16 秒
+才回来，本来就在超时边缘。**怀疑**是 mihomo 与 dae 在长连接超时/缓冲行为上的
+差异把它推过了线，但没有证据。
+
+### 两个让调试变难的因素
+
+- **cliproxy 的冷却机制**：一次失败后接下来几分钟全返回
+  `auth_unavailable`，任何间歇性失败都被放大成持续不可用，每轮只有第一发是
+  有效样本。
+- **smart 组在节点间轮转**（实测 10 分钟内 sh 3 次 / rpi4 2 次 / r5s 1 次 /
+  r6s 1 次），不收敛到最优。对普通浏览无所谓，对"一次失败就冷却"的服务是致命的。
+
+### 下次怎么查
+
+**别再拿 h610 当试验场** —— 它远程、无人、跑着 airport/matrix/livekit/headscale
+一堆服务，不适合迭代式调试。正确做法是在 r6s 上部署一份 cliproxy，或者用 curl
+构造等价的长 POST 反复打，在 dae 和 mihomo 之间做真正的 A/B（每次测之前重启
+cliproxy 清冷却，或者直接绕开 cliproxy 用 curl）。
+
+`nixos/hosts/h610/system.nix` 里 `my.mihomo.*` 那几行是注释掉的现成配置，
+重新试的时候连同 import 一起放开即可。
+
 ---
 
 ## 改代理配置前先跑这几个

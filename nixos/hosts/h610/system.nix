@@ -33,11 +33,12 @@ in {
   imports = [
     ../../modules/airport
     ../../modules/cliproxy
-    # dae -> mihomo。两者不能并存:都要接管转发流量,dae 走 eBPF/tc,
-    # mihomo 走 nftables+tun。回滚就是把这两行换回来再 switch,
-    # 或者 nixos-rebuild --rollback。
-    # ../../modules/dae
-    ../../modules/mihomo
+    # 2026-07-31 试过 mihomo,因为 cliproxy 一直 EOF 而回滚,见
+    # docs/proxy-todo.md 第 9 节。r6s 上同一份配置是好的,所以问题多半出在
+    # 这台的链路质量(五条里最差)上,而不是配置本身。下面 my.mihomo.* 那几行
+    # 留着,重新试的时候把这两行换回来即可。
+    ../../modules/dae
+    # ../../modules/mihomo
     ../../modules/keyd
     ../../modules/qq-deepseek-bot
     # ../../modules/minecraft/wuxi.nix
@@ -53,13 +54,11 @@ in {
     bindAddress = "100.64.0.3";
   };
 
-  # 这台也是网关(br-lan 10.0.1.1/24),要接管 LAN 转发流量。
-  my.mihomo.router = true;
-  # 用 smart 组:h610 自己那条跨境链路是五条里最差的(4.8 Mbit/s、13% 丢包),
-  # 但 RTT 89ms 看着健康,纯延迟策略分辨不出来。
-  my.mihomo.smart = true;
-  # metacubexd 面板: http://100.64.0.3:9090/ui —— 只绑 tailscale。
-  my.mihomo.controllerAddress = "100.64.0.3:9090";
+  # 重新启用 modules/mihomo 时这几行就位,现在 import 注释掉了所以是死设置
+  # (选项由该模块定义,模块不 import 时这些赋值会导致求值失败,所以一并注释)。
+  #   my.mihomo.router = true;            # 这台是网关(br-lan 10.0.1.1/24)
+  #   my.mihomo.smart = true;
+  #   my.mihomo.controllerAddress = "100.64.0.3:9090";   # 面板,只绑 tailscale
 
   # Service secrets (were hand-placed under /var/lib/secrets).
   # acme (root, via systemd EnvironmentFile) and livekit/lk-jwt (LoadCredential)
