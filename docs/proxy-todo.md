@@ -322,6 +322,58 @@ cliproxy 清冷却，或者直接绕开 cliproxy 用 curl）。
 
 ---
 
+## 10. mihomo 每隔几小时崩一次（2026-08-01，已修）
+
+症状是「r6s 上 mihomo 过一段时间就退出」。7-31 20:27 部署，8-1 06:25 和 10:18
+各崩一次，两次都是人发现断网手动重启才恢复的。
+
+不是 OOM 也不是被 kill，是 panic：
+
+```
+panic: should never be called
+main.main.func1                      main.go:87
+net.(*Resolver).dial                 net/lookup.go:696
+```
+
+`main()` 给 `net.DefaultResolver.Dial` 装了个守卫，任何走 Go 标准库解析器的调用
+都会打印全部 goroutine 栈然后 `os.Exit(2)`——mihomo 的 DNS 必须走它自己的解析
+器，走到标准库就说明有 bug。触发它的链是 smart 组的「异常状态码检测」：
+
+```
+Smart.recordConnectionStats   smart.go:1536
+→ Smart.checkNodeQuality      smart.go:1686
+→ Smart.StatusTest            smart.go:1783
+→ Proxy.StatusTest            adapter.go:399   client.Do()
+```
+
+某条走代理的 443 连接下行不足 0.03MB 时，它会拿这条连接的 Host 现场发一个
+`https://<host>/?z=<random>` 探测。探测用的 `http.Client` 允许跟 3 次跳转，而它的
+Transport **只设了 `DialTLSContext`，没设 `DialContext`**。一旦某次跳转落到明文
+`http://` 上，net/http 就走 `DialContext`——nil——退回 Go 的零值 Dialer 和标准库
+解析器，撞守卫。
+
+坐实这一步的是崩溃现场的 goroutine 124318：`Transport.dialConn` 的 `targetScheme`
+长度是 4（`"http"`，不是 5 的 `"https"`），`targetAddr` 10 字节 = 7 字符主机 +
+`:80`。而整个函数里唯一的请求是从 `"https://"` 拼出来的，只能是跳转过来的。
+
+**教训：要同时满足「走代理」「443」「下行 < 0.03MB」「跳转到 http://」才会中。**
+这类依赖具体流量的崩溃，配置校验（`mihomo -t`、`just check-*`）一个都测不出来，
+只能靠读崩溃栈。别看到「服务退出」就先怀疑 OOM/看门狗——`journalctl | grep panic`
+是第一步。
+
+`StatusTest` 是 vernesong fork 独有的，上游 MetaCubeX 没有这个函数；fork 里最后
+一次改 `adapter/adapter.go` 是 2026-07-24，早于我们钉的 commit，所以上游没修。
+补丁在 `pkgs/mihomo-smart/statustest-dialcontext.patch`，让跳转那一跳也走代理。
+**下次 bump `rev` 时要确认这个补丁还需不需要**（上游修了就删掉）。
+
+同时补上了 `Restart=always` / `RestartSec=5s` / `startLimitIntervalSec=0`。nixpkgs
+的 mihomo 单元默认 `Restart=no`，崩了就一直躺着；router 模式下 resolved 指向
+`127.0.0.1:1053`，mihomo 没了 DNS 全瞎，等于整个局域网断网。**真正的痛点不是崩，
+是崩了不回来**——关掉次数限制是故意的，对一台没人在旁边的路由器，「一直重试」
+严格优于「试几次就放弃然后永久断网」。
+
+---
+
 ## 改代理配置前先跑这几个
 
 ```

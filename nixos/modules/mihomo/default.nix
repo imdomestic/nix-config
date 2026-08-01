@@ -369,6 +369,19 @@ in {
       after = lib.optionals (cfg.controllerAddress != null) ["tailscaled.service"];
       wants = lib.optionals (cfg.controllerAddress != null) ["tailscaled.service"];
 
+      # nixpkgs 的 mihomo 单元没有 Restart=,默认就是 Restart=no。mihomo 一崩
+      # 就永远躺着,而在 router 模式下这等于整个局域网断网:resolved 被指到
+      # 127.0.0.1:1053,mihomo 没了 DNS 就全瞎。2026-08-01 r6s 上崩了两次
+      # (06:25 和 10:18,原因见 pkgs/mihomo-smart 的补丁),两次都是人发现不对
+      # 劲手动 restart 才恢复的。
+      #
+      # startLimitIntervalSec = 0 关掉次数限制:配置写坏时它会一直 5 秒一次地
+      # 重试刷日志,但对一台没人在旁边的路由器来说,「一直重试」严格优于
+      # 「试几次就放弃、然后永久断网」。
+      startLimitIntervalSec = 0;
+      serviceConfig.Restart = "always";
+      serviceConfig.RestartSec = "5s";
+
       serviceConfig.ExecStartPre = [
       "+${pkgs.writeShellScript "mihomo-geodata" ''
         set -eu

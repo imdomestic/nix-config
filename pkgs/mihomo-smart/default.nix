@@ -34,6 +34,21 @@ buildGoModule rec {
 
   vendorHash = "sha256-P8EO47MMTpHkB9xceYWdZXWA560FDPfmO8JDLdwPKgk=";
 
+  # smart 组的「异常状态码检测」会崩掉整个进程。链路(见 2026-08-01 r6s 的两次
+  # panic):某条走代理的 443 连接下行不足 0.03MB 时,checkNodeQuality 会拿这个
+  # 连接的 Host 现场发一个 https 探测(smart.go:1686 → StatusTest);探测用的
+  # http.Client 允许跟 3 次跳转,而它的 Transport 只设了 DialTLSContext,没设
+  # DialContext。一旦某次跳转落到 http:// 上,net/http 就退回 Go 的零值 Dialer
+  # → net.DefaultResolver → main.go:82 那个 "should never be called" 守卫
+  # → os.Exit(2),整个 mihomo 直接没。
+  #
+  # 触发条件依赖具体流量,所以是「跑几个小时死一次」而不是启动就炸。
+  #
+  # 这段 StatusTest 是 vernesong fork 独有的(上游 MetaCubeX 里没有这个函数),
+  # 而 fork 里最后一次动 adapter/adapter.go 是 2026-07-24,早于我们钉的 commit,
+  # 所以上游没修。补丁把跳转那一跳也走代理 —— 这本来就是它的意图。
+  patches = [./statustest-dialcontext.patch];
+
   excludedPackages = ["./test"];
 
   ldflags = [
