@@ -579,7 +579,29 @@ in {
   systemd.services.max.environment = {
     MAX_WS_HOST = "172.17.0.1";
     MAX_LOG_COLOR = "always";
+    # max 的 GET /api/quota 拿这个问 cliproxy:池子里哪把凭据还在服务、烧完的
+    # 什么时候回来。地址不是秘密,写这里;口令在下面的 sops 模板里。
+    #
+    # 注意 cliproxy 只监听 tailscale 地址(见 modules/cliproxy 里 bindAddress
+    # 的说明),所以本机也得走 100.64.0.3,不能写 127.0.0.1。
+    MAX_CLIPROXY_BASE_URL = "http://100.64.0.3:8317";
   };
+
+  # 管理口令:和 cliproxy 服务用同一把 sops 密钥,各自渲染一份 env 文件 ——
+  # 两边都不进 world-readable 的 nix store,也都不用手改 /var/lib/max-bot。
+  sops.templates."max-cliproxy.env" = {
+    owner = "max-bot";
+    restartUnits = ["max.service"];
+    content = ''
+      MAX_CLIPROXY_MANAGEMENT_KEY=${config.sops.placeholder."cliproxy/management_key"}
+    '';
+  };
+  # 追加,不是替换:max 模块自己已经设了一个 EnvironmentFile
+  # (services.max.environmentFile → /var/lib/max-bot/max-bot.env),而 systemd
+  # 的 unitOption 在两边都是列表时按拼接合并。
+  systemd.services.max.serviceConfig.EnvironmentFile = [
+    config.sops.templates."max-cliproxy.env".path
+  ];
 
   services.qq-deepseek-bot = {
     enable = true;

@@ -50,6 +50,10 @@ in {
     # 在 secrets/hosts/<host>.yaml 里真的存在。
     sops.secrets."cliproxy/api_key" = {};
 
+    # 管理口令。和 api_key 是两把,别复用:api_key 只能拿订阅跑量,这把能把
+    # OAuth 凭据整个下载走。
+    sops.secrets."cliproxy/management_key" = {};
+
     users.users.cliproxy = {
       isSystemUser = true;
       group = "cliproxy";
@@ -74,19 +78,45 @@ in {
           - "${config.sops.placeholder."cliproxy/api_key"}"
 
         remote-management:
-          # secret-key 留空 = /v0/management/* 整个 404。
+          # 这里**永远留空**。管理口令走 MANAGEMENT_PASSWORD 环境变量,见下面的
+          # sops.templates."cli-proxy-api.env"。
           #
-          # 这不只是"少开一个接口":secret-key 一旦填了明文,程序会在每次启动时
-          # 把它 bcrypt 之后**回写 config.yaml**,而管理接口的每个写操作也会回写。
-          # 我们这份 config 是 sops 渲染的只读文件,回写要么失败要么被下次 rebuild
-          # 冲掉。留空之后它一次都不会写。
+          # 留空的理由没变:secret-key 一旦填明文,程序启动时会把它 bcrypt 之后
+          # **回写 config.yaml**(internal/config/config_load.go)。这份 config 是
+          # sops 渲染的只读文件,回写要么失败要么被下次 rebuild 冲掉,每次启动
+          # 重来一遍。填 bcrypt 密文确实能跳过回写(它认 $2a$/$2b$/$2y$ 前缀),
+          # 但那样明文口令就没有一个地方存了,还得另开一个 sops 键。
+          #
+          # 环境变量这条路绕开了整件事:internal/api/server.go 里
+          #   hasManagementSecret = SecretKey != "" || MANAGEMENT_PASSWORD 非空
+          # 两者都会让 /v0/management/* 挂上路由;而 MANAGEMENT_PASSWORD 是常数
+          # 时间明文比较,一个字节都不写配置文件。
           secret-key: ""
+          # 写 false 只是留个字面记录,实际不起作用:设了 MANAGEMENT_PASSWORD
+          # 之后程序内部会把 allowRemote 一起打开(handler.go 的
+          # allowRemoteOverride)。而且它只把 127.0.0.1/::1 算"本地",本机连
+          # tailscale 地址的源 IP 是 100.64.0.3,怎么都算远程 —— 想靠这个开关
+          # 把管理口关在环回里是做不到的。
+          #
+          # 所以这把口令的权限边界要当真:拿到它的人可以直接下载 auths/ 里的
+          # OAuth 凭据(GET /v0/management/auth-files/download)。tailnet 上还有
+          # 别人,api_key 可以分享,这把不能。
           allow-remote: false
           # 管理面板是运行时从 GitHub Releases 下载到 static/ 的,还会定期自更新。
           # 我们不用面板,关掉省一条外连和一个可写目录。
           disable-control-panel: true
 
         debug: false
+      '';
+    };
+
+    # 管理口令单独走 EnvironmentFile,而不是塞进上面那份 config.yaml —— 那样会
+    # 触发 bcrypt 回写,理由写在 remote-management 那段注释里。
+    sops.templates."cli-proxy-api.env" = {
+      owner = "cliproxy";
+      restartUnits = ["cliproxy.service"];
+      content = ''
+        MANAGEMENT_PASSWORD=${config.sops.placeholder."cliproxy/management_key"}
       '';
     };
 
@@ -113,6 +143,7 @@ in {
         WorkingDirectory = "/var/lib/cli-proxy-api";
         # -config 显式给路径。不给的话它按 $PWD/config.yaml 找,依赖 cwd 太隐晦。
         ExecStart = "${lib.getExe cfg.package} -config ${configPath}";
+        EnvironmentFile = config.sops.templates."cli-proxy-api.env".path;
         Restart = "always";
         RestartSec = "10s";
 
