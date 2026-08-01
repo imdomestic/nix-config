@@ -1,0 +1,22 @@
+--- a/adapter/adapter.go	2026-08-01 10:24:31
++++ b/adapter/adapter.go	2026-08-01 10:24:31
+@@ -357,6 +357,19 @@
+ 		TLSHandshakeTimeout:   10 * time.Second,
+ 		ExpectContinueTimeout: 1 * time.Second,
+ 		ForceAttemptHTTP2:     false,
++		// Redirects are followed (see CheckRedirect below), and a redirect to a
++		// plain http:// URL is dialed through DialContext, not DialTLSContext.
++		// Leaving DialContext nil makes net/http fall back to Go's zero Dialer,
++		// which resolves via net.DefaultResolver -- and main() installs a guard
++		// there that prints a stack and os.Exit(2)s the entire process. Route
++		// the hop through the proxy instead, which is what was intended anyway.
++		DialContext: func(dialCtx context.Context, network, targetAddr string) (net.Conn, error) {
++			hopAddr := &C.Metadata{}
++			if err := hopAddr.SetRemoteAddress(targetAddr); err != nil {
++				return nil, err
++			}
++			return p.DialContext(dialCtx, hopAddr)
++		},
+ 		DialTLSContext: func(dialCtx context.Context, network, targetAddr string) (net.Conn, error) {
+ 			rawConn, err := p.DialContext(dialCtx, addr)
+ 			if err != nil {
