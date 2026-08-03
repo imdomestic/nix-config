@@ -63,11 +63,24 @@
       if cfg.smart
       then {
         type = "smart";
-        # 显式关掉。开了它会在运行时从网上下载 Model.bin;关掉走内置评分,
-        # 用 latency + lossRate,后者取自内核 TCP_INFO 的 tcpi_total_retrans。
-        # 那正是我们需要的量 —— 实测 h610 那条链路 RTT 89ms 看着健康,但
-        # 吞吐只有 4.8 Mbit/s、丢包 13%,纯延迟指标分辨不出来。
+        # 显式关掉。开了它会从 github.com/vernesong/mihomo/releases 下一个
+        # 7.8MB 的 Model.bin,用纯 Go 的 leaves 做推理(不在本地训练,CPU 开销
+        # 可以忽略)。问题不是跑不动,是那个模型是上游拿别人的流量训的通用模型,
+        # 未必认得出我们这个具体形态 —— h610 那条链路 RTT 89ms 看着健康,但
+        # 吞吐只有 4.8 Mbit/s、丢包 13%。关掉走内置评分,用 latency + lossRate,
+        # 后者取自内核 TCP_INFO 的 tcpi_total_retrans,正是能区分开的那个量。
         uselightgbm = false;
+
+        # 把每条连接的特征写成 CSV 存本地(不上传),将来可以拿它训一个针对
+        # 我们自己链路的模型,再用 lgbm-url 指过去替掉上面那个通用模型。
+        #
+        # 落盘在 $HomeDir/smart_weight_data.csv,即 /var/lib/private/mihomo/。
+        # 默认上限 100MB(smart-collector-size),超了就地截断,不会撑爆盘 ——
+        # r6s 的 / 还剩 9.6G。
+        #
+        # 注意这个 CSV 里有 host_raw / ip_raw / asn_raw 三列,是明文的目标域名
+        # 和 IP。等于在路由器上留了一份全家的上网记录,别顺手 rsync 出去。
+        collectdata = true;
       }
       else {type = "url-test";}
     );
