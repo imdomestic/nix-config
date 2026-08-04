@@ -195,6 +195,7 @@ in {
           "csharp"
           "kotlin"
           "java"
+          "go"
         ];
         callback = mkRaw ''
           function()

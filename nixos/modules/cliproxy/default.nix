@@ -182,7 +182,7 @@ in {
         if [ "$(id -un)" != "cliproxy" ]; then
           exec sudo -u cliproxy -- "$0" "$@"
         fi
-        cd /var/lib/cliproxy
+        cd /var/lib/cli-proxy-api
         echo "== 跑 $flag,凭据写进 /var/lib/cli-proxy-api/auths =="
         echo "== 登完执行: sudo systemctl restart cliproxy =="
         exec ${lib.getExe cfg.package} -config ${configPath} "$flag"
