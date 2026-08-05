@@ -7,7 +7,7 @@
   imports = [
     ../../nixos/modules/nix.nix
     ../../nixos/modules/users.nix
-    ../../nixos/modules/home-manager.nix
+    ../../nixos/modules/home-manager-cli.nix
   ];
 
   # Host metadata comes from config.my.host (see modules/shared/host-options.nix);

@@ -6,6 +6,9 @@ default:
   @just --list
 
 # -------- System rebuild helpers --------
+# These touch the system only. Home Manager is standalone on every host, so a
+# switch never rebuilds or activates a user's home — use `just home` / `just hm`
+# for that.
 switch host:
   nixos-rebuild --sudo switch --flake .#"{{host}}"
 
@@ -16,11 +19,24 @@ debug host:
   nixos-rebuild --sudo switch --flake .#"{{host}}" --show-trace --verbose
 
 # -------- Home Manager helpers --------
+# `-b backup` is what `home-manager.backupFileExtension` used to do while HM was
+# a NixOS module: without it the first standalone activation aborts on any
+# pre-existing dotfile it wants to own.
+
+# Activate this machine's own account, resolved as <user>@<host>.
+home:
+  home-manager switch -b backup --flake .#"$(whoami)@$(hostname -s)"
+
+# Same, without touching anything — see what would change first.
+home-dry:
+  home-manager switch -b backup --flake .#"$(whoami)@$(hostname -s)" --dry-run
+
+# Activate any host/user pair explicitly.
 hm host user:
-  home-manager switch --flake .#"hosts/{{host}}/{{user}}"
+  home-manager switch -b backup --flake .#"hosts/{{host}}/{{user}}"
 
 hm-dry host user:
-  home-manager switch --flake .#"hosts/{{host}}/{{user}}" --dry-run
+  home-manager switch -b backup --flake .#"hosts/{{host}}/{{user}}" --dry-run
 
 # -------- Flake & tooling --------
 check:
@@ -75,14 +91,26 @@ upp input:
 # Run these from the build host (h610). Targets are every host with an `ip`
 # in nixos/hosts/<name>/default.nix: shanghai, tank, x470, b650, h610, n100,
 # r5s, r6s, rpi4.
+#
+# Each node carries a `system` profile plus one `home-<user>` profile per account
+# (lib/mkDeployNodes.nix) — the users on servers do not run home-manager
+# themselves, so a plain `just deploy` still has to push their homes.
 
-# Build + activate every configured node
+# Build + activate every configured node, system and homes
 deploy:
   deploy .
 
 # Deploy a single node, e.g. just deploy-host tank
 deploy-host host:
   deploy .#"{{host}}"
+
+# Only the system closure of a node — skips every home-<user> profile
+deploy-system host:
+  deploy .#"{{host}}".system
+
+# Only one user's home on a node, e.g. just deploy-home tank hank
+deploy-home host user:
+  deploy .#"{{host}}"."home-{{user}}"
 
 # Deploy everything but skip the flake checks (faster)
 deploy-fast:

@@ -9,7 +9,7 @@
     [
       ../modules/nix.nix
       ../modules/users.nix
-      ../modules/home-manager.nix
+      ../modules/home-manager-cli.nix
     ]
     ++ lib.optionals (lib.hasInfix "linux" system) [
       inputs.sops-nix.nixosModules.sops
