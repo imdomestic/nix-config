@@ -9,6 +9,7 @@
     deployNodes = (import ./lib/mkDeployNodes.nix {inherit inputs;}) {
       inherit hosts;
       inherit (systems) nixosConfigurations;
+      homeConfigurations = homes;
     };
   in {
     inherit (systems) nixosConfigurations darwinConfigurations;

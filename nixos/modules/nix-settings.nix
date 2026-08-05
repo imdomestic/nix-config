@@ -16,7 +16,10 @@
     # 数字越小越优先:SJTU 镜像加速 -> 官方源兜底 -> 其余专用 cache
     "https://mirror.sjtu.edu.cn/nix-channels/store?priority=10"
     "https://cache.nixos.org?priority=20"
-    "https://cache.garnix.io?priority=30"
+    # cache.garnix.io 拿掉了。唯一走 garnix CI 的 input 是 nix-index-database,
+    # 而它的全部产物就是两个 fetchurl(FOD,内容寻址,直接从 GitHub release 下)
+    # 加几个 symlinkJoin wrapper(本地瞬间就建完)—— 一个都不靠它。留着的净效果
+    # 只是每次求值多打一轮 narinfo,而它一 502 就能把整个构建拖停。
     "https://cache.iog.io?priority=40"
     "https://cache.nixos-cuda.org?priority=50"
     # llm-agents(cli-proxy-api)。这个 flake 自己的 nixConfig 里声明了这个
@@ -29,7 +32,6 @@
 
   publicKeys = [
     "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
-    "cache.garnix.io:CTFPyKSLcx5RMJKfLo5EEPUObbA78b0YQ2DTCJXqr9g="
     "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
     "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
   ];

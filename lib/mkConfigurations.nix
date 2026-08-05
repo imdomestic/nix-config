@@ -24,21 +24,11 @@
     }
     // (host.extraSpecialArgs or {});
 
-  mkModules = hostName: host: let
-    system = host.system or (throw "Host ${hostName} must define a system");
-    isDarwin = lib.hasInfix "darwin" system;
-    enableHomeManager =
-      if host ? withHomeManager
-      then host.withHomeManager
-      else true;
-    homeManagerModule =
-      if enableHomeManager
-      then
-        if isDarwin
-        then inputs.home-manager.darwinModules.home-manager
-        else inputs.home-manager.nixosModules.home-manager
-      else null;
-  in
+  # No home-manager module here on purpose. Homes are standalone
+  # `homeConfigurations` (lib/mkHomeConfigurations.nix) on every host, NixOS and
+  # darwin alike, so `nixos-rebuild switch` never rebuilds a user's home and a
+  # user can re-activate their own without touching the machine.
+  mkModules = hostName: host:
     myHost.mkModules {inherit hostName host;}
     ++ lib.unique (
       (host.profiles or [])
@@ -46,7 +36,6 @@
       ++ (host.hardwareModules or [])
       ++ (host.externalModules or [])
       ++ (host.extraModules or [])
-      ++ lib.optional (homeManagerModule != null) homeManagerModule
     );
 
   mkSystem = hostName: host: let

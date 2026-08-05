@@ -24,12 +24,28 @@
         users = host.users or {};
         basePkgs = homeUtils.mkBasePkgs {inherit host;};
       in
-        lib.mapAttrsToList
-        (userName: user: {
-          name = "hosts/${hostName}/${userName}";
-          value = mkHome hostName host userName user basePkgs;
-        })
-        users
+        lib.concatLists (
+          lib.mapAttrsToList
+          (
+            userName: user: let
+              cfg = mkHome hostName host userName user basePkgs;
+            in [
+              # Canonical name — what `just hm` and the deploy nodes resolve.
+              {
+                name = "hosts/${hostName}/${userName}";
+                value = cfg;
+              }
+              # What the home-manager CLI looks up by itself when given a bare
+              # flake reference (it tries `$USER@$(hostname)`, then `$USER`), so
+              # on the machine itself no attribute path has to be spelled out.
+              {
+                name = "${userName}@${hostName}";
+                value = cfg;
+              }
+            ]
+          )
+          users
+        )
     )
     hostList;
 in

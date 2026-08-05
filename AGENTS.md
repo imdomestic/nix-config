@@ -46,14 +46,50 @@ Neovim is configured with **nixvim** (flake input, pinned to the
 - Overlays for system-manager hosts go in `systemManager.overlays`, not
   `nixpkgs.overlays` (see README).
 
+## System and home are separate closures
+
+Home Manager is **never** a NixOS or nix-darwin module here, not even on hosts
+this repo also owns the OS of. Every user is a standalone
+`homeConfigurations."hosts/<host>/<user>"` (aliased `"<user>@<host>"`), built by
+`lib/mkHomeConfigurations.nix`. `lib/mkConfigurations.nix` builds the system and
+adds no home-manager module at all.
+
+- Do not add `inputs.home-manager.{nixos,darwin}Modules.home-manager` to a system
+  evaluation, and do not put `home-manager.users.*` in a system module. The whole
+  point is that a home change costs no system rebuild and no root.
+- **`osConfig` is unavailable** in home modules — it only exists for submodule
+  Home Manager. Route host facts through `config.my.host`
+  (`modules/shared/host-options.nix`), which all four evaluators share. There is
+  currently no `osConfig` reference anywhere in the repo; keep it that way.
+- A home change is verified with `just hm-dry <host> <user>`, **not** with
+  `just switch` — a system switch does not build homes at all any more. Never
+  tell the user a rebuild will pick up an edit under `home/`.
+- Conversely, a system-level change does not need a home eval to prove it works,
+  and a broken home no longer breaks its host's system eval.
+- The two sides meet in exactly three places: `config.my.host`,
+  `nixos/modules/users.nix` (which creates the accounts), and
+  `nixos/modules/home-manager-cli.nix` (which ships the `home-manager` binary so
+  a fresh machine can bootstrap its first activation).
+- **Where a package goes.** Default to `home.packages` in the asking user's
+  `home/users/<user>/`. `environment.systemPackages` is only for things the
+  machine itself needs, or that every account must have regardless of who logs
+  in — it costs a system rebuild and root to change.
+- On deployable hosts, homes ride along as `deploy.nodes.<host>.profiles.home-<user>`
+  (`lib/mkDeployNodes.nix`), because server accounts have no one to run
+  `home-manager` interactively.
+
+`docs/home-quickstart.md` is the human-facing version of this for users who only
+own their own home. If you change how activation works, update it too.
+
 ## Build & verify
 
 Use the `Justfile` recipes:
 
 ```sh
 just check                # nix flake check (with mirror substituters)
-just switch <host>        # nixos-rebuild switch
-just darwin <host>        # darwin-rebuild switch
+just switch <host>        # nixos-rebuild switch   — system only, no homes
+just darwin <host>        # darwin-rebuild switch  — system only, no homes
+just home                 # home-manager switch for this machine's account
 just hm <host> <user>     # home-manager switch
 just hm-dry <host> <user> # home-manager dry run
 ```
