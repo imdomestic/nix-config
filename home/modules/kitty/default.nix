@@ -1,4 +1,5 @@
 {
+  config,
   pkgs,
   system,
   ...
@@ -52,7 +53,7 @@ in {
       if isLinux
       then ''
         # kitty-scrollback.nvim Kitten alias
-        action_alias kitty_scrollback_nvim kitten /home/hank/.local/share/nvim/lazy/kitty-scrollback.nvim/python/kitty_scrollback_nvim.py
+        action_alias kitty_scrollback_nvim kitten ${config.home.homeDirectory}/.local/share/nvim/lazy/kitty-scrollback.nvim/python/kitty_scrollback_nvim.py
         # Browse scrollback buffer in nvim
         map kitty_mod+h kitty_scrollback_nvim
         # Browse output of the last shell command in nvim
@@ -62,7 +63,7 @@ in {
       ''
       else ''
         # kitty-scrollback.nvim Kitten alias
-        action_alias kitty_scrollback_nvim kitten /Users/hank/.local/share/nvim/lazy/kitty-scrollback.nvim/python/kitty_scrollback_nvim.py
+        action_alias kitty_scrollback_nvim kitten ${config.home.homeDirectory}/.local/share/nvim/lazy/kitty-scrollback.nvim/python/kitty_scrollback_nvim.py
         # Browse scrollback buffer in nvim
         map kitty_mod+h kitty_scrollback_nvim
         # Browse output of the last shell command in nvim
@@ -152,4 +153,3 @@ in {
 #   tab_bar_background = "#131313";
 # };
 #
-

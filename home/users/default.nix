@@ -11,6 +11,7 @@
   };
   kenneth = {
     module = import ./kenneth/default.nix;
+    alex = import ./kenneth/alex.nix;
   };
   linwhite = {
     module = import ./linwhite/default.nix;
