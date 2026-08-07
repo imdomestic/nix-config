@@ -1,0 +1,34 @@
+{inputs}: let
+  darwinProfiles = import ../../../darwin/profiles/default.nix;
+  homeProfiles = import ../../../home/profiles/default.nix;
+  userModules = import ../../../home/users/default.nix {inherit inputs;};
+in {
+  system = "aarch64-darwin";
+  kind = "darwin";
+  roles = ["desktop" "gui"];
+
+  profiles = with darwinProfiles; [
+    base
+  ];
+
+  modules = [
+    ./system.nix
+  ];
+
+  externalModules = [
+    inputs.nix-index-database.darwinModules.nix-index
+    inputs.determinate.darwinModules.default
+  ];
+
+  users.kenneth.home = {
+    profiles = with homeProfiles; [
+      core
+      base
+      gui.darwin
+    ];
+    modules = [
+      userModules.kenneth.module
+      userModules.kenneth.alex
+    ];
+  };
+}

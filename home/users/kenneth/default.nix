@@ -17,7 +17,9 @@
     ];
 
     sessionPath = [
+      "$HOME/.local/share/pnpm"
       "$HOME/.local/bin"
+      "$HOME/.scripts"
     ];
 
     sessionVariables = {
@@ -37,7 +39,14 @@
 
   xdg.enable = true;
 
-  programs.git.enable = true;
+  programs.git = {
+    enable = true;
+    lfs.enable = true;
+    settings.user = {
+      name = "zty20040403";
+      email = "145665103+zty20040403@users.noreply.github.com";
+    };
+  };
 
   programs.lazygit = {
     enable = true;

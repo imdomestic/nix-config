@@ -26,13 +26,15 @@
 
 ## 1. 你在哪些机器上
 
-**kenneth** —— 三台服务器,配置完全一样:
+**kenneth** —— 三台服务器 + 自己的 Mac。四台机器共享基础配置，Mac
+另外装桌面软件和从 Homebrew 迁来的工具:
 
 | 机器 | 你的配置名 |
 | --- | --- |
 | h610 | `kenneth@h610` |
 | shanghai | `kenneth@shanghai` |
 | tank | `kenneth@tank` |
+| 你的 Mac | `kenneth@alex` |
 
 **fendada** —— 三台服务器 + 你自己的 Mac:
 
@@ -66,7 +68,7 @@ home-manager switch -b backup --flake .#你的配置名
 > 需要你的 ssh key 在 GitHub 上、并且有 `imdomestic` 的读权限。
 > 报 `Permission denied (publickey)` 就是这个,找 hank。
 
-### fendada 的 Mac 上
+### kenneth / fendada 的 Mac 上
 
 Mac 上 Nix 不是自带的,先装(这一步要输密码,是唯一一次需要管理员权限的地方):
 
@@ -80,11 +82,15 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 git clone git@github.com:imdomestic/nix-config ~/.config/nix-config
 cd ~/.config/nix-config
 nix run github:nix-community/home-manager/release-26.05 -- \
-  switch -b backup --flake .#a123456@macbook-pro-3
+  switch -b backup --flake .#你的配置名
 ```
 
 第一次要用 `nix run` 是因为 `home-manager` 这个命令本身也是它装的 —— 先有鸡还是先有蛋。
 装完之后,以后直接 `home-manager switch ...` 就行。
+
+`alex` 是从已有账户改短用户名迁入，先按
+[`alex-account-migration.md`](alex-account-migration.md) 操作，不要在旧的
+`ztymac` 账户仍登录时直接执行 nix-darwin switch。
 
 ---
 
@@ -97,7 +103,7 @@ $EDITOR home/users/你的名字/default.nix
 
 改完,**先空跑看看会变什么**,确认没问题再真的应用。
 
-### kenneth(三台服务器都一样)
+### kenneth
 
 ```bash
 just home-dry     # 空跑:只告诉你会变什么,不动任何东西

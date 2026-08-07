@@ -10,6 +10,7 @@ in {
   wsl = callHost "wsl";
   m1elite = callHost "m1elite";
   m1pro = callHost "m1pro";
+  alex = callHost "alex";
   hackintosh = callHost "hackintosh";
   macbook-pro-3 = callHost "macbook-pro-3";
   x86_64-headless = callHost "x86_64-headless";
