@@ -87,7 +87,78 @@ in {
     "net.ipv6.conf.all.forwarding" = 1;
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
+
+    # --- 内存压力 (见下面 zramSwap / systemd.oomd) ---
+    #
+    # zram 的 swap 是内存里的压缩块,不是磁盘,读写快两三个数量级。默认的
+    # swappiness=60 是按"换出去很贵"调的,对 zram 太保守 —— 结果是内核宁可
+    # 反复丢弃并重读页缓存(可执行页、库)也不肯换出匿名页,那正是机器看起来
+    # 卡死的样子。150 让它优先压缩匿名页。
+    "vm.swappiness" = 150;
+
+    # 换入时的预读页数,2^N。磁盘上顺序预读是赚的,zram 上不是:解压本身
+    # 就是成本,预读进来用不上的页纯浪费 CPU。0 = 一次只换入一页。
+    "vm.page-cluster" = 0;
+
+    # 让内核更早开始后台回收,而不是等到水位线才同步回收。125 是 zram
+    # 场景的常见值,代价是平时多一点点回收开销。
+    "vm.watermark_scale_factor" = 125;
   };
+
+  # 这台是 15 GiB 内存 + **没有任何 swap**。没有 swap 时内核没地方腾挪匿名页,
+  # 内存吃紧就只能反复回收页缓存,机器进入长时间无响应但也没被 OOM 杀掉的
+  # 状态 —— `nix flake check` 这种一次求值 23 台配置的活很容易触发。
+  #
+  # zram 给内核一个去处,而且是压缩后放在内存里(典型 2-3:1),所以 8 GiB 的
+  # zram 大致能吃下 16-24 GiB 匿名页。它把"硬卡死"变成"变慢"。
+  #
+  # 不用磁盘 swap:这台是 SSD,写放大不划算,而且真换到磁盘上照样卡。
+  zramSwap = {
+    enable = true;
+    # 15.4 GiB 的一半。再高会挤占本来能放页缓存的物理内存,反而更差。
+    memoryPercent = 50;
+    algorithm = "zstd";
+  };
+
+  # oomd 本来就是开的(NixOS 默认 systemd.oomd.enable = true),但三个 slice
+  # 开关默认全是 false,所以它跑着却一个 cgroup 都没在看 —— `oomctl` 里
+  # "Swap Monitored CGroups" 和 "Memory Pressure Monitored CGroups" 都是空的。
+  # 这就是上次内存打满时它什么也没做的原因。
+  systemd.oomd = {
+    # 交互式的活(登录会话、终端里跑的 nix eval/build)都在 user slice 里,
+    # 上次卡死的就是这一类。开它。
+    enableUserSlices = true;
+
+    # **故意不开 enableSystemSlice。** 这台的 system.slice 里是 headscale、
+    # max、napcat、cliproxy、nginx、docker —— 让 oomd 在整个 system.slice 上
+    # 按压力挑一个杀,挑中的很可能是 matrix 转发或者 bot,那是拿服务中断换
+    # 内存。nix 构建的内存单独在下面用 MemoryHigh 限,比无差别杀精确得多。
+    #
+    # 同理不开 enableRootSlice(它是 system.slice 的父级,范围只会更大)。
+
+    settings.OOM = {
+      # 默认 60%/30s。压到 80%/20s:这台跑着 fleet 的关键服务,宁可让
+      # 内存压力持续久一点也别误杀;但真到 80% 持续 20 秒,那就是回不来了,
+      # 早杀早解脱。
+      DefaultMemoryPressureLimit = "80%";
+      DefaultMemoryPressureDurationSec = "20s";
+    };
+  };
+
+  # nix 构建跑在 nix-daemon 里(system.slice),上面刻意没让 oomd 管那一片,
+  # 所以在这里单独给它一个上限。
+  #
+  # 用 MemoryHigh 不用 MemoryMax:High 是软限,超了内核给这个 cgroup 加回收
+  # 压力让它变慢,而 Max 是硬限,超了直接杀 —— 构建跑到一半被杀掉只会浪费
+  # 前面所有的编译。这台 12 核,max-jobs 默认 auto 就是 12 个并行构建,
+  # 10G 差不多是"能同时开满但别把机器拖垮"的位置。
+  #
+  # 这台用的是 Determinate 的 nix,nix-daemon.service 本体是软链到 nix 包里
+  # 那份 unit 的。不用自己写 drop-in —— nixpkgs 对这种包提供的 unit 已经
+  # 设了 overrideStrategy = "asDropinIfExists",下面这行会自动落到
+  # nix-daemon.service.d/overrides.conf 里。
+  # (别改成 systemd.units + asDropin,那会和 nixpkgs 的 asDropinIfExists 打架。)
+  systemd.services.nix-daemon.serviceConfig.MemoryHigh = "10G";
 
   time.timeZone = "Asia/Hong_Kong";
 

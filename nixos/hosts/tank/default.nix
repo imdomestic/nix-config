@@ -6,6 +6,7 @@ in {
   system = "x86_64-linux";
   kind = "nixos";
   roles = ["server"];
+  tsIp = "100.64.0.4";
   ip = "10.0.0.66";
   sshUser = "root";
 

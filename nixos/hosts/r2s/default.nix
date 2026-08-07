@@ -6,6 +6,7 @@ in {
   system = "aarch64-linux";
   kind = "nixos";
   roles = ["server"];
+  tsIp = "100.64.0.11";
 
   profiles = with nixosProfiles; [
     base

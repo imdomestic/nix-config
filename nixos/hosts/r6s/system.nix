@@ -425,12 +425,12 @@ in {
       };
   };
 
-  services.prometheus.exporters.node = {
-    enable = true;
-    openFirewall = true;
-    enabledCollectors = ["systemd" "netdev" "netstat"];
-    port = 9100;
-  };
+  # node_exporter 挪到 nixos/modules/telemetry(经 profiles/server.nix 引入)。
+  # 这里原来那份是 openFirewall = true + 默认 listenAddress 0.0.0.0 —— 而这台
+  # firewall.enable = false,openFirewall 是空操作,exporter 实际听在包括 ppp0
+  # 在内的每一张网卡上。开了 systemd collector 之后它会导出全部 unit 名字,
+  # 对这台跑 xray/mihomo 的机器来说那是一份不该外泄的服务清单。
+  # 新模块绑 my.host.tsIp(100.64.0.5),和上面 mihomo 面板同一个规矩。
 
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
