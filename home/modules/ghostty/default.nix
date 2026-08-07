@@ -10,11 +10,10 @@ in {
     enable = true;
     package =
       if isHome
-      then pkgs.emptyDirectory
+      then null
       else if isLinux
       then pkgs.ghostty
-      # else pkgs.ghostty-bin;
-      else pkgs.emptyDirectory;
+      else null;
     enableZshIntegration = true;
     # installBatSyntax = false;
     themes = {
