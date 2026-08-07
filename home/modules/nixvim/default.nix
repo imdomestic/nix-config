@@ -85,6 +85,9 @@ in {
       foldlevel = 99;
       foldlevelstart = 99;
       cmdheight = 0;
+      # nvim 默认 "ltToOCF" + "A"：发现残留 swap 时不再弹 E325 ATTENTION 提示。
+      # 该提示在 snacks picker/explorer 的跳转里无法交互，会直接抛 Lua error。
+      shortmess = "ltToOCFA";
       fillchars = {
         eob = " ";
       };
