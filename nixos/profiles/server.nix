@@ -5,6 +5,9 @@
 }: {
   imports = [
     ../modules/ssh
+    # 采集端。模块自己按 my.host.tsIp 决定开不开,所以这里无条件 import ——
+    # 没设 tsIp 的 server(n100/aarch64-wsl/x470)会自动跳过。
+    ../modules/telemetry
   ];
 
   services = {
