@@ -199,7 +199,6 @@ in {
     '';
   };
 
-  services.tailscale.enable = true;
 
   services.filebrowser = {
     enable = true;

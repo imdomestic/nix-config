@@ -13,6 +13,11 @@
     ]
     ++ lib.optionals (lib.hasInfix "linux" system) [
       inputs.sops-nix.nixosModules.sops
+      # tailscale + Tailscale SSH。模块自己按 my.host.tsIp 决定开不开,所以
+      # 无条件 import。**只给 linux** —— 它用的 services.tailscale.extraSetFlags
+      # 是 NixOS 的选项,nix-darwin 那边没有(darwin 走 darwin/profiles/base.nix,
+      # 现在够不到这里,但这个文件里已经有 darwin 分支了,别留这个雷)。
+      ../modules/tailscale
     ]
     ++ lib.optionals (lib.hasInfix "darwin" system) [
       inputs.sops-nix.darwinModules.sops

@@ -199,7 +199,8 @@ in {
 
   services.iperf3.enable = true;
   services.openssh.enable = true;
-  services.tailscale.enable = true;
+  # 没有 tsIp(不是部署目标),所以要显式开。见 nixos/modules/tailscale。
+  my.tailscale.enable = true;
 
   # services.ollama = {
   #   enable = true;
