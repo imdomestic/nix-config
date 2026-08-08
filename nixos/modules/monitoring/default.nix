@@ -163,6 +163,33 @@ in {
             inventory;
         }
         {
+          job_name = "ping";
+          static_configs =
+            map (h: {
+              targets = ["${h.tsIp}:9427"];
+              # instance = 发起探测的那台。被探测的那台在下面 relabel 成 peer,
+              # 所以一条时序读起来是 "从 instance 打到 peer"。
+              labels.instance = h.name;
+            })
+            inventory;
+
+          # ping_exporter 的 target 标签是 IP(见 modules/telemetry/mesh.nix
+          # 里为什么用 IP 而不是 MagicDNS 名字)。这里按 inventory 生成一组
+          # 一一对应的改写规则,把它翻成主机名。
+          #
+          # 每条规则只在 target 精确等于某个 IP 时命中 —— Prometheus 的
+          # relabel regex 是全锚定的。tsIp 里的点要转义,否则 `.` 会匹配任意
+          # 字符(实际不会撞上,但错的正则迟早咬人)。
+          metric_relabel_configs =
+            map (h: {
+              source_labels = ["target"];
+              regex = lib.replaceStrings ["."] ["\\."] h.tsIp;
+              target_label = "peer";
+              replacement = h.name;
+            })
+            inventory;
+        }
+        {
           # 抓自己。监控系统本身不被监控是个典型盲区 —— 抓取失败、
           # TSDB 写不动、规则求值超时,都只有这个 job 能看见。
           job_name = "prometheus";
