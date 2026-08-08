@@ -39,6 +39,22 @@ build-local host:
 local +cmd:
   {{cmd}} --option builders ""
 
+# -------- 反方向:强制全部推给 tank --------
+# nix 的调度是「平台匹配且有空闲 slot 就本地编」,所以在 x86_64 机器上编
+# x86_64 的东西默认是本地跑的,只有 12 个 slot 占满才溢出到 tank。
+# `--max-jobs 0` 把本地 slot 清零,于是**每一个** derivation 都必须走远程。
+#
+# 什么时候用:本机内存吃紧、想让笔记本别发烫、或者确认远程构建这条路真的通。
+# 注意 tank 不可达时这几条会直接失败(而不是回落到本地)——那正是它的用意。
+
+# 全部推给 tank 编,然后 switch
+switch-remote host:
+  nixos-rebuild --sudo switch --flake .#"{{host}}" --max-jobs 0
+
+# 全部推给 tank 编,不激活
+build-remote host:
+  nixos-rebuild build --flake .#"{{host}}" --max-jobs 0
+
 # -------- Home Manager helpers --------
 # `-b backup` is what `home-manager.backupFileExtension` used to do while HM was
 # a NixOS module: without it the first standalone activation aborts on any
