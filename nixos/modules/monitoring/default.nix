@@ -342,6 +342,29 @@ in {
 
       provision.datasources.settings = {
         apiVersion = 1;
+
+        # 先删同名的再建。
+        #
+        # 不加这个的话,给一个**已经存在于 grafana.db 里的**数据源改 uid 会让
+        # provisioning 报 "data source not found" —— 它按新 uid 去找要更新的
+        # 记录,而库里那条是旧的随机 uid。踩过一次:加上 `uid = "prometheus"`
+        # 之后 Grafana 直接起不来了。
+        #
+        # **Grafana 把 provisioning 失败当致命错误,不是警告。** 数据源配错、
+        # 看板 JSON 不合法,都会让整个服务拒绝启动 —— 症状是浏览器
+        # "refused to connect",而 Prometheus 和 Alertmanager 还好好的,
+        # 很容易往网络方向排查。
+        #
+        # 长期留着而不是手动删一次:tank 万一从旧的 grafana.db 恢复,同样的
+        # 冲突会再来一遍。删掉再建对一个纯声明式的数据源没有任何代价 ——
+        # 它不存查询、不存状态,uid 又是钉死的,看板的引用不会断。
+        deleteDatasources = [
+          {
+            name = "Prometheus";
+            orgId = 1;
+          }
+        ];
+
         datasources = [
           {
             name = "Prometheus";
