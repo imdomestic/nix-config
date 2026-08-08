@@ -18,6 +18,27 @@ darwin host:
 debug host:
   nixos-rebuild --sudo switch --flake .#"{{host}}" --show-trace --verbose
 
+# -------- 逃生口:不用 tank,全部本地编译 --------
+# 编译默认会推给 tank(见 nixos/modules/nix.nix 的 buildMachines)。想强制本地
+# 编译时用这几条 —— `--builders ""` 把远程构建机列表清空,只影响这一次调用,
+# 不改任何配置、不需要 switch。
+#
+# 什么时候用:tank 关了/在忙、网络不好、或者你就是想看本机能不能编出来。
+# 注意在 ARM 机器上本地编译会慢很多,那正是当初把活推给 tank 的原因。
+
+# 本地编译并 switch(不用 tank)
+switch-local host:
+  nixos-rebuild --sudo switch --flake .#"{{host}}" --option builders ""
+
+# 本地编译但不激活,只看能不能编出来
+build-local host:
+  nixos-rebuild build --flake .#"{{host}}" --option builders ""
+
+# 任意 nix 命令的通用写法,例:
+#   just local nix build .#nixosConfigurations.tank.config.system.build.toplevel
+local +cmd:
+  {{cmd}} --option builders ""
+
 # -------- Home Manager helpers --------
 # `-b backup` is what `home-manager.backupFileExtension` used to do while HM was
 # a NixOS module: without it the first standalone activation aborts on any
