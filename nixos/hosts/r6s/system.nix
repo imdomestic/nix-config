@@ -458,6 +458,36 @@ in {
   services.cockpit.enable = lib.mkForce false;
   services.tailscale.enable = true;
 
+  # ---------------------------------------------------------------------
+  # Tailscale SSH —— **这台是试点,先别往别的机器上铺。**
+  #
+  # 目的是机器之间互相 ssh 不用管密钥:认证走 tailnet 身份 + headscale 的
+  # SSH 策略(见 hosts/h610/system.nix 里 policy 的 ssh 段),客户端零配置、
+  # 零密钥,新机器接进 tailnet 就能用。顺带解决 tank 当远程构建机的认证 ——
+  # nix-daemon 以 root 发起 ssh,原本需要一把 root 能读的私钥。
+  #
+  # **风险:开启后 tailnet 来源的 22 端口由 tailscaled 接管。** 官方文档说
+  # sshd_config 和 authorized_keys 不会被改、非 tailscale 来源的连接照常,
+  # 但经 100.64.0.5 过来的 ssh 会走 tailscale SSH 那条路 —— 而 deploy-rs
+  # 现在正是走这个地址。所以要先在一台有独立退路的机器上验。
+  #
+  # 选 r6s 做试点就是因为它有**两条完全独立于 tailscale 的入口**:
+  #   - wireguard  10.0.0.4       (实测 ssh 通)
+  #   - LAN        192.168.22.1   (hank 就在这个网里)
+  # 就算 tailnet SSH 彻底锁死也进得去改回来。
+  #
+  # 验完要确认三件事:
+  #   1. `ssh root@100.64.0.5` 不带密钥能不能连(tailscale SSH 生效)
+  #   2. **原来带密钥的 ssh 还能不能连**(deploy-rs 依赖这条)
+  #   3. wg 那条退路没受影响
+  #
+  # 回滚:删掉这行 + switch;或者应急时直接 `tailscale set --ssh=false`。
+  #
+  # 用 extraSetFlags 不用 extraUpFlags:后者只在设了 authKeyFile 时才生效
+  # (见 nixpkgs 的 tailscale 模块),这台没有,写了会被静默忽略。
+  # ---------------------------------------------------------------------
+  services.tailscale.extraSetFlags = ["--ssh"];
+
   # programs = {
   #   niri = {
   #     package = pkgs.niri;
