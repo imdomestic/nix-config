@@ -112,6 +112,33 @@ in {
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
 
+  # --- 构建并发 ---
+  #
+  # 这台是 fleet 的构建机(见 modules/nix.nix 的 buildMachines),但默认值在
+  # 这个硬件上是灾难性的超额订阅:
+  #
+  #   max-jobs = auto  → nproc = 20,而这是 E5-2666 v3,**10 物理核 / 20 线程**
+  #   cores    = 0     → 每个构建再用满 20
+  #
+  # 也就是最多 20 个并发构建 × 每个 20 路并行 = 400 个进程抢 10 个核。实测
+  # (2026-08-09,一次 ARM 构建)load1 = 42、CPU 93%、47 个 qemu-aarch64 进程,
+  # 连 node_exporter 的抓取都从 ~20ms 涨到 **504ms**。
+  #
+  # 关键在于这不是"用满硬件",而是**比不超额还慢** —— 上下文切换的开销吃掉
+  # 了并行收益,而 ARM 构建全是 QEMU 用户态模拟,纯 CPU 密集、吃执行单元,
+  # SMT 在这种负载下几乎没有增益,按线程数配等于按两倍物理核配。
+  #
+  # 6 × 2 = 12 路并行,略高于 10 个物理核(构建有一部分时间在等 I/O),
+  # 剩下的留给这台上跑着的 matrix-synapse、postgres、minecraft、samba、
+  # Prometheus/Grafana。
+  #
+  # 想改的话记得 modules/nix.nix 里 buildMachines 的 maxJobs 要跟着一起动 ——
+  # 客户端给多了只会在这边排队。
+  nix.settings = {
+    max-jobs = 6;
+    cores = 2;
+  };
+
   # 26.05 里 systemd initrd 已经是默认（这行是 no-op），但显式钉住：多设备 bcachefs
   # 当根不能走 script initrd —— 那条路径只等设备列表里的第一块盘
   # （nixpkgs tasks/filesystems/bcachefs.nix 的 firstDevice），默认翻回去就起不来了。
