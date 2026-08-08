@@ -69,7 +69,16 @@
   # 一个假的超大值。看板那边靠时间窗聚合来填,见 dashboards/devices.json。
   deviceRttScript = pkgs.writeShellApplication {
     name = "tailscale-device-rtt";
-    runtimeInputs = [pkgs.tailscale pkgs.jq pkgs.coreutils pkgs.gnused];
+    # 解析全部用 shell 内置语法(参数展开 + case),不调 awk/sed/grep。
+    #
+    # 不是为了炫技,是踩过:第一版用了 awk 和 grep 但没加进 runtimeInputs。
+    # writeShellApplication 会把 PATH 限定成这个列表,于是服务里 `awk` 直接
+    # "command not found"。shellcheck 查不出来(awk 是合法命令),本地手测也
+    # 查不出来(交互 shell 里有 awk)——只有跑成服务才暴露。
+    #
+    # grep 那处更阴:`command not found` 返回 127,在 if 里就是假,所以它不
+    # 报任何错,只是把每一条链路都误判成"直连"。内置语法没有 PATH 这一环。
+    runtimeInputs = [pkgs.tailscale pkgs.jq pkgs.coreutils];
     text = ''
       dir=${lib.escapeShellArg cfg.textfileDir}
       out="$dir/tailscale_device_rtt.prom"
@@ -108,24 +117,34 @@
               line=""
             fi
 
-            # 超时那行是 `ping "100.64.0.x" timed out`,匹配不到 `in <n>ms`,
-            # 于是这里为空,直接跳过 —— 不输出任何样本。
-            ms="$(printf '%s' "$line" | sed -n 's/.* in \([0-9][0-9]*\)ms$/\1/p')"
-            [ -z "$ms" ] && continue
+            # 成功那行结尾是 `... in 4ms`,取最后一个 " in " 之后的部分。
+            # 超时那行是 `ping "100.64.0.x" timed out`,里面没有 " in ",
+            # 参数展开会原样返回整行,于是下面的数字校验不过,直接跳过 ——
+            # 不输出任何样本(缺失比假数据好)。
+            ms="''${line##* in }"
+            ms="''${ms%ms}"
+            case "$ms" in
+              "" | *[!0-9]*) continue ;;
+            esac
 
-            # 走中继时输出形如 `... via DERP(h610) in 45ms`;直连是
+            # 走中继时形如 `... via DERP(h610) in 45ms`;直连是
             # `... via [2409:...]:41641 in 4ms`。
-            if printf '%s' "$line" | grep -q 'DERP('; then
-              via=derp
-              region="$(printf '%s' "$line" | sed -n 's/.*DERP(\([^)]*\)).*/\1/p')"
-            else
-              via=direct
-              region=""
-            fi
+            case "$line" in
+              *"DERP("*)
+                via=derp
+                region="''${line##*DERP(}"
+                region="''${region%%)*}"
+                ;;
+              *)
+                via=direct
+                region=""
+                ;;
+            esac
 
-            printf 'tailscale_device_rtt_seconds{peer="%s",kind="device",os="%s",user="%s",via="%s",region="%s"} %s\n' \
+            # ms → 秒,用整数运算凑小数,不需要 awk/bc。
+            printf 'tailscale_device_rtt_seconds{peer="%s",kind="device",os="%s",user="%s",via="%s",region="%s"} %d.%03d\n' \
               "$name" "$os" "$user" "$via" "$region" \
-              "$(awk -v m="$ms" 'BEGIN { printf "%.4f", m / 1000 }')"
+              "$((ms / 1000))" "$((ms % 1000))"
           done >> "$tmp"
 
       chmod 0644 "$tmp"
