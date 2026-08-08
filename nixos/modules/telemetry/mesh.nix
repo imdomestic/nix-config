@@ -29,7 +29,8 @@
   # 除自己以外的纳管机器。
   peers = lib.filter (h: h.name != config.my.host.name) inventory;
 
-  peerNamesJson = builtins.toJSON (map (h: h.name) peers);
+  # 全部纳管机器的名字(含自己,无害)。jq 靠它把 peer 分成 server / device。
+  serverNamesJson = builtins.toJSON (map (h: h.name) inventory);
 
   pathScript = pkgs.writeShellApplication {
     name = "tailscale-path-metrics";
@@ -44,9 +45,88 @@
       trap 'rm -f "$tmp"' EXIT
 
       tailscale status --json \
-        | jq -r --argjson peers ${lib.escapeShellArg peerNamesJson} \
+        | jq -r --argjson servers ${lib.escapeShellArg serverNamesJson} \
                -f ${./tailscale-path.jq} \
         > "$tmp"
+
+      chmod 0644 "$tmp"
+      mv "$tmp" "$out"
+    '';
+  };
+
+  # 终端设备(手机、别人的 MacBook)的 RTT。
+  #
+  # 为什么不用 ping_exporter:那需要一份静态目标列表,而这些设备来来去去 ——
+  # 二十来台里通常只有三五台在线,还时不时多一台新手机。把列表写进 nix 意味着
+  # 手工维护一份必然过期的清单,而且会给二十个常年离线的目标持续打 ICMP。
+  #
+  # 改成从 `tailscale status` 里挑出**当前在线**的设备再 `tailscale ping`:
+  #   - 自动发现,新设备加进 tailnet 就自动被测,不用改配置
+  #   - 自动收敛,离线的根本不探,工作量随在线数走而不是随注册数走
+  #   - 测的是真实 tailnet 路径(经不经 DERP 都算进去),而不是 ICMP
+  #
+  # 探不到就什么都不输出 —— 在 Prometheus 里是序列缺失,不是一个假的 0 或者
+  # 一个假的超大值。看板那边靠时间窗聚合来填,见 dashboards/devices.json。
+  deviceRttScript = pkgs.writeShellApplication {
+    name = "tailscale-device-rtt";
+    runtimeInputs = [pkgs.tailscale pkgs.jq pkgs.coreutils pkgs.gnused];
+    text = ''
+      dir=${lib.escapeShellArg cfg.textfileDir}
+      out="$dir/tailscale_device_rtt.prom"
+      tmp="$(mktemp "$dir/.tailscale_device_rtt.XXXXXX")"
+      trap 'rm -f "$tmp"' EXIT
+
+      {
+        echo "# HELP tailscale_device_rtt_seconds Round-trip time to an online terminal device, measured with tailscale ping."
+        echo "# TYPE tailscale_device_rtt_seconds gauge"
+      } > "$tmp"
+
+      # 只挑 kind=device 且 Online 的。上限 ${toString cfg.deviceProbeLimit} 台
+      # 是防跑飞的:每台最坏 ${cfg.deviceProbeTimeout} 超时,乘起来必须明显小于
+      # timer 间隔,否则会开始堆叠。
+      tailscale status --json \
+        | jq -r --argjson servers ${lib.escapeShellArg serverNamesJson} '
+            .User as $u
+            | .Peer // {} | to_entries[] | .value
+            | select((.DNSName // "") != "")
+            | (.DNSName | split(".")[0]) as $n
+            | select(($servers | index($n)) == null)
+            | select((.Online // false) == true)
+            | [ $n,
+                (.TailscaleIPs // ["-"])[0],
+                (.OS // "unknown"),
+                ($u[((.UserID // 0) | tostring)].LoginName // "unknown") ]
+            | @tsv
+          ' \
+        | head -n ${toString cfg.deviceProbeLimit} \
+        | while IFS="$(printf '\t')" read -r name ip os user; do
+            [ "$ip" = "-" ] && continue
+
+            line=""
+            if ! line="$(tailscale ping -c 1 --timeout ${cfg.deviceProbeTimeout} \
+                           --until-direct=false "$ip" 2>/dev/null | head -1)"; then
+              line=""
+            fi
+
+            # 超时那行是 `ping "100.64.0.x" timed out`,匹配不到 `in <n>ms`,
+            # 于是这里为空,直接跳过 —— 不输出任何样本。
+            ms="$(printf '%s' "$line" | sed -n 's/.* in \([0-9][0-9]*\)ms$/\1/p')"
+            [ -z "$ms" ] && continue
+
+            # 走中继时输出形如 `... via DERP(h610) in 45ms`;直连是
+            # `... via [2409:...]:41641 in 4ms`。
+            if printf '%s' "$line" | grep -q 'DERP('; then
+              via=derp
+              region="$(printf '%s' "$line" | sed -n 's/.*DERP(\([^)]*\)).*/\1/p')"
+            else
+              via=direct
+              region=""
+            fi
+
+            printf 'tailscale_device_rtt_seconds{peer="%s",kind="device",os="%s",user="%s",via="%s",region="%s"} %s\n' \
+              "$name" "$os" "$user" "$via" "$region" \
+              "$(awk -v m="$ms" 'BEGIN { printf "%.4f", m / 1000 }')"
+          done >> "$tmp"
 
       chmod 0644 "$tmp"
       mv "$tmp" "$out"
@@ -72,6 +152,26 @@ in {
       type = lib.types.port;
       default = 9427;
       description = "ping_exporter 端口(上游默认),全 fleet 无冲突。";
+    };
+
+    deviceProbeLimit = lib.mkOption {
+      type = lib.types.int;
+      default = 12;
+      description = ''
+        单轮最多探测多少台在线终端设备。防跑飞用 —— limit × timeout 必须
+        明显小于 timer 间隔(60s),否则任务会开始堆叠。12 × 2s = 24s,
+        而实际同时在线的通常只有三五台。
+      '';
+    };
+
+    deviceProbeTimeout = lib.mkOption {
+      type = lib.types.str;
+      default = "2s";
+      description = ''
+        单台设备的 ping 超时。给得短:手机在锁屏/弱网下本来就可能不应答,
+        为一台没反应的设备等 5 秒没意义 —— 探不到就不输出样本,看板靠
+        时间窗聚合来填空。
+      '';
     };
 
     textfileDir = lib.mkOption {
@@ -155,6 +255,46 @@ in {
         OnBootSec = "1m";
         OnUnitActiveSec = "30s";
         AccuracySec = "5s";
+      };
+    };
+
+    # 设备 RTT 单独一个 unit,不和上面那个合并:上面是纯解析本地状态,毫秒级
+    # 就跑完;这个要对每台在线设备发真实网络请求,最坏几十秒。混在一起会让
+    # 路径指标被慢探测拖着一起延迟。
+    systemd.services.tailscale-device-rtt = {
+      description = "探测在线终端设备的 tailnet RTT,写成 node_exporter textfile 指标";
+      after = ["tailscaled.service"];
+      wants = ["tailscaled.service"];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = lib.getExe deviceRttScript;
+        # 硬超时兜底:脚本自己有 limit × timeout 的上界,但万一 tailscale ping
+        # 卡住不返回,也不能让这个 unit 永远挂着堵住下一轮。
+        TimeoutStartSec = "50s";
+        User = "root";
+        ReadWritePaths = [cfg.textfileDir];
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        PrivateTmp = true;
+        NoNewPrivileges = true;
+        RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6"];
+        RestrictNamespaces = true;
+        LockPersonality = true;
+        SystemCallArchitectures = "native";
+      };
+    };
+
+    systemd.timers.tailscale-device-rtt = {
+      wantedBy = ["timers.target"];
+      timerConfig = {
+        # 60 秒而不是 30 秒。终端设备的延迟不需要高分辨率 —— 手机在蜂窝网上
+        # 本来就抖,而且这一轮要发真实网络请求,频率低一点对设备电量也友好。
+        OnBootSec = "2m";
+        OnUnitActiveSec = "60s";
+        AccuracySec = "10s";
+        # 七台服务器同时探同一批设备的话,每台设备每分钟会挨七次 ping。
+        # 打散开,免得所有服务器在同一秒集中打过去。
+        RandomizedDelaySec = "20s";
       };
     };
   };
