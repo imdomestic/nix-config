@@ -19,6 +19,38 @@ in {
     ../../modules/minecraft/sh.nix
   ];
 
+  # ---------------------------------------------------------------------
+  # tailscale exit node —— 让 iOS 一个 VPN 同时拿到内网和代理。
+  #
+  # 起因:iOS 只允许**一个** NetworkExtension 隧道,tailscale 和代理客户端
+  # 必然二选一。走 exit node 之后手机上只开 tailscale,出网流量到这台再由
+  # dae 按规则分流,两样一起有。
+  #
+  # 链路:
+  #   iOS → tailscale → 本机 tailscale0 → dae(转发流量)→ 分流
+  #     → 国内直连 / 国外走 im 组 → portal → 反向隧道 → r5sjp → 出网
+  #   tailnet 自身的流量不受影响 —— dae 的 routing 里 100.64.0.0/10、
+  #   41641 端口、pname(tailscaled) 全是 must_direct。
+  #
+  # **tailscale0 必须进 lan_interface,否则整件事是空的。** dae 只代理
+  # lan_interface 上的转发流量,不加的话 exit node 的流量会直接从 ens5
+  # 裸奔出去 —— 结果是拿到一个上海 IP、一点分流都没有,而且这个失败是
+  # 静默的(能上网,只是没走代理)。
+  #
+  # 只在这台覆盖:h610 和 rpi4 不是 exit node,没有 tailscale 转发流量可代理。
+  # ---------------------------------------------------------------------
+  my.dae.lanInterfaces = ["br-lan" "tailscale0"];
+
+  # 广播成出口节点。useRoutingFeatures 必须显式给 —— 默认是 "none",
+  # 不设的话 ip_forward 之类的内核参数不会被打开,广播了也转不动。
+  #
+  # 注意还有一步在机器之外:**headscale 侧要批准这条路由**。和子网路由一样,
+  # 广播 ≠ 可用,`headscale nodes list-routes` 看,`headscale nodes
+  # approve-routes` 批。另外 ACL 的 dst 要有 autogroup:internet(见
+  # hosts/h610/system.nix 的 policy),否则策略层面就不放行出网。
+  services.tailscale.useRoutingFeatures = "server";
+  services.tailscale.extraSetFlags = ["--advertise-exit-node"];
+
   sops.secrets =
     {
       "wireguard/private_key".owner = "systemd-network";
