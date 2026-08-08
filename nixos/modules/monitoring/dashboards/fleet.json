@@ -2,38 +2,26 @@
   "uid": "fleet-overview",
   "title": "Fleet 总览",
   "description": "八台机器的健康状态 + tailnet 网状延迟。由 nix 声明式下发,见 nixos/modules/monitoring。",
-  "tags": [
-    "fleet",
-    "nix"
-  ],
+  "tags": ["fleet", "nix"],
   "schemaVersion": 39,
   "version": 1,
   "editable": true,
   "refresh": "30s",
-  "time": {
-    "from": "now-6h",
-    "to": "now"
-  },
+  "time": { "from": "now-6h", "to": "now" },
   "timezone": "browser",
   "graphTooltip": 1,
   "templating": {
     "list": [
       {
         "name": "host",
-        "label": "主机(趋势图用)",
+        "label": "主机",
         "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
         "query": "label_values(up{job=\"node\"}, instance)",
         "refresh": 1,
-        "includeAll": false,
-        "multi": false,
-        "current": {
-          "text": "h610",
-          "value": "h610"
-        },
+        "includeAll": true,
+        "multi": true,
+        "current": { "text": "All", "value": "$__all" },
         "sort": 1
       }
     ]
@@ -42,12 +30,7 @@
     {
       "type": "row",
       "title": "总览",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "collapsed": false,
       "panels": []
     },
@@ -55,31 +38,13 @@
       "type": "stat",
       "title": "在线主机",
       "description": "up{job=\"node\"} == 1 的数量。r2s 长期离线,所以正常值是 7/8。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 0,
-        "y": 1
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
       "targets": [
-        {
-          "refId": "A",
-          "expr": "count(up{job=\"node\"} == 1)",
-          "instant": true
-        }
+        { "refId": "A", "expr": "count(up{job=\"node\"} == 1)", "instant": true }
       ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto",
@@ -88,24 +53,13 @@
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "red",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 6
-              },
-              {
-                "color": "green",
-                "value": 7
-              }
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 6 },
+              { "color": "green", "value": 7 }
             ]
           }
         },
@@ -116,31 +70,13 @@
       "type": "stat",
       "title": "失败的 unit",
       "description": "全 fleet node_systemd_unit_state{state=\"failed\"} 之和。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 6,
-        "y": 1
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
       "targets": [
-        {
-          "refId": "A",
-          "expr": "sum(node_systemd_unit_state{state=\"failed\"}) or vector(0)",
-          "instant": true
-        }
+        { "refId": "A", "expr": "sum(node_systemd_unit_state{state=\"failed\"}) or vector(0)", "instant": true }
       ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto"
@@ -148,24 +84,13 @@
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              },
-              {
-                "color": "red",
-                "value": 5
-              }
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
             ]
           }
         },
@@ -176,16 +101,8 @@
       "type": "stat",
       "title": "走中继的链路",
       "description": "本该直连却在走 DERP 中继的链路数。只统计对端在线的 —— 到一台关机机器没有直连是正常的,那由 HostUnreachable 负责报。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 12,
-        "y": 1
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -194,13 +111,7 @@
         }
       ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto"
@@ -208,20 +119,12 @@
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              }
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 }
             ]
           }
         },
@@ -232,16 +135,8 @@
       "type": "stat",
       "title": "最满的分区",
       "description": "全 fleet 真实块设备上使用率最高的那个挂载点。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 6,
-        "x": 18,
-        "y": 1
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -250,13 +145,7 @@
         }
       ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto"
@@ -265,39 +154,24 @@
         "defaults": {
           "unit": "percent",
           "decimals": 1,
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 80
-              },
-              {
-                "color": "red",
-                "value": 95
-              }
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 80 },
+              { "color": "red", "value": 95 }
             ]
           }
         },
         "overrides": []
       }
     },
+
     {
       "type": "row",
       "title": "每台机器",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "collapsed": false,
       "panels": []
     },
@@ -305,105 +179,33 @@
       "type": "table",
       "title": "主机一览",
       "description": "七个指标并排看。用表格而不是七张时序图 —— 这里要回答的是'哪台不对劲',那是横向比较,不是看趋势。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 6
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 6 },
       "targets": [
-        {
-          "refId": "CPU",
-          "instant": true,
-          "format": "table",
-          "legendFormat": "",
-          "expr": "100 * (1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))"
-        },
-        {
-          "refId": "MEM",
-          "instant": true,
-          "format": "table",
-          "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)"
-        },
-        {
-          "refId": "DISK",
-          "instant": true,
-          "format": "table",
-          "expr": "100 * (1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})"
-        },
-        {
-          "refId": "TEMP",
-          "instant": true,
-          "format": "table",
-          "expr": "max by(instance)(node_hwmon_temp_celsius)"
-        },
-        {
-          "refId": "FAILED",
-          "instant": true,
-          "format": "table",
-          "expr": "sum by(instance)(node_systemd_unit_state{state=\"failed\"})"
-        },
-        {
-          "refId": "UP",
-          "instant": true,
-          "format": "table",
-          "expr": "time() - node_boot_time_seconds"
-        }
+        { "refId": "CPU", "instant": true, "format": "table", "legendFormat": "", "expr": "100 * (1 - avg by(instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])))" },
+        { "refId": "MEM", "instant": true, "format": "table", "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)" },
+        { "refId": "DISK", "instant": true, "format": "table", "expr": "100 * (1 - node_filesystem_avail_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"})" },
+        { "refId": "TEMP", "instant": true, "format": "table", "expr": "max by(instance)(node_hwmon_temp_celsius)" },
+        { "refId": "FAILED", "instant": true, "format": "table", "expr": "sum by(instance)(node_systemd_unit_state{state=\"failed\"})" },
+        { "refId": "UP", "instant": true, "format": "table", "expr": "time() - node_boot_time_seconds" }
       ],
       "transformations": [
-        {
-          "id": "joinByField",
-          "options": {
-            "byField": "instance",
-            "mode": "outer"
-          }
-        },
+        { "id": "joinByField", "options": { "byField": "instance", "mode": "outer" } },
         {
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true,
-              "Time 1": true,
-              "Time 2": true,
-              "Time 3": true,
-              "Time 4": true,
-              "Time 5": true,
-              "Time 6": true,
-              "job": true,
-              "job 1": true,
-              "job 2": true,
-              "job 3": true,
-              "job 4": true,
-              "job 5": true,
-              "job 6": true,
-              "arch": true,
-              "arch 1": true,
-              "arch 2": true,
-              "arch 3": true,
-              "arch 4": true,
-              "arch 5": true,
-              "arch 6": true,
-              "roles": true,
-              "roles 1": true,
-              "roles 2": true,
-              "roles 3": true,
-              "roles 4": true,
-              "roles 5": true,
-              "roles 6": true,
-              "mountpoint": true,
-              "device": true,
-              "fstype": true,
-              "device_error": true,
-              "chip": true,
-              "sensor": true,
-              "state": true,
-              "__name__": true,
-              "name": true,
-              "type": true
+              "Time": true, "Time 1": true, "Time 2": true, "Time 3": true,
+              "Time 4": true, "Time 5": true, "Time 6": true,
+              "job": true, "job 1": true, "job 2": true, "job 3": true,
+              "job 4": true, "job 5": true, "job 6": true,
+              "arch": true, "arch 1": true, "arch 2": true, "arch 3": true,
+              "arch 4": true, "arch 5": true, "arch 6": true,
+              "roles": true, "roles 1": true, "roles 2": true, "roles 3": true,
+              "roles 4": true, "roles 5": true, "roles 6": true,
+              "mountpoint": true, "device": true, "fstype": true,
+              "device_error": true, "chip": true, "sensor": true, "state": true,
+              "__name__": true, "name": true, "type": true
             },
             "renameByName": {
               "instance": "主机",
@@ -417,191 +219,86 @@
           }
         }
       ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "filterable": false
-          },
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "text",
-                "value": null
-              }
-            ]
-          }
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": false },
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] }
         },
         "overrides": [
           {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "CPU|内存|根分区"
-            },
+            "matcher": { "id": "byRegexp", "options": "CPU|内存|根分区" },
             "properties": [
-              {
-                "id": "unit",
-                "value": "percent"
-              },
-              {
-                "id": "decimals",
-                "value": 1
-              },
-              {
-                "id": "max",
-                "value": 100
-              },
-              {
-                "id": "min",
-                "value": 0
-              },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "gauge",
-                  "mode": "gradient"
-                }
-              },
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 1 },
+              { "id": "max", "value": 100 },
+              { "id": "min", "value": 0 },
+              { "id": "custom.cellOptions", "value": { "type": "gauge", "mode": "gradient" } },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "orange",
-                      "value": 80
-                    },
-                    {
-                      "color": "red",
-                      "value": 95
-                    }
+                    { "color": "green", "value": null },
+                    { "color": "orange", "value": 80 },
+                    { "color": "red", "value": 95 }
                   ]
                 }
               }
             ]
           },
           {
-            "matcher": {
-              "id": "byName",
-              "options": "温度"
-            },
+            "matcher": { "id": "byName", "options": "温度" },
             "properties": [
-              {
-                "id": "unit",
-                "value": "celsius"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              },
+              { "id": "unit", "value": "celsius" },
+              { "id": "decimals", "value": 0 },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "orange",
-                      "value": 70
-                    },
-                    {
-                      "color": "red",
-                      "value": 80
-                    }
+                    { "color": "green", "value": null },
+                    { "color": "orange", "value": 70 },
+                    { "color": "red", "value": 80 }
                   ]
                 }
               },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              }
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
             ]
           },
           {
-            "matcher": {
-              "id": "byName",
-              "options": "失败 unit"
-            },
+            "matcher": { "id": "byName", "options": "失败 unit" },
             "properties": [
-              {
-                "id": "decimals",
-                "value": 0
-              },
+              { "id": "decimals", "value": 0 },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    {
-                      "color": "green",
-                      "value": null
-                    },
-                    {
-                      "color": "red",
-                      "value": 1
-                    }
+                    { "color": "green", "value": null },
+                    { "color": "red", "value": 1 }
                   ]
                 }
               },
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              }
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } }
             ]
           },
           {
-            "matcher": {
-              "id": "byName",
-              "options": "运行时长"
-            },
+            "matcher": { "id": "byName", "options": "运行时长" },
             "properties": [
-              {
-                "id": "unit",
-                "value": "s"
-              },
-              {
-                "id": "decimals",
-                "value": 0
-              }
+              { "id": "unit", "value": "s" },
+              { "id": "decimals", "value": 0 }
             ]
           }
         ]
       }
     },
+
     {
       "type": "row",
       "title": "tailnet 网状",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 16
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
       "collapsed": false,
       "panels": []
     },
@@ -609,97 +306,37 @@
       "type": "table",
       "title": "延迟矩阵 (行 = 从, 列 = 到)",
       "description": "每台到其余每台的平均 RTT。单一色相由浅到深表示大小 —— 不用红黄绿彩虹渐变,那会把'慢'读成'故障',而 r5sjp 到哪儿都是一百多毫秒,那是地理距离不是故障。空格表示那一对没有数据(对端不可达)。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 17
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 13, "x": 0, "y": 16 },
       "targets": [
-        {
-          "refId": "A",
-          "instant": true,
-          "format": "table",
-          "expr": "ping_rtt_mean_seconds * 1000"
-        }
+        { "refId": "A", "instant": true, "format": "table", "expr": "ping_rtt_mean_seconds * 1000" }
       ],
       "transformations": [
         {
           "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "job": true,
-              "ip": true,
-              "ip_version": true,
-              "target": true,
-              "__name__": true
-            }
-          }
+          "options": { "excludeByName": { "Time": true, "job": true, "ip": true, "ip_version": true, "target": true, "__name__": true } }
         },
         {
           "id": "groupingToMatrix",
-          "options": {
-            "columnField": "peer",
-            "rowField": "instance",
-            "valueField": "Value",
-            "emptyValue": "empty"
-          }
+          "options": { "columnField": "peer", "rowField": "instance", "valueField": "Value", "emptyValue": "empty" }
         }
       ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
           "decimals": 0,
           "min": 0,
-          "custom": {
-            "align": "center",
-            "cellOptions": {
-              "type": "color-background",
-              "mode": "gradient"
-            },
-            "minWidth": 74
-          },
-          "color": {
-            "mode": "continuous-blues"
-          }
+          "custom": { "align": "center", "cellOptions": { "type": "color-background", "mode": "gradient" } },
+          "color": { "mode": "continuous-blues" }
         },
         "overrides": [
           {
-            "matcher": {
-              "id": "byName",
-              "options": "instance\\peer"
-            },
+            "matcher": { "id": "byName", "options": "instance\\peer" },
             "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "auto"
-                }
-              },
-              {
-                "id": "custom.align",
-                "value": "left"
-              },
-              {
-                "id": "displayName",
-                "value": "从 \\ 到"
-              },
-              {
-                "id": "custom.width",
-                "value": 120
-              }
+              { "id": "custom.cellOptions", "value": { "type": "auto" } },
+              { "id": "custom.align", "value": "left" },
+              { "id": "displayName", "value": "从 \\ 到" }
             ]
           }
         ]
@@ -709,147 +346,52 @@
       "type": "table",
       "title": "链路路径",
       "description": "直连还是走 DERP 中继。tailscale 只在链路 active 时才知道路径,而 ping_exporter 持续打流量恰好让所有 pair 保持 active —— 两层互相成就。到离线机器的链路会显示中继,那是正常的。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 27
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 10, "w": 11, "x": 13, "y": 16 },
       "targets": [
-        {
-          "refId": "A",
-          "instant": true,
-          "format": "table",
-          "expr": "tailscale_peer_direct{kind=\"server\"}"
-        }
+        { "refId": "A", "instant": true, "format": "table", "expr": "tailscale_peer_direct{kind=\"server\"}" }
       ],
       "transformations": [
         {
           "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "job": true,
-              "__name__": true,
-              "arch": true,
-              "roles": true
-            }
-          }
+          "options": { "excludeByName": { "Time": true, "job": true, "__name__": true, "arch": true, "roles": true } }
         },
         {
           "id": "groupingToMatrix",
-          "options": {
-            "columnField": "peer",
-            "rowField": "instance",
-            "valueField": "Value",
-            "emptyValue": "empty"
-          }
+          "options": { "columnField": "peer", "rowField": "instance", "valueField": "Value", "emptyValue": "empty" }
         }
       ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "align": "center",
-            "cellOptions": {
-              "type": "color-background",
-              "mode": "basic"
-            },
-            "minWidth": 74
-          },
-          "color": {
-            "mode": "thresholds"
-          },
+          "custom": { "align": "center", "cellOptions": { "type": "color-background", "mode": "basic" } },
+          "color": { "mode": "thresholds" },
           "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "1": {
-                  "text": "直连",
-                  "color": "green",
-                  "index": 0
-                }
-              }
-            },
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "中继",
-                  "color": "orange",
-                  "index": 1
-                }
-              }
-            }
+            { "type": "value", "options": { "1": { "text": "直连", "color": "green", "index": 0 } } },
+            { "type": "value", "options": { "0": { "text": "中继", "color": "orange", "index": 1 } } }
           ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "transparent",
-                "value": null
-              }
-            ]
-          }
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "transparent", "value": null }] }
         },
         "overrides": [
           {
-            "matcher": {
-              "id": "byName",
-              "options": "instance\\peer"
-            },
+            "matcher": { "id": "byName", "options": "instance\\peer" },
             "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "auto"
-                }
-              },
-              {
-                "id": "custom.align",
-                "value": "left"
-              },
-              {
-                "id": "displayName",
-                "value": "从 \\ 到"
-              },
-              {
-                "id": "mappings",
-                "value": []
-              },
-              {
-                "id": "custom.width",
-                "value": 120
-              }
+              { "id": "custom.cellOptions", "value": { "type": "auto" } },
+              { "id": "custom.align", "value": "left" },
+              { "id": "displayName", "value": "从 \\ 到" },
+              { "id": "mappings", "value": [] }
             ]
           }
         ]
       }
     },
+
     {
       "type": "timeseries",
       "title": "延迟趋势 — $host 出发的链路",
       "description": "上面的矩阵是此刻的快照,这里看变化。降级到中继通常表现为一个台阶式跳变,而不是缓慢爬升。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 16,
-        "x": 0,
-        "y": 37
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 26 },
       "targets": [
         {
           "refId": "A",
@@ -858,19 +400,8 @@
         }
       ],
       "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "table",
-          "placement": "right",
-          "showLegend": true,
-          "calcs": [
-            "mean",
-            "max"
-          ]
-        }
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["mean", "max"] }
       },
       "fieldConfig": {
         "defaults": {
@@ -885,9 +416,7 @@
             "spanNulls": false,
             "axisSoftMin": 0
           },
-          "color": {
-            "mode": "palette-classic"
-          }
+          "color": { "mode": "palette-classic" }
         },
         "overrides": []
       }
@@ -896,16 +425,8 @@
       "type": "timeseries",
       "title": "丢包 — $host 出发的链路",
       "description": "ICMP 沿途可能被限速,偶发的小比例丢包不代表故障。持续高于 10% 才有意义。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 8,
-        "x": 16,
-        "y": 37
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 26 },
       "targets": [
         {
           "refId": "A",
@@ -914,15 +435,8 @@
         }
       ],
       "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        }
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
       },
       "fieldConfig": {
         "defaults": {
@@ -937,13 +451,10 @@
             "showPoints": "never",
             "spanNulls": false
           },
-          "color": {
-            "mode": "palette-classic"
-          }
+          "color": { "mode": "palette-classic" }
         },
         "overrides": []
       }
     }
-  ],
-  "fieldConfig": null
+  ]
 }

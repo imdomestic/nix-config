@@ -2,19 +2,12 @@
   "uid": "tailnet-devices",
   "title": "终端设备 — tailnet",
   "description": "手机、笔记本这些进进出出的设备。和 Fleet 总览分开:服务器缺席是故障,这里缺席是常态,所以这一屏刻意不做任何'是否在线'的健康判断。由 nix 声明式下发,见 nixos/modules/monitoring。",
-  "tags": [
-    "fleet",
-    "nix",
-    "tailnet"
-  ],
+  "tags": ["fleet", "nix", "tailnet"],
   "schemaVersion": 39,
   "version": 1,
   "editable": true,
   "refresh": "1m",
-  "time": {
-    "from": "now-7d",
-    "to": "now"
-  },
+  "time": { "from": "now-7d", "to": "now" },
   "timezone": "browser",
   "graphTooltip": 1,
   "templating": {
@@ -23,18 +16,12 @@
         "name": "user",
         "label": "归属",
         "type": "query",
-        "datasource": {
-          "type": "prometheus",
-          "uid": "prometheus"
-        },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
         "query": "label_values(tailscale_peer_online{kind=\"device\"}, user)",
         "refresh": 1,
         "includeAll": true,
         "multi": true,
-        "current": {
-          "text": "All",
-          "value": "$__all"
-        },
+        "current": { "text": "All", "value": "$__all" },
         "sort": 1
       }
     ]
@@ -43,12 +30,7 @@
     {
       "type": "row",
       "title": "概览",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
       "collapsed": false,
       "panels": []
     },
@@ -56,16 +38,8 @@
       "type": "stat",
       "title": "此刻在线",
       "description": "设备总数二十来台,任意时刻通常只有三五台在线 —— 这是正常的,不是故障。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 0,
-        "y": 1
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 5, "x": 0, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -74,13 +48,7 @@
         }
       ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "colorMode": "value",
         "graphMode": "area",
         "textMode": "auto"
@@ -88,10 +56,7 @@
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
-          }
+          "color": { "mode": "fixed", "fixedColor": "text" }
         },
         "overrides": []
       }
@@ -100,16 +65,8 @@
       "type": "stat",
       "title": "窗口内出现过",
       "description": "所选时间范围内至少上线过一次的设备数。把范围拉大,下面矩阵的空格就会变少 —— 这一屏的填充度由时间范围决定,不是由此刻有几台在线决定。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 5,
-        "y": 1
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 5, "x": 5, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -118,25 +75,13 @@
         }
       ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto"
       },
       "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "text"
-          }
-        },
+        "defaults": { "unit": "none", "color": { "mode": "fixed", "fixedColor": "text" } },
         "overrides": []
       }
     },
@@ -144,16 +89,8 @@
       "type": "stat",
       "title": "正在走中继",
       "description": "本该直连却在经 DERP 中继的设备。这是这一屏最该看的数字 —— 手机在蜂窝网上四十毫秒是物理规律改不了,但走不走中继是能治的,而且中继意味着流量在过 h610 的家宽上行。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 5,
-        "x": 10,
-        "y": 1
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 5, "x": 10, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -162,13 +99,7 @@
         }
       ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "colorMode": "value",
         "graphMode": "none",
         "textMode": "auto"
@@ -176,20 +107,12 @@
       "fieldConfig": {
         "defaults": {
           "unit": "none",
-          "color": {
-            "mode": "thresholds"
-          },
+          "color": { "mode": "thresholds" },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "orange",
-                "value": 1
-              }
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 }
             ]
           }
         },
@@ -200,16 +123,8 @@
       "type": "piechart",
       "title": "设备类型",
       "description": "窗口内出现过的设备按操作系统分布。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 4,
-        "w": 9,
-        "x": 15,
-        "y": 1
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 9, "x": 15, "y": 1 },
       "targets": [
         {
           "refId": "A",
@@ -219,42 +134,21 @@
         }
       ],
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
         "pieType": "donut",
-        "legend": {
-          "displayMode": "list",
-          "placement": "right",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single"
-        }
+        "legend": { "displayMode": "list", "placement": "right", "showLegend": true },
+        "tooltip": { "mode": "single" }
       },
       "fieldConfig": {
-        "defaults": {
-          "unit": "none",
-          "color": {
-            "mode": "palette-classic"
-          }
-        },
+        "defaults": { "unit": "none", "color": { "mode": "palette-classic" } },
         "overrides": []
       }
     },
+
     {
       "type": "row",
       "title": "延迟矩阵",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 5 },
       "collapsed": false,
       "panels": []
     },
@@ -262,16 +156,8 @@
       "type": "table",
       "title": "设备 → 服务器 延迟(所选时间范围内的均值)",
       "description": "行 = 设备,列 = 服务器。\n\n**取的是时间窗均值,不是此刻快照。** 这些设备大部分时间不在线,拍一张快照的话矩阵基本全空、看着像坏了。改成窗口均值之后,一台昨天只在线二十分钟的手机照样有格子 —— 只有整个窗口内一次都没出现过的才是空的。想让矩阵更满就把右上角的时间范围拉大。\n\n测量方向是服务器 → 设备(手机和别人的 MacBook 上装不了任何 exporter),同一条路径上 RTT 基本对称。探不到时不写入样本,所以空格的含义是'这段时间没测到',不是'延迟为零'。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 15,
-        "w": 24,
-        "x": 0,
-        "y": 6
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 11, "w": 24, "x": 0, "y": 6 },
       "targets": [
         {
           "refId": "A",
@@ -285,14 +171,8 @@
           "id": "organize",
           "options": {
             "excludeByName": {
-              "Time": true,
-              "job": true,
-              "__name__": true,
-              "kind": true,
-              "os": true,
-              "user": true,
-              "via": true,
-              "region": true
+              "Time": true, "job": true, "__name__": true, "kind": true,
+              "os": true, "user": true, "via": true, "region": true
             }
           }
         },
@@ -306,70 +186,33 @@
           }
         }
       ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
       "fieldConfig": {
         "defaults": {
           "unit": "ms",
           "decimals": 0,
           "min": 0,
-          "custom": {
-            "align": "center",
-            "cellOptions": {
-              "type": "color-background",
-              "mode": "gradient"
-            },
-            "minWidth": 74
-          },
-          "color": {
-            "mode": "continuous-blues"
-          },
+          "custom": { "align": "center", "cellOptions": { "type": "color-background", "mode": "gradient" } },
+          "color": { "mode": "continuous-blues" },
           "noValue": "—"
         },
         "overrides": [
           {
-            "matcher": {
-              "id": "byName",
-              "options": "peer\\instance"
-            },
+            "matcher": { "id": "byName", "options": "peer\\instance" },
             "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "auto"
-                }
-              },
-              {
-                "id": "custom.align",
-                "value": "left"
-              },
-              {
-                "id": "displayName",
-                "value": "设备 \\ 服务器"
-              },
-              {
-                "id": "custom.width",
-                "value": 150
-              }
+              { "id": "custom.cellOptions", "value": { "type": "auto" } },
+              { "id": "custom.align", "value": "left" },
+              { "id": "displayName", "value": "设备 \\ 服务器" }
             ]
           }
         ]
       }
     },
+
     {
       "type": "row",
       "title": "在线规律",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 21
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 17 },
       "collapsed": false,
       "panels": []
     },
@@ -377,16 +220,8 @@
       "type": "state-timeline",
       "title": "设备在线时间线",
       "description": "这一屏最重要的一张:它让上面矩阵里的空格变得有意义 —— 一眼看出某台设备是'那段时间根本不在'还是'在但测不到'。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 16,
-        "w": 24,
-        "x": 0,
-        "y": 22
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 18 },
       "targets": [
         {
           "refId": "A",
@@ -399,102 +234,47 @@
         "mergeValues": true,
         "alignValue": "left",
         "rowHeight": 0.9,
-        "legend": {
-          "displayMode": "hidden",
-          "showLegend": false
-        },
-        "tooltip": {
-          "mode": "single"
-        }
+        "legend": { "displayMode": "hidden", "showLegend": false },
+        "tooltip": { "mode": "single" }
       },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "lineWidth": 0,
-            "fillOpacity": 80
-          },
-          "color": {
-            "mode": "thresholds"
-          },
+          "custom": { "lineWidth": 0, "fillOpacity": 80 },
+          "color": { "mode": "thresholds" },
           "mappings": [
-            {
-              "type": "value",
-              "options": {
-                "1": {
-                  "text": "在线",
-                  "color": "green",
-                  "index": 0
-                }
-              }
-            },
-            {
-              "type": "value",
-              "options": {
-                "0": {
-                  "text": "离线",
-                  "color": "transparent",
-                  "index": 1
-                }
-              }
-            }
+            { "type": "value", "options": { "1": { "text": "在线", "color": "green", "index": 0 } } },
+            { "type": "value", "options": { "0": { "text": "离线", "color": "transparent", "index": 1 } } }
           ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "transparent",
-                "value": null
-              }
-            ]
-          },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "transparent", "value": null }] },
           "noValue": "—"
         },
         "overrides": []
       }
     },
+
     {
       "type": "row",
       "title": "明细",
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 38
-      },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 30 },
       "collapsed": false,
       "panels": []
     },
     {
       "type": "timeseries",
       "title": "RTT 变化(断开处是真的没数据,不是零)",
-      "description": "每台设备一条线,取它到各服务器里最好的那条路径 —— 对一台手机你关心的是它的延迟,不是从七台服务器分别看是多少(那是 52 条线,图例根本放不下)。\n\nspanNulls 关掉了,所以设备离线期间线是断的而不是拉一条直线过去,后者会让人误以为那段时间延迟很稳定。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 24,
-        "x": 0,
-        "y": 39
-      },
+      "description": "spanNulls 关掉了,所以设备离线期间线是断的而不是拉一条直线过去 —— 后者会让人误以为那段时间延迟很稳定。",
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 16, "x": 0, "y": 31 },
       "targets": [
         {
           "refId": "A",
-          "legendFormat": "{{peer}}",
-          "expr": "min by(peer) (tailscale_device_rtt_seconds{user=~\"$user\"})"
+          "legendFormat": "{{peer}} ← {{instance}}",
+          "expr": "tailscale_device_rtt_seconds{user=~\"$user\"}"
         }
       ],
       "options": {
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        },
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        }
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "calcs": ["mean", "max"] }
       },
       "fieldConfig": {
         "defaults": {
@@ -509,9 +289,7 @@
             "showPoints": "always",
             "spanNulls": false
           },
-          "color": {
-            "mode": "palette-classic"
-          }
+          "color": { "mode": "palette-classic" }
         },
         "overrides": []
       }
@@ -520,16 +298,8 @@
       "type": "table",
       "title": "当前路径与归属 DERP",
       "description": "只列此刻在线的设备。region 是承载流量的 DERP region;直连的设备这一列为空。",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 24,
-        "x": 0,
-        "y": 49
-      },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 31 },
       "targets": [
         {
           "refId": "A",
@@ -542,13 +312,7 @@
         {
           "id": "organize",
           "options": {
-            "excludeByName": {
-              "Time": true,
-              "Value": true,
-              "job": true,
-              "__name__": true,
-              "instance": true
-            },
+            "excludeByName": { "Time": true, "Value": true, "job": true, "__name__": true, "instance": true },
             "renameByName": {
               "peer": "设备",
               "user": "归属",
@@ -558,89 +322,28 @@
             }
           }
         },
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "设备": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "归属": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "系统": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "路径": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "DERP": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
-          }
-        }
+        { "id": "groupBy", "options": { "fields": {
+            "设备": { "aggregations": [], "operation": "groupby" },
+            "归属": { "aggregations": [], "operation": "groupby" },
+            "系统": { "aggregations": [], "operation": "groupby" },
+            "路径": { "aggregations": [], "operation": "groupby" },
+            "DERP": { "aggregations": [], "operation": "groupby" }
+        } } }
       ],
-      "options": {
-        "showHeader": true,
-        "cellHeight": "sm",
-        "footer": {
-          "show": false
-        }
-      },
+      "options": { "showHeader": true, "cellHeight": "sm", "footer": { "show": false } },
       "fieldConfig": {
         "defaults": {
-          "custom": {
-            "align": "auto",
-            "cellOptions": {
-              "type": "auto"
-            },
-            "minWidth": 110
-          }
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" } }
         },
         "overrides": [
           {
-            "matcher": {
-              "id": "byName",
-              "options": "路径"
-            },
+            "matcher": { "id": "byName", "options": "路径" },
             "properties": [
-              {
-                "id": "custom.cellOptions",
-                "value": {
-                  "type": "color-text"
-                }
-              },
-              {
-                "id": "mappings",
-                "value": [
-                  {
-                    "type": "value",
-                    "options": {
-                      "direct": {
-                        "text": "直连",
-                        "color": "green",
-                        "index": 0
-                      }
-                    }
-                  },
-                  {
-                    "type": "value",
-                    "options": {
-                      "derp": {
-                        "text": "中继",
-                        "color": "orange",
-                        "index": 1
-                      }
-                    }
-                  }
-                ]
-              }
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "mappings", "value": [
+                  { "type": "value", "options": { "direct": { "text": "直连", "color": "green", "index": 0 } } },
+                  { "type": "value", "options": { "derp": { "text": "中继", "color": "orange", "index": 1 } } }
+                ] }
             ]
           }
         ]
