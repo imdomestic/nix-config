@@ -11,7 +11,7 @@
 }: let
   cfg = config.my.telemetry;
 in {
-  imports = [./mesh.nix];
+  imports = [./mesh.nix ./nix-builds.nix];
 
   options.my.telemetry = {
     enable = lib.mkOption {
