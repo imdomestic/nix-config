@@ -64,6 +64,29 @@ in {
       '';
     };
 
+    alertmanagerPort = lib.mkOption {
+      type = lib.types.port;
+      default = 9093;
+      description = "Alertmanager 端口。9093 是上游默认,这个 fleet 上没冲突。";
+    };
+
+    webhookUrl = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "http://100.64.0.3:9722/alert";
+      description = ''
+        告警投递的去处。**null 时告警只进 Alertmanager 界面,不往外发。**
+
+        这是 P2 的最后一公里,故意留成一个选项:告警规则和 Alertmanager 本身
+        跟"发到哪"是两件事,前者现在就该上,后者取决于 max 那边暴露什么接口
+        (见 docs/maxops.md,notify sink 最终归 maxops-hub 管)。
+
+        null 不是"没配好",是一个有意义的中间状态 —— 规则先跑起来攒几天,
+        看清楚哪几条会误报、哪几条太吵,调完了再接出口。**先接出口再调规则,
+        第一周就会把群刷炸,然后所有人开始无视这个群。**
+      '';
+    };
+
     retention = lib.mkOption {
       type = lib.types.str;
       default = "90d";
@@ -111,6 +134,16 @@ in {
         scrape_timeout = "10s";
       };
 
+      rules = [(import ./alerts.nix {inherit lib;})];
+
+      alertmanagers = [
+        {
+          static_configs = [
+            {targets = ["${selfIp}:${toString cfg.alertmanagerPort}"];}
+          ];
+        }
+      ];
+
       scrapeConfigs = [
         {
           job_name = "node";
@@ -141,6 +174,73 @@ in {
           ];
         }
       ];
+    };
+
+    services.prometheus.alertmanager = {
+      enable = true;
+      listenAddress = selfIp;
+      port = cfg.alertmanagerPort;
+      # Alertmanager 发出去的链接(比如"点这里静默")要用得上的地址。
+      # 不设的话它会拿 hostname 拼,群里收到的链接点不开。
+      webExternalUrl = "http://${selfIp}:${toString cfg.alertmanagerPort}";
+
+      configuration = {
+        route = {
+          # 先按机器再按告警名分组:同一台机器同时炸出来的一堆问题(比如
+          # 磁盘满导致一串服务失败)会合成一条消息,而不是刷屏。
+          group_by = ["instance" "alertname"];
+
+          # 首条等 1 分钟,让同一批相关告警聚齐再发。
+          group_wait = "1m";
+          # 同一组里出现新告警,至少隔 5 分钟再发一次。
+          group_interval = "5m";
+          # **同一条告警没恢复时,4 小时才重复提醒一次。**
+          # 这个值是防止告警疲劳的关键。r2s 已经离线 49 天,如果按默认的
+          # 4 小时重复它一天要在群里说 6 次,一周之后没人会再看这个群。
+          # 长期不修的告警应该在 Alertmanager 界面里 silence 掉,而不是
+          # 靠调低频率忍着。
+          repeat_interval = "4h";
+
+          receiver = "default";
+        };
+
+        # info 级的(比如 HostRebooted)不该和 critical 走同一条路,
+        # 但现在只有一个 receiver,先靠 group_by 隔开。接了真出口之后
+        # 这里要拆成 routes(critical 立刻发、warning 攒一攒、info 只留档)。
+        receivers = [
+          (
+            {name = "default";}
+            // lib.optionalAttrs (cfg.webhookUrl != null) {
+              webhook_configs = [
+                {
+                  url = cfg.webhookUrl;
+                  # 告警恢复也要发。只发"炸了"不发"好了"的系统,用两周之后
+                  # 就没人相信它了 —— 你永远不知道手上这条是不是还成立。
+                  send_resolved = true;
+                }
+              ];
+            }
+          )
+        ];
+
+        # 机器整个不可达时,它上面的 unit failed / 磁盘 / 温度告警全都会
+        # 跟着触发(或者说,全都会因为抓不到而变成陈旧数据)。这条让
+        # HostUnreachable 把同一台机器上的其它告警压下去,群里只看到
+        # "tank 抓不到了"一条,而不是二十条。
+        inhibit_rules = [
+          {
+            source_matchers = ["alertname = HostUnreachable"];
+            target_matchers = ["severity =~ warning|info"];
+            equal = ["instance"];
+          }
+        ];
+      };
+    };
+
+    systemd.services.alertmanager = {
+      after = ["network-online.target" "tailscaled.service"];
+      wants = ["network-online.target" "tailscaled.service"];
+      serviceConfig.RestartSec = "10s";
     };
 
     services.grafana = {
@@ -209,6 +309,7 @@ in {
     networking.firewall.interfaces.tailscale0.allowedTCPPorts = [
       cfg.port
       cfg.grafanaPort
+      cfg.alertmanagerPort
     ];
 
     systemd.services.prometheus = {
