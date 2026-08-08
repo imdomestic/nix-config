@@ -727,7 +727,6 @@ in {
   xdg.portal.config.common.default = "*";
 
   services.openssh.enable = true;
-  services.tailscale.enable = true;
 
   services.headscale = {
     enable = true;

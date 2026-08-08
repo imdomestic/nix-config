@@ -197,10 +197,6 @@ in {
   '';
   boot.kernelParams = ["usbcore.autosuspend=-1"];
 
-  services.tailscale = {
-    enable = true;
-  };
-
   # node_exporter 挪到 nixos/modules/telemetry(经 profiles/server.nix 引入)。
   # 同 r6s:这台也是 firewall.enable = false,原来那份 openFirewall = true
   # 是空操作,exporter 实际绑在 0.0.0.0。新模块绑 my.host.tsIp(100.64.0.7)。

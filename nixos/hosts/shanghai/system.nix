@@ -153,7 +153,6 @@ in {
     };
   };
 
-  services.tailscale.enable = true;
 
   # Standalone DERP relay advertised by the Headscale instance on h610.
   # Client admission is checked against Headscale so this is not a public relay.

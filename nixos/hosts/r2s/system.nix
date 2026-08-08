@@ -290,10 +290,6 @@ in {
     KbdInteractiveAuthentication = true;
     PermitRootLogin = "yes";
   };
-  services.tailscale = {
-    enable = true;
-  };
-
   systemd.services.ddns-go = let
     ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
       dnsconf:

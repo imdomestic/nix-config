@@ -340,7 +340,6 @@ in {
     '';
   };
 
-  services.tailscale.enable = true;
 
   services.pppd = {
     enable = true;

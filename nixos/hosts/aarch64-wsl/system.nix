@@ -61,9 +61,8 @@
     settings.Resolve.FallbackDNS = ["223.5.5.5"];
   };
   services.openssh.enable = true;
-  services.tailscale = {
-    enable = true;
-  };
+  # 没有 tsIp(不是部署目标),所以要显式开。见 nixos/modules/tailscale。
+  my.tailscale.enable = true;
 
   system.stateVersion = "25.11";
   nixpkgs.hostPlatform = lib.mkDefault "aarch64-linux";
