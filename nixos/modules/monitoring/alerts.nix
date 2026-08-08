@@ -161,6 +161,69 @@ in
       }
 
       {
+        name = "tailnet-mesh";
+        rules = [
+          {
+            # **这条是整层的意义所在。** 一对本来直连的机器改走 DERP 中继了。
+            #
+            # 为什么重要:实测这个 fleet 的直连全部走 IPv6
+            # (`[2409:...]:41641` 这种)。IPv6 一断 —— PPPoE 重拨、前缀变更、
+            # 运营商调整 —— 链路会**静默**回落到经 h610 的 DERP。延迟上一个
+            # 台阶,而且流量开始全部过 h610 的家宽上行。
+            #
+            # 对 r5sjp 尤其要命:它是唯一出口,直连已经 177ms,降级成
+            # DERP-经-国内会再翻一倍,整条代理链跟着一起烂。
+            #
+            # 只在 active 时判定 —— 空闲链路的 CurAddr 是空的,那是"不知道"
+            # 不是"在走中继"。tailscale_peer_direct 本身就只在 active 时才
+            # 输出,这里的 and 是双保险。
+            alert = "TailscalePathDegraded";
+            expr = ''
+              tailscale_peer_direct == 0
+              and on(instance, peer) tailscale_peer_active == 1
+            '';
+            # 15 分钟。NAT 打洞本来就需要时间,重连后短暂走中继是正常的,
+            # 不该为此报警。
+            "for" = "15m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "{{ $labels.instance }} → {{ $labels.peer }} 降级成 DERP 中继了";
+              description = ''
+                这对机器本来直连,现在流量在走中继。常见原因是一侧的 IPv6 没了,
+                或者 NAT 类型变了打不了洞。`tailscale ping {{ $labels.peer }}`
+                看当前实际路径。
+              '';
+            };
+          }
+          {
+            alert = "TailnetLinkPacketLoss";
+            # 10% 丢包。ICMP 本来就可能被沿途限速,阈值给高一点。
+            expr = ''ping_loss_ratio > 0.1'';
+            "for" = "15m";
+            labels.severity = "warning";
+            annotations.summary = "{{ $labels.instance }} → {{ $labels.peer }} 丢包 {{ $value | humanizePercentage }}";
+          }
+          {
+            # 不设固定阈值 —— 这个 fleet 跨中日两地,r6s 4ms 和 r5sjp 177ms
+            # 都是正常的,一个数字盖不住。改成和自己过去一天的基线比:
+            # 涨到 2 倍并且绝对值超过 50ms 才算异常。
+            alert = "TailnetLatencyDegraded";
+            expr = ''
+              ping_rtt_mean_seconds
+                > 2 * (avg_over_time(ping_rtt_mean_seconds[1d]) > 0)
+              and ping_rtt_mean_seconds > 0.05
+            '';
+            "for" = "30m";
+            labels.severity = "warning";
+            annotations = {
+              summary = "{{ $labels.instance }} → {{ $labels.peer }} 延迟涨到基线 2 倍({{ $value | humanizeDuration }})";
+              description = "先看 TailscalePathDegraded 有没有同时触发 —— 多数情况下延迟翻倍就是因为降级到中继了。";
+            };
+          }
+        ];
+      }
+
+      {
         name = "monitoring-self";
         rules = [
           {
