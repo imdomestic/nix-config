@@ -106,7 +106,6 @@
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex
 
       # pkgs-unstable.opencode
-
       # pkgs-unstable.codex
       # pkgs-unstable.pi-coding-agent
     ]
@@ -114,6 +113,7 @@
       iproute2
       nerdctl
       multipath-tools
+      bubblewrap
     ]
     ++ lib.optionals (lib.hasInfix "darwin" system) [
       iproute2mac
