@@ -70,9 +70,16 @@ in {
         # x86_64 的话最该被 offload 的活反而留在本地。
         systems = ["x86_64-linux" "aarch64-linux"];
 
-        # 20 核但不给满:tank 上还跑着 matrix-synapse、postgres、minecraft、
-        # NFS、samba、Prometheus/Grafana。构建把 CPU 吃干净会连累它们。
-        maxJobs = 16;
+        # 和 tank 自己的 max-jobs 对齐(见 hosts/tank/system.nix)。
+        #
+        # 客户端这个数字决定同时开几路远程构建,tank 那边的 max-jobs 决定它
+        # 实际并发跑几个 —— 客户端给多了只是在 tank 上排队,没有意义,还让
+        # 负载来源更难看清。
+        #
+        # 6 不是 16:tank 是 E5-2666 v3,**10 物理核 / 20 线程**。nproc 报 20
+        # 是线程数,按它配会让并发数比物理核还多一倍,而 ARM 构建全是 QEMU
+        # 用户态模拟 —— 纯 CPU 密集、吃执行单元,SMT 在这种负载下增益很小。
+        maxJobs = 6;
         speedFactor = 2;
         supportedFeatures = ["nixos-test" "benchmark" "big-parallel" "kvm"];
       }
