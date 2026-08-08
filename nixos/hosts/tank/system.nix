@@ -114,8 +114,8 @@ in {
 
   # --- 构建并发 ---
   #
-  # 这台是 fleet 的构建机(见 modules/nix.nix 的 buildMachines),但默认值在
-  # 这个硬件上是灾难性的超额订阅:
+  # 这台机器上默认的并发值是灾难性的超额订阅(和是不是构建机无关,它自己
+  # 编东西也一样):
   #
   #   max-jobs = auto  → nproc = 20,而这是 E5-2666 v3,**10 物理核 / 20 线程**
   #   cores    = 0     → 每个构建再用满 20
@@ -132,8 +132,6 @@ in {
   # 剩下的留给这台上跑着的 matrix-synapse、postgres、minecraft、samba、
   # Prometheus/Grafana。
   #
-  # 想改的话记得 modules/nix.nix 里 buildMachines 的 maxJobs 要跟着一起动 ——
-  # 客户端给多了只会在这边排队。
   nix.settings = {
     max-jobs = 6;
     cores = 2;

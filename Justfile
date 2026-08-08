@@ -18,43 +18,6 @@ darwin host:
 debug host:
   nixos-rebuild --sudo switch --flake .#"{{host}}" --show-trace --verbose
 
-# -------- 逃生口:不用 tank,全部本地编译 --------
-# 编译默认会推给 tank(见 nixos/modules/nix.nix 的 buildMachines)。想强制本地
-# 编译时用这几条 —— `--builders ""` 把远程构建机列表清空,只影响这一次调用,
-# 不改任何配置、不需要 switch。
-#
-# 什么时候用:tank 关了/在忙、网络不好、或者你就是想看本机能不能编出来。
-# 注意在 ARM 机器上本地编译会慢很多,那正是当初把活推给 tank 的原因。
-
-# 本地编译并 switch(不用 tank)
-switch-local host:
-  nixos-rebuild --sudo switch --flake .#"{{host}}" --option builders ""
-
-# 本地编译但不激活,只看能不能编出来
-build-local host:
-  nixos-rebuild build --flake .#"{{host}}" --option builders ""
-
-# 任意 nix 命令的通用写法,例:
-#   just local nix build .#nixosConfigurations.tank.config.system.build.toplevel
-local +cmd:
-  {{cmd}} --option builders ""
-
-# -------- 反方向:强制全部推给 tank --------
-# nix 的调度是「平台匹配且有空闲 slot 就本地编」,所以在 x86_64 机器上编
-# x86_64 的东西默认是本地跑的,只有 12 个 slot 占满才溢出到 tank。
-# `--max-jobs 0` 把本地 slot 清零,于是**每一个** derivation 都必须走远程。
-#
-# 什么时候用:本机内存吃紧、想让笔记本别发烫、或者确认远程构建这条路真的通。
-# 注意 tank 不可达时这几条会直接失败(而不是回落到本地)——那正是它的用意。
-
-# 全部推给 tank 编,然后 switch
-switch-remote host:
-  nixos-rebuild --sudo switch --flake .#"{{host}}" --max-jobs 0
-
-# 全部推给 tank 编,不激活
-build-remote host:
-  nixos-rebuild build --flake .#"{{host}}" --max-jobs 0
-
 # -------- Home Manager helpers --------
 # `-b backup` is what `home-manager.backupFileExtension` used to do while HM was
 # a NixOS module: without it the first standalone activation aborts on any
@@ -125,9 +88,16 @@ upp input:
   nix flake update {{input}}
 
 # -------- deploy-rs (push servers/routers over the wireguard mesh) --------
-# Run these from the build host (h610). Targets are every host with an `ip`
-# in nixos/hosts/<name>/default.nix: shanghai, tank, x470, b650, h610, n100,
-# r5s, r6s, rpi4.
+# 目标是每台设了 `tsIp` 的机器(lib/mkDeployNodes.nix):h610 tank r6s r5s
+# rpi4 r2s shanghai r5sjp。走 tailscale 地址,所以从哪台机器发起都行。
+#
+# **构建发生在目标机上**(节点配置里 remoteBuild = true)。发起方只做求值,
+# 不再把整个目标平台的闭包在本地物化一遍 —— 实测那会让发起方下载 641 MiB,
+# 而目标机自己已经有其中 88%。ARM 机器原生编也比拿 x86 机器 QEMU 模拟快
+# 3.7 倍。
+#
+# 遇到目标机太弱扛不住的大构建,用 `deploy .#<host> --no-remote-build` 覆盖回
+# 发起方构建。
 #
 # Each node carries a `system` profile plus one `home-<user>` profile per account
 # (lib/mkDeployNodes.nix) — the users on servers do not run home-manager
