@@ -7,7 +7,7 @@
   "version": 1,
   "editable": true,
   "refresh": "1m",
-  "time": { "from": "now-7d", "to": "now" },
+  "time": { "from": "now-24h", "to": "now" },
   "timezone": "browser",
   "graphTooltip": 1,
   "templating": {
