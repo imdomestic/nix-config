@@ -702,6 +702,9 @@ in {
     };
   };
 
+  # Keep the bot stopped temporarily while retaining its dedicated NapCat.
+  systemd.services.qq-deepseek-bot.enable = false;
+
   environment = {
     variables = {
       EDITOR = "nvim";
