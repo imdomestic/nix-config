@@ -212,7 +212,16 @@ in
           {
             alert = "TailnetLinkPacketLoss";
             # 10% 丢包。ICMP 本来就可能被沿途限速,阈值给高一点。
-            expr = ''ping_loss_ratio > 0.1'';
+            #
+            # **对端在线是必要条件。** 关掉一台机器,其余 N-1 台到它的链路
+            # 全部变成 100% 丢包,于是一台机器下线就刷出 N-1 条告警 —— 而那
+            # 件事 HostUnreachable 已经报了一条,说得更准。实测 r2s 离线时
+            # 这条规则一口气 firing 了 7 次,把同时存在的**真问题**
+            # (多台到 r5sjp 12-20% 丢包)埋在里面看不见。
+            expr = ''
+              ping_loss_ratio > 0.1
+              and on(instance, peer) tailscale_peer_online{kind="server"} == 1
+            '';
             "for" = "15m";
             labels.severity = "warning";
             annotations.summary = "{{ $labels.instance }} → {{ $labels.peer }} 丢包 {{ $value | humanizePercentage }}";
@@ -222,10 +231,12 @@ in
             # 都是正常的,一个数字盖不住。改成和自己过去一天的基线比:
             # 涨到 2 倍并且绝对值超过 50ms 才算异常。
             alert = "TailnetLatencyDegraded";
+            # 同样要求对端在线,理由见上面 TailnetLinkPacketLoss。
             expr = ''
               ping_rtt_mean_seconds
                 > 2 * (avg_over_time(ping_rtt_mean_seconds[1d]) > 0)
               and ping_rtt_mean_seconds > 0.05
+              and on(instance, peer) tailscale_peer_online{kind="server"} == 1
             '';
             "for" = "30m";
             labels.severity = "warning";
