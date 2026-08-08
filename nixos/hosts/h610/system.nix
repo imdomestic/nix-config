@@ -759,6 +759,51 @@ in {
           #   dst = [ "192.168.1.0/24:*" ];
           # }
         ];
+
+        # Tailscale SSH。**这一段在任何节点开启 `tailscale set --ssh` 之前
+        # 完全不生效** —— SSH 规则只对启用了 tailscale SSH 的节点有意义,所以
+        # 先落地规则、后开节点,中间没有"开了但没规则"的空窗。
+        #
+        # 目标是机器之间互相 ssh 不用管密钥:认证走 tailnet 身份,客户端零配置、
+        # 零密钥,新机器接进 tailnet 就能用。这也顺带解决 tank 当远程构建机的
+        # 认证问题(nix-daemon 以 root 发起 ssh,原本需要一把 root 能读的私钥)。
+        #
+        # ---------------------------------------------------------------
+        # 写法上有三个坑,都是 headscale 特有的,照抄 tailscale 官方示例会踩:
+        #
+        # 1. **dst 不能用 group。** headscale 的校验里 Group 不是合法的 SSH
+        #    destination(实测报 `alias *v2.Group is not supported for SSH
+        #    destination`)。允许的是 tag、autogroup:self/member/tagged,
+        #    以及"同一个人自己的用户名"。
+        #
+        #    这里用 `autogroup:member` —— 它是"所有用户拥有的非 tag 节点",
+        #    正好覆盖全部机器,**不需要给节点打 tag**。打 tag 反而会出事:
+        #    tag 化的节点不再属于 group:imdomestic,上面那条 acl 的 dst 就
+        #    匹配不到它们了。
+        #
+        # 2. **action 必须是 accept,不能是 check。** check 要求发起方每隔
+        #    一段时间(默认 12 小时)在浏览器里重新认证一次,会直接打断
+        #    deploy-rs 和远程构建这类非交互场景。
+        #
+        # 3. **`headscale policy check` 是必要条件不是充分条件。** 实测它能
+        #    抓住第 1 条(类型错误),但 `action: "check"` 和**漏写 users**
+        #    这两种它都照样报 "Policy is valid" —— 尽管源码里就有
+        #    ErrSSHUsersMustBeSpecified。所以校验过了不等于行为符合预期。
+        # ---------------------------------------------------------------
+        #
+        # 改这一段要 rebuild + switch h610(策略是 nix store 里的文件)。
+        # 需要频繁调试时可以临时切 policy.mode = "database" 用
+        # `headscale policy set` 热更新,定稿再切回来。
+        ssh = [
+          {
+            action = "accept";
+            src = ["group:imdomestic"];
+            dst = ["autogroup:member"];
+            # root 要显式列出 —— autogroup:nonroot 的语义是"除 root 外的任何
+            # 用户"。deploy-rs 和 nix 远程构建都是以 root 连过去的。
+            users = ["root" "autogroup:nonroot"];
+          }
+        ];
       })}";
       server_url = "https://tailscale.imdomestic.com:8443";
       derp.server = {
