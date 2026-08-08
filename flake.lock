@@ -245,22 +245,6 @@
         "type": "github"
       }
     },
-    "dae-config": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1785317798,
-        "narHash": "sha256-RqTqqVpEYDnze48KbZ5HsbvqxhsYVkzZMZVltDcdjGk=",
-        "ref": "refs/heads/main",
-        "rev": "6496a418146e194d0992b6c780700fcc93b8c0dc",
-        "revCount": 72,
-        "type": "git",
-        "url": "ssh://git@github.com/imdomestic/dae"
-      },
-      "original": {
-        "type": "git",
-        "url": "ssh://git@github.com/imdomestic/dae"
-      }
-    },
     "deploy-rs": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -2712,7 +2696,6 @@
       "inputs": {
         "NixVirt": "NixVirt",
         "catppuccin": "catppuccin",
-        "dae-config": "dae-config",
         "deploy-rs": "deploy-rs",
         "determinate": "determinate",
         "home-manager": "home-manager",

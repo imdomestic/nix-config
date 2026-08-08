@@ -120,11 +120,6 @@
       flake = false;
     };
 
-    dae-config = {
-      url = "git+ssh://git@github.com/imdomestic/dae";
-      flake = false;
-    };
-
     wg-config = {
       url = "git+ssh://git@github.com/imdomestic/wgconfigs";
       flake = false;

@@ -751,6 +751,18 @@ in {
             dst = ["group:imdomestic:*"];
           }
 
+          # 放行经 exit node 的出网流量。shanghai 广播 --advertise-exit-node
+          # (见 hosts/shanghai/system.nix),没有这条的话策略层面就把出网挡掉,
+          # 广播了也用不了。
+          #
+          # autogroup:internet **只能出现在 ACL 的 dst**,headscale 源码里有
+          # 专门的 ErrAutogroupInternetSrc 拦着放到 src 的写法。
+          {
+            action = "accept";
+            src = ["group:imdomestic"];
+            dst = ["autogroup:internet:*"];
+          }
+
           # (可选) 允许所有人访问你广播的特定子网（比如你家的 R6S 局域网）
           # {
           #   action = "accept";
