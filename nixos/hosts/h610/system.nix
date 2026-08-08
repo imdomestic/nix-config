@@ -145,6 +145,18 @@ in {
     };
   };
 
+  # nixpkgs 的 oomd 模块把上面那几行写进 /etc/systemd/oomd.conf,但**没有**把它
+  # 挂进 systemd-oomd 的重启触发链。NixOS 的 switch 只重启"unit 定义变了"的
+  # 服务,而 oomd.conf 是 /etc 里的普通文件不算 unit 定义 —— 结果是配置换了、
+  # 文件也写对了,进程却还跑着旧的那份。
+  #
+  # 实测就踩了:switch 之后 `oomctl` 顶部仍然显示 60%/30s(systemd 内建默认),
+  # 而不是这里写的 80%/20s。每个 cgroup 自己那条 80% 是生效的(它来自 slice
+  # unit,那个确实会触发重启),只有全局默认是陈的,很容易看漏。
+  systemd.services.systemd-oomd.restartTriggers = [
+    config.environment.etc."systemd/oomd.conf".source
+  ];
+
   # nix 构建跑在 nix-daemon 里(system.slice),上面刻意没让 oomd 管那一片,
   # 所以在这里单独给它一个上限。
   #
