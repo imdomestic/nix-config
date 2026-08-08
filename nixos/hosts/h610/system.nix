@@ -73,9 +73,21 @@ in {
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  # This host is the deploy-rs build box; emulate aarch64 so it can build the
-  # SBC (r6s/rpi4/r5s) closures locally before pushing them.
-  boot.binfmt.emulatedSystems = ["aarch64-linux"];
+  # **故意不开 binfmt。** 这台以前是 deploy-rs 的构建机,靠 QEMU 模拟给
+  # r6s/rpi4/r5s 那几台 SBC 编闭包;那个角色已经交给 tank 了
+  # (见 modules/nix.nix 的 buildMachines)。
+  #
+  # 留着它反而有害:binfmt 会把 aarch64-linux 加进 nix 的 `extra-platforms`,
+  # 于是 nix 认为本机"能"编 ARM,而 nix 的调度是**平台匹配且有空闲 slot 就
+  # 本地编**,只有 slot 占满才溢出到远程。结果是最该推给 tank 的 ARM 构建
+  # 恰恰留在这台 12 核 / 15 GiB 的机器上用最慢的方式跑 —— 今天两次
+  # OOM 就是这么来的。
+  #
+  # 摘掉之后 aarch64-linux 不在 extra-platforms 里,这类构建**可靠地**走
+  # tank。代价:tank 不可达时这台编不了 ARM(会直接失败而不是慢慢磨),
+  # 而且 `just build-local <arm-host>` 在这台上不再可用 —— 那条路本来也
+  # 慢到没有实用价值。
+  # boot.binfmt.emulatedSystems = ["aarch64-linux"];
   # boot.kernelParams = [
   #   "pcie_aspm=off"
   #   "i915.force_probe=!56a5"
