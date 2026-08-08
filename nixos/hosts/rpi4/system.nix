@@ -133,6 +133,13 @@ in {
         # pppd installs the IPv4 (IPCP) address; keep it across networkd
         # restarts so `nixos-rebuild switch` doesn't flush it.
         KeepConfiguration = "yes";
+
+        # 关掉 IPv6 隐私扩展,理由见 hosts/r6s/system.nix 里同一处的长注释。
+        # 简版:这台的 WAN v4 是 100.112.172.41,r6s 是 100.84.115.12,双双
+        # 落在 tailscale 认领的 100.64.0.0/10 里,互相被对方的反欺骗规则丢包,
+        # 所以这一对只能靠 IPv6 直连;而临时地址轮换会让那条直连周期性断。
+        # 这台尤其明显 —— ppp0 上一度积了 8 个全局 v6 地址,好几个已 deprecated。
+        IPv6PrivacyExtensions = "no";
       };
       linkConfig = {
         RequiredForOnline = "carrier";

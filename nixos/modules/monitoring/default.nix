@@ -312,12 +312,44 @@ in {
         };
       };
 
+      # 看板声明式下发,不靠手动 import。手动导入的看板只活在 grafana.db 里,
+      # tank 一重装就没了 —— 那跟这个仓库其它东西的做法是拧着的。
+      #
+      # 但只放**现成货给不了的那张**:fleet 总览 + tailnet 延迟矩阵。像
+      # 1860(Node Exporter Full)那种通用单机看板留着手动 import 就行,
+      # 它是 250KB 生成出来的 JSON,为了省一次重装后的点击把它塞进仓库不划算。
+      provision.dashboards.settings = {
+        apiVersion = 1;
+        providers = [
+          {
+            name = "nix";
+            orgId = 1;
+            type = "file";
+            # 仓库是唯一事实来源,别让人从 UI 里删掉一个由 nix 管的看板 ——
+            # 删了下次 rebuild 又会回来,只会让人困惑。
+            disableDeletion = true;
+            # 但允许在 UI 里改。想调 panel 就调,满意了 export JSON 覆盖回
+            # 仓库里那份。设成 false 的话每次点编辑都被顶回去,很难用。
+            allowUiUpdates = true;
+            updateIntervalSeconds = 30;
+            options = {
+              path = ./dashboards;
+              foldersFromFilesStructure = false;
+            };
+          }
+        ];
+      };
+
       provision.datasources.settings = {
         apiVersion = 1;
         datasources = [
           {
             name = "Prometheus";
             type = "prometheus";
+            # 固定 uid。声明式下发的看板要在 JSON 里写死数据源引用,而 Grafana
+            # 默认给的是随机 uid —— 那样看板每次重装都会指向一个不存在的数据源,
+            # 打开是一片 "Datasource not found"。
+            uid = "prometheus";
             access = "proxy";
             # **必须是 selfIp,不能"顺手优化"成 127.0.0.1。** Prometheus 只
             # 接受一个 listen 地址,而上面把它绑到了 tailscale 地址上,回环

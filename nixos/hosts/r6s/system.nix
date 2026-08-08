@@ -222,6 +222,26 @@ in {
         # pppd installs the IPv4 (IPCP) address; keep it across networkd
         # restarts so `nixos-rebuild switch` doesn't flush it.
         KeepConfiguration = "yes";
+
+        # **关掉 IPv6 隐私扩展。** 这台和 rpi4 之间的直连只能走 IPv6:
+        # 两边的 WAN v4 都是电信 CGNAT 地址(这台 100.84.115.12,rpi4
+        # 100.112.172.41),双双落在 100.64.0.0/10 里,于是互相被对方
+        # tailscale 的反欺骗规则 `ip saddr 100.64.0.0/10 iifname !=
+        # "tailscale0" drop` 丢掉 —— IPv4 直连在这一对之间结构性不可能
+        # (同一条规则的另一个症状见 modules/singbox 里 autoRedirect 的说明)。
+        #
+        # 而隐私扩展会让临时地址定期轮换,tailscale 通告出去的端点跟着失效,
+        # 直连就周期性断掉回落到 DERP。实测抓到过:r6s 把 rpi4 钉在
+        # 2409:8a20:1951:a350:... 上,而那时 rpi4 的首选临时地址已经换到
+        # 2409:8a20:1905:228f 前缀了 —— 用的是一个还没过期但已不是首选的
+        # 旧地址,等它彻底失效这条直连就断。
+        #
+        # 取舍:隐私扩展防的是"通过接口标识符追踪这台设备",但这是路由器
+        # 自己的 WAN 地址,运营商给的前缀本来就标识了这条线路,标识符稳不
+        # 稳定几乎不增加暴露面。换来唯一可用的直连路径不再周期性抖动。
+        # 前缀本身仍会在 PPPoE 重拨时变,那躲不掉,但比每天一次的临时地址
+        # 轮换少得多。
+        IPv6PrivacyExtensions = "no";
       };
       linkConfig = {
         RequiredForOnline = "carrier";

@@ -178,9 +178,23 @@ in
             # 不是"在走中继"。tailscale_peer_direct 本身就只在 active 时才
             # 输出,这里的 and 是双保险。
             alert = "TailscalePathDegraded";
+            #
+            # 三个条件缺一不可。`online == 1` 是实测补上的:r2s 离线时,其余
+            # 七台指向它的链路全部报 active=1 + direct=0(tailscale 在尝试连,
+            # 但连不上自然没有直连路径),于是七条链路一起满足前两个条件。
+            # 但"到一台关机的机器没有直连"不是路径问题,是那台机器关着 ——
+            # 那件事 HostUnreachable 已经在报了。少了这行,fleet 里每关一台
+            # 机器就会多出 N-1 条假的降级告警。
+            #
+            # **`kind="server"` 也不能少。** 同一批指标现在覆盖整个 tailnet,
+            # 包括二十来台手机和别人的笔记本。那些设备在蜂窝网、酒店 WiFi、
+            # 对称 NAT 后面走中继是完全正常的日常状态,不是需要有人处理的事件。
+            # 不加这个过滤,这条告警会天天响,然后所有人开始无视它 —— 连带
+            # 把真正该看的 server 降级也一起无视掉。
             expr = ''
-              tailscale_peer_direct == 0
-              and on(instance, peer) tailscale_peer_active == 1
+              tailscale_peer_direct{kind="server"} == 0
+              and on(instance, peer) tailscale_peer_active{kind="server"} == 1
+              and on(instance, peer) tailscale_peer_online{kind="server"} == 1
             '';
             # 15 分钟。NAT 打洞本来就需要时间,重连后短暂走中继是正常的,
             # 不该为此报警。
