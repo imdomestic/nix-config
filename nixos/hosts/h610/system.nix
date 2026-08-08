@@ -77,15 +77,18 @@ in {
   # r6s/rpi4/r5s 那几台 SBC 编闭包;那个角色已经交给 tank 了
   # (见 modules/nix.nix 的 buildMachines)。
   #
-  # 留着它反而有害:binfmt 会把 aarch64-linux 加进 nix 的 `extra-platforms`,
-  # 于是 nix 认为本机"能"编 ARM,而 nix 的调度是**平台匹配且有空闲 slot 就
-  # 本地编**,只有 slot 占满才溢出到远程。结果是最该推给 tank 的 ARM 构建
-  # 恰恰留在这台 12 核 / 15 GiB 的机器上用最慢的方式跑 —— 今天两次
-  # OOM 就是这么来的。
+  # 摘掉的理由是**溢出**,不是"抢在 tank 前面"。nix 的调度是远程优先:
+  # derivation-building-goal.cc 先问 build hook,hook 在 tank 有空闲 slot
+  # 时就 accept,所以 ARM 构建本来就会去 tank。
   #
-  # 摘掉之后 aarch64-linux 不在 extra-platforms 里,这类构建**可靠地**走
-  # tank。代价:tank 不可达时这台编不了 ARM(会直接失败而不是慢慢磨),
-  # 而且 `just build-local <arm-host>` 在这台上不再可用 —— 那条路本来也
+  # 但 binfmt 会把 aarch64-linux 加进 `extra-platforms`,于是 build-remote.cc
+  # 里的 `couldBuildLocally` 为真;一旦 tank 的 16 个 slot 全占满,hook 返回
+  # decline 而不是 postpone —— 溢出的 ARM 构建就落到这台 12 核 / 15 GiB 的
+  # 机器上用 QEMU 跑。那是最坏的组合,而这台今天已经 OOM 两次。
+  #
+  # 摘掉之后那种情况变成 postpone(排队等 tank),不再有慢速回落。
+  # 代价:tank 不可达时这台编不了 ARM(直接失败而不是慢慢磨),
+  # `just build-local <arm-host>` 在这台上也不再可用 —— 那条路本来就
   # 慢到没有实用价值。
   # boot.binfmt.emulatedSystems = ["aarch64-linux"];
   # boot.kernelParams = [
