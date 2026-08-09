@@ -112,7 +112,16 @@ in {
       set -g prefix C-b
       bind C-b send-prefix
 
-      # ---- 键位分工:HJKL 搬 pane,方向键改大小,< > 搬 window ----
+      # ---- 键位分工,照 hyprland 那套映射过来 ----
+      #
+      #   hyprland                              tmux
+      #   $mod + ←→↑↓          resizeactive     prefix + ←→↑↓        resize-pane
+      #   $mod + h/j/k/l       movefocus        prefix + h/j/k/l     select-pane
+      #   $mod SHIFT + h/j/k/l movewindow       prefix + H/J/K/L     swap-pane
+      #   $mod + 1..9          workspace        prefix + 1..9        select-window(默认)
+      #
+      # 大写本来就要按 Shift,所以 `prefix H` 天然对应 `$mod SHIFT + h` ——
+      # 不加 Shift 移动焦点、加 Shift 搬东西,两边是同一套。
       #
       # swap-pane **不要加 -d**。不加时焦点跟着自己的 pane 走,加了会留在原位
       # 盯着换过来的那一个。独立 socket 实测:
@@ -128,17 +137,25 @@ in {
       #
       # `<` / `>` 在 tmux 3.6 的默认是 display-menu(window 菜单 / pane 菜单),
       # 这里覆盖掉了。那两个菜单鼠标右键还能出来,不算真丢。
+      bind -r h select-pane -L
+      bind -r j select-pane -D
+      bind -r k select-pane -U
+      bind -r l select-pane -R
+
       bind -r H swap-pane -s '{left-of}'
       bind -r J swap-pane -s '{down-of}'
       bind -r K swap-pane -s '{up-of}'
       bind -r L swap-pane -s '{right-of}'
 
+      # 小写 l 抢走了默认的 last-window,挪到 Tab —— 语义上也更像 alt-tab。
+      # 别加 -r:重复模式下按 Tab 会在两个窗口之间反复横跳。
+      bind Tab last-window
+
       bind -r < swap-window -t - \; select-window -t -
       bind -r > swap-window -t + \; select-window -t +
 
-      # resize 从 HJKL 让位到方向键。代价:方向键的默认绑定是 select-pane,
-      # 让出来之后键盘选 pane 只剩默认的 `prefix o`(下一个)和 `prefix ;`
-      # (上一个)—— 小写 hjkl 不适合补这个位,因为 `prefix l` 默认是 last-window。
+      # resize 从 HJKL 让位到方向键。方向键的默认绑定 select-pane 被顶掉了,
+      # 但那个职责已经由上面的小写 hjkl 接手,没有净损失。
       bind -r Up    resize-pane -U 5
       bind -r Down  resize-pane -D 5
       bind -r Left  resize-pane -L 5
