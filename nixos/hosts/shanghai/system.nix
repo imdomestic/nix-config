@@ -202,6 +202,34 @@ in {
       environmentFile = config.sops.secrets."acme/cloudflare_env".path;
       group = "derper";
       reloadServices = ["derper.service"];
+
+      # 关掉 lego 自己那道"等 DNS 生效"的预检。
+      #
+      # 这台从 2026-07-31 起就没拿到过真证书,每天定时器跑一次、每次都是:
+      #
+      #   [INFO] cloudflare: new record for sh.imdomestic.com, ID 7844f84e...
+      #   ...(2 分钟 Waiting for DNS record propagation)
+      #   propagation: time limit exceeded: last error: authoritative
+      #   nameservers: NS ophelia.ns.cloudflare.com.:53 returned SERVFAIL
+      #
+      # **TXT 记录是建成功了的** —— Cloudflare API 那步返回了 record ID。挂掉的
+      # 只是 lego 建完之后自己去权威 NS 上查一遍确认的那一步:从阿里云上海直接
+      # UDP 53 问 *.ns.cloudflare.com 会拿到 SERVFAIL。h610 上是一模一样的配置
+      # (同一个 token、同一个 zone),在电信家宽上就没事 —— 所以不是 token、
+      # 不是 zone、不是记录本身。
+      #
+      # 而这道预检**不是真正的关卡**:真正验证的是 Let's Encrypt 自己,它从境外
+      # 的多个点来查。lego 在这里放弃,等于根本没让 LE 去验。关掉它之后
+      # Cloudflare 几秒就全球生效,LE 那边查得到。
+      #
+      # 后果不只是"少一张证书":derper 会拿 NixOS 生成的自签占位证书照常启动,
+      # 而节点选 home DERP 只看 **UDP 3478 的 STUN 延迟**——那个是通的。于是
+      # tank/rpi4/r5s 都把这台选成了 home DERP,再连 TLS 时被拒:
+      #   derper 日志 : TLS handshake error ... connection reset by peer
+      #   tank 健康检查: Tailscale could not connect to the 'Shanghai' relay server
+      # 也就是说一个证书坏掉的 DERP 比没有 DERP 更糟 —— 它会把节点吸过来再拒绝
+      # 服务。
+      dnsPropagationCheck = false;
     };
   };
 
