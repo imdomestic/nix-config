@@ -8,7 +8,9 @@
 }:
 # RecMonoSmCasual Nerd Font Mono with Cascadia Code's italics in place of
 # Recursive's own -- Recursive's italic is an oblique of the roman, Cascadia's
-# is a drawn cursive, which is the whole point of the swap.
+# cursive is genuinely drawn, which is the whole point of the swap. Note that
+# Cascadia's *default* italic is another slanted roman; cursive.py promotes the
+# cursive design out of the ss01 stylistic set to make it the default here.
 #
 # This is a drop-in for nerd-fonts.recursive-mono rather than a font of its own:
 # it passes the other 46 files through byte-for-byte and only swaps the two
@@ -57,17 +59,33 @@ in
       ''
       + lib.concatStrings (lib.mapAttrsToList (style: source: ''
 
-          python3 ${./prescale.py} \
+          python3 ${./cursive.py} \
             ${cascadia-code}/share/fonts/opentype/${source}.otf \
+            cursive-${style}.otf
+
+          python3 ${./prescale.py} \
+            cursive-${style}.otf \
             prescaled-${style}.otf
 
           # --mono makes every added icon single-width, which is what separates
           # the "Nerd Font Mono" faces from the plain "Nerd Font" ones. The
           # patcher names its output after the font's own name records, so give
           # each run a directory to itself instead of guessing the filename.
+          #
+          # The log goes to a file because fontforge's C library -- which
+          # --quiet does not reach, it only silences the patcher's own output --
+          # objects to every icon whose source name is one it associates with a
+          # real character: Font Awesome's "divide" against U+00F7, Less.js's
+          # "less" against U+003C, and some hundreds more. It settles them by
+          # suffixing the icon (divide.1), so the complaints are noise. Print
+          # the log only if the patcher actually fails.
           mkdir -p patched-${style}
-          nerd-font-patcher --mono --complete --quiet \
-            --outputdir patched-${style} prescaled-${style}.otf
+          if ! nerd-font-patcher --mono --complete --quiet \
+            --outputdir patched-${style} prescaled-${style}.otf \
+            > patch-${style}.log 2>&1; then
+            cat patch-${style}.log
+            exit 1
+          fi
 
           python3 ${./finalize.py} \
             patched-${style}/*.otf \
