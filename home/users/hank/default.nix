@@ -92,13 +92,6 @@ in {
         '';
       }
       # {
-      #   plugin = resurrect;
-      #   extraConfig = ''
-      #     # set -g @resurrect-strategy-nvim 'session'
-      #     set -g @resurrect-capture-pane-contents 'on'
-      #   '';
-      # }
-      # {
       #   plugin = continuum;
       #   extraConfig = ''
       #     # Tmux 启动时自动恢复最后一次保存的会话
@@ -107,6 +100,42 @@ in {
       #     set -g @continuum-save-interval '15'
       #   '';
       # }
+
+      # 存/取整个会话布局。**手动**:prefix C-s 存,prefix C-r 取。
+      #
+      # 故意不带 continuum:那个每 15 分钟自动存 + tmux 启动时自动恢复,代价是
+      # 你开一个新 tmux 就会被塞回上次的布局。要自动化随时把下面这段注释解开:
+      #   { plugin = continuum; extraConfig = ''
+      #       set -g @continuum-restore 'on'
+      #       set -g @continuum-save-interval '15'
+      #     ''; }
+      #
+      # 没写 @resurrect-strategy-nvim 'session':那个只在 pane 目录下存在
+      # Session.vim 时才有用(要靠 vim-obsession 之类维护),这边的 nixvim 没有,
+      # 写了也是空转。
+      {
+        plugin = resurrect;
+        extraConfig = ''
+          set -g @resurrect-capture-pane-contents 'on'
+        '';
+      }
+
+      # vimium 式的提示复制:按 prefix Space,屏幕上所有路径 / URL / git SHA /
+      # IP / UUID / docker 镜像 / 十六进制色值旁边浮出字母提示,按字母就进
+      # 剪贴板 —— 不进 copy-mode、不用移动光标。
+      #
+      # 占掉了默认的 `prefix Space`(next-layout)。真要切布局还有 `prefix M-1`
+      # 到 `M-7` 直接选。
+      {
+        plugin = tmux-thumbs;
+        extraConfig = ''
+          set -g @thumbs-key space
+          # 相同文本共用一个提示,省字母(默认 disabled)
+          set -g @thumbs-unique enabled
+          # 提示从靠近光标处开始编号,常用的落在单字母上(默认 disabled)
+          set -g @thumbs-reverse enabled
+        '';
+      }
     ];
     extraConfig = ''
       set-option -ga terminal-overrides ",*256col*:Tc"
