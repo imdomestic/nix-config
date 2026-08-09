@@ -109,16 +109,43 @@ in {
       setw -g pane-base-index 1
 
       bind r source-file ~/.config/tmux/tmux.conf \; display '~/.config/tmux/tmux.conf sourced'
-      bind > swap-pane -D
-      bind < swap-pane -U
-      bind | swap-pane
-
       set -g prefix C-b
       bind C-b send-prefix
-      bind -r H resize-pane -L 5
-      bind -r J resize-pane -D 5
-      bind -r K resize-pane -U 5
-      bind -r L resize-pane -R 5
+
+      # ---- 键位分工:HJKL 搬 pane,方向键改大小,< > 搬 window ----
+      #
+      # swap-pane **不要加 -d**。不加时焦点跟着自己的 pane 走,加了会留在原位
+      # 盯着换过来的那一个。独立 socket 实测:
+      #   初始              %0*@x=0   %1@x=41
+      #   -s '{right-of}'   %1@x=0    %0*@x=41    ← 焦点跟着 %0 到了右边
+      #   加 -d             %1*@x=0   %0@x=41     ← 焦点留在左边,不是想要的
+      #
+      # swap-window 恰好相反,**必须补 select-window**:
+      #   0:a 1:b*  --swap-window -t +->  0:a 1:c* 2:b   ← b 挪走了,人没跟过去
+      #
+      # `-t -` / `-t +` 是文档里的 target-window 记号(前一个/后一个编号)。
+      # 到处流传的 `-t -1` 不是文档写法,解析结果不可预期。边界会环绕,实测正常。
+      #
+      # `<` / `>` 在 tmux 3.6 的默认是 display-menu(window 菜单 / pane 菜单),
+      # 这里覆盖掉了。那两个菜单鼠标右键还能出来,不算真丢。
+      bind -r H swap-pane -s '{left-of}'
+      bind -r J swap-pane -s '{down-of}'
+      bind -r K swap-pane -s '{up-of}'
+      bind -r L swap-pane -s '{right-of}'
+
+      bind -r < swap-window -t - \; select-window -t -
+      bind -r > swap-window -t + \; select-window -t +
+
+      # resize 从 HJKL 让位到方向键。代价:方向键的默认绑定是 select-pane,
+      # 让出来之后键盘选 pane 只剩默认的 `prefix o`(下一个)和 `prefix ;`
+      # (上一个)—— 小写 hjkl 不适合补这个位,因为 `prefix l` 默认是 last-window。
+      bind -r Up    resize-pane -U 5
+      bind -r Down  resize-pane -D 5
+      bind -r Left  resize-pane -L 5
+      bind -r Right resize-pane -R 5
+
+      # 无参 swap-pane = 跟 `select-pane -m` 标记的那个交换,和上面不冲突,留着。
+      bind | swap-pane
 
       setw -g mode-keys vi
       bind -T copy-mode-vi v send-keys -X begin-selection
