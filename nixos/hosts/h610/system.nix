@@ -350,6 +350,31 @@ in {
   security.acme = {
     acceptTerms = true;
     defaults.email = "hankchogan@gmail.com";
+
+    # **dae 开着的时候 lego 的 DNS-01 一定失败**,所以不做探测,改成定时等待。
+    #
+    # 根因不在 acme 也不在 Cloudflare,在 dae 劫持 DNS:它把所有 53 端口流量
+    # 按自己的 `dns.routing.request` 改道(这里 `fallback: alidns`),**目的
+    # 地址被丢弃** —— 除非规则显式写 `-> asis`。而 lego 的传播检查恰恰是
+    # "绕开递归缓存、直连权威 NS 问一遍",这个前提被 dae 拆掉了。
+    #
+    # 实测同一条 dig,应答标志一眼看出:
+    #   h610 / shanghai (dae 开) : flags: qr rd ra      ← 递归解析器答的
+    #   r5sjp           (dae 关) : flags: qr aa rd      ← 真·Cloudflare 权威
+    #
+    # 于是 lego 的"问权威 NS"实际问到了 alidns,而 alidns 去查一条刚建几秒、
+    # Cloudflare 托管、带 DNSSEC 的记录会返回 SERVFAIL,重试满 2 分钟后放弃
+    # —— 从没让 LE 去验证过。手动"停 dae → 跑 order → 开 dae"能成,就是因为
+    # 停掉之后劫持消失。
+    #
+    # --dns.propagation-wait 让 lego 完全不探测,固定等 120s 再让 LE 去验。
+    # LE 在境外,那里没有 dae。这样就不用再做那套手动操作了。
+    # 120s 是在 shanghai 上拿 LE staging 实测过的。
+    #
+    # 注意别用 `dnsPropagationCheck = false`:它展开成
+    # --dns.propagation-disable-ans,是把检查整个取消而不是换一种做法,lego
+    # 建完记录 2 秒就让 LE 去验,记录还没生效 → NXDOMAIN。而且这两个标志互斥。
+    defaults.extraLegoFlags = ["--dns.propagation-wait" "120s"];
   };
 
   security.acme.certs."tailscale.imdomestic.com" = {

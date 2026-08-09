@@ -203,36 +203,18 @@ in {
       group = "derper";
       reloadServices = ["derper.service"];
 
-      # 把 lego 的"等 DNS 生效"从**探测**改成**定时等待**。
+      # 不做 DNS 探测,固定等待。**根因是 dae 劫持 DNS**,完整说明见 h610 的
+      # security.acme 那一段(hosts/h610/system.nix)—— 两台是同一个 bug。
       #
-      # 这台从 2026-07-31 起就没拿到过真证书,每天定时器跑一次、每次都是:
+      # 这台的具体表现:从 2026-07-31 起就没拿到过真证书,每天定时器跑一次、
+      # 每次都是
       #
       #   [INFO] cloudflare: new record for sh.imdomestic.com, ID 7844f84e...
-      #   ...(2 分钟 Waiting for DNS record propagation)
       #   propagation: time limit exceeded: last error: authoritative
       #   nameservers: NS ophelia.ns.cloudflare.com.:53 returned SERVFAIL
       #
-      # **TXT 记录是建成功了的** —— Cloudflare API 那步返回了 record ID。挂掉的
-      # 只是 lego 建完之后自己去权威 NS 上复查的那一步:从阿里云上海直接 UDP 53
-      # 问 *.ns.cloudflare.com 会拿到 SERVFAIL。h610 上是一模一样的配置(同一个
-      # token、同一个 zone),在电信家宽上就没事 —— 所以不是 token、不是 zone、
-      # 不是记录本身,是这台的出口。
-      #
-      # 先试过 `dnsPropagationCheck = false`(展开成 --dns.propagation-disable-ans),
-      # **不行**:那个标志不是"跳过权威 NS 那一档",而是把检查整个取消,lego 建完
-      # 记录 2 秒后就让 LE 去验,Cloudflare 还没生效:
-      #
-      #   14:37:14 new record ... 14:37:16 Wait for propagation ... 14:37:16 Cleaning
-      #   invalid authorization: 400 :: DNS problem: NXDOMAIN looking up TXT for
-      #   _acme-challenge.sh.imdomestic.com
-      #
-      # 正解是 --dns.propagation-wait:它同样绕开所有探测(因此绕开 SERVFAIL),
-      # 但改成固定等待再让 LE 去验。**这两个标志互斥**,lego 会直接拒绝:
-      #   'dns.propagation-disable-ans' and 'dns.propagation-wait' are mutually exclusive
-      # 所以 dnsPropagationCheck 必须留默认的 true(true 时不下发任何标志)。
-      #
-      # 120s 是拿 LE staging 实测出来的:等待结束后 "The server validated our
-      # request" 一次通过。定时器一天才跑一次,多等两分钟没有代价。
+      # TXT 记录建成功了(Cloudflare API 返回了 record ID),挂的是 lego 建完
+      # 之后去权威 NS 复查那一步 —— 而那个"权威 NS"被 dae 换成了 alidns。
       #
       # 后果不只是"少一张证书":derper 会拿 NixOS 生成的自签占位证书照常启动,
       # 而节点选 home DERP 只看 **UDP 3478 的 STUN 延迟**——那个是通的。于是
