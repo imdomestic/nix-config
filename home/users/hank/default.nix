@@ -121,11 +121,24 @@ in {
       }
 
       # vimium 式的提示复制:按 prefix Space,屏幕上所有路径 / URL / git SHA /
-      # IP / UUID / docker 镜像 / 十六进制色值旁边浮出字母提示,按字母就进
-      # 剪贴板 —— 不进 copy-mode、不用移动光标。
+      # IP / UUID / docker 镜像 / 十六进制色值旁边浮出字母提示,按字母就抓走
+      # —— 不进 copy-mode、不用移动光标。
       #
       # 占掉了默认的 `prefix Space`(next-layout)。真要切布局还有 `prefix M-1`
       # 到 `M-7` 直接选。
+      #
+      # **必须覆盖 @thumbs-command,默认的抓不到系统剪贴板。** 它默认是
+      # `tmux set-buffer -- {}`,只填 tmux 内部的 paste buffer;而 set-buffer
+      # 不带 -w 时不发 OSC 52,所以 ssh 过来的时候本机剪贴板里什么都没有。
+      # (鼠标选和 prefix [ 之所以正常,是因为那两条走 copy-mode 通路,会遵守
+      # 上面的 `set -g set-clipboard on` 发 OSC 52。)
+      #
+      # 加 -w 就是让它走同一条已经验证可用的通路:man 里写 "If -w is given,
+      # the buffer is also sent to the clipboard for target-client using the
+      # xterm(1) escape sequence"。
+      #
+      # 另一条路是 `set -g @thumbs-osc52 1`(让 thumbs 自己吐 OSC 52),没用它
+      # —— 复用 tmux 已经跑通的机制比再引入一份实现可靠。
       {
         plugin = tmux-thumbs;
         extraConfig = ''
@@ -134,6 +147,10 @@ in {
           set -g @thumbs-unique enabled
           # 提示从靠近光标处开始编号,常用的落在单字母上(默认 disabled)
           set -g @thumbs-reverse enabled
+
+          set -g @thumbs-command 'tmux set-buffer -w -- {} && tmux display-message "已复制 {}"'
+          # 大写提示 = 复制并直接粘到当前 pane
+          set -g @thumbs-upcase-command 'tmux set-buffer -w -- {} && tmux paste-buffer && tmux display-message "已粘贴 {}"'
         '';
       }
     ];
@@ -162,6 +179,15 @@ in {
       set -g history-limit 50000
 
       set -g set-clipboard on
+      # tmux 只在外层终端的 terminfo 里有 `Ms` 时才肯发 OSC 52(man:
+      # "if there is an Ms entry in the terminfo description")。而 ghostty 和
+      # kitty 的条目(xterm-ghostty / xterm-kitty)在不少机器上压根没安装 ——
+      # ssh 过去 TERM 落不到带 Ms 的条目上,set-clipboard 和 `set-buffer -w`
+      # 就一起静默失效,剪贴板里什么都没有还不报错。
+      #
+      # 直接对所有终端声明这个能力。ghostty / kitty / wezterm / iTerm 都支持
+      # OSC 52;万一碰上不支持的,它只会把这段转义序列忽略掉,没有副作用。
+      set -ga terminal-overrides ',*:Ms=\E]52;%p1%s;%p2%s\007'
 
       set-option -g renumber-windows on
       set -g base-index 1
