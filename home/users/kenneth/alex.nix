@@ -18,7 +18,7 @@
   home.sessionVariables = {
     BROWSER = "firefox";
     CONDA_AUTO_ACTIVATE_BASE = "false";
-    TERMINAL = "wezterm";
+    TERMINAL = "ghostty";
   };
 
   # OrbStack owns this generated integration fragment. Keep only the minimal
