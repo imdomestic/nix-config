@@ -5,7 +5,6 @@
 }: {
   imports = [
     ../../modules/nixvim/kenneth.nix
-    ../../modules/wezterm
   ];
 
   home = {
