@@ -93,7 +93,7 @@
     # max QQ bot — provides nixosModules.max-bot (h610). Not following
     # our nixpkgs on purpose: its haskell package set is pinned to the
     # 25.11 GHC it was developed against.
-    max.url = "git+ssh://git@github.com/HCHogan/max";
+    max.url = "github:HCHogan/max";
 
     qq-bot = {
       url = "github:zty20040403/chat-bot";
