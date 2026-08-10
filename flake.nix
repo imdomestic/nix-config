@@ -95,6 +95,11 @@
     # 25.11 GHC it was developed against.
     max.url = "git+ssh://git@github.com/HCHogan/max";
 
+    qq-bot = {
+      url = "github:zty20040403/chat-bot";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     kvim = {
       url = "git+ssh://git@github.com/HCHogan/kvim";
       flake = false;
