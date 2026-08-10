@@ -67,6 +67,7 @@ in {
   sops.secrets."acme/cloudflare_env" = {};
   sops.secrets."coturn/static_auth_secret".owner = "turnserver";
   sops.secrets."livekit/keys_yaml" = {};
+  sops.secrets."qq_bot/postgres_password".sopsFile = ../../../secrets/secrets.yaml;
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -740,6 +741,26 @@ in {
       webuiPort = 6100;
     };
   };
+
+  sops.templates."qq-deepseek-bot-postgres.env" = {
+    owner = "kenneth";
+    group = "users";
+    mode = "0400";
+    restartUnits = ["qq-deepseek-bot.service"];
+    content = ''
+      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@100.64.0.4:5432/qq_bot
+      AI_POSTGRES_SCHEMA=qq_bot
+      AI_POSTGRES_POOL_MIN_SIZE=1
+      AI_POSTGRES_POOL_MAX_SIZE=10
+      AI_POSTGRES_POOL_TIMEOUT_SECONDS=10
+      AI_ALLOW_LEGACY_SQLITE=false
+    '';
+  };
+  systemd.services.qq-deepseek-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
+    config.sops.templates."qq-deepseek-bot-postgres.env".path
+  ];
+  systemd.services.qq-deepseek-bot.after = lib.mkAfter ["tailscaled.service"];
+  systemd.services.qq-deepseek-bot.wants = lib.mkAfter ["tailscaled.service"];
 
   # Keep the bot stopped temporarily while retaining its dedicated NapCat.
   systemd.services.qq-deepseek-bot.enable = false;
