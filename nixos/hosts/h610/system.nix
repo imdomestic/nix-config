@@ -40,7 +40,6 @@ in {
     ../../modules/dae
     # ../../modules/mihomo
     ../../modules/keyd
-    ../../modules/qq-deepseek-bot
     # ../../modules/minecraft/wuxi.nix
   ];
 
@@ -728,13 +727,13 @@ in {
 
   services.qq-deepseek-bot = {
     enable = true;
-    sourceDirectory = "/home/kenneth/services/chat-bot";
     environmentFile = "/home/kenneth/services/chat-bot/.env";
     user = "kenneth";
     group = "users";
     host = "172.17.0.1";
     port = 18080;
     sandbox.enable = false;
+    browser.enable = true;
     napcat = {
       enable = true;
       account = "3580515978";
