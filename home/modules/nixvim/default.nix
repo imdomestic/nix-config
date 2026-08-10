@@ -68,6 +68,9 @@ in {
       number = true;
       mouse = "a";
       showmode = false;
+      # 外部 agent（Claude Code 等）在另一个 tmux window 里改仓库文件，
+      # 切回来时未修改的 buffer 自动从磁盘重载。配合下面的 auto-reload 组。
+      autoread = true;
       breakindent = true;
       undofile = true;
       ignorecase = true;
@@ -128,6 +131,7 @@ in {
     };
 
     autoGroups = {
+      auto-reload.clear = true;
       highlight-yank.clear = true;
       terminal-cleanup.clear = true;
       indent-two.clear = true;
@@ -137,6 +141,24 @@ in {
     };
 
     autoCmd = [
+      {
+        event = [
+          "FocusGained"
+          "BufEnter"
+          "TermClose"
+          "TermLeave"
+        ];
+        group = "auto-reload";
+        desc = "Check for external file changes (autoread only triggers on checktime)";
+        callback = mkRaw ''
+          function()
+            -- checktime 在 cmdline / cmdwin 里会抛 E11，nofile buffer 也无盘可查。
+            if vim.bo.buftype ~= "nofile" and vim.fn.mode() ~= "c" and vim.fn.getcmdwintype() == "" then
+              vim.cmd.checktime()
+            end
+          end
+        '';
+      }
       {
         event = "TextYankPost";
         group = "highlight-yank";
@@ -420,6 +442,16 @@ in {
           end
         '';
         options.desc = "Smart find files";
+      }
+      {
+        mode = "n";
+        key = "<leader>fb";
+        action = mkRaw ''
+          function()
+            require("snacks").picker.buffers()
+          end
+        '';
+        options.desc = "Buffers";
       }
       {
         mode = "n";
