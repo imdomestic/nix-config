@@ -1,0 +1,98 @@
+# 把 cache.nixos.org 里没有、本地非编不可的那几个包推到 imdomestic.cachix.org。
+# 清单在 flake.nix 的 `packages` 输出里,这里只负责按 system 分发到对应 runner。
+#
+# 和 flake-check.yml 的分工:那边是快速门禁(所有 host 的 --dry-run,PR 也跑),
+# 这里只在 main 上跑真构建,慢且吃额度。
+name: cachix
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# 连着推几次的话,后一次把前一次顶掉 —— 反正推的是同一批路径。
+concurrency:
+  group: cachix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  push:
+    name: ${{ matrix.system }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - system: x86_64-linux
+            os: ubuntu-latest
+          # 原生 arm64 runner,公开仓库免费。**不要**退回 ubuntu-latest + QEMU:
+          # 那样 rpi4 内核是在 binfmt 模拟下编,慢 5-20 倍,会撞 6 小时单 job 上限。
+          - system: aarch64-linux
+            os: ubuntu-24.04-arm
+          - system: aarch64-darwin
+            os: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # runner 镜像装完只剩 ~14G,rpi4 内核的中间产物能轻松吃光。
+      - name: Free disk space
+        if: runner.os == 'Linux'
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: true
+          large-packages: false
+          docker-images: true
+          swap-storage: true
+
+      # 私有 flake input 要用。
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Install Nix (Linux)
+        if: runner.os == 'Linux'
+        uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      # macOS runner 自带 _nixbld 用户,经典安装器会 eDSRecordAlreadyExists 退出。
+      # 这条和 flake-check.yml 里的理由一样。
+      - name: Install Nix (macOS)
+        if: runner.os == 'macOS'
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      # 关键一步:cachix-action 装的是 post-build-hook,**只推这个 job 里真正
+      # 构建出来的路径**,从 cache.nixos.org 替换下来的一律不推。5G 额度能不能
+      # 用得住全靠这个语义,所以不要改成 `nix path-info -r | cachix push`。
+      - uses: cachix/cachix-action@v15
+        with:
+          name: imdomestic
+          authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+      # 不写死包名:从 flake 里读 attrNames,以后往 packages.<system> 加东西
+      # 这边不用跟着改。attrNames 是惰性的,不会把每个包的值都求一遍。
+      # 刻意不用 mapfile / ${arr[@]/#/} —— 那些是 bash 4+,而 macOS runner 上的
+      # /bin/bash 还是 3.2,darwin 那条会直接 command not found。
+      # attr 名不含空格,所以这里的词分割是安全的。
+      - name: Build
+        run: |
+          set -eu
+          names=$(nix eval --json ".#packages.${{ matrix.system }}" \
+                    --apply builtins.attrNames | jq -r '.[]')
+          if [ -z "$names" ]; then
+            echo "packages.${{ matrix.system }} 是空的,跳过"
+            exit 0
+          fi
+          attrs=""
+          for n in $names; do
+            attrs="$attrs .#packages.${{ matrix.system }}.$n"
+          done
+          echo "要构建:$attrs"
+          # shellcheck disable=SC2086 # 词分割是这里要的效果
+          nix build --no-link --print-out-paths $attrs
