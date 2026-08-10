@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   inputs,
   pkgs,
@@ -60,7 +61,36 @@ in {
     clock24 = true;
     keyMode = "vi";
     plugins = with pkgs.tmuxPlugins; [
-      dotbar
+      {
+        plugin = dotbar;
+        # dotbar 是 run-shell 时把 @tmux-dotbar-* 读成普通字符串、烤进
+        # window-status-format 的,所以这些 set 必须排在插件加载**之前**。
+        # home-manager 正好把插件自己的 extraConfig 放在它的 run-shell 前面
+        # (modules/programs/tmux.nix);而 programs.tmux.extraConfig 是 mkAfter,
+        # 排在所有插件后面 —— 写在那儿就晚了,dotbar 已经读完了。
+        #
+        # #{@agent_state} 是 window 级 user option,状态栏对每个 window 单独展开
+        # 格式串,没设的窗口展开成空串,渲染和现在一模一样。写它的是
+        # ~/.claude/tmux-agent-status.sh。
+        #
+        # 只改了非 ssh 那条分支:dotbar 检测到 pane_current_command 是 ssh 时会换
+        # 成自己的 ssh 格式串,那种窗口不带标记。跑本地 agent 不受影响。
+        extraConfig = ''
+          set -g @tmux-dotbar-window-status-format ' #W#{@agent_state} '
+
+          # 右半边默认是关的(@tmux-dotbar-right false),打开后 dotbar 会渲染
+          # time_component —— 而 -status-right-text 正是塞进那个组件里的文本,
+          # 所以走这个选项就能白拿它的配色,不用自己硬写 #[bg=...,fg=...]。
+          # (直接覆盖 @tmux-dotbar-status-right 的话样式得自己重写一遍。)
+          #
+          # host_short 是 **跑 tmux server 的那台机器**。和 dotbar 自带的 ssh 窗口
+          # 名正好互补:窗口列表告诉你每个窗口 ssh 到了哪儿(它会去 pane_title 里
+          # 抠 host),右下角告诉你这个 tmux 本身在哪台机器上。
+          # 所以 `ssh 过去再开 tmux` 和 `本地 tmux 里 ssh` 两种用法都不会认错机器。
+          set -g @tmux-dotbar-right true
+          set -g @tmux-dotbar-status-right-text ' #{host_short} '
+        '';
+      }
       # {
       #   plugin = resurrect;
       #   extraConfig = ''
@@ -107,6 +137,32 @@ in {
       set-option -g renumber-windows on
       set -g base-index 1
       setw -g pane-base-index 1
+
+      # 窗口自动命名取的是 pane_current_command,而 nix 的 wrapProgram 会把真二进制
+      # 改名成 .foo-wrapped、在 foo 位置放一个 exec 它的壳脚本 —— 于是状态栏上一排
+      # .claude-wrapped / .nvim-wrapped。这里在默认格式的基础上剥掉前导 `.` 和结尾
+      # `-wrapped`,没被包过的名字原样透出。
+      #
+      # 默认值是 `#{?pane_in_mode,[tmux],#{pane_current_command}}#{?pane_dead,[dead],}`,
+      # 两个分支标记都留着,只把中间那个变量套了两层 #{s|re|repl|:...}。
+      # 注意 s|| 的第三段必须是格式变量,塞字面量展开出来是空的。
+      set -g automatic-rename-format '#{?pane_in_mode,[tmux],#{s|-wrapped$||:#{s|^\.||:#{pane_current_command}}}}#{?pane_dead,[dead],}'
+
+      # 应用通过 OSC 0/2 设的标题会落在 pane_title,tmux 一直在收但默认不往外传
+      # (set-titles 默认 off)。透传给外层终端:长而多变的东西放标题栏,dotbar 里
+      # 保持干净的窗口名。Claude Code 的 pane_title 是 spinner + 当前任务摘要,
+      # 正适合这里 —— 但正因为它一直在变、还很长,不能拿去当窗口名。
+      #
+      # 顺带一提 allow-rename(默认 off)是另一条路:让应用用 ESC k 直接改窗口名。
+      # 不开 —— 那等于 pane 里流过的任何字节都能改窗口名,cat 个文件都行。
+      set -g set-titles on
+      set -g set-titles-string '#{pane_title}'
+
+      # hostname 是静态的,这条不是为它设的 —— 是为了 @agent_state 那个标记跟手:
+      # 默认 15s 意味着 agent 卡在权限提示上之后,最坏要等 15 秒状态栏才变。
+      # 代价是 dotbar 的 ssh 窗口格式里那段 #() 会每秒跑一次(只影响 ssh 窗口);
+      # 要是同时开一堆 ssh 窗口觉得吵,把这里调大即可。
+      set -g status-interval 1
 
       bind r source-file ~/.config/tmux/tmux.conf \; display '~/.config/tmux/tmux.conf sourced'
       set -g prefix C-b
@@ -963,12 +1019,54 @@ in {
     executable = true;
   };
 
+  # Agent 状态写进 tmux 窗口列表。同样只托管脚本,hooks 要自己加进 settings.json:
+  #   "hooks": {
+  #     "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "$HOME/.claude/tmux-agent-status.sh working"}]}],
+  #     "Notification":     [{"hooks": [{"type": "command", "command": "$HOME/.claude/tmux-agent-status.sh blocked"}]}],
+  #     "Stop":             [{"hooks": [{"type": "command", "command": "$HOME/.claude/tmux-agent-status.sh done"}]}],
+  #     "SessionEnd":       [{"hooks": [{"type": "command", "command": "$HOME/.claude/tmux-agent-status.sh clear"}]}]
+  #   }
+  # 用 $HOME 不写死路径:darwin 是 /Users/hank,NixOS 那边是 /home/hank,而
+  # settings.json 不归 nix 管、不会按机器分叉。
+  home.file.".claude/tmux-agent-status.sh" = {
+    source = ../../modules/claude-code/tmux-agent-status.sh;
+    executable = true;
+  };
+
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../../../fonts/Recursive-Italic.ttf;
   home.file.".local/share/fonts/Recursive-Regular.ttf".source = ../../../fonts/Recursive-Regular.ttf;
   # home.file.wallpapers.source = ../../../wallpapers;
 
+  # snacks.image 靠终端名判断能不能画图:它拿到终端名后剥掉 `xterm-` 前缀,再去
+  # match kitty/ghostty/wezterm。ghostty 默认的 xterm-ghostty 剥完正好是 ghostty,
+  # 但我们在 modules/ghostty 里把 term 设成了 xterm-256color(远端没有 ghostty 的
+  # terminfo,不这么设 ssh 过去就一团糟),剥完变成 "256color",match 不上 —— 于是
+  # supports_terminal() 恒为 false,本地和 ssh 都画不出图。
+  #
+  # 而且这条路径在我们这儿是绕不开的:tmux 开了 extended-keys 之后 nvim 的
+  # TermResponse 不触发,snacks 只能改问 tmux 要 client_termname(也就是 TERM),
+  # 拿不到真正的 XTVERSION 应答。见 snacks/image/terminal.lua 与 folke/snacks.nvim#2332。
+  #
+  # SNACKS_<NAME> 是 snacks 内置的检测覆盖。设在这里而不是 nixvim 模块里,是因为
+  # 这是"我坐在 ghostty 前面"这个事实,只对 hank 成立,不该替别的用户断言;而且它
+  # 会被每台 nix 管的机器写进 shell 环境,ssh 过去自然生效,不用折腾 SendEnv。
+  home.sessionVariables = {
+    SNACKS_GHOSTTY = "1";
+  };
+
   home.packages = [
     pkgs.zsh-completions
+
+    # snacks.image 的转换在 **nvim 所在的机器** 上跑,所以 ssh 过去看图要求远端也有
+    # 这两个。它们本来只在 profiles/dev.nix 里,而 dev profile 只有 b650 引了
+    # (userModules.hank.dev),别的机器 ssh 过去 magick 不在,图就是出不来。
+    # 提到这里 = 每台有 hank 的机器都能看图,又不用把整套 dev 工具链背过去。
+    #
+    # dev.nix 里那份没删:它同时被 linwhite/dev.nix 引着。b650 上两边都声明,指向
+    # 同一个 derivation,profile 里会去重,无害。
+    # mermaid(mmdc)和 tectonic 仍然只在 dev profile —— 那两个是真的重。
+    pkgs.imagemagick
+    pkgs.ghostscript
   ];
 }
