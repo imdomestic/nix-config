@@ -18,6 +18,44 @@
     hosts = hosts;
     deploy.nodes = deployNodes;
 
+    # GitHub Actions 构建 + 推 imdomestic.cachix.org 的目标清单。
+    #
+    # 只放 cache.nixos.org 一定没有的东西 —— 免费额度就 5G,把 Hydra 已经有的
+    # 路径推上去纯属浪费。判据是"本地非编不可":自己打的包,以及被 nixos-hardware
+    # 改过的内核。
+    #
+    # deploy-rs 不在这里:它已经改成用 nixpkgs 里 Hydra 构建好的那个二进制了,
+    # 见 lib/mkDeployNodes.nix,不需要我们自己编更不需要缓存。
+    #
+    # 全部从 **host 自己的 pkgs / config** 里取,而不是 nixpkgs.legacyPackages:
+    # 这些 host 是带 overlay 的(mkConfigurations 叠了 nur,modules/nix.nix 还有
+    # 一层),换个 pkgs 实例 callPackage 出来的 drv hash 可能对不上 —— 那样推上去
+    # 的缓存一条都命不中,CI 白跑。
+    packages = let
+      nixos = systems.nixosConfigurations;
+      darwin = systems.darwinConfigurations;
+      font = cfg: cfg.pkgs.callPackage ./pkgs/recursive-mono-cascadia-italic {};
+    in {
+      aarch64-linux = {
+        # rpi4 引了 nixos-hardware 的 raspberry-pi-4 模块,内核被改过,drv 是
+        # Hydra 从没见过的,每次都得从源码整编 —— 整个缓存里最值钱的一项。
+        rpi4-kernel = nixos.rpi4.config.boot.kernelPackages.kernel;
+        # smart 分支目前只有 r6s 开着(7540u 用的还是上游 mihomo)。直接取 config
+        # 里那个值,保证和 r6s 真正要的是同一个 drv;哪天别的机器也开 smart,
+        # 按同样写法往对应 system 下加一条。
+        mihomo-smart = nixos.r6s.config.services.mihomo.package;
+      };
+      x86_64-linux = {
+        # 7540u / b650 / x470 三台解析出来是同一个 drv,取哪台都一样。
+        recursive-mono-cascadia-italic = font nixos.b650;
+      };
+      aarch64-darwin = {
+        recursive-mono-cascadia-italic = font darwin.m1elite;
+      };
+      # x86_64-darwin(hackintosh)没进来:macos-13 runner 正在退役,而且 26.05
+      # 是 nixpkgs 最后一个支持 x86_64-darwin 的版本,不值得为它单开一条流水线。
+    };
+
     # `nix flake check` validates every deploy node's schema.
     checks =
       builtins.mapAttrs

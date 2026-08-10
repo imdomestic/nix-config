@@ -20,6 +20,11 @@
     # 而它的全部产物就是两个 fetchurl(FOD,内容寻址,直接从 GitHub release 下)
     # 加几个 symlinkJoin wrapper(本地瞬间就建完)—— 一个都不靠它。留着的净效果
     # 只是每次求值多打一轮 narinfo,而它一 502 就能把整个构建拖停。
+    # 自建 cache。里面只有 cache.nixos.org 一定没有的那几条:rpi4 被
+    # nixos-hardware 改过的内核、mihomo-smart、自制字体。
+    # 内容清单见 flake.nix 的 packages 输出,推送在 .github/workflows/cachix.yml。
+    # 排在官方源之后:能命中的就那几条路径,让 sjtu/官方先答更划算。
+    "https://imdomestic.cachix.org?priority=30"
     "https://cache.iog.io?priority=40"
     "https://cache.nixos-cuda.org?priority=50"
     # llm-agents(cli-proxy-api)。这个 flake 自己的 nixConfig 里声明了这个
@@ -31,6 +36,7 @@
   ];
 
   publicKeys = [
+    "imdomestic.cachix.org-1:FySNifimqAiSSymMUb2ovlNZ5+xrCcO/bebqKrJd2pM="
     "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
     "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
     "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
