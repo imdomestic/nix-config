@@ -179,11 +179,14 @@
       install -m 0600 ${nodePostgresConfig} ${lib.escapeShellArg "${cfg.node.dataDir}/qq-bot-ha-local.conf"}
 
       hba=${lib.escapeShellArg "${cfg.node.dataDir}/pg_hba.conf"}
-      hba_include="include 'qq-bot-ha-access.conf'"
+      hba_include="include qq-bot-ha-access.conf"
       if [ "$(head -n 1 "$hba")" != "$hba_include" ]; then
         temporary="$(mktemp "$hba.XXXXXX")"
         printf '%s\n' "$hba_include" > "$temporary"
-        grep -Fvx "$hba_include" "$hba" >> "$temporary"
+        grep -Fvx \
+          -e "$hba_include" \
+          -e "include 'qq-bot-ha-access.conf'" \
+          "$hba" >> "$temporary"
         chmod --reference="$hba" "$temporary"
         mv "$temporary" "$hba"
       fi
