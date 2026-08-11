@@ -15,6 +15,21 @@ Matrix、Minecraft 的 5432 集群。
 应用连接串同时列出两个节点，并带有
 `target_session_attrs=read-write`。机器人不会把只读副本误认为主库。
 
+## 访问安全
+
+- monitor、复制和 `pg_rewind` 使用独立的 64 位十六进制 HA 口令，保存在 SOPS 中，
+  不与机器人应用账号共用。
+- monitor 与两个数据节点都只监听各自的 Tailscale 地址，跨机器连接同时要求 TLS
+  和 SCRAM-SHA-256。
+- `postgres` 超级用户只允许通过本机 Unix socket 的 peer 认证登录，所有网络登录
+  会在 HBA 第一层被拒绝，即使上游工具以后又追加了宽松规则也不会绕过。
+- `qq_bot` 是无建库、无建角色、无复制权限的应用账号，只允许从 h610 的精确
+  Tailscale 地址访问 `qq_bot` 数据库。
+
+自签名证书在当前 Tailscale 私网中负责链路加密；节点身份还依赖 Tailscale。
+未来把 monitor 迁往第三台主机时，建议同时换成私有 CA 签发的证书和
+`sslmode=verify-full`，进一步验证 PostgreSQL 服务端身份。
+
 ## 防止双主
 
 不能用“先连 Tank，失败就直接写 h610”这种普通重试实现高可用。网络分区时，

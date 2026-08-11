@@ -75,6 +75,17 @@ in {
     mode = "0400";
     restartUnits = ["qq-bot-postgres-bootstrap.service"];
   };
+  sops.secrets."qq_bot/ha_password" = {
+    sopsFile = ../../../secrets/secrets.yaml;
+    owner = "postgres";
+    group = "postgres";
+    mode = "0400";
+    restartUnits = [
+      "qq-bot-postgres-monitor.service"
+      "qq-bot-postgres-node.service"
+      "qq-bot-postgres-bootstrap.service"
+    ];
+  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -755,6 +766,7 @@ in {
   services.qq-bot-postgres-ha = {
     enable = true;
     passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
+    haPasswordFile = config.sops.secrets."qq_bot/ha_password".path;
     monitor.enable = true;
     node = {
       enable = true;
