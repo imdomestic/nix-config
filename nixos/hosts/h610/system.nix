@@ -40,6 +40,7 @@ in {
     ../../modules/dae
     # ../../modules/mihomo
     ../../modules/keyd
+    ../../modules/qq-bot-postgres-ha.nix
     # ../../modules/minecraft/wuxi.nix
   ];
 
@@ -67,7 +68,13 @@ in {
   sops.secrets."acme/cloudflare_env" = {};
   sops.secrets."coturn/static_auth_secret".owner = "turnserver";
   sops.secrets."livekit/keys_yaml" = {};
-  sops.secrets."qq_bot/postgres_password".sopsFile = ../../../secrets/secrets.yaml;
+  sops.secrets."qq_bot/postgres_password" = {
+    sopsFile = ../../../secrets/secrets.yaml;
+    owner = "postgres";
+    group = "postgres";
+    mode = "0400";
+    restartUnits = ["qq-bot-postgres-bootstrap.service"];
+  };
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -742,6 +749,33 @@ in {
     };
   };
 
+  # The monitor and fallback data node live on h610. Tank joins the same
+  # formation with a higher candidate priority when it is online. Keep the
+  # h610 footprint bounded: its root filesystem has far less room than Tank.
+  services.qq-bot-postgres-ha = {
+    enable = true;
+    passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
+    monitor.enable = true;
+    node = {
+      enable = true;
+      name = "h610";
+      hostname = "100.64.0.3";
+      stateDir = "/var/lib/qq-bot-postgres-node";
+      dataDir = "/var/lib/qq-bot-postgres-node/data";
+      candidatePriority = 50;
+      walKeepSize = "1GB";
+      maxSlotWalKeepSize = "16GB";
+      maxWalSize = "4GB";
+      minWalSize = "1GB";
+    };
+    backup = {
+      directory = "/var/lib/qq-bot-postgres-backups";
+      retentionDays = 3;
+      retentionCount = 1;
+      minimumFreeBytes = 30 * 1024 * 1024 * 1024;
+    };
+  };
+
   sops.templates."qq-deepseek-bot-postgres.env" = {
     owner = "kenneth";
     group = "users";
@@ -750,7 +784,7 @@ in {
       "qq-deepseek-bot.service"
     ];
     content = ''
-      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@100.64.0.4:5432/qq_bot
+      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@100.64.0.4:55432,100.64.0.3:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
       AI_POSTGRES_SCHEMA=qq_bot
       AI_POSTGRES_POOL_MIN_SIZE=1
       AI_POSTGRES_POOL_MAX_SIZE=10
@@ -761,8 +795,14 @@ in {
   systemd.services.qq-deepseek-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
     config.sops.templates."qq-deepseek-bot-postgres.env".path
   ];
-  systemd.services.qq-deepseek-bot.after = lib.mkAfter ["tailscaled.service"];
-  systemd.services.qq-deepseek-bot.wants = lib.mkAfter ["tailscaled.service"];
+  systemd.services.qq-deepseek-bot.after = lib.mkAfter [
+    "tailscaled.service"
+    "qq-bot-postgres-bootstrap.service"
+  ];
+  systemd.services.qq-deepseek-bot.wants = lib.mkAfter [
+    "tailscaled.service"
+    "qq-bot-postgres-node.service"
+  ];
 
   # Keep the bot stopped temporarily while retaining its dedicated NapCat.
   systemd.services.qq-deepseek-bot.enable = false;

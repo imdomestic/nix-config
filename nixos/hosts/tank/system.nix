@@ -71,61 +71,6 @@
     presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
     address = "10.0.0.66/24";
   };
-  qqBotPostgresPython = pkgs.python3.withPackages (pythonPackages: [
-    pythonPackages.psycopg
-  ]);
-  qqBotPostgresCredentialUpdater = pkgs.writeText "qq-bot-postgres-credentials.py" ''
-    import pathlib
-    import sys
-
-    import psycopg
-
-
-    password = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").strip()
-    if not password:
-        raise RuntimeError("qq_bot PostgreSQL password is empty")
-
-    with psycopg.connect(
-        "dbname=qq_bot user=postgres host=/run/postgresql",
-        autocommit=True,
-    ) as connection:
-        statement = connection.execute(
-            "SELECT format('ALTER ROLE qq_bot PASSWORD %L', %s)",
-            (password,),
-        ).fetchone()[0]
-        connection.execute(statement)
-        connection.execute("CREATE EXTENSION IF NOT EXISTS vector")
-  '';
-  qqBotPostgresBackup = pkgs.writeShellApplication {
-    name = "qq-bot-postgres-backup";
-    runtimeInputs = [
-      config.services.postgresql.package
-      pkgs.coreutils
-      pkgs.findutils
-    ];
-    text = ''
-      set -euo pipefail
-      umask 0077
-
-      backup_dir=/data/backup/postgresql
-      stamp="$(date -u +%Y%m%dT%H%M%SZ)"
-      temporary="$backup_dir/.qq_bot-$stamp.dump.tmp"
-      target="$backup_dir/qq_bot-$stamp.dump"
-      trap 'rm -f "$temporary"' EXIT
-
-      pg_dump \
-        --dbname=qq_bot \
-        --format=custom \
-        --compress=9 \
-        --create \
-        --file="$temporary"
-      pg_restore --list "$temporary" >/dev/null
-      mv "$temporary" "$target"
-      trap - EXIT
-
-      find "$backup_dir" -type f -name 'qq_bot-*.dump' -mtime +30 -delete
-    '';
-  };
 in {
   imports = [
     ./hardware-configuration.nix
@@ -133,6 +78,7 @@ in {
     ../../modules/tuigreet
     ../../modules/keyd
     ../../modules/monitoring
+    ../../modules/qq-bot-postgres-ha.nix
     # ../../modules/minecraft/wuxi.nix
     # ../../modules/dae
   ];
@@ -151,7 +97,9 @@ in {
   sops.secrets."qq_bot/postgres_password" = {
     sopsFile = ../../../secrets/secrets.yaml;
     owner = "postgres";
-    restartUnits = ["qq-bot-postgres-credentials.service"];
+    group = "postgres";
+    mode = "0400";
+    restartUnits = ["qq-bot-postgres-bootstrap.service"];
   };
 
   # 从 GRUB 换成 systemd-boot：GRUB 读不了 bcachefs，根搬过去后就找不到内核了。
@@ -284,7 +232,6 @@ in {
       /data/rdma 192.168.1.7(rw,sync,no_subtree_check,no_root_squash,insecure)
     '';
   };
-
 
   services.filebrowser = {
     enable = true;
@@ -549,9 +496,8 @@ in {
   services.postgresql = {
     enable = true;
     dataDir = "/data/lib/postgresql/${config.services.postgresql.package.psqlSchema}";
-    ensureDatabases = ["luckperms" "minecraft" "matrix-synapse" "qq_bot"];
+    ensureDatabases = ["luckperms" "minecraft" "matrix-synapse"];
     enableTCPIP = true;
-    extensions = postgresqlPackages: [postgresqlPackages.pgvector];
     settings.password_encryption = "scram-sha-256";
     ensureUsers = [
       {
@@ -562,10 +508,6 @@ in {
         name = "matrix-synapse";
         ensureDBOwnership = true;
       }
-      {
-        name = "qq_bot";
-        ensureDBOwnership = true;
-      }
     ];
     authentication = pkgs.lib.mkForce ''
       # TYPE  DATABASE        USER            ADDRESS                 METHOD
@@ -573,49 +515,32 @@ in {
       host    luckperms       minecraft       127.0.0.1/32            trust
       host    luckperms       minecraft       10.0.0.0/24             md5
       host    luckperms       minecraft       10.42.0.0/24            md5
-      host    qq_bot          qq_bot          100.64.0.3/32           scram-sha-256
     '';
   };
 
-  systemd.services.qq-bot-postgres-credentials = {
-    description = "Install the QQ bot PostgreSQL role password and pgvector";
-    wantedBy = ["multi-user.target"];
-    after = ["postgresql.service" "sops-install-secrets.service"];
-    requires = ["postgresql.service"];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "postgres";
-      Group = "postgres";
-      RemainAfterExit = true;
-      ExecStart = "${qqBotPostgresPython}/bin/python ${qqBotPostgresCredentialUpdater} ${config.sops.secrets."qq_bot/postgres_password".path}";
+  # Dedicated physical-replication node for the QQ bot. The existing 5432
+  # cluster remains independent for Matrix and Minecraft.
+  services.qq-bot-postgres-ha = {
+    enable = true;
+    passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
+    node = {
+      enable = true;
+      name = "tank";
+      hostname = "100.64.0.4";
+      stateDir = "/data/lib/qq-bot-postgres-ha/control";
+      dataDir = "/data/lib/qq-bot-postgres-ha/17";
+      candidatePriority = 100;
+      maximumBackupRate = "250M";
+      walKeepSize = "2GB";
+      maxSlotWalKeepSize = "32GB";
+      maxWalSize = "8GB";
+      minWalSize = "2GB";
     };
-  };
-
-  systemd.services.qq-bot-postgres-backup = {
-    description = "Verified backup of the QQ bot PostgreSQL database";
-    after = ["postgresql.service"];
-    requires = ["postgresql.service"];
-    serviceConfig = {
-      Type = "oneshot";
-      User = "postgres";
-      Group = "postgres";
-      ExecStart = lib.getExe qqBotPostgresBackup;
-      UMask = "0077";
-      NoNewPrivileges = true;
-      PrivateTmp = true;
-      ProtectHome = true;
-      ProtectSystem = "strict";
-      ReadWritePaths = ["/data/backup/postgresql"];
-    };
-  };
-  systemd.timers.qq-bot-postgres-backup = {
-    description = "Daily timer for the QQ bot PostgreSQL backup";
-    wantedBy = ["timers.target"];
-    timerConfig = {
-      OnCalendar = "*-*-* 03:20:00";
-      Persistent = true;
-      RandomizedDelaySec = "10m";
-      Unit = "qq-bot-postgres-backup.service";
+    backup = {
+      directory = "/data/backup/postgresql/qq-bot-ha";
+      retentionDays = 30;
+      retentionCount = 30;
+      minimumFreeBytes = 200 * 1024 * 1024 * 1024;
     };
   };
   services.matrix-synapse = {
