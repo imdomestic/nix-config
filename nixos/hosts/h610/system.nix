@@ -7,6 +7,52 @@
   ...
 }: let
   matrixUpstream = "http://100.64.0.4:8008";
+  mkCliProxyProfile = model: aliases: {
+    provider = "cliproxy";
+    protocol = "openai-chat";
+    base_url = "http://100.64.0.3:8317/v1";
+    api_key_env = "CLIPROXY_API_KEY";
+    inherit model aliases;
+    timeout_seconds = 180;
+    thinking = "auto";
+    capabilities = {
+      tools = true;
+      streaming = true;
+      json_mode = true;
+      vision = false;
+    };
+  };
+  qqBotModelProfiles = builtins.toJSON {
+    default = "deepseek";
+    profiles = {
+      deepseek = {
+        provider = "deepseek";
+        protocol = "openai-chat";
+        base_url = "https://api.deepseek.com";
+        api_key_env = "DEEPSEEK_API_KEY";
+        model = "deepseek-v4-flash";
+        thinking = "disabled";
+        aliases = ["default" "ds" "flash"];
+      };
+      "deepseek-pro" = {
+        provider = "deepseek";
+        protocol = "openai-chat";
+        base_url = "https://api.deepseek.com";
+        api_key_env = "DEEPSEEK_API_KEY";
+        model = "deepseek-v4-pro";
+        thinking = "disabled";
+        aliases = ["pro"];
+      };
+      "gpt-5.3-codex-spark" = mkCliProxyProfile "gpt-5.3-codex-spark" ["spark"];
+      "gpt-5.4" = mkCliProxyProfile "gpt-5.4" ["gpt" "gpt54"];
+      "gpt-5.4-mini" = mkCliProxyProfile "gpt-5.4-mini" ["mini" "gpt54mini"];
+      "gpt-5.5" = mkCliProxyProfile "gpt-5.5" ["gpt55"];
+      "gpt-5.6-terra" = mkCliProxyProfile "gpt-5.6-terra" ["terra"];
+      "gpt-5.6-luna" = mkCliProxyProfile "gpt-5.6-luna" ["luna"];
+      "gpt-5.6-sol" = mkCliProxyProfile "gpt-5.6-sol" ["sol"];
+      "codex-auto-review" = mkCliProxyProfile "codex-auto-review" ["review"];
+    };
+  };
   # Headscale decodes regions as map[int]*DERPRegion. Nix attrset keys are
   # strings, and pkgs.formats.yaml therefore quotes 611, which yaml.v3 rejects.
   headscaleDerpMap = pkgs.writeText "headscale-derp-map.yaml" ''
@@ -815,6 +861,9 @@ in {
       AI_SANDBOX_MAX_TOTAL=2
       AI_SANDBOX_TIMEOUT_SECONDS=120
       AI_SANDBOX_MAX_FILE_MB=0
+      CLIPROXY_API_KEY=${config.sops.placeholder."cliproxy/api_key"}
+      AI_MODEL_DEFAULT_PROFILE=deepseek
+      AI_MODEL_PROFILES_JSON='${qqBotModelProfiles}'
     '';
   };
   systemd.services.qq-deepseek-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
