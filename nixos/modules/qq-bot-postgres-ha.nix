@@ -115,7 +115,7 @@
 
       ${waitForAddress cfg.monitor.hostname}
 
-      if [ ! -f ${lib.escapeShellArg monitorConfigPath} ]; then
+      if [ ! -f ${lib.escapeShellArg monitorConfigPath} ] || [ ! -f ${lib.escapeShellArg "${cfg.monitor.dataDir}/PG_VERSION"} ]; then
         pg_autoctl create monitor \
           --pgdata=${lib.escapeShellArg cfg.monitor.dataDir} \
           --pgport=${toString cfg.monitor.port} \
@@ -125,6 +125,11 @@
           --skip-pg-hba \
           --ssl-self-signed
       fi
+
+      pg_autoctl config set \
+        --pgdata=${lib.escapeShellArg cfg.monitor.dataDir} \
+        postgresql.listen_addresses \
+        ${lib.escapeShellArg cfg.monitor.hostname}
 
       install -m 0600 ${monitorHba} ${lib.escapeShellArg "${cfg.monitor.dataDir}/qq-bot-ha-pg_hba.conf"}
       install -m 0600 ${monitorIdent} ${lib.escapeShellArg "${cfg.monitor.dataDir}/qq-bot-ha-pg_ident.conf"}
@@ -153,7 +158,7 @@
 
       ${waitForAddress cfg.node.hostname}
 
-      if [ ! -f ${lib.escapeShellArg nodeConfigPath} ]; then
+      if [ ! -f ${lib.escapeShellArg nodeConfigPath} ] || [ ! -f ${lib.escapeShellArg "${cfg.node.dataDir}/PG_VERSION"} ]; then
         pg_autoctl create postgres \
           --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
           --pgport=${toString cfg.node.port} \
