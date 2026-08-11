@@ -596,7 +596,7 @@ in {
         ProtectKernelTunables = true;
         ProtectSystem = "strict";
         ReadWritePaths = [cfg.monitor.stateDir "/run/postgresql"];
-        RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6"];
+        RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6" "AF_NETLINK"];
         LockPersonality = true;
       };
     };
@@ -638,7 +638,7 @@ in {
         ProtectKernelTunables = true;
         ProtectSystem = "strict";
         ReadWritePaths = [cfg.node.stateDir (builtins.dirOf cfg.node.dataDir) "/run/postgresql"];
-        RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6"];
+        RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6" "AF_NETLINK"];
         LockPersonality = true;
       };
     };
