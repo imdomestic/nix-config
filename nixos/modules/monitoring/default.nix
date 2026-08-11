@@ -209,10 +209,26 @@ in {
         })
       ];
 
+      # **推给所有 Alertmanager,不是只推自己那个。**
+      #
+      # 这是整套里唯一一处推送(抓取全是 pull),也是唯一一处 fan-out 有意义的
+      # 地方:AM 的去重本来就是为"同一条告警从多个 Prometheus 收到"设计的,
+      # 多推不会让群里多出一条。
+      #
+      # 只推本机的话会漏掉一种组合:本机 alertmanager.service 挂了(但本机
+      # Prometheus 活着),同时对端 Prometheus 挂了(但对端 AM 活着)。这时
+      # 一个 Prometheus 和一个 AM 都是好的,告警却一条都发不出去。交叉推送之后
+      # 判据变成"任意一个 Prometheus + 任意一个 AM 活着"就能送达。
+      #
+      # 排序:monitors 已经是主机名字母序,两边生成的列表一致,没有隐含的优先级
+      # —— Prometheus 对配置里的多个 alertmanager 是全发,不是挑一个。
       alertmanagers = [
         {
           static_configs = [
-            {targets = ["${selfIp}:${toString cfg.alertmanagerPort}"];}
+            {
+              targets =
+                map (m: "${m.tsIp}:${toString cfg.alertmanagerPort}") monitors;
+            }
           ];
         }
       ];
