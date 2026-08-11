@@ -1,0 +1,28 @@
+diff --git a/src/bin/pg_autoctl/string_utils.c b/src/bin/pg_autoctl/string_utils.c
+index c9d38f2..049a3a2 100644
+--- a/src/bin/pg_autoctl/string_utils.c
++++ b/src/bin/pg_autoctl/string_utils.c
+@@ -31,2 +31,2 @@
+-IntString
+-intToString(int64_t number)
++IntString *
++intToStringBuffer(int64_t number, IntString *intString)
+@@ -34 +34 @@ intToString(int64_t number)
+-	IntString intString;
++	intString->intValue = number;
+@@ -36,3 +36 @@ intToString(int64_t number)
+-	intString.intValue = number;
+-
+-	sformat(intString.strValue, INTSTRING_MAX_DIGITS, "%" PRId64, number);
++	sformat(intString->strValue, INTSTRING_MAX_DIGITS, "%" PRId64, number);
+diff --git a/src/bin/pg_autoctl/string_utils.h b/src/bin/pg_autoctl/string_utils.h
+index 928e6de..cfff91d 100644
+--- a/src/bin/pg_autoctl/string_utils.h
++++ b/src/bin/pg_autoctl/string_utils.h
+@@ -23 +23,5 @@ typedef struct IntString
+-IntString intToString(int64_t number);
++IntString *intToStringBuffer(int64_t number, IntString *intString);
++
++/* Keep the compound literal alive until the surrounding block returns. */
++#define intToString(number) \
++	(*intToStringBuffer((number), &(IntString) { 0 }))
