@@ -115,7 +115,6 @@
           --pgport=${toString cfg.monitor.port} \
           --pgctl=${postgres}/bin/pg_ctl \
           --hostname=${lib.escapeShellArg cfg.monitor.hostname} \
-          --auth=trust \
           --skip-pg-hba \
           --ssl-self-signed
       fi
