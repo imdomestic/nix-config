@@ -101,6 +101,16 @@ in {
     mode = "0400";
     restartUnits = ["qq-bot-postgres-bootstrap.service"];
   };
+  sops.secrets."qq_bot/ha_password" = {
+    sopsFile = ../../../secrets/secrets.yaml;
+    owner = "postgres";
+    group = "postgres";
+    mode = "0400";
+    restartUnits = [
+      "qq-bot-postgres-node.service"
+      "qq-bot-postgres-bootstrap.service"
+    ];
+  };
 
   # 从 GRUB 换成 systemd-boot：GRUB 读不了 bcachefs，根搬过去后就找不到内核了。
   # 代价是 Windows 在 sdb1 自己的 ESP 上，不会出现在启动菜单里，要走固件 F11/F12。
@@ -523,6 +533,7 @@ in {
   services.qq-bot-postgres-ha = {
     enable = true;
     passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
+    haPasswordFile = config.sops.secrets."qq_bot/ha_password".path;
     node = {
       enable = true;
       name = "tank";

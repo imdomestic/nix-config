@@ -23,6 +23,10 @@
     if cfg.passwordFile == null
     then "/dev/null"
     else cfg.passwordFile;
+  haPasswordFile =
+    if cfg.haPasswordFile == null
+    then "/dev/null"
+    else cfg.haPasswordFile;
   monitorUri = "postgres://autoctl_node@${cfg.monitor.hostname}:${toString cfg.monitor.port}/pg_auto_failover?sslmode=require";
   monitorConfigPath = "${cfg.monitor.stateDir}/config/pg_autoctl${cfg.monitor.dataDir}/pg_autoctl.cfg";
   nodeConfigPath = "${cfg.node.stateDir}/config/pg_autoctl${cfg.node.dataDir}/pg_autoctl.cfg";
@@ -49,10 +53,10 @@
     local all postgres peer
     local all all reject
 
-    # Keepers authenticate through their exact Tailscale identities. Tailscale
-    # provides peer authentication; PostgreSQL still requires TLS encryption.
+    # Keepers are restricted to their exact Tailscale identities and must
+    # authenticate with the dedicated HA password over TLS.
     ${lib.concatMapStringsSep "\n" (address: ''
-        hostssl "pg_auto_failover" "autoctl_node" ${address}/32 trust
+        hostssl "pg_auto_failover" "autoctl_node" ${address}/32 scram-sha-256
       '')
       cfg.peerAddresses}
 
@@ -76,6 +80,22 @@
     local all all reject
     host all all 127.0.0.1/32 reject
     host all all ::1/128 reject
+
+    # Administration is socket-only. In particular, shadow any permissive
+    # rules that pg_auto_failover may have generated for the postgres role.
+    hostssl all postgres 0.0.0.0/0 reject
+    hostssl all postgres ::0/0 reject
+
+    # pg_auto_failover 2.2 uses a restricted health-check role with a fixed
+    # password. SCRAM still prevents unauthenticated role impersonation.
+    hostssl all pgautofailover_monitor ${cfg.monitor.hostname}/32 scram-sha-256
+
+    # Replication and pg_rewind share this role. Both peers use a separate,
+    # encrypted HA secret rather than the application's database password.
+    ${lib.concatMapStringsSep "\n" (address: ''
+        hostssl all pgautofailover_replicator ${address}/32 scram-sha-256
+      '')
+      cfg.peerAddresses}
 
     # The bot always originates on h610 and must use TLS plus SCRAM.
     hostssl "qq_bot" "qq_bot" ${cfg.applicationClientCidr} scram-sha-256
@@ -158,6 +178,32 @@
 
       ${waitForAddress cfg.node.hostname}
 
+      ha_password="$(tr -d '\r\n' < ${lib.escapeShellArg haPasswordFile})"
+      if ! printf '%s' "$ha_password" | grep -Eq '^[A-Fa-f0-9]{64}$'; then
+        echo "The PostgreSQL HA password must be a 64-character hexadecimal secret" >&2
+        exit 1
+      fi
+
+      pgpass=${lib.escapeShellArg "${cfg.node.stateDir}/.pgpass"}
+      {
+        printf '%s:%s:%s:%s:%s\n' \
+          ${lib.escapeShellArg cfg.monitor.hostname} \
+          ${toString cfg.monitor.port} \
+          pg_auto_failover \
+          autoctl_node \
+          "$ha_password"
+        ${lib.concatMapStringsSep "\n" (address: ''
+          printf '%s:%s:*:%s:%s\n' \
+            ${lib.escapeShellArg address} \
+            ${toString cfg.node.port} \
+            pgautofailover_replicator \
+            "$ha_password"
+        '')
+        cfg.peerAddresses}
+      } > "$pgpass"
+      chmod 0600 "$pgpass"
+      export PGPASSFILE="$pgpass"
+
       if [ ! -f ${lib.escapeShellArg nodeConfigPath} ] || [ ! -f ${lib.escapeShellArg "${cfg.node.dataDir}/PG_VERSION"} ]; then
         pg_autoctl create postgres \
           --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
@@ -169,11 +215,20 @@
           --name=${lib.escapeShellArg cfg.node.name} \
           --dbname=postgres \
           --monitor=${lib.escapeShellArg monitorUri} \
-          --auth=trust \
+          --auth=scram-sha-256 \
           --ssl-self-signed \
           --candidate-priority=${toString cfg.node.candidatePriority} \
           --maximum-backup-rate=${lib.escapeShellArg cfg.node.maximumBackupRate}
       fi
+
+      pg_autoctl config set \
+        --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
+        postgresql.auth_method \
+        scram-sha-256
+      pg_autoctl config set \
+        --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
+        replication.password \
+        "$ha_password"
 
       install -m 0600 ${nodeHba} ${lib.escapeShellArg "${cfg.node.dataDir}/qq-bot-ha-access.conf"}
       install -m 0600 ${nodePostgresConfig} ${lib.escapeShellArg "${cfg.node.dataDir}/qq-bot-ha-local.conf"}
@@ -201,8 +256,58 @@
   bootstrapPython = pkgs.python3.withPackages (pythonPackages: [
     pythonPackages.psycopg
   ]);
+  monitorAuthScript = pkgs.writeText "qq-bot-postgres-monitor-auth.py" ''
+    import pathlib
+    import re
+    import sys
+    import time
+
+    import psycopg
+    from psycopg import sql
+
+
+    password = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").strip()
+    port = int(sys.argv[2])
+    if re.fullmatch(r"[A-Fa-f0-9]{64}", password) is None:
+        raise RuntimeError(
+            "The PostgreSQL HA password must be a 64-character hexadecimal secret"
+        )
+
+    connection = None
+    for _ in range(180):
+        try:
+            connection = psycopg.connect(
+                dbname="pg_auto_failover",
+                user="postgres",
+                host="/run/postgresql",
+                port=port,
+                autocommit=True,
+                connect_timeout=2,
+            )
+            break
+        except psycopg.OperationalError:
+            time.sleep(1)
+    if connection is None:
+        raise RuntimeError("pg_auto_failover monitor did not become ready")
+
+    with connection:
+        connection.execute(
+            sql.SQL("ALTER ROLE {} PASSWORD {}").format(
+                sql.Identifier("autoctl_node"),
+                sql.Literal(password),
+            )
+        )
+        verifier = connection.execute(
+            "SELECT rolpassword FROM pg_authid WHERE rolname = 'autoctl_node'"
+        ).fetchone()
+        if verifier is None or not verifier[0].startswith("SCRAM-SHA-256$"):
+            raise RuntimeError("autoctl_node does not have a SCRAM verifier")
+
+    print("pg_auto_failover monitor authentication is ready.")
+  '';
   bootstrapScript = pkgs.writeText "qq-bot-postgres-bootstrap.py" ''
     import pathlib
+    import re
     import sys
     import time
 
@@ -211,10 +316,16 @@
 
 
     password_path = pathlib.Path(sys.argv[1])
-    port = int(sys.argv[2])
+    ha_password_path = pathlib.Path(sys.argv[2])
+    port = int(sys.argv[3])
     password = password_path.read_text(encoding="utf-8").strip()
+    ha_password = ha_password_path.read_text(encoding="utf-8").strip()
     if not password:
         raise RuntimeError("qq_bot PostgreSQL password is empty")
+    if re.fullmatch(r"[A-Fa-f0-9]{64}", ha_password) is None:
+        raise RuntimeError(
+            "The PostgreSQL HA password must be a 64-character hexadecimal secret"
+        )
 
     connection = None
     for _ in range(180):
@@ -253,6 +364,41 @@
             "ALTER ROLE qq_bot NOSUPERUSER NOCREATEDB NOCREATEROLE "
             "NOREPLICATION LOGIN"
         )
+
+        replication_role_exists = connection.execute(
+            "SELECT 1 FROM pg_roles WHERE rolname = 'pgautofailover_replicator'"
+        ).fetchone()
+        if not replication_role_exists:
+            raise RuntimeError("pgautofailover_replicator role is missing")
+        connection.execute(
+            sql.SQL("ALTER ROLE {} PASSWORD {}").format(
+                sql.Identifier("pgautofailover_replicator"),
+                sql.Literal(ha_password),
+            )
+        )
+
+        health_role_exists = connection.execute(
+            "SELECT 1 FROM pg_roles WHERE rolname = 'pgautofailover_monitor'"
+        ).fetchone()
+        if not health_role_exists:
+            raise RuntimeError("pgautofailover_monitor role is missing")
+        # pg_auto_failover 2.2 hard-codes this restricted health-check
+        # credential in both its client and role creation code.
+        connection.execute(
+            "ALTER ROLE pgautofailover_monitor "
+            "PASSWORD 'pgautofailover_monitor'"
+        )
+
+        internal_verifiers = connection.execute(
+            "SELECT rolname, rolpassword FROM pg_authid "
+            "WHERE rolname IN "
+            "('pgautofailover_monitor', 'pgautofailover_replicator')"
+        ).fetchall()
+        if len(internal_verifiers) != 2 or any(
+            verifier is None or not verifier.startswith("SCRAM-SHA-256$")
+            for _, verifier in internal_verifiers
+        ):
+            raise RuntimeError("pg_auto_failover roles do not have SCRAM verifiers")
 
         database_exists = connection.execute(
             "SELECT 1 FROM pg_database WHERE datname = 'qq_bot'"
@@ -423,6 +569,11 @@ in {
       default = null;
       description = "File containing the qq_bot application role password.";
     };
+    haPasswordFile = mkOption {
+      type = types.nullOr types.str;
+      default = null;
+      description = "File containing the dedicated 64-character hexadecimal HA password.";
+    };
     applicationClientCidr = mkOption {
       type = types.str;
       default = "100.64.0.3/32";
@@ -546,6 +697,10 @@ in {
         assertion = !cfg.node.enable || cfg.passwordFile != null;
         message = "qq-bot-postgres-ha.passwordFile is required on data nodes";
       }
+      {
+        assertion = cfg.haPasswordFile != null;
+        message = "qq-bot-postgres-ha.haPasswordFile is required";
+      }
     ];
 
     users = mkIf (!config.services.postgresql.enable) {
@@ -582,7 +737,7 @@ in {
     systemd.services.qq-bot-postgres-monitor = mkIf cfg.monitor.enable {
       description = "QQ bot PostgreSQL HA monitor";
       wantedBy = ["multi-user.target"];
-      after = ["network-online.target" "tailscaled.service"];
+      after = ["network-online.target" "tailscaled.service" "sops-install-secrets.service"];
       wants = ["network-online.target" "tailscaled.service"];
       startLimitIntervalSec = 0;
       path = [pgAutoFailover postgres openssl pkgs.coreutils pkgs.gnugrep pkgs.iproute2];
@@ -595,6 +750,7 @@ in {
         RuntimeDirectory = "qq-bot-postgres-monitor";
         RuntimeDirectoryMode = "0700";
         ExecStart = "${pgAutoFailover}/bin/pg_autoctl run --pgdata ${cfg.monitor.dataDir}";
+        ExecStartPost = "${bootstrapPython}/bin/python ${monitorAuthScript} ${haPasswordFile} ${toString cfg.monitor.port}";
         Restart = "always";
         RestartSec = "5s";
         TimeoutStartSec = "10min";
@@ -620,7 +776,7 @@ in {
       description = "QQ bot PostgreSQL HA data node (${cfg.node.name})";
       wantedBy = ["multi-user.target"];
       after =
-        ["network-online.target" "tailscaled.service"]
+        ["network-online.target" "tailscaled.service" "sops-install-secrets.service"]
         ++ lib.optionals cfg.monitor.enable ["qq-bot-postgres-monitor.service"];
       wants =
         ["network-online.target" "tailscaled.service"]
@@ -668,7 +824,7 @@ in {
         User = "postgres";
         Group = "postgres";
         RemainAfterExit = true;
-        ExecStart = "${bootstrapPython}/bin/python ${bootstrapScript} ${passwordFile} ${toString cfg.node.port}";
+        ExecStart = "${bootstrapPython}/bin/python ${bootstrapScript} ${passwordFile} ${haPasswordFile} ${toString cfg.node.port}";
         TimeoutStartSec = "5min";
         UMask = "0077";
         NoNewPrivileges = true;
