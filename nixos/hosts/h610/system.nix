@@ -802,6 +802,8 @@ in {
       AI_POSTGRES_POOL_MAX_SIZE=10
       AI_POSTGRES_POOL_TIMEOUT_SECONDS=10
       AI_ALLOW_LEGACY_SQLITE=false
+      AI_DISABLED_GROUPS=201644592
+      AI_ADMIN_ENABLED=true
     '';
   };
   systemd.services.qq-deepseek-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
@@ -815,9 +817,6 @@ in {
     "tailscaled.service"
     "qq-bot-postgres-node.service"
   ];
-
-  # Keep the bot stopped temporarily while retaining its dedicated NapCat.
-  systemd.services.qq-deepseek-bot.enable = false;
 
   environment = {
     variables = {
