@@ -5,7 +5,10 @@
 in {
   system = "x86_64-linux";
   kind = "nixos";
-  roles = ["server"];
+  # "monitor" = 在这台上跑一份完整监控(Prometheus + Alertmanager + Grafana)。
+  # 见 nixos/modules/monitoring —— 这个角色同时决定本机的开关、对端 Alertmanager
+  # 的 gossip 名单、以及"另一份挂了"那条告警的预期成员数。
+  roles = ["server" "monitor"];
   tsIp = "100.64.0.4";
   ip = "10.0.0.66";
   sshUser = "root";

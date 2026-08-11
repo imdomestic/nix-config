@@ -4,7 +4,13 @@
 # 取舍原则:**宁可漏报也不要误报。** 这些告警最终会进一个四个人的 QQ 群,
 # 一条假警报的代价不是"多看一眼",是下一次真警报被当成噪声划过去。所以
 # 每条规则的 `for` 都给得比教科书长,阈值也留了余量。
-{lib}: let
+{
+  lib,
+  # 这个 fleet 里跑着几份监控(roles 里有 "monitor" 的台数)。用来判断
+  # Alertmanager 集群是不是缺人 —— 没有这个数就只能写死一个 2,那样以后
+  # 加第三份监控时这条规则会静默地一直不触发。
+  monitorCount ? 1,
+}: let
   # 真实块设备上的文件系统。排除掉伪文件系统,以及 node_exporter 自己就
   # 报错拿不到数的那些(/run/user/* 在非 root 下是 "permission denied",
   # 留着会让磁盘规则算出 0/0)。
@@ -250,23 +256,69 @@ in
 
       {
         name = "monitoring-self";
-        rules = [
-          {
-            # 监控系统自己坏了是最隐蔽的故障:所有面板一片绿,因为根本没在
-            # 采数。这条是那个盲区的唯一出口。
-            alert = "PrometheusSelfScrapeFailing";
-            expr = ''up{job="prometheus"} == 0'';
-            "for" = "5m";
-            labels.severity = "critical";
-            annotations.summary = "Prometheus 抓不到自己 —— 监控可能整个不可信了";
-          }
-          {
-            alert = "PrometheusRuleEvaluationFailing";
-            expr = ''increase(prometheus_rule_evaluation_failures_total[15m]) > 0'';
-            labels.severity = "warning";
-            annotations.summary = "Prometheus 有告警规则求值失败,可能有规则写错了";
-          }
-        ];
+        rules =
+          [
+            {
+              # 监控系统自己坏了是最隐蔽的故障:所有面板一片绿,因为根本没在
+              # 采数。这条是那个盲区的唯一出口。
+              alert = "PrometheusSelfScrapeFailing";
+              expr = ''up{job="prometheus"} == 0'';
+              "for" = "5m";
+              labels.severity = "critical";
+              annotations.summary = "Prometheus 抓不到自己 —— 监控可能整个不可信了";
+            }
+            {
+              alert = "PrometheusRuleEvaluationFailing";
+              expr = ''increase(prometheus_rule_evaluation_failures_total[15m]) > 0'';
+              labels.severity = "warning";
+              annotations.summary = "Prometheus 有告警规则求值失败,可能有规则写错了";
+            }
+          ]
+          ++ lib.optionals (monitorCount > 1) [
+            {
+              # **HA 退化成单点。** 这条是"两份"这件事本身的唯一保险 —— 少了它,
+              # 另一份悄悄挂掉是完全无声的:面板照常、告警照常,因为活着的这份
+              # 什么都能干。你会一直以为有冗余,直到剩下这份也挂掉的那天。
+              #
+              # 给 critical 而不是 warning:它描述的不是"现在有东西坏了",而是
+              # "下一次故障将没有人报告"。2026-08-10 那次之后,这正是最该被当回事
+              # 的一类状态。
+              alert = "PrometheusPeerDown";
+              expr = ''up{job="prometheus-peer"} == 0'';
+              # 10 分钟,和 HostUnreachable 对齐 —— 对端重启一次不该报。
+              "for" = "10m";
+              labels.severity = "critical";
+              annotations = {
+                summary = "另一份 Prometheus({{ $labels.instance }})抓不到了";
+                description = ''
+                  监控退回单点:现在只剩这一份在采数,它再挂就彻底瞎了。
+                  注意这条**没有**被 HostUnreachable 的 inhibit 规则压掉 ——
+                  那条只压 warning/info,而这条是 critical,故意的。
+                '';
+              };
+            }
+            {
+              # gossip 断了但两份都活着。后果和上面那条正相反:不是没人报,
+              # 是同一件事被报两次 —— 两个 Alertmanager 各自以为只有自己在,
+              # 于是各发各的。
+              #
+              # 只给 warning:告警还在发,只是吵。比反过来强得多。
+              alert = "AlertmanagerClusterDegraded";
+              expr = ''alertmanager_cluster_members < ${toString monitorCount}'';
+              # 15 分钟。memberlist 收敛本来就需要几十秒,rebuild 重启一次
+              # 也会短暂掉成员,不该为此报警。
+              "for" = "15m";
+              labels.severity = "warning";
+              annotations = {
+                summary = "Alertmanager 集群只剩 {{ $value }}/${toString monitorCount} 个成员";
+                description = ''
+                  两份 Alertmanager 之间的 gossip(9094,TCP+UDP)断了。
+                  告警不会漏发,但会重复 —— 每条都会在群里出现两次。
+                  先确认 tailscale 通不通,再看 9094 的 UDP 有没有被挡。
+                '';
+              };
+            }
+          ];
       }
     ];
   }
