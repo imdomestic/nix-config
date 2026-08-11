@@ -2704,11 +2704,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1786410100,
-        "narHash": "sha256-xC7JjL+BWDfjRmmD1/bSzlqFIcGTM7IR4Kqc0L2ZnZk=",
+        "lastModified": 1786420685,
+        "narHash": "sha256-JRGT5TB23Popa2gL6MGIb+G9DUsLhn4GLOAVUgUiuXo=",
         "owner": "zty20040403",
         "repo": "chat-bot",
-        "rev": "6980463322089516c166d17eff95cc9261359fd4",
+        "rev": "4ab22a5fbcfc203f503ed1b03c28139701282ae5",
         "type": "github"
       },
       "original": {
