@@ -43,7 +43,9 @@
   '';
 
   monitorHba = pkgs.writeText "qq-bot-postgres-monitor-hba.conf" ''
-    # Local administration is limited to the postgres OS account.
+    # The monitor listener runs as the postgres OS account but connects as the
+    # autoctl_node database role. Peer mapping avoids a local trust rule.
+    local "pg_auto_failover" "autoctl_node" peer map=pg_autoctl_local
     local all postgres peer
     local all all reject
 
@@ -57,9 +59,13 @@
     host all all 0.0.0.0/0 reject
     host all all ::0/0 reject
   '';
+  monitorIdent = pkgs.writeText "qq-bot-postgres-monitor-ident.conf" ''
+    pg_autoctl_local postgres autoctl_node
+  '';
   monitorPostgresConfig = pkgs.writeText "qq-bot-postgres-monitor-local.conf" ''
     listen_addresses = '${cfg.monitor.hostname}'
     hba_file = '${cfg.monitor.dataDir}/qq-bot-ha-pg_hba.conf'
+    ident_file = '${cfg.monitor.dataDir}/qq-bot-ha-pg_ident.conf'
     password_encryption = 'scram-sha-256'
     ssl_min_protocol_version = 'TLSv1.2'
     unix_socket_directories = '/run/postgresql'
@@ -115,11 +121,13 @@
           --pgport=${toString cfg.monitor.port} \
           --pgctl=${postgres}/bin/pg_ctl \
           --hostname=${lib.escapeShellArg cfg.monitor.hostname} \
+          --listen=${lib.escapeShellArg cfg.monitor.hostname} \
           --skip-pg-hba \
           --ssl-self-signed
       fi
 
       install -m 0600 ${monitorHba} ${lib.escapeShellArg "${cfg.monitor.dataDir}/qq-bot-ha-pg_hba.conf"}
+      install -m 0600 ${monitorIdent} ${lib.escapeShellArg "${cfg.monitor.dataDir}/qq-bot-ha-pg_ident.conf"}
       install -m 0600 ${monitorPostgresConfig} ${lib.escapeShellArg "${cfg.monitor.dataDir}/qq-bot-ha-local.conf"}
 
       include="include_if_exists = 'qq-bot-ha-local.conf'"
