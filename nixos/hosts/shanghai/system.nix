@@ -16,6 +16,11 @@ in {
   imports = [
     ./hardware-configuration.nix
     ../../modules/dae
+    # 只为了 gateway.nix —— 这台不跑 Prometheus/Grafana,只做 Grafana 的
+    # 故障转移入口:http://100.64.0.13:3000 → tank,连不上自动换 h610。
+    # 角色在 ./default.nix 的 roles 里("monitor-gateway"),主后端见下面的
+    # my.monitoring.gateway.primary。
+    ../../modules/monitoring
     ../../modules/minecraft/sh.nix
   ];
 
@@ -185,7 +190,6 @@ in {
     };
   };
 
-
   # Standalone DERP relay advertised by the Headscale instance on h610.
   # Client admission is checked against Headscale so this is not a public relay.
   users.groups.derper = {};
@@ -284,6 +288,12 @@ in {
   services.nginx = {
     enable = true;
   };
+
+  # 平时把看板压在 tank 上:h610 已经背着 headscale、max、napcat、cliproxy、
+  # nginx、docker,而 tank 是那台有存储、有 20 线程的机器。tank 不在了就自动
+  # 换 h610 —— 这正是 2026-08-10 停电那天需要的。
+  # 不写这行的话主后端会退回字母序第一台(h610),那是个没有含义的选择。
+  my.monitoring.gateway.primary = "tank";
 
   services.resolved = {
     enable = true;

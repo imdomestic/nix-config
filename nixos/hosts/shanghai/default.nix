@@ -5,7 +5,10 @@
 in {
   system = "x86_64-linux";
   kind = "nixos";
-  roles = ["server"];
+  # "monitor-gateway" = Grafana 的统一入口(nginx 故障转移),不跑 Prometheus。
+  # 放在这台是因为它既不是 tank 也不是 h610 —— 入口和它代理的两份处在同一个
+  # 故障域就没有意义了。见 nixos/modules/monitoring/gateway.nix。
+  roles = ["server" "monitor-gateway"];
   tsIp = "100.64.0.13";
   ip = "10.0.0.1";
   sshUser = "root";

@@ -83,14 +83,16 @@ in {
     # ../../modules/dae
   ];
 
-  # fleet 监控中心。整个 fleet 只有这一台开 —— 抓取目标从 host registry
-  # 生成(lib/mkInventory.nix),加机器不用动这里。
-  #   Prometheus  http://100.64.0.4:9009
-  #   Grafana     http://100.64.0.4:3000
-  # 两个都只绑 tailscale 地址。看板要自己导一次:Grafana 里 Import →
-  # 1860(Node Exporter Full)。没有把那份 JSON vendor 进仓库,它 200KB 且
-  # 每次上游更新都要重新 pin,不值得。
-  my.monitoring.enable = true;
+  # 监控的第一份。**开关不在这里** —— my.monitoring.enable 默认读 registry 里
+  # 的 roles(见 ./default.nix 的 "monitor")。在这儿再写一遍是冗余的,而只写
+  # 这儿不加 roles 会被模块里的断言拦下(对端就不认识这一份了)。
+  #   Prometheus    http://100.64.0.4:9009
+  #   Alertmanager  http://100.64.0.4:9093
+  #   Grafana       http://100.64.0.4:3000
+  # 全都只绑 tailscale 地址。另一份在 h610(100.64.0.3),统一入口在
+  # shanghai(http://100.64.0.13:3000)。看板要自己导一次:Grafana 里
+  # Import → 1860(Node Exporter Full)。没有把那份 JSON vendor 进仓库,
+  # 它 200KB 且每次上游更新都要重新 pin,不值得。
 
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";

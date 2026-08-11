@@ -41,6 +41,11 @@ in {
     # ../../modules/mihomo
     ../../modules/keyd
     ../../modules/qq-bot-postgres-ha.nix
+    # 监控的第二份(tank 是第一份)。开关读 ./default.nix 的 roles,不在这里写。
+    #   Prometheus    http://100.64.0.3:9009
+    #   Alertmanager  http://100.64.0.3:9093
+    #   Grafana       http://100.64.0.3:3000
+    ../../modules/monitoring
     # ../../modules/minecraft/wuxi.nix
   ];
 
