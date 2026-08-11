@@ -746,7 +746,9 @@ in {
     owner = "kenneth";
     group = "users";
     mode = "0400";
-    restartUnits = ["qq-deepseek-bot.service"];
+    restartUnits = lib.optionals config.systemd.services.qq-deepseek-bot.enable [
+      "qq-deepseek-bot.service"
+    ];
     content = ''
       AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@100.64.0.4:5432/qq_bot
       AI_POSTGRES_SCHEMA=qq_bot
