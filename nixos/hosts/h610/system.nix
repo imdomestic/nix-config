@@ -751,7 +751,7 @@ in {
     group = "users";
     host = "172.17.0.1";
     port = 18080;
-    sandbox.enable = false;
+    sandbox.enable = true;
     browser.enable = true;
     napcat = {
       enable = true;
@@ -804,6 +804,12 @@ in {
       AI_ALLOW_LEGACY_SQLITE=false
       AI_DISABLED_GROUPS=201644592
       AI_ADMIN_ENABLED=true
+      AI_SANDBOX_ENABLED=true
+      AI_SANDBOX_ALLOWED_USERS=
+      AI_SANDBOX_MAX_PER_USER=2
+      AI_SANDBOX_MAX_TOTAL=2
+      AI_SANDBOX_TIMEOUT_SECONDS=120
+      AI_SANDBOX_MAX_FILE_MB=0
     '';
   };
   systemd.services.qq-deepseek-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
