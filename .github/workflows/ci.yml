@@ -1,3 +1,11 @@
+# 三个 job,由快到慢:
+#
+#   flake-check           整个 flake 求值一遍 + 求值警告门禁 + inventory 概览
+#   check-configurations  每台 host 一个 --dry-run,顺便量出闭包体积
+#   summary               把上面每台的数字汇总成一张表,贴在 run 页面上
+#
+# 和 cachix.yml 的分工不变:那边只在 main 上跑**真构建**并推缓存,这里全是
+# 求值和 dry-run,PR 也跑。
 name: flake-check
 
 on:
@@ -7,6 +15,145 @@ on:
   pull_request:
 
 jobs:
+  # ---------------------------------------------------------------------------
+  # 整个 flake 求值一遍。矩阵那边是逐台 host,漏掉的东西不少:
+  # homeConfigurations(70 个)、systemConfigs、deploy.nodes 的 schema、
+  # packages 输出。`nix flake check` 全覆盖。
+  #
+  # 2026-08-12 加这个 job 的直接原因:它一直是红的而没人知道 ——
+  # homeConfigurations."hosts/x86_64-headless/hank" 在求值期抛断言
+  # (ghostty 的 systemd.enable vs package = null),而矩阵里没有 headless 那两台,
+  # 所以 CI 一路绿灯。
+  # ---------------------------------------------------------------------------
+  flake-check:
+    name: nix flake check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 私有 flake input(kvim / wezterm-config / wg-config)要用。
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      # --no-build:这里只要求值通过。真正的构建归 cachix.yml 和下面的 dry-run。
+      #
+      # --all-systems:不加的话 nix 只检查当前 runner 那个系统的 `checks`,
+      # 其余的直接跳过并打一句
+      #   warning: The check omitted these incompatible systems: aarch64-linux
+      # ——也就是 ARM 那几台的 deploy schema 根本没被验证过。加上之后全查,
+      # 实测本地 exit 0。
+      #
+      # nix 把进度和警告都写 stderr,所以 2>&1。
+      - name: nix flake check
+        run: |
+          set -o pipefail
+          nix flake check --no-build --all-systems 2>&1 | tee /tmp/flake-check.log
+
+      # 求值警告门禁。**只拦新出现的**,已知的上游警告放行 —— 否则这一步从第一天
+      # 起就是红的,然后所有人开始无视它(和告警疲劳一个道理)。
+      #
+      # 白名单一行一条正则,理由写在各自上面。**上游修好之后把对应那条删掉**,
+      # 别让它一直挂着 —— 白名单越长这个门禁越没用。
+      - name: 求值警告门禁
+        run: |
+          cat > /tmp/allow.raw <<'ALLOW'
+          # home-manager 生成 home-configuration.nix(5) 手册页时,用
+          # builtins.derivation 引 nixpkgs 源码没带 string context。
+          # 每个 home 配置一条,当前 22 条。
+          named 'options\.json'
+
+          # hackintosh。26.05 是最后一个支持 x86_64-darwin 的 nixpkgs,
+          # flake.nix 的 packages 输出里已经记过这件事。
+          x86_64-darwin
+
+          # 来自 inputs.noctalia 的 nixosModule。溯源(2026-08-12 实测):只有
+          # b650 / gpd / m16 报,而 x470 同样是 base+desktop 却不报 —— 三者与
+          # x470 的唯一差别就是 externalModules 里的 noctalia。单独求值
+          # inputs.noctalia.packages.x86_64-linux.default 不报,所以在模块导入
+          # 路径上,不是包本身。本仓库自己那处 prev.system 已在
+          # nixos/modules/nix.nix 修掉,和这条无关。
+          renamed to/replaced by 'stdenv\.hostPlatform\.system'
+
+          # deploy / hosts / systemConfigs 不是 nix 认识的标准 flake 输出,它只会
+          # 说一句"没检查"。deploy 的 schema 其实是查了的 —— 走 flake.nix 的
+          # checks 输出。
+          The following flake outputs are unchecked
+
+          # 只在本地脏工作树上出现,CI 里 actions/checkout 是干净的。放行是为了
+          # 让人本地跑同一条命令时结果一致。
+          Git tree .* has uncommitted changes
+          ALLOW
+          sed -e 's/^[[:space:]]*//' -e '/^#/d' -e '/^$/d' /tmp/allow.raw > /tmp/allow.txt
+
+          grep -E "^(evaluation )?warning:" /tmp/flake-check.log \
+            | grep -vEf /tmp/allow.txt > /tmp/new-warnings.log || true
+
+          if [ -s /tmp/new-warnings.log ]; then
+            echo "::error::出现了新的求值警告(白名单见本 workflow)"
+            sort -u /tmp/new-warnings.log
+            {
+              echo "### ❌ 新的求值警告"
+              echo '```'
+              sort -u /tmp/new-warnings.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "没有新的求值警告"
+
+      # host registry 的概览。纯求值,不碰构建 —— 想知道"现在到底管着哪些机器、
+      # 谁被部署、谁被监控",看这张表比翻 nixos/hosts/ 快。
+      #
+      # 判据和运行时用的是同一个来源:tsIp 决定是否可部署 + 是否被抓
+      # (lib/mkInventory.nix、lib/mkDeployNodes.nix),roles 决定跑不跑监控
+      # (nixos/modules/monitoring)。
+      - name: Inventory 概览
+        run: |
+          nix eval --json --impure --expr '
+            let
+              f = builtins.getFlake (toString ./.);
+              lib = f.inputs.nixpkgs.lib;
+            in lib.mapAttrsToList (n: h: {
+              name = n;
+              system = h.system or "-";
+              kind = h.kind or "nixos";
+              tsIp = h.tsIp or "";
+              roles = h.roles or [];
+              users = lib.attrNames (h.users or {});
+            }) f.hosts
+          ' > /tmp/inventory.json
+
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          hosts = sorted(json.load(open("/tmp/inventory.json")), key=lambda h: (h["kind"], h["name"]))
+          print("## Inventory\n")
+          print(f"共 {len(hosts)} 台。**可部署 / 被监控** = 有 tsIp（`lib/mkInventory.nix` 的唯一判据）。\n")
+          print("| host | system | kind | tsIp | roles | users |")
+          print("| --- | --- | --- | --- | --- | --- |")
+          for h in hosts:
+              ts = f"`{h['tsIp']}`" if h["tsIp"] else "—"
+              users = ", ".join(h["users"]) or "—"
+              print(f"| **{h['name']}** | {h['system']} | {h['kind']} | {ts} | {', '.join(h['roles']) or '—'} | {users} |")
+          deployable = [h for h in hosts if h["tsIp"] and h["kind"] == "nixos"]
+          monitors = [h for h in hosts if "monitor" in h["roles"]]
+          gw = [h for h in hosts if "monitor-gateway" in h["roles"]]
+          print(f"\n- 可部署（`deploy.nodes`）：**{len(deployable)}** 台 — {', '.join(h['name'] for h in deployable)}")
+          print(f"- 跑监控（`roles` 含 `monitor`）：{', '.join(h['name'] for h in monitors) or '无'}")
+          print(f"- Grafana 入口（`monitor-gateway`）：{', '.join(h['name'] for h in gw) or '无'}")
+          PY
+
+  # ---------------------------------------------------------------------------
+  # 逐台 host 的 dry-run。除了"能不能构建"之外,顺便把闭包体积量出来 ——
+  # runner 是干净的 store,所以 dry-run 报的 "unpacked" 基本就是这台的
+  # system closure 大小。这样闭包涨了在 PR 里直接看得见,不用等部署完再
+  # ssh 上去 `nix path-info -S`。
+  # ---------------------------------------------------------------------------
   check-configurations:
     runs-on: ${{ matrix.os }}
     strategy:
@@ -32,6 +179,12 @@ jobs:
             arch: x86_64
             os: ubuntu-latest
           - host: m16
+            arch: x86_64
+            os: ubuntu-latest
+          - host: b650
+            arch: x86_64
+            os: ubuntu-latest
+          - host: "9950x"
             arch: x86_64
             os: ubuntu-latest
 
@@ -95,10 +248,81 @@ jobs:
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
       - name: Build (Dry Run)
+        id: dryrun
         run: |
+          set -euo pipefail
           echo "Checking configuration for host: ${{ matrix.host }}..."
           if [ "${{ runner.os }}" = "macOS" ]; then
-            nix build .#darwinConfigurations.${{ matrix.host }}.system --dry-run
+            attr='.#darwinConfigurations."${{ matrix.host }}".system'
           else
-            nix build .#nixosConfigurations.${{ matrix.host }}.config.system.build.toplevel --dry-run
+            attr='.#nixosConfigurations."${{ matrix.host }}".config.system.build.toplevel'
           fi
+          # dry-run 的报告走 stderr。--print-out-paths 让 stdout 只有输出路径,
+          # 两条流分开存,解析的时候不会串。
+          nix build "$attr" --dry-run \
+            >/tmp/out.txt 2>/tmp/dry.txt || { cat /tmp/dry.txt; exit 1; }
+          cat /tmp/dry.txt
+
+          # 三个数字都可能缺席:全部命中缓存时没有 "will be built",
+          # 全部已在本地时没有 "will be fetched"。缺了就填 0 / —。
+          build=$(grep -oE 'these [0-9]+ derivations will be built' /tmp/dry.txt \
+                  | grep -oE '[0-9]+' | head -1 || true)
+          if [ -z "$build" ] && grep -q 'this derivation will be built' /tmp/dry.txt; then
+            build=1
+          fi
+          fetch=$(grep -oE 'these [0-9]+ paths will be fetched' /tmp/dry.txt \
+                  | grep -oE '[0-9]+' | head -1 || true)
+          size=$(grep -oE '\([0-9.]+ [KMG]iB download, [0-9.]+ [KMG]iB unpacked\)' /tmp/dry.txt \
+                 | head -1 | tr -d '()' || true)
+
+          # runner 的 store 是干净的,所以 "unpacked" 约等于这台的 system closure。
+          printf '| **%s** | %s | %s | %s | %s |\n' \
+            '${{ matrix.host }}' '${{ matrix.arch }}' \
+            "${build:-0}" "${fetch:-0}" "${size:-—}" > /tmp/row.md
+          cat /tmp/row.md
+
+      # 每台先各自落一个 artifact,由下面的 summary job 拼成一张表。
+      # 不直接往 $GITHUB_STEP_SUMMARY 写:那样会变成 17 个各写各的小片段,
+      # 没法排序也没法一眼比较。
+      - name: 上传概览行
+        if: always() && steps.dryrun.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: row-${{ matrix.host }}
+          path: /tmp/row.md
+          retention-days: 1
+
+  # ---------------------------------------------------------------------------
+  # 汇总。always() —— 有 host 失败时更需要看到剩下那些的数字。
+  # ---------------------------------------------------------------------------
+  summary:
+    name: 系统概览
+    runs-on: ubuntu-latest
+    needs: check-configurations
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: row-*
+          path: /tmp/rows
+          merge-multiple: false
+
+      - name: 拼表
+        run: |
+          {
+            echo "## 每台 host 的构建概览"
+            echo
+            echo "runner 的 nix store 是干净的，所以 **unpacked ≈ 这台的 system closure 大小**。"
+            echo "\`to build\` 不为 0 表示这台上有 cache.nixos.org 和 imdomestic.cachix.org 都没有的东西"
+            echo "（rpi4 的内核和 mihomo-smart 是预期之内的，见 \`flake.nix\` 的 packages 输出）。"
+            echo
+            echo "| host | arch | to build | to fetch | download / unpacked |"
+            echo "| --- | --- | ---: | ---: | --- |"
+            # 按 host 名排序，保证每次 run 的表顺序一致，diff 得动。
+            # 行首都是 `| **`，纯字典序就够。
+            find /tmp/rows -name row.md -print0 2>/dev/null \
+              | xargs -0 -r cat \
+              | sort \
+              || echo "| — | — | — | — | 没有可用的数据 |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          cat "$GITHUB_STEP_SUMMARY"
