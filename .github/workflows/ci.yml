@@ -125,10 +125,18 @@ jobs:
           # nixos/modules/nix.nix 修掉,和这条无关。
           renamed to/replaced by 'stdenv\.hostPlatform\.system'
 
-          # deploy / hosts / systemConfigs 不是 nix 认识的标准 flake 输出,它只会
+          # deploy / hosts / systemConfigs 不是 nix 认识的标准 flake 输出,nix 只会
           # 说一句"没检查"。deploy 的 schema 其实是查了的 —— 走 flake.nix 的
           # checks 输出。
+          #
+          # 两条都要:本地(nix 2.34)打的是汇总形式,CI 上打的是每个输出一行。
+          # 光配一条会在另一边漏网 —— 2026-08-12 实测就是这么被绊住的。
           The following flake outputs are unchecked
+          unknown flake output
+
+          # nix 自己的 git 缓存(~/.cache/nix/gitv3)在做 mtime 维护时的抱怨,
+          # 只在干净 runner 上出现(那个目录是新建的)。和求值结果无关。
+          could not update mtime for file
 
           # 只在本地脏工作树上出现,CI 里 actions/checkout 是干净的。放行是为了
           # 让人本地跑同一条命令时结果一致。
