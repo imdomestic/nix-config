@@ -41,6 +41,28 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
+      # **必须排在 flake check 前面。**
+      #
+      # h610 引的 inputs.max 是 cabal2nix 生成的 Haskell 包,也就是说**求值它
+      # 之前必须先把 cabal2nix-max 构建出来**(import-from-derivation)。而
+      # `--no-build` 恰恰不肯建,于是直接报:
+      #
+      #   error: path '/nix/store/...-cabal2nix-max.drv' is not valid
+      #   … while realising the context of path '/nix/store/...-cabal2nix-max'
+      #   … pkgs/development/haskell-modules/make-package-set.nix
+      #
+      # 本地跑不出来这个错 —— 那条路径早就在 store 里了,`--no-build` 根本不需要
+      # 建。只有干净的 runner 才会撞上(2026-08-12 第一次跑就挂在这)。
+      #
+      # `--dry-run` 是允许 IFD 的(矩阵里 h610 那个 job 一直绿就是证据),拿它把
+      # IFD 的产物预热进 store。它自己不构建 h610 的闭包,所以很快。
+      #
+      # 以后别处再冒出 IFD,症状一样("path ... is not valid"),在这儿多加一台
+      # 的 dry-run 即可。仓库里 IFD 是显式开着的,见 nixos/modules/nix-settings.nix
+      # 的 allow-import-from-derivation。
+      - name: 预热 IFD(h610 的 cabal2nix)
+        run: nix build .#nixosConfigurations.h610.config.system.build.toplevel --dry-run
+
       # --no-build:这里只要求值通过。真正的构建归 cachix.yml 和下面的 dry-run。
       #
       # --all-systems:不加的话 nix 只检查当前 runner 那个系统的 `checks`,
