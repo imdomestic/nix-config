@@ -40,13 +40,13 @@
         # rpi4 引了 nixos-hardware 的 raspberry-pi-4 模块,内核被改过,drv 是
         # Hydra 从没见过的,每次都得从源码整编 —— 整个缓存里最值钱的一项。
         rpi4-kernel = nixos.rpi4.config.boot.kernelPackages.kernel;
-        # smart 分支目前只有 r6s 开着(7540u 用的还是上游 mihomo)。直接取 config
+        # smart 分支目前只有 r6s 开着(别的机器用的还是上游 mihomo)。直接取 config
         # 里那个值,保证和 r6s 真正要的是同一个 drv;哪天别的机器也开 smart,
         # 按同样写法往对应 system 下加一条。
         mihomo-smart = nixos.r6s.config.services.mihomo.package;
       };
       x86_64-linux = {
-        # 7540u / b650 / x470 三台解析出来是同一个 drv,取哪台都一样。
+        # b650 / x470 两台解析出来是同一个 drv,取哪台都一样。
         recursive-mono-cascadia-italic = font nixos.b650;
       };
       aarch64-darwin = {

@@ -37,10 +37,11 @@
 
   # genAttrs 是逐属性惰性的,只有真正被部署用到的 system 才会去 import nixpkgs;
   # 按 system 收敛也避免了每台 host 各 import 一遍。
-  deployLibs = lib.genAttrs (lib.unique (
-    lib.mapAttrsToList (_: h: h.system) (lib.filterAttrs (_: h: (h ? tsIp) && (h ? system)) hosts)
-  ))
-  mkDeployLib;
+  deployLibs =
+    lib.genAttrs (lib.unique (
+      lib.mapAttrsToList (_: h: h.system) (lib.filterAttrs (_: h: (h ? tsIp) && (h ? system)) hosts)
+    ))
+    mkDeployLib;
 
   # Homes are standalone closures now (see lib/mkConfigurations.nix), so a
   # system deploy no longer drags them along. Give every user of a deployable
@@ -76,10 +77,10 @@
   #     圈好了。
   #   - 实测到 tank 两条路延迟相当(wg 30ms / ts 32ms),换过去不吃亏。
   #
-  # 反过来,只有 `ip` 没有 tsIp 的 b650 / n100 / x470 就此不再是部署目标 ——
-  # 这三台是桌面机,b650 和 x470 在 tailnet 里那个节点其实是它们的 Windows
-  # 那份,n100 压根没开 tailscale。实测三台的 wg 地址也全都 ssh 不通,所以
-  # 它们留在 deploy.nodes 里只是个一按就失败的空壳。它们照常有
+  # 反过来,只有 `ip` 没有 tsIp 的 b650 / x470 就此不再是部署目标 ——
+  # 这两台是桌面机,它们在 tailnet 里那个节点其实是各自的 Windows 那份。
+  # 实测两台的 wg 地址也 ssh 不通,所以它们留在 deploy.nodes 里只是个
+  # 一按就失败的空壳。它们照常有
   # nixosConfigurations,本机 `just switch` 不受影响。
   #
   # 加一台新机器进部署范围 = 在 registry 里填一行 tsIp,和监控是同一个开关。

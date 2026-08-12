@@ -35,7 +35,7 @@
 managed = kind == "nixos" && lib.elem "server" roles;
 ```
 
-11 台：`h610 n100 r2s r5s r5sjp r6s rpi4 shanghai tank x470 aarch64-wsl`。
+10 台：`h610 r2s r5s r5sjp r6s rpi4 shanghai tank x470 aarch64-wsl`。
 
 判据用 `roles` 而不是 `kind`，因为**真正的分界是"服务器"还是"漫游设备"**，
 不是操作系统。b650、m16、gpd 这些是 NixOS，但它们和 MacBook 一样会合盖
