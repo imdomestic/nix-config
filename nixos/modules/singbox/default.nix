@@ -84,8 +84,18 @@
     (map (mkLocalRuleSet geositeDir "geosite") geositeNames)
     ++ (map (mkLocalRuleSet geoipDir "geoip") geoipNames);
 
-  toDirect = rule: rule // {action = "route"; outbound = "direct";};
-  toProxy = rule: rule // {action = "route"; outbound = "im";};
+  toDirect = rule:
+    rule
+    // {
+      action = "route";
+      outbound = "direct";
+    };
+  toProxy = rule:
+    rule
+    // {
+      action = "route";
+      outbound = "im";
+    };
 in {
   options.my.singbox.autoRedirect = lib.mkOption {
     type = lib.types.bool;

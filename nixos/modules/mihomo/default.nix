@@ -163,13 +163,13 @@ in {
         "mihomo/api_secret" = {restartUnits = ["mihomo.service"];};
       }
       // lib.listToAttrs (lib.concatMap (node:
-      map (field: {
-        name = "imdomestic/${node}/${field}";
-        value = {
-          sopsFile = ../../../secrets/clients/imdomestic.yaml;
-          restartUnits = ["mihomo.service"];
-        };
-      })
+        map (field: {
+          name = "imdomestic/${node}/${field}";
+          value = {
+            sopsFile = ../../../secrets/clients/imdomestic.yaml;
+            restartUnits = ["mihomo.service"];
+          };
+        })
         nodeFields)
       nodeNames);
 
@@ -396,13 +396,13 @@ in {
       serviceConfig.RestartSec = "5s";
 
       serviceConfig.ExecStartPre = [
-      "+${pkgs.writeShellScript "mihomo-geodata" ''
-        set -eu
-        d=/var/lib/private/mihomo
-        mkdir -p "$d"
-        ln -sf ${pkgs.v2ray-domain-list-community}/share/v2ray/geosite.dat "$d/GeoSite.dat"
-        ln -sf ${pkgs.v2ray-geoip}/share/v2ray/geoip.dat "$d/GeoIP.dat"
-      ''}"
+        "+${pkgs.writeShellScript "mihomo-geodata" ''
+          set -eu
+          d=/var/lib/private/mihomo
+          mkdir -p "$d"
+          ln -sf ${pkgs.v2ray-domain-list-community}/share/v2ray/geosite.dat "$d/GeoSite.dat"
+          ln -sf ${pkgs.v2ray-geoip}/share/v2ray/geoip.dat "$d/GeoIP.dat"
+        ''}"
       ];
     };
   };
