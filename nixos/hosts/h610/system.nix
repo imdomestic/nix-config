@@ -860,6 +860,7 @@ in {
       AI_SANDBOX_MAX_TOTAL=2
       AI_SANDBOX_TIMEOUT_SECONDS=120
       AI_SANDBOX_MAX_FILE_MB=0
+      AI_TOOL_SIMPLE_MAX_ROUNDS=5
       AI_MEDIA_ENABLED=true
       AI_MEDIA_ROOT=/var/lib/qq-deepseek-bot/media
       AI_VISION_PROFILE=gpt-5.6-luna
