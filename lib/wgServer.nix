@@ -49,12 +49,11 @@
       else lib.head m)
     lines);
 
-  confPrivateKeyFile =
-    pkgs.runCommandLocal "${name}-privatekey" {} ''
-      ${pkgs.gnused}/bin/sed -n 's/^PrivateKey[[:space:]]*=[[:space:]]*//p' ${conf} \
-        | ${pkgs.coreutils}/bin/head -n1 \
-        | ${pkgs.coreutils}/bin/tr -d '[:space:]' > "$out"
-    '';
+  confPrivateKeyFile = pkgs.runCommandLocal "${name}-privatekey" {} ''
+    ${pkgs.gnused}/bin/sed -n 's/^PrivateKey[[:space:]]*=[[:space:]]*//p' ${conf} \
+      | ${pkgs.coreutils}/bin/head -n1 \
+      | ${pkgs.coreutils}/bin/tr -d '[:space:]' > "$out"
+  '';
 
   # Nth (0-based) PresharedKey, matching the Nth [Peer] block in file order.
   confPskFile = idx:
@@ -71,10 +70,9 @@
         publicKey = pub;
         allowedIPs = [(lib.elemAt (collect "AllowedIPs") idx)];
       }) (collect "PublicKey")
-    else
-      if peers == null
-      then throw "wgServer: set peers + privateKeyFile + pskFileFor (sops) or conf (legacy)"
-      else peers;
+    else if peers == null
+    then throw "wgServer: set peers + privateKeyFile + pskFileFor (sops) or conf (legacy)"
+    else peers;
 
   pskFile =
     if useConf

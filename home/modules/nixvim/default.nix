@@ -140,126 +140,127 @@ in {
       rust-extra.clear = true;
     };
 
-    autoCmd = [
-      {
-        event = [
-          "FocusGained"
-          "BufEnter"
-          "TermClose"
-          "TermLeave"
-        ];
-        group = "auto-reload";
-        desc = "Check for external file changes (autoread only triggers on checktime)";
-        callback = mkRaw ''
-          function()
-            -- checktime 在 cmdline / cmdwin 里会抛 E11，nofile buffer 也无盘可查。
-            if vim.bo.buftype ~= "nofile" and vim.fn.mode() ~= "c" and vim.fn.getcmdwintype() == "" then
-              vim.cmd.checktime()
-            end
-          end
-        '';
-      }
-      {
-        event = "TextYankPost";
-        group = "highlight-yank";
-        desc = "Highlight when yanking (copying) text";
-        callback = mkRaw ''
-          function()
-            vim.highlight.on_yank()
-          end
-        '';
-      }
-      {
-        event = "VimLeavePre";
-        group = "terminal-cleanup";
-        desc = "Exit: Kill all background terminals automatically";
-        callback = mkRaw ''
-          function()
-            for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-              if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
-                vim.api.nvim_buf_delete(buf, { force = true })
+    autoCmd =
+      [
+        {
+          event = [
+            "FocusGained"
+            "BufEnter"
+            "TermClose"
+            "TermLeave"
+          ];
+          group = "auto-reload";
+          desc = "Check for external file changes (autoread only triggers on checktime)";
+          callback = mkRaw ''
+            function()
+              -- checktime 在 cmdline / cmdwin 里会抛 E11，nofile buffer 也无盘可查。
+              if vim.bo.buftype ~= "nofile" and vim.fn.mode() ~= "c" and vim.fn.getcmdwintype() == "" then
+                vim.cmd.checktime()
               end
             end
-          end
-        '';
-      }
-      {
-        event = "FileType";
-        group = "indent-two";
-        pattern = [
-          "bs"
-          "c"
-          "cabal"
-          "cmake"
-          "cpp"
-          "haskell"
-          "java"
-          "json"
-          "lua"
-          "nix"
-          "lean"
-          "yaml"
-        ];
-        callback = mkRaw ''
-          function()
-            vim.bo.expandtab = true
-            vim.bo.tabstop = 2
-            vim.bo.softtabstop = 2
-            vim.bo.shiftwidth = 2
-          end
-        '';
-      }
-      {
-        event = "FileType";
-        group = "indent-four";
-        pattern = [
-          "rust"
-          "zig"
-          "python"
-          "php"
-          "csharp"
-          "kotlin"
-          "java"
-          "go"
-        ];
-        callback = mkRaw ''
-          function()
-            vim.bo.expandtab = true
-            vim.bo.tabstop = 4
-            vim.bo.softtabstop = 4
-            vim.bo.shiftwidth = 4
-          end
-        '';
-      }
-    ]
-    ++ lib.optionals dev [
-      {
-        event = "FileType";
-        group = "haskell-extra";
-        pattern = "haskell";
-        callback = mkRaw ''
-          function(args)
-            local ht = require("haskell-tools")
-            local opts = { noremap = true, silent = true, buffer = args.buf }
+          '';
+        }
+        {
+          event = "TextYankPost";
+          group = "highlight-yank";
+          desc = "Highlight when yanking (copying) text";
+          callback = mkRaw ''
+            function()
+              vim.highlight.on_yank()
+            end
+          '';
+        }
+        {
+          event = "VimLeavePre";
+          group = "terminal-cleanup";
+          desc = "Exit: Kill all background terminals automatically";
+          callback = mkRaw ''
+            function()
+              for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+                if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
+                  vim.api.nvim_buf_delete(buf, { force = true })
+                end
+              end
+            end
+          '';
+        }
+        {
+          event = "FileType";
+          group = "indent-two";
+          pattern = [
+            "bs"
+            "c"
+            "cabal"
+            "cmake"
+            "cpp"
+            "haskell"
+            "java"
+            "json"
+            "lua"
+            "nix"
+            "lean"
+            "yaml"
+          ];
+          callback = mkRaw ''
+            function()
+              vim.bo.expandtab = true
+              vim.bo.tabstop = 2
+              vim.bo.softtabstop = 2
+              vim.bo.shiftwidth = 2
+            end
+          '';
+        }
+        {
+          event = "FileType";
+          group = "indent-four";
+          pattern = [
+            "rust"
+            "zig"
+            "python"
+            "php"
+            "csharp"
+            "kotlin"
+            "java"
+            "go"
+          ];
+          callback = mkRaw ''
+            function()
+              vim.bo.expandtab = true
+              vim.bo.tabstop = 4
+              vim.bo.softtabstop = 4
+              vim.bo.shiftwidth = 4
+            end
+          '';
+        }
+      ]
+      ++ lib.optionals dev [
+        {
+          event = "FileType";
+          group = "haskell-extra";
+          pattern = "haskell";
+          callback = mkRaw ''
+            function(args)
+              local ht = require("haskell-tools")
+              local opts = { noremap = true, silent = true, buffer = args.buf }
 
-            vim.keymap.set("n", "<space>ll", vim.lsp.codelens.run, opts)
-            vim.keymap.set("n", "<space>le", ht.lsp.buf_eval_all, opts)
-          end
-        '';
-      }
-      {
-        event = "FileType";
-        group = "rust-extra";
-        pattern = "rust";
-        callback = mkRaw ''
-          function(args)
-            vim.keymap.set("n", "<leader>a", function()
-              vim.cmd.RustLsp("codeAction")
-            end, { silent = true, buffer = args.buf })
-          end
-        '';
-      }
-    ];
+              vim.keymap.set("n", "<space>ll", vim.lsp.codelens.run, opts)
+              vim.keymap.set("n", "<space>le", ht.lsp.buf_eval_all, opts)
+            end
+          '';
+        }
+        {
+          event = "FileType";
+          group = "rust-extra";
+          pattern = "rust";
+          callback = mkRaw ''
+            function(args)
+              vim.keymap.set("n", "<leader>a", function()
+                vim.cmd.RustLsp("codeAction")
+              end, { silent = true, buffer = args.buf })
+            end
+          '';
+        }
+      ];
 
     keymaps = [
       {

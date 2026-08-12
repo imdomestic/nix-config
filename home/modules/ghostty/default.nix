@@ -97,3 +97,4 @@ in {
 # inspector               S-C-i
 # toggle fullscreen       C-Enter
 # goto tab [1-9]          C-[1-9]
+
