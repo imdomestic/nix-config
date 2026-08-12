@@ -696,8 +696,6 @@ in {
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
-  services.cockpit.enable = lib.mkForce false;
-
   services.ollama = {
     enable = true;
     package = pkgs-unstable.ollama-vulkan;

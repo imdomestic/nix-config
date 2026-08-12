@@ -1,8 +1,4 @@
-{
-  pkgs,
-  pkgs-unstable,
-  ...
-}: {
+{pkgs, ...}: {
   environment.systemPackages = with pkgs; [
     virt-manager
     cloud-utils
@@ -17,8 +13,8 @@
     win-spice
     dive
     podman-compose
-
-    pkgs-unstable.cockpit-machines
+    # cockpit-machines 跟着 cockpit 一起删了(见 profiles/server.nix)——
+    # 它是 cockpit 的虚拟机插件,宿主没了就只是个装着没用的包。
   ];
 
   virtualisation = {
