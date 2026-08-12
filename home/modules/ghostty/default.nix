@@ -5,15 +5,30 @@
 }: let
   isLinux = pkgs.stdenv.isLinux;
   isHome = config.my.host.name == "aarch64-headless" || config.my.host.name == "x86_64-headless";
+
+  # package = null 的意思是"配置文件照常下发,但别装 ghostty 本体":
+  #   - darwin 上它由 homebrew 装
+  #   - aarch64-headless / x86_64-headless 是纯 home-manager 的机器,
+  #     那边终端是别人的事
+  ghosttyPackage =
+    if isHome || !isLinux
+    then null
+    else pkgs.ghostty;
 in {
   programs.ghostty = {
     enable = true;
-    package =
-      if isHome
-      then null
-      else if isLinux
-      then pkgs.ghostty
-      else null;
+    package = ghosttyPackage;
+
+    # **必须跟着 package 走。** 上游这个选项默认是 `stdenv.hostPlatform.isLinux`,
+    # 而它自己又断言了 "systemd.enable cannot be true when package is null" ——
+    # 于是 package = null 的 **Linux** home(就是上面两台 headless)会在求值期
+    # 直接抛断言,`nix flake check` 整个红掉。
+    #
+    # 实测:2026-08-12 之前 `nix flake check` 就一直是 exit 1,失败的是
+    # homeConfigurations."hosts/x86_64-headless/hank"。darwin 那几台没事,
+    # 因为它们的默认值本来就是 false。
+    systemd.enable = ghosttyPackage != null;
+
     enableZshIntegration = true;
     # installBatSyntax = false;
     themes = {
