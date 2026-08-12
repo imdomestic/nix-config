@@ -19,7 +19,7 @@
       tools = true;
       streaming = true;
       json_mode = true;
-      vision = false;
+      vision = true;
     };
   };
   qqBotModelProfiles = builtins.toJSON {
@@ -800,6 +800,7 @@ in {
     group = "users";
     host = "172.17.0.1";
     port = 18080;
+    runtimePackages = [pkgs.ffmpeg-headless];
     sandbox.enable = true;
     browser.enable = true;
     napcat = {
@@ -859,6 +860,18 @@ in {
       AI_SANDBOX_MAX_TOTAL=2
       AI_SANDBOX_TIMEOUT_SECONDS=120
       AI_SANDBOX_MAX_FILE_MB=0
+      AI_MEDIA_ENABLED=true
+      AI_MEDIA_ROOT=/var/lib/qq-deepseek-bot/media
+      AI_VISION_PROFILE=gpt-5.6-luna
+      AI_MEDIA_MAX_SOURCE_MB=100
+      AI_VISION_MAX_IMAGE_MB=20
+      AI_MEDIA_PREPARE_THRESHOLD_MB=1
+      AI_MEDIA_MAX_EDGE_PX=1568
+      AI_VISION_TIMEOUT_SECONDS=180
+      AI_MEDIA_MAX_ATTEMPTS=5
+      AI_MEDIA_LEASE_SECONDS=600
+      AI_MEDIA_BATCH_SIZE=4
+      AI_MEDIA_WORKER_CONCURRENCY=2
       CLIPROXY_API_KEY=${config.sops.placeholder."cliproxy/api_key"}
       AI_MODEL_DEFAULT_PROFILE=deepseek
       AI_MODEL_PROFILES_JSON='${qqBotModelProfiles}'
