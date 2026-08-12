@@ -455,8 +455,6 @@ in {
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
-  services.cockpit.enable = lib.mkForce false;
-
   # tailscale + Tailscale SSH 由 nixos/modules/tailscale 统一管(经 base profile
   # 引入,按 my.host.tsIp 自动开)。这台是 2026-08-08 那次 Tailscale SSH 的试点,
   # 实测结论记在模块的文件头注释里。

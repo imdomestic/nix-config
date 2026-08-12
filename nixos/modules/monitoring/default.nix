@@ -92,9 +92,14 @@ in {
       type = lib.types.port;
       default = 9009;
       description = ''
-        Prometheus 端口。**不是默认的 9090** —— `nixos/profiles/server.nix`
-        给所有 server 开了 cockpit 在 9090,撞了。cockpit 已经全 fleet 部署,
-        挪 Prometheus 的代价小得多。
+        Prometheus 端口。**不是默认的 9090。**
+
+        历史原因:profiles/server.nix 曾经给所有 server 开 cockpit 在 9090,
+        当时 cockpit 已经全 fleet 部署,挪 Prometheus 代价更小。
+
+        2026-08-12 cockpit 删了,9090 空了出来(r6s 上现在是 mihomo 的
+        metacubexd 面板占着)。**但这里保持 9009 不动** —— 让路的理由没了,
+        而端口已经写进两份监控配置、看板和 docs/maxops.md,再挪回去是净损失。
       '';
     };
 

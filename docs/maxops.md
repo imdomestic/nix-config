@@ -22,7 +22,7 @@
 | --- | --- | --- |
 | 时序存储、PromQL 引擎 | Prometheus | 没有任何理由重造 |
 | 部署（`nixos-rebuild switch`） | deploy-rs | 风险等级完全不同，见 §9 |
-| 单机 Web 面板 | cockpit | maxops 是给 cockpit **加一个 fleet 标签页**，不是取代它 |
+| ~~单机 Web 面板~~ | ~~cockpit~~ | **cockpit 已于 2026-08-12 从全 fleet 删除**（理由见 `nixos/profiles/server.nix` 里那段注释：NixOS 上它 15 个页面里大部分没有后端）。原本「给 cockpit 加一个 fleet 标签页」的定位随之作废 —— 浏览器里的 fleet 视图归 Grafana |
 | QQ 协议、消息收发 | max | max 只是 maxops 的一个 notify sink |
 
 最后一条要强调：**名字叫 maxops，但代码里 max 不特殊。** 它和 matrix、
@@ -72,7 +72,6 @@ managed = kind == "nixos" && lib.elem "server" roles;
 | --- | --- | --- | --- |
 | max（QQ 群） | MCP over HTTP | QQ uid，由 max 代为断言 | **最低** |
 | Claude Code（你的笔记本） | MCP over HTTP | bearer token | 中 |
-| cockpit 插件 | REST + 浏览器 | cockpit session | 中 |
 | `maxopsctl`（终端） | REST | bearer token | 高 |
 
 "最低"那一行是整个设计的约束条件：**群消息是不可信输入，而它最终会变成
@@ -96,8 +95,8 @@ managed = kind == "nixos" && lib.elem "server" roles;
    Claude Code ──────────►│         maxops-hub           │    (每台机器，tailnet)
         (MCP/HTTP)        │      (跑在 tank 上)          │
                           │                              │──► Prometheus (PromQL)
-   cockpit 插件 ─────────►│  · inventory（nix 生成）     │
-        (REST)            │  · policy（nix 生成）        │◄── Alertmanager (webhook)
+                          │  · inventory（nix 生成）     │
+                          │  · policy（nix 生成）        │◄── Alertmanager (webhook)
                           │  · operation registry        │
    maxopsctl ────────────►│  · audit log                 │──► notify sinks
         (REST)            │                              │      └─► max ─► QQ 群
@@ -129,7 +128,8 @@ wrapper 去解析 `$SSH_ORIGINAL_COMMAND`，然后开始和引号、分号、glo
 - *"要部署到 23 台机器"* —— 你有 deploy-rs 和统一的 `base.nix`，加一个模块
   是一行。这个成本对别人是真的，对你接近零。
 - *"多一个常驻进程"* —— agent 是个几百行的东西：systemd D-Bus 查询、journald
-  读取、几个 `/proc` 文件。比 cockpit 轻一个量级，而 cockpit 你已经全装了。
+  读取、几个 `/proc` 文件。（原文拿 cockpit 作类比说「你已经全装了」——
+  cockpit 现在删了，但结论不变：agent 比它轻一个量级。）
 - *"要管一套新的认证"* —— 你已经在用 sops-nix 下发密钥，多一个 per-host token
   是复制现有模式。
 
@@ -266,7 +266,6 @@ maxops/
 │   ├── maxops-agent/         # 每台机器，非特权
 │   ├── maxops-hub/           # 单实例：inventory / policy / 前端 / 通知
 │   └── maxopsctl/            # CLI，REST 客户端
-└── cockpit/                  # cockpit 插件（React），打 REST
 ```
 
 ### 语言：Rust
@@ -354,13 +353,15 @@ deploy-rs 已经解决了这个问题，还带自动回滚。让 bot 碰它，�
 
 ## 10. 端口
 
-现状 `nixos/profiles/server.nix:17` 给所有 server 开了 **cockpit 在 9090**，
-和 Prometheus 默认端口撞。cockpit 已经全 fleet 部署且进了防火墙，**移
-Prometheus**。
+~~现状给所有 server 开了 cockpit 在 9090，和 Prometheus 默认端口撞，所以移
+Prometheus。~~
+
+**2026-08-12：cockpit 删了**，9090 空出来了（r6s 上现在归 mihomo 的 metacubexd
+面板）。Prometheus 保持 9009 不动 —— 让路的理由虽然没了，但那个端口已经写进
+两份监控配置和看板，再挪回去是净损失。
 
 | 服务 | 端口 | 位置 |
 | --- | --- | --- |
-| cockpit | 9090 | 所有 server（不动） |
 | node_exporter | 9100 | 所有 host |
 | maxops-agent | 9720 | 所有 host，**只绑 tailscale 地址** |
 | Prometheus | 9009 | tank |
@@ -388,7 +389,7 @@ Prometheus**。
 | **P2** | Alertmanager → hub → max → 群 | **挂了主动说** | 无。只出不进 |
 | **P3** | MCP 前端，只读工具 | 群里能问状态 | 低。注入最多骗出信息 |
 | **P4** | 变更操作 + 三层权限 + 审计 + 二次确认 | 群里能运维 | 高 —— 前面三期是它的地基 |
-| **P5** | cockpit 插件 | 浏览器里的 fleet 视图 | 无 |
+| ~~**P5**~~ | ~~cockpit 插件~~ | **作废** —— cockpit 已删，浏览器里的 fleet 视图由 Grafana 承担（入口 `http://100.64.0.13:3000`） | — |
 
 **P2 排在 P3 前面是有意的。** "服务挂了群里自动报警"的实际价值，大于
 "能在群里问服务状态" —— 前者不需要有人恰好想起来去问。而且它零风险，
