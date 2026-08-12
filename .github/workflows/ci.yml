@@ -41,6 +41,21 @@ jobs:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
 
+      # 这个 job 要在一个进程里把整个 fleet 求值一遍 —— 21 个 nixosConfigurations
+      # + 4 个 darwin + 70 个 home,外加 deploy schema 把它们再展开一次。
+      # ubuntu-latest 是 16 GiB,实测很贴边(2026-08-12 那次 --all-systems 直接
+      # OOM)。给块 swap 兜底:换页比被 SIGTERM 强,而且这活是求值不是构建,
+      # 慢一点无所谓。
+      #
+      # 放 /mnt —— runner 上那块盘比 / 大得多,而 / 上默认已经有一个 /swapfile。
+      - name: 加 swap
+        run: |
+          sudo fallocate -l 12G /mnt/swapfile
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
+          free -h
+
       # **必须排在 flake check 前面。**
       #
       # h610 引的 inputs.max 是 cabal2nix 生成的 Haskell 包,也就是说**求值它
@@ -65,17 +80,25 @@ jobs:
 
       # --no-build:这里只要求值通过。真正的构建归 cachix.yml 和下面的 dry-run。
       #
-      # --all-systems:不加的话 nix 只检查当前 runner 那个系统的 `checks`,
-      # 其余的直接跳过并打一句
-      #   warning: The check omitted these incompatible systems: aarch64-linux
-      # ——也就是 ARM 那几台的 deploy schema 根本没被验证过。加上之后全查,
-      # 实测本地 exit 0。
+      # **不要加 --all-systems。** 2026-08-12 加过一次,runner 直接 OOM
+      # (exit 143 / SIGTERM),死在:
+      #
+      #   checking derivation checks.aarch64-linux.deploy-schema...
+      #
+      # 原因是 `checks` 走的是 deploy-rs 的 deployChecks self.deploy —— 求值它
+      # 等于把整个 deploy.nodes 展开一遍,也就是全部 nixosConfigurations 的
+      # activate 包**加上**全部 homeConfigurations 的。--all-systems 让这件事
+      # 按 4 个 system 各来一遍,16 GiB 的 runner 扛不住。
+      #
+      # 代价是 ARM 那几台的 deploy schema 不单独验(nix 会打一句 "omitted these
+      # incompatible systems",在白名单里)。可以接受:schema 校验是同一份逻辑,
+      # 和目标架构无关,x86 那遍已经覆盖。
       #
       # nix 把进度和警告都写 stderr,所以 2>&1。
       - name: nix flake check
         run: |
           set -o pipefail
-          nix flake check --no-build --all-systems 2>&1 | tee /tmp/flake-check.log
+          nix flake check --no-build 2>&1 | tee /tmp/flake-check.log
 
       # 求值警告门禁。**只拦新出现的**,已知的上游警告放行 —— 否则这一步从第一天
       # 起就是红的,然后所有人开始无视它(和告警疲劳一个道理)。
@@ -110,6 +133,9 @@ jobs:
           # 只在本地脏工作树上出现,CI 里 actions/checkout 是干净的。放行是为了
           # 让人本地跑同一条命令时结果一致。
           Git tree .* has uncommitted changes
+
+          # 故意的 —— 见上面不加 --all-systems 的理由。
+          The check omitted these incompatible systems
           ALLOW
           sed -e 's/^[[:space:]]*//' -e '/^#/d' -e '/^$/d' /tmp/allow.raw > /tmp/allow.txt
 
