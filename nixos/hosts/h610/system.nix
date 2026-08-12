@@ -851,7 +851,7 @@ in {
       AI_POSTGRES_POOL_MAX_SIZE=10
       AI_POSTGRES_POOL_TIMEOUT_SECONDS=10
       AI_ALLOW_LEGACY_SQLITE=false
-      AI_DISABLED_GROUPS=201644592
+      AI_DISABLED_GROUPS=
       AI_ADMIN_ENABLED=true
       AI_SANDBOX_ENABLED=true
       AI_SANDBOX_ALLOWED_USERS=
@@ -862,6 +862,7 @@ in {
       CLIPROXY_API_KEY=${config.sops.placeholder."cliproxy/api_key"}
       AI_MODEL_DEFAULT_PROFILE=deepseek
       AI_MODEL_PROFILES_JSON='${qqBotModelProfiles}'
+      AI_GROUP_MODEL_PROFILES_JSON='{"201644592":"gpt-5.6-sol"}'
     '';
   };
   systemd.services.qq-deepseek-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
