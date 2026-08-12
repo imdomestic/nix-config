@@ -106,8 +106,8 @@ UDP（DNS、tailscale 的 41641）照进不误，TCP 几乎为零。两种模式
 LAN 客户端的 tailscale UDP 也被卷进了 tun（日志里大量
 `inbound packet connection to 192.168.22.x:41641`），本来就不该进。
 
-**下次重试的前提：**先在一台不当网关、也不吃 CGNAT 地址的机器上（比如 tank
-或 n100）把 `auto_redirect=false` 时 TCP 不进 tun 的机制搞清楚，再回到 r6s。
+**下次重试的前提：**先在一台不当网关、也不吃 CGNAT 地址的机器上（比如 tank）
+把 `auto_redirect=false` 时 TCP 不进 tun 的机制搞清楚，再回到 r6s。
 不要再直接在网关上试——它一挂就是全家断网，而且 r6s 自己就是这台机器上网的
 出口，回滚只能靠 tailscale 或者物理接触。
 

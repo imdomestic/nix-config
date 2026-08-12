@@ -4,7 +4,7 @@
   config,
   ...
 }: {
-  home.packages = lib.mkIf (config.my.host.name == "b650" || config.my.host.name == "7540u") (with pkgs; [
+  home.packages = lib.mkIf (config.my.host.name == "b650") (with pkgs; [
     blueman
     spotify
     nix-output-monitor

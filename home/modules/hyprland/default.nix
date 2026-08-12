@@ -9,7 +9,7 @@
   hostname = config.my.host.name;
 in {
   programs.hyprpanel = {
-    enable = hostname == "7540u" || hostname == "b650";
+    enable = hostname == "b650";
     settings = {
       layout = {
         "bar.layouts" = {
@@ -74,12 +74,7 @@ in {
       ];
 
       wallpaper =
-        if hostname == "7540u"
-        then [
-          "DP-2,/home/hank/wallpapers/nixos-blue-4k.png"
-          "eDP-1,/home/hank/wallpapers/grid.png"
-        ]
-        else if hostname == "H610"
+        if hostname == "h610"
         then [
           "DP-2,/home/hank/wallpapers/nixos-stroke-4k.png"
         ]
@@ -146,12 +141,7 @@ in {
       };
       "$mod" = "SUPER";
       monitor =
-        if hostname == "7540u"
-        then [
-          "DP-2,3840x2160@240,0x0,1.5"
-          "eDP-1,1920x1200@60.03,1920x0,1.25"
-        ]
-        else if hostname == "H610"
+        if hostname == "h610"
         then [
           "DP-2,3440x1440@144,0x0,1"
         ]
@@ -237,7 +227,7 @@ in {
             9)
         )
         ++ (
-          if (hostname == "b650" || hostname == "7540u")
+          if hostname == "b650"
           then [
             "$mod, A, exec, walker"
           ]
