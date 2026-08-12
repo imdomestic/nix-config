@@ -887,7 +887,8 @@ in {
   environment.systemPackages = with pkgs; [
     gcc
     neovim
-    nginx
+    # nginx 删了:services.nginx.enable 已经把它装进 system path 了,再声明一遍
+    # 只会让人以为这台上有两个来源。
     intel-gpu-tools
     deploy-rs
     docker-compose

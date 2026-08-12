@@ -485,13 +485,8 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  environment.systemPackages = with pkgs; [
-    tcpdump
-    iproute2
-    ethtool
-    mtr
-    tailscale
-  ];
+  # 整块搬去了 profiles/netdiag.nix —— 这台原本声明的五个里,iproute2 和
+  # tailscale 本来就有,剩下三个和另外四台路由器一字不差。
 
   programs.zsh.enable = true;
 
