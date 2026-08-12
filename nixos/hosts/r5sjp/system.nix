@@ -104,13 +104,8 @@
 
   powerManagement.cpuFreqGovernor = "performance";
 
+  # 见 profiles/netdiag.nix。iproute2 / tailscale 是冗余声明,删了。
   environment.systemPackages = with pkgs; [
-    vim
-    tcpdump
-    iproute2
-    ethtool
-    mtr
-    tailscale
     wakeonlan
   ];
 
@@ -477,7 +472,6 @@
       RestartSec = 5;
     };
   };
-
 
   programs.zsh.enable = true;
 

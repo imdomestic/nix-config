@@ -146,14 +146,10 @@ in {
     };
   };
 
+  # vim/tcpdump/ethtool/mtr 搬去了 profiles/netdiag.nix;iproute2 和 tailscale
+  # 删掉了 —— 前者 NixOS 本来就给,后者 services.tailscale 自己会装。
   environment.systemPackages = with pkgs; [
     ndppd
-    vim
-    tcpdump
-    iproute2
-    ethtool
-    mtr
-    tailscale
   ];
 
   security.sudo.wheelNeedsPassword = false;
@@ -339,7 +335,6 @@ in {
       done
     '';
   };
-
 
   services.pppd = {
     enable = true;
