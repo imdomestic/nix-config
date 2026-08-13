@@ -13,6 +13,10 @@
   # namespaces as "too revealing". Start only nix-daemon in a private mount
   # namespace with a fresh procfs, leaving the container-wide masks intact.
   nix.settings.sandbox = true;
+  # Android's eBPF firewall treats NixOS' default nixbld UIDs (30001+)
+  # as application UIDs and may block their network access. Keep dedicated
+  # build users, but place them in the unallocated Android system UID range.
+  ids.uids.nixbld = lib.mkForce 9000;
   systemd.services.nix-daemon.serviceConfig.ExecStart = lib.mkForce [
     ""
     "${pkgs.util-linux}/bin/unshare --mount --mount-proc ${config.nix.package}/bin/nix-daemon --daemon"
