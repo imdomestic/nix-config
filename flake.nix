@@ -35,6 +35,7 @@
       nixos = systems.nixosConfigurations;
       darwin = systems.darwinConfigurations;
       font = cfg: cfg.pkgs.callPackage ./pkgs/recursive-mono-cascadia-italic {};
+      templarDroidspacesKernel = cfg: cfg.pkgs.callPackage ./pkgs/templar-droidspaces-kernel {};
     in {
       aarch64-linux = {
         # rpi4 引了 nixos-hardware 的 raspberry-pi-4 模块,内核被改过,drv 是
@@ -44,6 +45,9 @@
         # 里那个值,保证和 r6s 真正要的是同一个 drv;哪天别的机器也开 smart,
         # 按同样写法往对应 system 下加一条。
         mihomo-smart = nixos.r6s.config.services.mihomo.package;
+        # 由 Determinate 的原生 aarch64-linux builder 构建。工具链全部来自
+        # nixpkgs;这个输出只产出可塞进 boot.img 的 Image,不是 NixOS kernelPackages。
+        templar-droidspaces-kernel = templarDroidspacesKernel nixos.rpi4;
       };
       x86_64-linux = {
         # b650 / x470 两台解析出来是同一个 drv,取哪台都一样。

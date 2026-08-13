@@ -33,6 +33,7 @@
     # 少了它,llm-agents 就得在本地从源码编 —— 那正是不 follows 我们 nixpkgs
     # 的全部意义所在。
     "https://cache.numtide.com?priority=60"
+    "https://devenv.cachix.org"
   ];
 
   publicKeys = [
@@ -40,6 +41,7 @@
     "hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="
     "cache.nixos-cuda.org:74DUi4Ye579gUqzH4ziL9IyiJBlDpMRn9MBN8oNan9M="
     "niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g="
+    "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw="
   ];
 
   # Hosts that hand Nix to Determinate set `nix.enable = false`, which drops
