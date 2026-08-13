@@ -49,7 +49,7 @@
     global.brewfile = true;
     casks = [
       "orbstack"
-      "cherry-studio"
+      # "cherry-studio"
       "equinox"
     ];
   };

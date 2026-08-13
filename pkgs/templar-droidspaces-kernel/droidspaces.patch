@@ -1,0 +1,111 @@
+diff --git a/arch/arm64/configs/gki_defconfig b/arch/arm64/configs/gki_defconfig
+index 4fbf7fcbbcbc..570990f11a1c 100644
+--- a/arch/arm64/configs/gki_defconfig
++++ b/arch/arm64/configs/gki_defconfig
+@@ -13,6 +13,8 @@ CONFIG_RCU_NOCB_CPU=y
+ CONFIG_IKCONFIG=y
+ CONFIG_IKCONFIG_PROC=y
+ CONFIG_IKHEADERS=y
++CONFIG_SYSVIPC=y
++CONFIG_POSIX_MQUEUE=y
+ CONFIG_UCLAMP_TASK=y
+ CONFIG_UCLAMP_BUCKETS_COUNT=20
+ CONFIG_CGROUPS=y
+@@ -25,13 +27,18 @@ CONFIG_CPUSETS=y
+ CONFIG_CGROUP_CPUACCT=y
+ CONFIG_CGROUP_BPF=y
+ CONFIG_NAMESPACES=y
+-# CONFIG_PID_NS is not set
++CONFIG_UTS_NS=y
++CONFIG_IPC_NS=y
++CONFIG_USER_NS=y
++CONFIG_PID_NS=y
++CONFIG_NET_NS=y
+ CONFIG_RT_SOFTINT_OPTIMIZATION=y
+ # CONFIG_RD_BZIP2 is not set
+ # CONFIG_RD_LZMA is not set
+ # CONFIG_RD_XZ is not set
+ # CONFIG_RD_LZO is not set
+ CONFIG_BOOT_CONFIG=y
++CONFIG_DEVTMPFS=y
+ # CONFIG_SYSFS_SYSCALL is not set
+ # CONFIG_FHANDLE is not set
+ CONFIG_KALLSYMS_ALL=y
+@@ -95,7 +103,7 @@ CONFIG_CRYPTO_AES_ARM64_CE_BLK=y
+ CONFIG_KPROBES=y
+ CONFIG_JUMP_LABEL=y
+ CONFIG_SHADOW_CALL_STACK=y
+-CONFIG_LTO_CLANG_FULL=y
++CONFIG_LTO_CLANG_THIN=y
+ CONFIG_CFI_CLANG=y
+ CONFIG_MODULES=y
+ CONFIG_MODULE_UNLOAD=y
+@@ -581,6 +588,8 @@ CONFIG_QFMT_V2=y
+ CONFIG_FUSE_FS=y
+ CONFIG_VIRTIO_FS=y
+ CONFIG_OVERLAY_FS=y
++CONFIG_TMPFS_POSIX_ACL=y
++CONFIG_TMPFS_XATTR=y
+ CONFIG_INCREMENTAL_FS=y
+ CONFIG_MSDOS_FS=y
+ CONFIG_VFAT_FS=y
+diff --git a/include/linux/sched.h b/include/linux/sched.h
+index 9a0e4f861472..3c4c8dc4be99 100644
+--- a/include/linux/sched.h
++++ b/include/linux/sched.h
+@@ -982,8 +982,8 @@ struct task_struct {
+ 	struct nameidata		*nameidata;
+ 
+ #ifdef CONFIG_SYSVIPC
+-	struct sysv_sem			sysvsem;
+-	struct sysv_shm			sysvshm;
++	// struct sysv_sem			sysvsem;
++	// struct sysv_shm			sysvshm;
+ #endif
+ #ifdef CONFIG_DETECT_HUNG_TASK
+ 	unsigned long			last_switch_count;
+@@ -1396,9 +1396,15 @@ struct task_struct {
+ 	ANDROID_KABI_RESERVE(3);
+ 	ANDROID_KABI_RESERVE(4);
+ 	ANDROID_KABI_RESERVE(5);
++
++#ifdef CONFIG_SYSVIPC
++	ANDROID_KABI_USE(6, struct sysv_sem sysvsem);
++	_ANDROID_KABI_REPLACE(ANDROID_KABI_RESERVE(7); ANDROID_KABI_RESERVE(8), struct sysv_shm sysvshm);
++#else
+ 	ANDROID_KABI_RESERVE(6);
+ 	ANDROID_KABI_RESERVE(7);
+ 	ANDROID_KABI_RESERVE(8);
++#endif
+ 
+ 	/*
+ 	 * New fields for task_struct should be added above here, so that
+diff --git a/include/linux/sched/user.h b/include/linux/sched/user.h
+index 6d63a5260130..b96fe706b5ef 100644
+--- a/include/linux/sched/user.h
++++ b/include/linux/sched/user.h
+@@ -23,7 +23,7 @@ struct user_struct {
+ #endif
+ #ifdef CONFIG_POSIX_MQUEUE
+ 	/* protected by mq_lock	*/
+-	unsigned long mq_bytes;	/* How many bytes can be allocated to mqueue? */
++	//unsigned long mq_bytes;	/* How many bytes can be allocated to mqueue? */
+ #endif
+ 	unsigned long locked_shm; /* How many pages of mlocked shm ? */
+ 	unsigned long unix_inflight;	/* How many files in flight in unix sockets */
+@@ -44,9 +44,15 @@ struct user_struct {
+ 	/* Miscellaneous per-user rate limit */
+ 	struct ratelimit_state ratelimit;
+ 
++#if defined(CONFIG_POSIX_MQUEUE)
++	ANDROID_KABI_USE(1, unsigned long mq_bytes);
++	ANDROID_KABI_RESERVE(2);
++	ANDROID_OEM_DATA_ARRAY(1, 2);
++#else
+ 	ANDROID_KABI_RESERVE(1);
+ 	ANDROID_KABI_RESERVE(2);
+ 	ANDROID_OEM_DATA_ARRAY(1, 2);
++#endif
+ };
+ 
+ extern int uids_sysfs_init(void);
