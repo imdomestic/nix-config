@@ -23,4 +23,5 @@ in {
   gpd = callHost "gpd";
   m16 = callHost "m16";
   "9950x" = callHost "9950x";
+  marble = callHost "marble";
 }
