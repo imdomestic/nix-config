@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   ...
@@ -7,9 +8,15 @@
   # NixOS must not install or manage a boot loader in this environment.
   boot.isContainer = true;
 
-  # Droidspaces' seccomp/container boundary lets individual namespaces work,
-  # but not the namespace combination Nix uses for Linux build sandboxes.
+  # Keep Nix builds isolated. Droidspaces protects Android's /proc with locked
+  # child mounts; Linux consequently rejects procfs mounts from nested user
+  # namespaces as "too revealing". Start only nix-daemon in a private mount
+  # namespace with a fresh procfs, leaving the container-wide masks intact.
   nix.settings.sandbox = true;
+  systemd.services.nix-daemon.serviceConfig.ExecStart = lib.mkForce [
+    ""
+    "${pkgs.util-linux}/bin/unshare --mount --mount-proc ${config.nix.package}/bin/nix-daemon --daemon"
+  ];
 
   # The stock Droidspaces image ships /sbin/init as a regular script pinned to
   # the image's original store path. Keep the runtime entry point following the
