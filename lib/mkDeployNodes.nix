@@ -111,7 +111,7 @@ in
         #
         # 代价:目标机得自己扛构建。对 rpi4 这种弱机,遇到真要编的大东西会慢;
         # 那时候手动 `deploy .#rpi4 --no-remote-build` 覆盖回来。
-        remoteBuild = true;
+        # remoteBuild = false;
 
         fastConnection = false;
         autoRollback = true;
