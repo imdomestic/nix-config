@@ -1021,6 +1021,13 @@ in {
         magic_dns = true;
         nameservers = {};
         override_local_dns = false;
+        extra_records = [
+          {
+            name = "kennethbot.inner.imdomestic.com";
+            type = "A";
+            value = "100.64.0.3";
+          }
+        ];
       };
       ip_prefixes = ["100.64.0.0/10"];
     };
@@ -1108,6 +1115,30 @@ in {
       limit_req_zone $binary_remote_addr zone=maxapi:1m rate=60r/m;
     '';
   };
+
+  # Kennethbot 管理台只在 tailnet 地址上提供服务。Headscale 的 MagicDNS
+  # 把 kennethbot.inner.imdomestic.com 解析到 100.64.0.3，公网接口不监听。
+  services.nginx.virtualHosts."kennethbot.inner.imdomestic.com" = {
+    serverName = "kennethbot.inner.imdomestic.com";
+    listen = [
+      {
+        addr = "100.64.0.3";
+        port = 80;
+      }
+    ];
+    locations."/" = {
+      proxyPass = "http://172.17.0.1:18080";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
+    };
+  };
+
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [80];
 
   # 订阅端点。和 headscale 共用 8443,靠 SNI 分流。
   services.nginx.virtualHosts."h610.imdomestic.com" = {
