@@ -2700,11 +2700,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1786691129,
-        "narHash": "sha256-1bvaL+08/bsE/a8ekyCSiesv39REkIfEmKc3Kq+RDBw=",
+        "lastModified": 1786691965,
+        "narHash": "sha256-Mwjhkt4kr3eqp7F9vrGO50zhYRIl8KFsljgahCQqY0k=",
         "owner": "zty20040403",
         "repo": "chat-bot",
-        "rev": "a91e1f49c56f347b23c8237d4f3c9bc8b18242b9",
+        "rev": "b84978c4adce8260cb84a595f5bf65114afdcc9f",
         "type": "github"
       },
       "original": {
