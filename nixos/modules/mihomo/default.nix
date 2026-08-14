@@ -6,10 +6,9 @@
 }: let
   cfg = config.my.mihomo;
 
-  # 五台 portal 的 client-in2 凭据,和 modules/singbox 用的是同一个 sops 文件
-  # (加密给全部 admin + 全部 host)。r2s 不在列:长期离线,已从 r5sjp 摘掉
-  # bridge,而且那条 DNS 记录现在多半指向别人的设备,见 docs/proxy-todo.md。
-  nodeNames = ["h610" "rpi4" "sh" "r5s" "r6s"];
+  # 六台 portal 的 client-in2 凭据,和 modules/singbox 用的是同一个 sops 文件
+  # (加密给全部 admin + 全部 host)。
+  nodeNames = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
   nodeFields = ["uuid" "public_key" "short_id"];
   s = config.sops.placeholder;
   sec = node: field: s."imdomestic/${node}/${field}";

@@ -1,10 +1,11 @@
 {
-  inputs,
+  config,
   pkgs,
   ...
 }: let
   wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
-    conf = "${inputs.wg-config.outPath}/client_00008.conf";
+    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
+    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
     address = "10.0.0.9/24";
   };
 in {
@@ -14,6 +15,9 @@ in {
     ./hardware-configuration.nix
     ../../modules/vlmcsd
   ];
+
+  sops.secrets."wireguard/private_key".owner = "systemd-network";
+  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
   hardware.deviceTree = {
     enable = true;
@@ -292,8 +296,11 @@ in {
     KbdInteractiveAuthentication = true;
     PermitRootLogin = "yes";
   };
-  systemd.services.ddns-go = let
-    ddnsConfig = pkgs.writeText "ddns-go-config.yaml" ''
+  sops.secrets."ddns/cloudflare_token" = {};
+  sops.secrets."ddns/web_password" = {};
+  sops.templates."ddns-go-config.yaml" = {
+    restartUnits = ["ddns-go.service"];
+    content = ''
       dnsconf:
           - name: ""
             ipv4:
@@ -316,11 +323,11 @@ in {
             dns:
               name: cloudflare
               id: ""
-              secret: WY4F4gK8O-VgV1P7dGnic4yNSxmtPBep5OXuh2Js
+              secret: ${config.sops.placeholder."ddns/cloudflare_token"}
             ttl: ""
       user:
           username: hank
-          password: $2a$10$Jk0oGrcwc5NyTXyeDJebxeET1efrILq64Y9.8112NLW2qMmizFSIK
+          password: ${config.sops.placeholder."ddns/web_password"}
       webhook:
           webhookurl: ""
           webhookrequestbody: ""
@@ -328,108 +335,104 @@ in {
       notallowwanaccess: false
       lang: zh
     '';
-  in {
+  };
+
+  systemd.services.ddns-go = {
     enable = true;
-    description = "ddns";
+    description = "ddns-go";
 
     wantedBy = ["multi-user.target"];
     wants = ["network-online.target"];
     after = ["network-online.target"];
 
     serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${ddnsConfig}";
+      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
       Restart = "always";
       RestartSec = 5;
     };
   };
 
+  # Xray 的凭据全部走 sops。整份配置由 sops.templates 在 /run 下渲染，
+  # 避免 UUID 和 Reality 私钥进入公开仓库或 world-readable 的 nix store。
+  sops.secrets."xray/reality_private_key" = {};
+  sops.secrets."xray/interconn2_uuid" = {};
+  sops.secrets."xray/interconn2_short_id" = {};
+  sops.secrets."xray/client_in2_uuid" = {};
+  sops.secrets."xray/client_in2_short_id" = {};
   services.xray.enable = true;
-  services.xray.settings = {
-    log.loglevel = "warning";
+  services.xray.settingsFile = config.sops.templates."xray-config.json".path;
 
-    reverse = {
-      portals = [
-        {
-          tag = "portal-r2s";
-          domain = "reverse-r2s.hank.internal";
-        }
-      ];
-    };
+  sops.templates."xray-config.json" = {
+    restartUnits = ["xray.service"];
+    content = let
+      s = config.sops.placeholder;
 
-    inbounds = [
-      {
-        tag = "interconn";
-        port = 2443;
+      aliyun = {
+        dest = "www.aliyun.com:443";
+        serverNames = ["www.aliyun.com"];
+      };
+
+      reality = target: privateKey: shortId: {
+        network = "tcp";
+        security = "reality";
+        realitySettings =
+          target
+          // {
+            show = false;
+            inherit privateKey;
+            shortIds = [shortId];
+          };
+      };
+
+      vision = id: {
+        inherit id;
+        flow = "xtls-rprx-vision";
+      };
+
+      vlessIn = tag: port: clients: streamSettings: {
+        inherit tag port streamSettings;
         protocol = "vless";
         settings = {
-          clients = [
-            {
-              id = "4417cfd8-49e5-4ca3-bcc7-4e80f5f1bb40";
-              flow = "xtls-rprx-vision";
-            }
-          ];
+          inherit clients;
           decryption = "none";
         };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            show = false;
-            dest = "www.apple.com:443";
-            serverNames = ["www.apple.com" "apple.com"];
-            privateKey = "OPcQVvCeM3LAYG7axaGuATC8O_QvjqRPKRO74FPjSlg";
-            shortIds = ["17"];
-          };
-        };
-      }
+      };
+    in
+      builtins.toJSON {
+        log.loglevel = "warning";
 
-      {
-        tag = "client-in";
-        port = 54321;
-        protocol = "vless";
-        settings = {
-          clients = [
-            {
-              id = "2cac4128-2151-4a28-8102-ea1806f9c12b";
-              flow = "xtls-rprx-vision";
-            }
-          ];
-          decryption = "none";
-        };
-        streamSettings = {
-          network = "tcp";
-          security = "reality";
-          realitySettings = {
-            show = false;
-            dest = "www.apple.com:443";
-            serverNames = ["www.apple.com" "apple.com"];
-            privateKey = "SFXrsyrENIJqHMgk9Chjc-cA4MlzaTOBlF9OBAuSY0w";
-            shortIds = ["16"];
-          };
-        };
-      }
-    ];
+        reverse.portals = [
+          {
+            tag = "portal-r2s";
+            domain = "reverse-r2s.hank.internal";
+          }
+        ];
 
-    outbounds = [
-      {
-        tag = "direct";
-        protocol = "freedom";
-      }
-    ];
+        inbounds = [
+          (vlessIn "interconn2" 2444
+            [(vision s."xray/interconn2_uuid")]
+            (reality aliyun s."xray/reality_private_key" s."xray/interconn2_short_id"))
 
-    routing.rules = [
-      {
-        type = "field";
-        inboundTag = ["interconn"];
-        outboundTag = "portal-r2s";
-      }
+          (vlessIn "client-in2" 54322
+            [(vision s."xray/client_in2_uuid")]
+            (reality aliyun s."xray/reality_private_key" s."xray/client_in2_short_id"))
+        ];
 
-      {
-        type = "field";
-        inboundTag = ["client-in"];
-        outboundTag = "portal-r2s";
-      }
-    ];
+        outbounds = [
+          {
+            tag = "direct";
+            protocol = "freedom";
+          }
+        ];
+
+        routing.rules = [
+          {
+            type = "field";
+            inboundTag = ["interconn2" "client-in2"];
+            outboundTag = "portal-r2s";
+          }
+        ];
+      };
   };
 
   time.timeZone = "Asia/Hong_Kong";

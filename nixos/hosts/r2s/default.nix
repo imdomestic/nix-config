@@ -11,6 +11,7 @@ in {
   profiles = with nixosProfiles; [
     base
     server
+    netdiag
   ];
 
   modules = [

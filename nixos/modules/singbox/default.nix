@@ -6,15 +6,13 @@
 }: let
   cfg = config.my.singbox;
 
-  # 五台 portal 的 client-in2 凭据。这个文件按 .sops.yaml 的兜底 creation_rule
-  # 加密给全部 admin + 全部 host，所以任何一台路由器都能解出全部五个节点,
+  # 六台 portal 的 client-in2 凭据。这个文件按 .sops.yaml 的兜底 creation_rule
+  # 加密给全部 admin + 全部 host，所以任何一台路由器都能解出全部六个节点,
   # urltest 才有得挑。绝不能写死在这里 —— 本仓库是公开的。
   clientSecrets = ../../../secrets/clients/imdomestic.yaml;
 
   # <name>.imdomestic.com:54322 = 各 portal 的 client-in2 入口。
-  # r2s 不在列:长期离线,已从 r5sjp 摘掉 bridge,而且那条 DNS 记录现在多半
-  # 指向别人的设备(见 docs/proxy-todo.md)。
-  nodeNames = ["h610" "rpi4" "sh" "r5s" "r6s"];
+  nodeNames = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
   nodeTags = map (n: "im-${n}") nodeNames;
   nodeFields = ["uuid" "public_key" "short_id"];
 

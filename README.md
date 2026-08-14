@@ -143,7 +143,7 @@ user via `sudo -H -u <user>`; the `-H` matters, since Home Manager resolves ever
 path relative to `$HOME` and deploy-rs' default `sudo -u` would leave it pointing
 at root's.
 
-Current targets: `b650, h610, r5s, r6s, rpi4, shanghai, tank, x470`.
+Current targets: `h610, r2s, r5s, r5sjp, r6s, rpi4, shanghai, tank`.
 
 ## CI
 

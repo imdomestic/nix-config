@@ -49,19 +49,17 @@ r5s / r6s / rpi4 / r5sjp 都是纯 v6，可以把 `interconn2` 从 2444 搬到 4
 
 需要 portal 的监听端口和 r5sjp 的拨号端口同步改，没有只加不改的路径。
 
-## 3. r2s
+## 3. r2s（配置已补齐，待设备上线验证）
 
-长期离线，已从 r5sjp 摘掉 bridge/outbound，也从 dae 的 `im` 组移除。
-`nixos/hosts/r2s/system.nix` 里**仍是泄露的那套凭据**，所以它一旦重新上线就会
-再次对外提供公开仓库里那个 UUID。
+2026-08-14 已用原 SSH host key 恢复 `host_r2s` 的 SOPS recipient，并新建
+`secrets/hosts/r2s.yaml`。WireGuard、DDNS 和全新轮换的 Xray 凭据都改由 SOPS
+提供；r5sjp 的 bridge/outbound、共享 DAE 节点以及 mihomo、sing-box 的节点列表
+也重新纳入 r2s。
 
-而且 `r2s.imdomestic.com` 现在解析到的多半已经不是它——那个地址 TCP 能建连但
-SSH 和 TLS 都不响应，住宅 v6 前缀轮换后落到别人设备上了。**先确认这台机器和这条
-DNS 记录的实际状态，再决定是补做轮换还是干脆摘掉。**
-
-补做的步骤：`ssh-keyscan -t ed25519` 拿 host key → `ssh-to-age` → 加进
-`.sops.yaml` 的 `host_r2s` 和 creation_rules → 建 `secrets/hosts/r2s.yaml` →
-照 rpi4/r5s/r6s 同样处理。
+配置侧的求值、SOPS 键完整性、Xray 配置与隧道域名可以离线检查；设备真正上线后
+还需要确认 `r2s.imdomestic.com` 已被 ddns-go 更新到当前 IPv6，并从 r5sjp 验证
+`interconn-r2s` 已建连。若机器重装后 SSH host key 变过，必须先更新这里的 age
+recipient，否则目标机无法解密新文件。
 
 ## 4. 死代码里的旧凭据（已解决）
 

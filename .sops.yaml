@@ -19,6 +19,7 @@ keys:
   - &host_tank age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs
   - &host_r5sjp age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq
   - &host_rpi4 age1lghdzjwhlwssu44ptp5853e48fy0pcxrxlpf4r7ruphplxna4vzqq6e2kh
+  - &host_r2s age1gf9jpsr9zr2myn780m8emtk5qzfz87jqdlrju744cvmj3v02nqpsdkkueh
 
 creation_rules:
   - path_regex: secrets/hosts/shanghai\.yaml$
@@ -42,6 +43,9 @@ creation_rules:
   - path_regex: secrets/hosts/rpi4\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_rpi4]
+  - path_regex: secrets/hosts/r2s\.yaml$
+    key_groups:
+      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r2s]
   # shared secrets: encrypted to every admin and every known host
   - path_regex: secrets/.*\.yaml$
     key_groups:
@@ -61,3 +65,4 @@ creation_rules:
           - *host_tank
           - *host_r5sjp
           - *host_rpi4
+          - *host_r2s
