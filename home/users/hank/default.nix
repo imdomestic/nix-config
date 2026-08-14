@@ -48,7 +48,7 @@ in {
         "user(x)" = "author(x) | committer(x)";
       };
       user = {
-        email = "hnkhgn@icloud.com";
+        email = "hankchogan@gmail.com";
         name = "Hank Hogan";
       };
     };
@@ -535,8 +535,6 @@ in {
       hvim = "NVIM_APPNAME=hvim nvim";
       lvim = "NVIM_APPNAME=lazyvim nvim";
       dvim = "NVIM_APPNAME=dvim nvim";
-      ra = "joshuto";
-      nvid = "neovide --frame buttonless --title-hidden";
 
       c = "clear";
       q = "exit";
@@ -574,7 +572,7 @@ in {
       gd = "git diff";
       gf = "git fetch";
       gl = "git pull";
-      gp = "git push"; # 覆盖了你原来的 p 别名，原来的 p 逻辑太复杂，见下文 def
+      gp = "git push";
       gss = "git status -s";
       gst = "git status";
       gsw = "git switch";
@@ -622,11 +620,8 @@ in {
        max_results: 100
       }
 
-      def p [msg: string = "update"] {
-          git add .
-          git commit -am $msg
-          git push -u origin main
-      }
+      # def p 删了 —— 和 zsh 那边的 p 别名一样,默认参数是 "update",
+      # 用着用着提交信息就全变成 update 了。
     '';
     extraEnv = ''
       # $env.PATH = ($env.PATH | split row (char esep) | prepend '~/.cargo/bin')
@@ -638,6 +633,56 @@ in {
     autocd = true;
     defaultKeymap = "viins";
 
+    # 这台机器上开一个交互 zsh 要 1458ms,其中约 1170ms 是补全缓存每次启动都在重建。
+    # 原因是有**两个** compinit 抢同一个 ~/.zcompdump:
+    #
+    #   1. nix-darwin 的 /etc/zshrc(programs.zsh.enableCompletion)跑一次
+    #   2. home-manager 生成的 .zshrc 再跑一次
+    #
+    # 两次之间 home-manager 往 fpath 里塞了插件目录,所以第二次数到的文件数和第一次
+    # 不一样。compinit 复用 dump 的条件正是"dump 头一行记的文件数 == 这次数到的",
+    # 于是两边永远互相判定对方的 dump 失效:每开一个 shell 就重扫三千多个补全文件、
+    # 重写 89KB 的 dump 两遍。-d 给我们这次一个**自己的** dump 文件,两边就不打架了。
+    #
+    # fpath 里还有一堆重复目录:~/.nix-profile、/run/current-system/sw、
+    # /nix/var/nix/profiles/default 三条路径指向 store 里同一份 zsh(各 1233 个文件),
+    # macOS 上还要再算一份自带的 /usr/share/zsh/5.9 —— 跟正在跑的 5.9.1 都不是同一个
+    # 版本。typeset -U 去不掉,因为路径字符串本身不同。
+    #
+    # 去重时**只拿解析后的真实路径当 key,保留原来的写法**。直接把 fpath 换成
+    # /nix/store/... 的真实路径会出事:compaudit 判断安全性时会一路检查父目录,
+    # 走到 group-writable 的 /nix/store 就把整个 fpath 判成 insecure,于是系统那份
+    # compinit 弹出交互确认 —— 在没有 tty 的嵌套 shell 里直接 "initialization aborted"。
+    # 而 ~/.nix-profile/... 这种写法它只看软链本身,不会走到 /nix/store。
+    #
+    # -C 是在此之上再跳过"有没有新补全"的扫描。代价是装了新工具 dump 不会自己更新,
+    # 所以下面配了 activation 在每次 home-manager 切换后删掉它。
+    # (这段是在 .zshrc 顶层展开的,不是函数体,所以不能用 local,只能自己收尾。)
+    completionInit = ''
+      typeset -A _hm_seen
+      typeset -a _hm_fp
+      for _hm_d in $fpath; do
+        # 只丢掉**版本对不上**的那份 zsh 自带函数目录,不能无脑丢 /usr/share/zsh/*。
+        # 这台机器的登录 shell 是 /bin/zsh(Apple 的 5.9),它跑起来时 home-manager
+        # 按 $ZSH_VERSION 拼出的 ~/.nix-profile/share/zsh/5.9/functions 是空的,
+        # compdump / compinstall 这些只存在于 /usr/share/zsh/5.9/functions ——
+        # 一并删掉的话 compinit 直接报 "compdump: function definition file not found"。
+        [[ $_hm_d == /usr/share/zsh/*/functions && $_hm_d != /usr/share/zsh/$ZSH_VERSION/functions ]] && continue
+        [[ -n ''${_hm_seen[''${_hm_d:A}]} ]] && continue
+        _hm_seen[''${_hm_d:A}]=1
+        _hm_fp+=($_hm_d)
+      done
+      fpath=($_hm_fp)
+
+      autoload -Uz compinit
+      # dump 的目录 home-manager 不会替我们建(它只给 HISTFILE 建),新机器上
+      # 少了这行 compinit 就写不出 dump,于是每次启动都重扫一遍 —— 正是要修的病。
+      _hm_zdump="''${XDG_CACHE_HOME:-$HOME/.cache}/zsh/zcompdump-$ZSH_VERSION"
+      [[ -d ''${_hm_zdump:h} ]] || mkdir -p ''${_hm_zdump:h}
+      compinit -C -d "$_hm_zdump"
+      unset _hm_seen _hm_fp _hm_d _hm_zdump
+    '';
+
     autosuggestion = {
       enable = true;
       strategy = ["history" "completion"];
@@ -645,40 +690,48 @@ in {
 
     historySubstringSearch.enable = true;
 
+    # 这里**不要**写 main:home-manager 生成的是 ZSH_HIGHLIGHT_HIGHLIGHTERS=(main …),
+    # 自己再列一遍就成了 (main main brackets),main 每次按键跑两遍。
+    #
+    # pattern / regexp / line 都删了:它们要先自己定义 ZSH_HIGHLIGHT_PATTERNS、
+    # ZSH_HIGHLIGHT_REGEXP 或 ZSH_HIGHLIGHT_STYLES[line] 才有输出,实测三个的样式
+    # 全是 <未定义>,纯粹是每次按键多跑一遍。root 只在 uid 为 0 的 shell 里才变色,
+    # 平时用 sudo 也触发不到。
     syntaxHighlighting = {
       enable = true;
-      highlighters = ["main" "brackets" "pattern" "cursor" "regexp" "root" "line"];
+      highlighters = ["brackets"];
     };
 
     history = {
       size = 10000;
       save = 10000;
-      path = "$HOME/.cache/zsh/.zhistory";
+      # 历史是攒出来的,不该放在一个"随时可以删干净"的目录里。
+      path = "$HOME/.local/state/zsh/history";
       share = true;
       extended = true;
       ignoreSpace = true;
       ignoreAllDups = true;
       saveNoDups = true;
-      expireDuplicatesFirst = true;
+      # expireDuplicatesFirst 没有配:它是在历史写满时优先淘汰重复项,而
+      # ignoreAllDups 压根不让重复项进来,两个一起开时后者永远没东西可淘汰。
     };
 
+    # 删掉的四个都是白写的:NOTIFY 和 HASH_LIST_ALL 本来就是 zsh 默认开,
+    # CORRECT 本来就是默认关(所以 NO_CORRECT 是空操作),MAILWARN 则是让 zsh
+    # 惦记 $MAIL 有没有新邮件 —— 开发机上纯属浪费一次 stat。
     setOptions = [
       "AUTO_MENU"
       "AUTO_PARAM_SLASH"
       "COMPLETE_IN_WORD"
       "NO_MENU_COMPLETE"
-      "HASH_LIST_ALL"
       "ALWAYS_TO_END"
-      "NOTIFY"
       "NOHUP"
-      "MAILWARN"
       "INTERACTIVE_COMMENTS"
       "NOBEEP"
       "HIST_NO_FUNCTIONS"
       "HIST_REDUCE_BLANKS"
       "NO_FLOW_CONTROL"
       "NO_NOMATCH"
-      "NO_CORRECT"
       "NO_EQUALS"
     ];
 
@@ -698,11 +751,9 @@ in {
         src = pkgs.zsh-fzf-tab;
         file = "share/fzf-tab/fzf-tab.plugin.zsh";
       }
-      {
-        name = "zsh-history-search-multi-word";
-        src = pkgs.zsh-history-search-multi-word;
-        file = "share/zsh/zsh-history-search-multi-word/history-search-multi-word.plugin.zsh";
-      }
+      # zsh-history-search-multi-word 去掉了:它唯一的入口是 ^R,而 programs.fzf 的
+      # zsh 集成在插件之后加载、把 ^R 抢成了 fzf-history-widget。插件一直在被加载、
+      # 函数也定义着,但没有任何按键能到达它。
     ];
 
     shellAliases = {
@@ -724,44 +775,34 @@ in {
 
       # editors
       nvimdiff = "nvim -d";
-      p = "git add . && git commit -am 'update' && git push -u origin main";
-      getidf = "source ~/esp/esp-idf/export.sh";
-      brew86 = "arch -x86_64 /usr/local/homebrew/bin/brew";
+      # p 去掉了:git add . && git commit -am 'update' && git push,提交信息永远是
+      # "update"。真要一把梭也该自己写一句人话,不该有个一键别名让人手滑。
+      # getidf / brew86 也去掉了:~/esp 和 /usr/local/homebrew 都不存在了。
       lg = "lazygit";
       kvim = "NVIM_APPNAME=kvim nvim";
       hvim = "NVIM_APPNAME=hvim nvim";
       lvim = "NVIM_APPNAME=lazyvim nvim";
       dvim = "NVIM_APPNAME=dvim nvim";
-      ra = "joshuto";
-      nvid = "neovide --frame buttonless --title-hidden";
 
       # general
+      # settings / cleanram / trim_all 只在 Linux 机器上有意义,留着 —— 这台 mac
+      # 的 history 里没出现过不代表没用过(GNOME 装在 b650/x470/m16/tank 上)。
       settings = "gnome-control-center";
-      run = "pnpm run";
-      c = "clear";
-      q = "exit";
       cleanram = "sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'";
       trim_all = "sudo fstrim -va";
-      mkgrub = "sudo grub-mkconfig -o /boot/grub/grub.cfg";
-      mtar = "tar -zcvf";
-      utar = "tar -zxvf";
-      uz = "unzip";
+      c = "clear";
+      q = "exit";
       ".." = "cd ..";
-      psg = "ps aux | grep -v grep | grep -i -e VSZ -e";
       mkdir = "mkdir -p";
-      fm = "ranger";
-
-      # pacman / paru
-      pacin = ''pacman -Slq | fzf -m --preview 'cat <(pacman -Si {1}) <(pacman -Fl {1} | awk "{print $2}")' | xargs -ro sudo pacman -S'';
-      paruin = ''paru -Slq | fzf -m --preview 'cat <(paru -Si {1}) <(paru -Fl {1} | awk "{print $2}")' | xargs -ro paru -S'';
-      pacrem = ''pacman -Qq | fzf --multi --preview 'pacman -Qi {1}' | xargs -ro sudo pacman -Rns'';
-      pac = "pacman -Q | fzf";
-      parucom = "paru -Gc";
-      parupd = "paru -Qua";
-      pacupd = "pacman -Qu";
-      parucheck = "paru -Gp";
-      cleanpac = "sudo pacman -Rns $(pacman -Qtdq); paru -c";
-      installed = "grep -i installed /var/log/pacman.log";
+      #
+      # 这一轮又删掉的(抄来的、目标不存在的、或者不如直接敲的):
+      #   run=pnpm run   pnpm 只在 kenneth 的配置里,hank 一台都没装
+      #   ra=joshuto     joshuto 全仓库没有任何 host 装
+      #   nvid=neovide   同上
+      #   mkgrub         NixOS 的 grub 配置是 nixos-rebuild 生成的,手跑这个只会帮倒忙
+      #   mtar/utar/uz   tar -zcvf / -zxvf / unzip 的包装,省不了几个字还得先想别名叫啥
+      #   psg            ps aux | grep 的包装,procs 或直接管道都比它清楚
+      # 更早一轮删的:fm=ranger(已换成 yazi 的 y)、整块 pacman/paru(没有 Arch 机器)。
 
       # file operations
       ls = "eza --color=auto --icons";
@@ -773,257 +814,92 @@ in {
       grep = "grep --color=auto --exclude-dir={.bzr,CVS,.git,.hg,.svn,.idea,.tox}";
       mv = "mv -v";
       cp = "cp -vr";
-      rm = "rm -vr";
+      # rm 不带 -r:递归删除应该是每次显式打出来的那个字母,不该是默认值。
+      rm = "rm -v";
 
-      # git basics
-      commit = "git add . && git commit -m";
-      push = "git push";
-      git-rm = "git ls-files --deleted -z | xargs -0 git rm";
+      # git —— 这份保持和上面 nushell 那份一致,再加几个日志 / rebase / stash 的常用项。
+      # 原来这里是从 oh-my-zsh 整包抄来的 176 个 g* 别名,而 history 里真正出现过的只有
+      # 8 个(ga gb gc gcl gco gl gp gst)。删掉的那些在 git log 里找得回来。
+      #
+      # 需要 $(git_main_branch) / $(git_develop_branch) 的那些一个没留:那几个 helper
+      # 每次展开都要 fork 一串 git show-ref,而"主干叫什么"这件事在这个仓库里是常数。
       g = "git";
       ga = "git add";
       gaa = "git add --all";
-      gam = "git am";
-      gama = "git am --abort";
-      gamc = "git am --continue";
-      gams = "git am --skip";
-      gamscp = "git am --show-current-patch";
-      gap = "git apply";
-      gapa = "git add --patch";
-      gapt = "git apply --3way";
-      gau = "git add --update";
-      gav = "git add --verbose";
+      gap = "git add --patch";
 
-      # git branch
       gb = "git branch";
-      gbD = "git branch -D";
       gba = "git branch -a";
       gbd = "git branch -d";
-      gbda = ''git branch --no-color --merged | command grep -vE "^([+*]|\s*($(git_main_branch)|$(git_develop_branch))\s*$)" | command xargs git branch -d 2>/dev/null'';
-      gbl = "git blame -b -w";
-      gbnm = "git branch --no-merged";
-      gbr = "git branch --remote";
+      gbD = "git branch -D";
 
-      # git bisect
-      gbs = "git bisect";
-      gbsb = "git bisect bad";
-      gbsg = "git bisect good";
-      gbsr = "git bisect reset";
-      gbss = "git bisect start";
-
-      # git commit
       gc = "git commit -v";
       "gc!" = "git commit -v --amend";
       gca = "git commit -v -a";
       "gca!" = "git commit -v -a --amend";
       gcam = "git commit -a -m";
-      "gcan!" = "git commit -v -a --no-edit --amend";
-      "gcans!" = "git commit -v -a -s --no-edit --amend";
-      gcas = "git commit -a -s";
-      gcasm = "git commit -a -s -m";
-      gcmsg = "git commit -m";
       "gcn!" = "git commit -v --no-edit --amend";
-      gcs = "git commit -S";
-      gcsm = "git commit -s -m";
-      gcss = "git commit -S -s";
-      gcssm = "git commit -S -s -m";
 
-      # git checkout
-      gcb = "git checkout -b";
-      gcd = "git checkout $(git_develop_branch)";
-      gcf = "git config --list";
-      gcl = "git clone";
-      gcld = "git clone --depth";
-      gclr = "git clone --recurse-submodules";
-      gclean = "git clean -id";
-      gcm = "git checkout $(git_main_branch)";
       gco = "git checkout";
-      gcor = "git checkout --recurse-submodules";
-      gcount = "git shortlog -sn";
+      gcb = "git checkout -b";
+      gsw = "git switch";
+      gswc = "git switch -c";
 
-      # git cherry-pick
-      gcp = "git cherry-pick";
-      gcpa = "git cherry-pick --abort";
-      gcpc = "git cherry-pick --continue";
-
-      # git diff
+      gcl = "git clone";
       gd = "git diff";
       gdca = "git diff --cached";
-      gdct = "git describe --tags $(git rev-list --tags --max-count=1)";
-      gdcw = "git diff --cached --word-diff";
-      gds = "git diff --staged";
-      gdt = "git diff-tree --no-commit-id --name-only -r";
-      gdup = "git diff @{upstream}";
-      gdw = "git diff --word-diff";
-
-      # git fetch
       gf = "git fetch";
-      gfa = "git fetch --all --prune --jobs=10";
-      gfg = "git ls-files | grep";
-      gfo = "git fetch origin";
-
-      # git gui
-      gg = "git gui citool";
-      gga = "git gui citool --amend";
-
-      # git pull/push
-      ggpull = ''git pull origin "$(git_current_branch)"'';
-      ggpur = "ggu";
-      ggpush = ''git push origin "$(git_current_branch)"'';
-      ggsup = "git branch --set-upstream-to=origin/$(git_current_branch)";
-      ghh = "git help";
+      gfa = "git fetch --all --prune";
       gl = "git pull";
-      gp = "git push";
-      gpd = "git push --dry-run";
-      gpf = "git push --force-with-lease";
-      "gpf!" = "git push --force";
-      gpoat = "git push origin --all && git push origin --tags";
       gpr = "git pull --rebase";
-      gpristine = "git reset --hard && git clean -dffx";
-      gpsup = "git push --set-upstream origin $(git_current_branch)";
-      gpu = "git push upstream";
-      gpv = "git push -v";
-      gup = "git pull --rebase";
-      gupa = "git pull --rebase --autostash";
-      gupav = "git pull --rebase --autostash -v";
-      gupv = "git pull --rebase -v";
-      glum = "git pull upstream $(git_main_branch)";
+      gp = "git push";
+      gpf = "git push --force-with-lease";
+      gpsup = ''git push --set-upstream origin "$(git branch --show-current)"'';
 
-      # git ignore
-      gignore = "git update-index --assume-unchanged";
-      gignored = ''git ls-files -v | grep "^[[:lower:]]"'';
-      gunignore = "git update-index --no-assume-unchanged";
-
-      # git log
-      glg = "git log --stat";
-      glgg = "git log --graph";
-      glgga = "git log --graph --decorate --all";
-      glgm = "git log --graph --max-count=10";
-      glgp = "git log --stat -p";
       glo = "git log --oneline --decorate";
-      globurl = "noglob urlglobber ";
-      glod = "git log --graph --pretty='%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ad) %C(bold blue)<%an>%Creset'";
-      glods = "git log --graph --pretty='%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ad) %C(bold blue)<%an>%Creset' --date=short";
       glog = "git log --oneline --decorate --graph";
       gloga = "git log --oneline --decorate --graph --all";
-      glol = "git log --graph --pretty='%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset'";
-      glola = "git log --graph --pretty='%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset' --all";
-      glols = "git log --graph --pretty='%Cred%h%Creset -%C(auto)%d%Creset %s %Cgreen(%ar) %C(bold blue)<%an>%Creset' --stat";
-      glp = "_git_log_prettily";
 
-      # git merge
       gm = "git merge";
-      gma = "git merge --abort";
-      gmom = "git merge origin/$(git_main_branch)";
-      gmtl = "git mergetool --no-prompt";
-      gmtlvim = "git mergetool --no-prompt --tool=vimdiff";
-      gmum = "git merge upstream/$(git_main_branch)";
-
-      # git rebase
       grb = "git rebase";
       grba = "git rebase --abort";
       grbc = "git rebase --continue";
-      grbd = "git rebase $(git_develop_branch)";
       grbi = "git rebase -i";
-      grbm = "git rebase $(git_main_branch)";
-      grbo = "git rebase --onto";
-      grbom = "git rebase origin/$(git_main_branch)";
-      grbs = "git rebase --skip";
 
-      # git remote
       gr = "git remote";
-      gra = "git remote add";
-      grmv = "git remote rename";
-      grrm = "git remote remove";
-      grset = "git remote set-url";
-      grup = "git remote update";
       grv = "git remote -v";
-
-      # git reset/restore
       grh = "git reset";
       grhh = "git reset --hard";
-      groh = "git reset origin/$(git_current_branch) --hard";
       grs = "git restore";
-      grss = "git restore --source";
       grst = "git restore --staged";
-      gru = "git reset --";
 
-      # git rm
-      grm = "git rm";
-      grmc = "git rm --cached";
-      grwh = "git rm --cached $(git ls-files -i -c --exclude-from=.gitignore)";
-      grwhx = "git ls-files -i -c --exclude-from=.gitignore | xargs git rm --cached";
-      grad = "git rm -r --cached . && git add .";
-
-      # git show/status
-      gsh = "git show";
-      gsps = "git show --pretty=short --show-signature";
       gsb = "git status -sb";
       gss = "git status -s";
       gst = "git status";
+      gsh = "git show";
 
-      # git stash
       gsta = "git stash push";
-      gstaa = "git stash apply";
-      gstall = "git stash --all";
-      gstc = "git stash clear";
-      gstd = "git stash drop";
-      gstl = "git stash list";
       gstp = "git stash pop";
-      gsts = "git stash show --text";
-      gstu = "gsta --include-untracked";
+      gstl = "git stash list";
 
-      # git submodule
-      gsi = "git submodule init";
-      gsu = "git submodule update";
-
-      # git switch
-      gsw = "git switch";
-      gswc = "git switch -c";
-      gswd = "git switch $(git_develop_branch)";
-      gswm = "git switch $(git_main_branch)";
-
-      # git svn
-      gsd = "git svn dcommit";
-      gsr = "git svn rebase";
-      git-svn-dcommit-push = "git svn dcommit && git push github $(git_main_branch):svntrunk";
-
-      # git tag
-      gtl = "noglob _gtl";
-      gts = "git tag -s";
-      gtv = "git tag | sort -V";
-
-      # git misc
       grt = ''cd "$(git rev-parse --show-toplevel || echo .)"'';
-      grev = "git revert";
-      gk = "\\gitk --all --branches &!";
-      gke = "\\gitk --all $(git log -g --pretty=%h) &!";
-      gwch = "git whatchanged -p --abbrev-commit --pretty=medium";
-      gwip = ''git add -A; git rm $(git ls-files --deleted) 2> /dev/null; git commit --no-verify --no-gpg-sign -m "--wip-- [skip ci]"'';
-      gunwip = ''git log -n 1 | grep -q -c "\-\-wip\-\-" && git reset HEAD~1'';
     };
 
-    envExtra = ''
-      export PATH="$HOME/.moon/bin:$PATH"
-      export PATH="$HOME/.ghcup/bin:$PATH"
-      export PATH="$HOME/.local/bin:$PATH"
-      export PATH="$HOME/.cargo/bin:$PATH"
-
-      export KUBECONFIG="$HOME/.config/k3s.yaml"
-      export TERMINAL="ghostty"
-
-      export XDG_CONFIG_HOME="$HOME/.config"
-      export XDG_CACHE_HOME="$HOME/.cache"
-      export XDG_DATA_HOME="$HOME/.local/share"
-      export XDG_STATE_HOME="$HOME/.local/state"
-    '';
+    # envExtra 搬到下面的 home.sessionPath / home.sessionVariables 去了。
+    # 两个原因:一是这些 export 写进 .zshenv 而 .zshenv 每层嵌套 shell 都会重跑,
+    # PATH 会一层层往上叠(实测嵌套一次就多出一个 /opt/homebrew/opt/rustup/bin);
+    # home-manager 生成的 hm-session-vars.sh 自带 __HM_SESS_VARS_SOURCED 卫兵,
+    # 只跑一次。二是你同时在用 nushell,而 .zshenv 里的东西 nushell 一个也拿不到。
 
     initContent = lib.mkMerge [
       (lib.mkBefore ''
         ZSH_AUTOSUGGEST_USE_ASYNC="true"
       '')
+      # zsh/zle 在交互 shell 里本来就是自动加载的(实测去掉这行它照样在);
+      # zsh/zpty 由 zsh-autosuggestions 在真的要用 completion 策略时自己
+      # `zmodload zsh/zpty 2>/dev/null || return`,轮不到我们提前加载。
+      # complist 留着 —— 它不会自动加载,而 list-colors 要靠它给补全菜单上色。
       (lib.mkOrder 550 ''
-        zmodload zsh/zle
-        zmodload zsh/zpty
         zmodload zsh/complist
       '')
       ''
@@ -1065,10 +941,10 @@ in {
   # 只读软链,这些斜杠命令就存不下来了。settings.json 里按这个路径引用:
   #   "statusLine": {
   #     "type": "command",
-  #     "command": "bash /home/hank/.claude/statusline-command.sh",
-  #     "refreshInterval": 1
+  #     "command": "bash /home/hank/.claude/statusline-command.sh"
   #   }
-  # refreshInterval 是必须的:窗口 resize 不会触发状态栏重绘,而右对齐要靠 COLUMNS。
+  # 全部内容都是左对齐、按调用顺序依次追加的,不读终端宽度,所以不需要
+  # refreshInterval 之类的定时重绘 —— 每次渲染跑一遍就够了。
   home.file.".claude/statusline-command.sh" = {
     source = ../../modules/claude-code/statusline.sh;
     executable = true;
@@ -1108,7 +984,31 @@ in {
   # 会被每台 nix 管的机器写进 shell 环境,ssh 过去自然生效,不用折腾 SendEnv。
   home.sessionVariables = {
     SNACKS_GHOSTTY = "1";
+
+    # 原来在 programs.zsh.envExtra 里,只有 zsh 看得见。
+    KUBECONFIG = "${config.home.homeDirectory}/.config/k3s.yaml";
+    TERMINAL = "ghostty";
+
+    XDG_CONFIG_HOME = "${config.home.homeDirectory}/.config";
+    XDG_CACHE_HOME = "${config.home.homeDirectory}/.cache";
+    XDG_DATA_HOME = "${config.home.homeDirectory}/.local/share";
+    XDG_STATE_HOME = "${config.home.homeDirectory}/.local/state";
   };
+
+  # 这几个目录不是每台机器都有(.moon / .ghcup / .cargo 在这台 mac 上就没有),
+  # 不存在的 PATH 项只是每次查找多一次 stat,留着比按 host 分叉省事。
+  home.sessionPath = [
+    "${config.home.homeDirectory}/.moon/bin"
+    "${config.home.homeDirectory}/.ghcup/bin"
+    "${config.home.homeDirectory}/.local/bin"
+    "${config.home.homeDirectory}/.cargo/bin"
+  ];
+
+  # compinit -C 不再自己去发现新装的补全,所以每次 home-manager 切换后把 dump 删掉:
+  # 之后第一个新开的 shell 会花 ~500ms 重建一次,后面又回到 ~280ms。
+  home.activation.dropZcompdump = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    rm -f "${config.home.homeDirectory}/.cache/zsh/zcompdump-"*
+  '';
 
   home.packages = [
     pkgs.zsh-completions
