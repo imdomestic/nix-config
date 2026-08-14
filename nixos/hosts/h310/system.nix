@@ -30,10 +30,6 @@
   # The shared users module assigns zsh as every account's login shell.
   programs.zsh.enable = true;
 
-  # Keep Tailscale enabled explicitly. Leave my.host.tsIp unset until this host
-  # should also be enrolled in the registry-driven telemetry/deploy targets.
-  my.tailscale.enable = true;
-
   # bcachefs does not support swapfiles. Give this 8 GiB machine some
   # compressed swap without adding another disk partition.
   zramSwap.enable = true;
