@@ -5,7 +5,7 @@
 # 而且报错发生在激活阶段，往往已经把服务重启了一半。放在这里可以提前发现。
 #
 # 注意每个 secret 可以有自己的 sopsFile —— 共享凭据(比如
-# secrets/clients/imdomestic.yaml，五台 portal 的客户端凭据，mihomo 和
+# secrets/clients/imdomestic.yaml，六台 portal 的客户端凭据，mihomo 和
 # singbox 两个模块共用)就不在 secrets/hosts/<host>.yaml 里。早期版本只查
 # 后者，于是把所有走共享文件的键全报成缺失。误报比不报更糟：真出问题时
 # 没人会再认真看它。现在按 (sopsFile, key) 分组，各查各的文件。

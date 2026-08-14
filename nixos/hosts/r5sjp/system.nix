@@ -322,6 +322,9 @@
   sops.secrets."xray/peers/r6s/uuid" = {};
   sops.secrets."xray/peers/r6s/public_key" = {};
   sops.secrets."xray/peers/r6s/short_id" = {};
+  sops.secrets."xray/peers/r2s/uuid" = {};
+  sops.secrets."xray/peers/r2s/public_key" = {};
+  sops.secrets."xray/peers/r2s/short_id" = {};
 
   services.xray.enable = true;
   services.xray.settingsFile = config.sops.templates."xray-config.json".path;
@@ -368,11 +371,7 @@
         s."xray/peers/${host}/public_key"
         s."xray/peers/${host}/short_id";
 
-      # r2s 不在这里:它长期离线,而 r2s.imdomestic.com 这条 DDNS 记录现在
-      # 解析到的已经不是它(端口能建连但 SSH 和 TLS 都不响应,住宅 v6 前缀轮换
-      # 后多半落到了别人的设备上)。留着只会让 bridge 每几秒往一台陌生主机
-      # 发一次带认证材料的 ClientHello。等它真回来了再加回去。
-      hosts = ["h610" "rpi4" "sh" "r5s" "r6s"];
+      hosts = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
     in
       builtins.toJSON {
         log.loglevel = "warning";
@@ -390,6 +389,7 @@
           (peer "sh" "sh.imdomestic.com" 3444 aliyun)
           (peer "r5s" "r5s.imdomestic.com" 2444 aliyun)
           (peer "r6s" "r6s.imdomestic.com" 2444 aliyun)
+          (peer "r2s" "r2s.imdomestic.com" 2444 aliyun)
           {
             tag = "out";
             protocol = "freedom";

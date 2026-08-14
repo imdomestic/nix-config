@@ -2,8 +2,8 @@
 #
 # 原来这份配置整个躺在 `imdomestic/dae` 那个私有仓库里,通过 flake input 以
 # `builtins.readFile` 读进来。搬到这里的理由:那 180 行里**唯一真正的秘密是
-# 5 条节点 URI**(UUID + shortId 合起来才是凭据),其余全是路由规则。为了这
-# 5 行单独维护一个私有仓库不划算,而且那样一来:
+# 6 条节点 URI**(UUID + shortId 合起来才是凭据),其余全是路由规则。为了这
+# 6 行单独维护一个私有仓库不划算,而且那样一来:
 #
 #   - 路由规则改一次要动两个仓库,还要 `nix flake lock --update-input`
 #   - 规则本身没有秘密,却跟着一起被藏起来,评审和 grep 都不方便
@@ -57,8 +57,8 @@ in {
     # 放在共享的 secrets/secrets.yaml 里。不写这行的话 sops-install-secrets 会
     # 去每主机文件里找,构建时报 "the key 'dae' cannot be found"。
     #
-    # 加解密范围见 .sops.yaml 的 `secrets/.*\.yaml$` 那条 —— 覆盖全部 15 个
-    # 收件人,含 host_h610 / host_rpi4 / host_shanghai。
+    # 加解密范围见 .sops.yaml 的 `secrets/.*\.yaml$` 那条 —— 覆盖全部 16 个
+    # 收件人,包括重新启用的 host_r2s。
     sops.secrets."dae/nodes".sopsFile = ../../../secrets/secrets.yaml;
 
     sops.templates."dae.dae" = {
@@ -87,7 +87,7 @@ in {
         }
 
         node {
-            # imdomestic —— 五个 portal,每个经反向隧道到 r5sjp。
+            # imdomestic —— 六个 portal,每个经反向隧道到 r5sjp。
             # 内容来自 sops(dae/nodes),不进 nix store。
         ${config.sops.placeholder."dae/nodes"}
         }

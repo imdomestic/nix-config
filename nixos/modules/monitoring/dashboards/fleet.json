@@ -37,7 +37,7 @@
     {
       "type": "stat",
       "title": "在线主机",
-      "description": "up{job=\"node\"} == 1 的数量。r2s 长期离线,所以正常值是 7/8。",
+      "description": "up{job=\"node\"} == 1 的数量。8 台受监控主机都在线时正常值是 8/8。",
       "datasource": { "type": "prometheus", "uid": "prometheus" },
       "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
       "targets": [
