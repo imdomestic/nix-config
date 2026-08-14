@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 # Claude Code status line.
 #
-#   ~/Development/max   main claude-opus-5 high    $793.65 5h:34% 7d:80% resets:1h58m
+#   ~/Development/max |  main | claude-opus-5 high | $793.65 5h:34% 7d:80% resets:1h58m
 #
 # Runs on every render, so it does exactly one jq and one git per call.
+# Everything below is appended left to right in call order — nothing here
+# reads terminal width, so there is no reason to re-run this any faster
+# than Claude Code renders a new status line anyway.
 
 input=$(cat)
 
@@ -42,48 +45,53 @@ short_cwd=$(awk -F/ '{ if (NF <= 4) print $0; else print "…/" $(NF-2) "/" $(NF
 # --no-optional-locks so a concurrent git command can never stall the prompt.
 branch=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null)
 
-# Two lockstep strings per side: the coloured one that gets printed, and
-# a plain one that gets measured.  Measuring means stripping escapes, and
-# building the plain form as we go is exact where a strip-the-escapes
-# regex is a second thing to keep correct.
-lc='' lp='' rc='' rp=''
+# One running string, built left to right in call order.  Groups are
+# separated by a dim bar and elements within a group by a space, so the
+# line reads as four things — where, which branch, which model, what it
+# is costing — rather than one run of seven.
 #
-# Elements are separated by one space.  add_left takes an optional third
-# argument to widen that separator, which only the branch uses: it leads
-# with the Powerline glyph, and one space leaves the glyph sitting on top
-# of the path rather than beside it.
-add_left() { [ -n "$lp" ] && { lc+=${3:- } lp+=${3:- }; }; lc+=$1 lp+=$2; }
-add_right() { [ -n "$rp" ] && { rc+=' ' rp+=' '; }; rc+=$1 rp+=$2; }
+# The bar is written with $'...' rather than a printf substitution: this
+# is on the render path, and a fork per divider is a fork for nothing.
+sep=$' \033[2m|\033[0m '
+lc=''
+add_group() { [ -n "$lc" ] && lc+=$sep; lc+=$1; }
 
-add_left "$(printf '\033[34m%s\033[0m' "$short_cwd")" "$short_cwd"
+add_group "$(printf '\033[34m%s\033[0m' "$short_cwd")"
 
 # U+E0A0, the Powerline branch glyph, written as explicit UTF-8 bytes:
 # it is invisible in most editors and got silently dropped once already
 # when this file was rewritten.
 [ -n "$branch" ] &&
-  add_left "$(printf '\033[32m\xee\x82\xa0 %s\033[0m' "$branch")" "$(printf '\xee\x82\xa0 %s' "$branch")" '  '
+  add_group "$(printf '\033[32m\xee\x82\xa0 %s\033[0m' "$branch")"
 
-# Every element is separated by the same single space, so effort is set
-# apart from the model by being dim alone — it modifies the model rather
-# than standing on its own.
+# Effort shares the model's group: it modifies the model rather than
+# standing on its own, so it sits one space away and dim instead of
+# behind a divider of its own.
 if [ -n "$effort" ]; then
-  add_left "$(printf '\033[36m%s\033[0m \033[2m%s\033[0m' "$model" "$effort")" "$model $effort"
+  add_group "$(printf '\033[36m%s\033[0m \033[2m%s\033[0m' "$model" "$effort")"
 else
-  add_left "$(printf '\033[36m%s\033[0m' "$model")" "$model"
+  add_group "$(printf '\033[36m%s\033[0m' "$model")"
 fi
+
+# Spend, the two rate-limit windows and the countdown are all one answer
+# to "how much of this session is left", so they share a group.  Any of
+# the three can be absent, hence collecting them here first: the divider
+# then lands once, in front of whichever showed up, and not at all when
+# none did.
+usage=''
+add_usage() { [ -n "$usage" ] && usage+=' '; usage+=$1; }
 
 # Session spend so far.
 if [ "$cost" != "-1" ] && [ -n "$cost" ]; then
-  add_right "$(printf '\033[2m$\033[0m%.2f' "$cost")" "$(printf '$%.2f' "$cost")"
+  add_usage "$(printf '\033[2m$\033[0m%.2f' "$cost")"
 fi
 
 # Both windows or neither: one number without the other invites reading
 # whichever showed up as "the" limit.
 if ((r5 >= 0 && r7 >= 0)); then
-  add_right \
+  add_usage \
     "$(printf '\033[2m5h:\033[0m\033[%sm%d%%\033[0m \033[2m7d:\033[0m\033[%sm%d%%\033[0m' \
-      "$(lim_color "$r5")" "$r5" "$(lim_color "$r7")" "$r7")" \
-    "$(printf '5h:%d%% 7d:%d%%' "$r5" "$r7")"
+      "$(lim_color "$r5")" "$r5" "$(lim_color "$r7")" "$r7")"
 fi
 
 # resets_at is a wall-clock epoch; what is worth reading off the bar is
@@ -101,45 +109,9 @@ if ((reset5 > 0)); then
   else
     eta=$(printf '%dm' $((left / 60)))
   fi
-  add_right "$(printf '\033[2mresets:\033[0m%s' "$eta")" "resets:$eta"
+  add_usage "$(printf '\033[2mresets:\033[0m%s' "$eta")"
 fi
 
-if [ -z "$rp" ]; then
-  printf '%s\n' "$lc"
-  exit 0
-fi
+[ -n "$usage" ] && add_group "$usage"
 
-# COLUMNS is exported into the status line's environment and tracks
-# resizes; tput is the fallback for a host that doesn't.  With neither,
-# gap stays at the single space everything else is separated by, so the
-# line degrades to plain left-to-right rather than guessing a width.
-# COLUMNS is set to the *current* terminal size before each run, so it
-# is right whenever we are run at all — but a resize is not one of the
-# events that runs us, hence refreshInterval in settings.json.
-#
-# No tput fallback: Claude Code captures our output rather than wiring
-# it to the terminal, so tput has no tty to measure and quietly answers
-# with terminfo's 80.  A wrong width is worse than none, because none
-# just falls through to the plain two-space layout below.
-width=${COLUMNS:-0}
-[ "$width" -gt 0 ] 2>/dev/null || width=0
-
-# COLUMNS is the terminal's width, not the width Claude Code will draw
-# into — it keeps some for itself, and a line that uses all of COLUMNS
-# comes back truncated with an ellipsis, eating the right-hand end.
-#
-# Measured by rendering a column ruler as the status line: at
-# COLUMNS=165 the ellipsis sat in column 162, so 3 columns are spoken
-# for.  8 is what actually looks right, which says the reserve is not
-# only the truncation limit; tune it here rather than editing the
-# arithmetic:
-#
-#   CLAUDE_STATUSLINE_RESERVE=12 claude
-#
-reserve=${CLAUDE_STATUSLINE_RESERVE:-8}
-((width > reserve)) && width=$((width - reserve))
-
-gap=$((width - ${#lp} - ${#rp}))
-((gap < 1)) && gap=1
-
-printf '%s%*s%s\n' "$lc" "$gap" '' "$rc"
+printf '%s\n' "$lc"
