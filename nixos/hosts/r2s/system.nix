@@ -244,8 +244,10 @@ in {
         enable = true;
         config = ''
           plugin pppoe.so end0
-          user "19551998351"
-          password "837145"
+          # user "19551998351"
+          # password "837145"
+          user "051002554981"
+          password "741852"
 
           # usepeerdns
 

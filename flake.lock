@@ -1366,22 +1366,6 @@
         "type": "github"
       }
     },
-    "hvim": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1775723130,
-        "narHash": "sha256-lmOLVpoO2Ji4mIwUuY2ImQM4QyVI0fVtqfNlXeAEMb8=",
-        "owner": "HCHogan",
-        "repo": "hvim",
-        "rev": "d05c4dc9204ec85eef21dbde5fc96d352802835e",
-        "type": "github"
-      },
-      "original": {
-        "owner": "HCHogan",
-        "repo": "hvim",
-        "type": "github"
-      }
-    },
     "import-tree": {
       "locked": {
         "lastModified": 1773693634,
@@ -1395,22 +1379,6 @@
         "owner": "vic",
         "repo": "import-tree",
         "type": "github"
-      }
-    },
-    "kvim": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1770532317,
-        "narHash": "sha256-DSXaBiV71FpBfv1NFczhJbYaHuG6RMZ65XFaeL17PeA=",
-        "ref": "refs/heads/main",
-        "rev": "64fcd58f13b0c1ea50185b4060e100e81ee9aedd",
-        "revCount": 498,
-        "type": "git",
-        "url": "ssh://git@github.com/HCHogan/kvim"
-      },
-      "original": {
-        "type": "git",
-        "url": "ssh://git@github.com/HCHogan/kvim"
       }
     },
     "libcamera-src": {
@@ -2768,8 +2736,6 @@
         "deploy-rs": "deploy-rs",
         "determinate": "determinate",
         "home-manager": "home-manager",
-        "hvim": "hvim",
-        "kvim": "kvim",
         "llm-agents": "llm-agents",
         "max": "max",
         "niri": "niri",
@@ -2792,7 +2758,6 @@
         "thymis": "thymis",
         "vscode-server": "vscode-server",
         "walker": "walker",
-        "wezterm-config": "wezterm-config",
         "wg-config": "wg-config",
         "zjstatus": "zjstatus",
         "zsh-hank": "zsh-hank",
@@ -3532,22 +3497,6 @@
         "owner": "abenz1267",
         "repo": "walker",
         "type": "github"
-      }
-    },
-    "wezterm-config": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1749977879,
-        "narHash": "sha256-vNUq/ty8iZ617ZSkv4EHl2yPAF/Skus6AKbPBBebutQ=",
-        "ref": "refs/heads/main",
-        "rev": "f53991424ce35373f05b9f8b6efa47a388da8b6c",
-        "revCount": 27,
-        "type": "git",
-        "url": "ssh://git@github.com/HCHogan/wezterm"
-      },
-      "original": {
-        "type": "git",
-        "url": "ssh://git@github.com/HCHogan/wezterm"
       }
     },
     "wg-config": {
