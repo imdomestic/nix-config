@@ -94,6 +94,13 @@
     customSettings = {
       cores = 0;
       eval-cores = 0;
+
+      # /nix is an explicitly case-sensitive APFS volume. Leaving Darwin's
+      # default case hack enabled rewrites colliding Linux paths such as
+      # ncurses' terminfo/l to l~nix~case~hack~1. Determinate's external Linux
+      # builder then sees the rewritten store and cannot assemble an initrd
+      # that references the real terminfo/l path.
+      use-case-hack = false;
     };
   };
 }

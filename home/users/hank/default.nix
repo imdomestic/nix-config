@@ -426,7 +426,6 @@ in {
   };
 
   xdg.configFile = {
-    hvim.source = inputs.hvim.outPath;
     "zellij/layouts/evergarden_bottom.kdl".text = ''
       layout {
         pane split_direction="vertical" {
@@ -531,8 +530,6 @@ in {
       # --- Neovim / Editors ---
       nvimdiff = "nvim -d";
       lg = "lazygit";
-      kvim = "NVIM_APPNAME=kvim nvim";
-      hvim = "NVIM_APPNAME=hvim nvim";
       lvim = "NVIM_APPNAME=lazyvim nvim";
       dvim = "NVIM_APPNAME=dvim nvim";
 
@@ -779,8 +776,6 @@ in {
       # "update"。真要一把梭也该自己写一句人话,不该有个一键别名让人手滑。
       # getidf / brew86 也去掉了:~/esp 和 /usr/local/homebrew 都不存在了。
       lg = "lazygit";
-      kvim = "NVIM_APPNAME=kvim nvim";
-      hvim = "NVIM_APPNAME=hvim nvim";
       lvim = "NVIM_APPNAME=lazyvim nvim";
       dvim = "NVIM_APPNAME=dvim nvim";
 
@@ -891,7 +886,120 @@ in {
     # home-manager 生成的 hm-session-vars.sh 自带 __HM_SESS_VARS_SOURCED 卫兵,
     # 只跑一次。二是你同时在用 nushell,而 .zshenv 里的东西 nushell 一个也拿不到。
 
+    # init-extra.zsh 里那些函数的实现都在这儿。siteFunctions 把每个 value 写成
+    # ~/.nix-profile/share/zsh/site-functions/<key> 并 `autoload -Uz <key>` ——
+    # 也就是**按需加载**,而不是每开一个 shell 都把函数体重新执行一遍定义。
+    #
+    # key 是函数名、value 是函数体(不要自己写 `name() { }` 外壳)。
+    siteFunctions = {
+      # sops 路径补全的替代实现,见 init-extra.zsh 里 compdef 那段的注释。
+      # 名字不能叫 _sops —— sops 包自己就往这个目录写同名文件,会撞车。
+      _sops_files = ''
+        local -a opts
+        local cur=''${words[-1]}
+        if [[ $cur == -* ]]; then
+          opts=("''${(@f)$(_CLI_ZSH_AUTOCOMPLETE_HACK=1 ''${words[@]:0:#words[@]-1} ''${cur} --generate-bash-completion 2>/dev/null)}")
+          [[ -n ''${opts[1]} ]] && _describe -t options 'option' opts
+          return
+        fi
+        opts=("''${(@f)$(_CLI_ZSH_AUTOCOMPLETE_HACK=1 ''${words[@]:0:#words[@]-1} --generate-bash-completion 2>/dev/null)}")
+        [[ -n ''${opts[1]} ]] && _describe -t commands 'command' opts
+        _files
+      '';
+
+      # cd 之后自动列目录(chpwd hook)
+      _auto_eza_ls = ''
+        [[ -o interactive ]] && eza --color=auto --icons
+      '';
+
+      # vi 模式下 \e/ 直接进反向历史搜索
+      _vi_search_fix = ''
+        zle vi-cmd-mode
+        zle .vi-history-search-backward
+      '';
+
+      # 双击 Esc 给当前行加/去 sudo(oh-my-zsh 的 sudo 插件)
+      _sudo_replace_buffer = ''
+        local old=$1 new=$2 space=''${2:+ }
+        if [[ $CURSOR -le ''${#old} ]]; then
+          BUFFER="''${new}''${space}''${BUFFER#$old }"
+          CURSOR=''${#new}
+        else
+          LBUFFER="''${new}''${space}''${LBUFFER#$old }"
+        fi
+      '';
+      _sudo_command_line = ''
+        [[ -z $BUFFER ]] && LBUFFER="$(fc -ln -1)"
+        local WHITESPACE=""
+        if [[ ''${LBUFFER:0:1} = " " ]]; then
+          WHITESPACE=" "
+          LBUFFER="''${LBUFFER:1}"
+        fi
+        {
+          local EDITOR=''${SUDO_EDITOR:-''${VISUAL:-$EDITOR}}
+          if [[ -z "$EDITOR" ]]; then
+            case "$BUFFER" in
+              sudo\ -e\ *) _sudo_replace_buffer "sudo -e" "" ;;
+              sudo\ *) _sudo_replace_buffer "sudo" "" ;;
+              *) LBUFFER="sudo $LBUFFER" ;;
+            esac
+            return
+          fi
+          local cmd="''${''${(Az)BUFFER}[1]}"
+          local realcmd="''${''${(Az)aliases[$cmd]}[1]:-$cmd}"
+          local editorcmd="''${''${(Az)EDITOR}[1]}"
+          if [[ "$realcmd" = (\$EDITOR|$editorcmd|''${editorcmd:c}) \
+            || "''${realcmd:c}" = ($editorcmd|''${editorcmd:c}) ]] \
+            || builtin which -a "$realcmd" | command grep -Fx -q "$editorcmd"; then
+            _sudo_replace_buffer "$cmd" "sudo -e"
+            return
+          fi
+          case "$BUFFER" in
+            $editorcmd\ *) _sudo_replace_buffer "$editorcmd" "sudo -e" ;;
+            \$EDITOR\ *) _sudo_replace_buffer '$EDITOR' "sudo -e" ;;
+            sudo\ -e\ *) _sudo_replace_buffer "sudo -e" "$EDITOR" ;;
+            sudo\ *) _sudo_replace_buffer "sudo" "" ;;
+            *) LBUFFER="sudo $LBUFFER" ;;
+          esac
+        } always {
+          LBUFFER="''${WHITESPACE}''${LBUFFER}"
+          zle redisplay
+        }
+      '';
+
+      # vi 模式光标形状:vicmd 块状 / viins 竖线
+      _cursor_shape_keymap_select = ''
+        if [[ ''${KEYMAP} == vicmd ]]; then
+          echo -ne '\e[1 q'
+        else
+          echo -ne '\e[5 q'
+        fi
+      '';
+      _cursor_shape_line_init = ''
+        echo -ne '\e[5 q'
+      '';
+
+      proxy = ''
+        local proxy_address="http://127.0.0.1:7890"
+        export http_proxy="''${proxy_address}"
+        export https_proxy="''${proxy_address}"
+        export all_proxy="''${proxy_address}"
+        export HTTP_PROXY="''${proxy_address}"
+        export HTTPS_PROXY="''${proxy_address}"
+        export ALL_PROXY="''${proxy_address}"
+        echo "Proxy enabled (http/https/all -> ''${proxy_address})"
+        env | grep -i "_proxy"
+      '';
+      unproxy = ''
+        unset http_proxy https_proxy all_proxy
+        unset HTTP_PROXY HTTPS_PROXY ALL_PROXY
+        echo "Proxy disabled"
+      '';
+    };
+
     initContent = lib.mkMerge [
+      # 必须排在 zsh-autosuggestions 被 source 之前,所以用 mkBefore 而不是
+      # localVariables(那个是 mkOrder 540,落在插件后面就不生效了)。
       (lib.mkBefore ''
         ZSH_AUTOSUGGEST_USE_ASYNC="true"
       '')
@@ -905,6 +1013,36 @@ in {
       ''
         ${builtins.readFile ./init-extra.zsh}
       ''
+      # macOS 那段原来是运行时 `if [ "$(uname)" = "Darwin" ]` 加一层
+      # `if [ "$(uname -m)" = "x86_64" ]`,每开一个 shell fork 两次 uname 去问
+      # 一件 nix 在求值期就知道的事。放在这里的结果是:Linux 上生成的 .zshrc 里
+      # 根本不会出现这几行,mac 上则是常量,没有分支。
+      (lib.optionalString pkgs.stdenv.isDarwin (let
+        brewPrefix =
+          if pkgs.stdenv.isAarch64
+          then "/opt/homebrew"
+          else "/usr/local";
+      in ''
+        source ~/.orbstack/shell/init.zsh 2>/dev/null || :
+        alias matlabcli="/Applications/MATLAB_R2025a.app/bin/matlab -nodesktop -nosplash"
+        export HOMEBREW_BOTTLE_DOMAIN=https://mirror.sjtu.edu.cn/homebrew-bottles
+
+        # 这里原来是 eval "$(brew shellenv)" —— 每次开 shell fork 一个 bash 脚本,
+        # 它自己再 fork 一次 /usr/libexec/path_helper,实测 ~55ms,而输出是常量。
+        # 顺带甩掉 path_helper:它会按 /etc/paths 重排 PATH,把 /usr/bin 顶到 nix 前面。
+        #
+        # path/fpath 用数组前插,不是 export PATH="...:$PATH" —— 后者在嵌套 shell
+        # 里会一层层叠上去(rustup 那条以前就是这么重复的)。
+        export HOMEBREW_PREFIX="${brewPrefix}"
+        export HOMEBREW_CELLAR="${brewPrefix}/Cellar"
+        export HOMEBREW_REPOSITORY="${brewPrefix}"
+        export INFOPATH="${brewPrefix}/share/info:''${INFOPATH:-}"
+        path=("${brewPrefix}/bin" "${brewPrefix}/sbin" $path)
+        fpath=("${brewPrefix}/share/zsh/site-functions" $fpath)
+      ''
+      + lib.optionalString pkgs.stdenv.isAarch64 ''
+        path=("/opt/homebrew/opt/rustup/bin" $path)
+      ''))
     ];
   };
 
@@ -928,8 +1066,6 @@ in {
   };
 
   xdg.configFile = {
-    kvim.source = inputs.kvim.outPath;
-    wezterm.source = inputs.wezterm-config.outPath;
     fastfetch = {
       source = ../../modules/fastfetch;
       recursive = true;
@@ -993,6 +1129,20 @@ in {
     XDG_CACHE_HOME = "${config.home.homeDirectory}/.cache";
     XDG_DATA_HOME = "${config.home.homeDirectory}/.local/share";
     XDG_STATE_HOME = "${config.home.homeDirectory}/.local/state";
+
+    LESS = "--RAW-CONTROL-CHARS";
+    MANPAGER = "less -s -M +Gg";
+
+    # 放在这儿而不是 init-extra.zsh 里,顺便把顺序问题从结构上消掉:
+    # `zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}` 是把 LS_COLORS 的
+    # **当前值**拆开存进 zstyle,不是留引用 —— 之前这个 export 排在那条 zstyle
+    # 后面,第一个登录 shell 的补全菜单拿到的是空值(嵌套 shell 从父进程继承,
+    # 所以一直没被发现)。sessionVariables 走 .zshenv,天然早于 .zshrc,不再靠
+    # "谁排在文件的哪一行"这个约定。nushell 也顺带拿到了。
+    #
+    # (LESS_TERMCAP_* 没搬过来:那组的值必须是真的 ESC 字节,而这里生成的是
+    # POSIX sh 的 export NAME="value",写不出 $'\e'。它们留在 init-extra.zsh。)
+    LS_COLORS = "*.7z=38;5;40:*.WARC=38;5;40:*.a=38;5;40:*.arj=38;5;40:*.bz2=38;5;40:*.cpio=38;5;40:*.gz=38;5;40:*.lrz=38;5;40:*.lz=38;5;40:*.lzma=38;5;40:*.lzo=38;5;40:*.rar=38;5;40:*.s7z=38;5;40:*.sz=38;5;40:*.tar=38;5;40:*.tbz=38;5;40:*.tgz=38;5;40:*.warc=38;5;40:*.xz=38;5;40:*.z=38;5;40:*.zip=38;5;40:*.zipx=38;5;40:*.zoo=38;5;40:*.zpaq=38;5;40:*.zst=38;5;40:*.zstd=38;5;40:*.zz=38;5;40:*@.service=38;5;45:*AUTHORS=38;5;220;1:*CHANGES=38;5;220;1:*CONTRIBUTORS=38;5;220;1:*COPYING=38;5;220;1:*COPYRIGHT=38;5;220;1:*CodeResources=38;5;239:*Dockerfile=38;5;155:*HISTORY=38;5;220;1:*INSTALL=38;5;220;1:*LICENSE=38;5;220;1:*LS_COLORS=48;5;89;38;5;197;1;3;4;7:*MANIFEST=38;5;243:*Makefile=38;5;155:*NOTICE=38;5;220;1:*PATENTS=38;5;220;1:*PkgInfo=38;5;239:*README=38;5;220;1:*README.md=38;5;220;1:*README.rst=38;5;220;1:*VERSION=38;5;220;1:*authorized_keys=1:*cfg=1:*conf=1:*config=1:*core=38;5;241:*id_dsa=38;5;192;3:*id_ecdsa=38;5;192;3:*id_ed25519=38;5;192;3:*id_rsa=38;5;192;3:*known_hosts=1:*lock=38;5;248:*lockfile=38;5;248:*pm_to_blib=38;5;240:*rc=1:*.1p=38;5;7:*.32x=38;5;213:*.3g2=38;5;115:*.3ga=38;5;137;1:*.3gp=38;5;115:*.3p=38;5;7:*.82p=38;5;121:*.83p=38;5;121:*.8eu=38;5;121:*.8xe=38;5;121:*.8xp=38;5;121:*.A64=38;5;213:*.BAT=38;5;172:*.BUP=38;5;241:*.C=38;5;81:*.CFUserTextEncoding=38;5;239:*.DS_Store=38;5;239:*.F=38;5;81:*.F03=38;5;81:*.F08=38;5;81:*.F90=38;5;81:*.F95=38;5;81:*.H=38;5;110:*.IFO=38;5;114:*.JPG=38;5;97:*.M=38;5;110:*.MOV=38;5;114:*.PDF=38;5;141:*.PFA=38;5;66:*.PL=38;5;160:*.R=38;5;49:*.RData=38;5;178:*.Rproj=38;5;11:*.S=38;5;110:*.S3M=38;5;137;1:*.SKIP=38;5;244:*.TIFF=38;5;97:*.VOB=38;5;115;1:di=34:do=38;5;127:ex=38;5;208;1:pi=38;5;126:fi=0:ln=target:mh=38;5;222;1:no=0:or=48;5;196;38;5;232;1:ow=38;5;220;1:sg=48;5;3;38;5;0:su=38;5;220;1;3;100;1:so=38;5;197:st=38;5;86;48;5;234:tw=48;5;235;38;5;139;3:";
   };
 
   # 这几个目录不是每台机器都有(.moon / .ghcup / .cargo 在这台 mac 上就没有),

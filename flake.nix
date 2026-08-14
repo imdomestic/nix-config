@@ -142,21 +142,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    kvim = {
-      url = "git+ssh://git@github.com/HCHogan/kvim";
-      flake = false;
-    };
-
-    hvim = {
-      url = "github:HCHogan/hvim";
-      flake = false;
-    };
-
-    wezterm-config = {
-      url = "git+ssh://git@github.com/HCHogan/wezterm";
-      flake = false;
-    };
-
     zsh-hank = {
       url = "github:HCHogan/zsh";
       flake = false;

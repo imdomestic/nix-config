@@ -35,8 +35,6 @@
   programs.kitty.enable = true;
 
   xdg.configFile = {
-    nvim.source = inputs.kvim.outPath;
-    hvim.source = inputs.hvim.outPath;
     zsh.source = inputs.zsh-hank.outPath;
     fastfetch = {
       source = ../../modules/fastfetch;
