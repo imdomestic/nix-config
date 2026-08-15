@@ -815,6 +815,7 @@ in {
   # h610 footprint bounded: its root filesystem has far less room than Tank.
   services.qq-bot-postgres-ha = {
     enable = true;
+    preferredNodeName = "h610";
     passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
     haPasswordFile = config.sops.secrets."qq_bot/ha_password".path;
     monitor.enable = true;
@@ -824,7 +825,7 @@ in {
       hostname = "100.64.0.3";
       stateDir = "/var/lib/qq-bot-postgres-node";
       dataDir = "/var/lib/qq-bot-postgres-node/data";
-      candidatePriority = 50;
+      candidatePriority = 100;
       walKeepSize = "1GB";
       maxSlotWalKeepSize = "16GB";
       maxWalSize = "4GB";
@@ -846,11 +847,12 @@ in {
       "qq-deepseek-bot.service"
     ];
     content = ''
-      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@100.64.0.4:55432,100.64.0.3:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
+      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@100.64.0.3:55432,100.64.0.4:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
       AI_POSTGRES_SCHEMA=qq_bot
       AI_POSTGRES_POOL_MIN_SIZE=1
       AI_POSTGRES_POOL_MAX_SIZE=10
       AI_POSTGRES_POOL_TIMEOUT_SECONDS=10
+      AI_POSTGRES_HEALTH_CHECK_INTERVAL_SECONDS=5
       AI_ALLOW_LEGACY_SQLITE=false
       AI_DISABLED_GROUPS=
       AI_PROACTIVE_INTEREST_THRESHOLD=98
@@ -878,6 +880,13 @@ in {
       AI_MEDIA_LEASE_SECONDS=600
       AI_MEDIA_BATCH_SIZE=4
       AI_MEDIA_WORKER_CONCURRENCY=2
+      AI_ARCHIVE_ENABLED=true
+      AI_ARCHIVE_ROOT=/mnt/kennethbot-archive
+      AI_ARCHIVE_MEDIA_RETENTION_DAYS=30
+      AI_ARCHIVE_DELIVERY_RETENTION_DAYS=7
+      AI_ARCHIVE_DELIVERY_MIN_MB=1
+      AI_ARCHIVE_INTERVAL_SECONDS=60
+      AI_ARCHIVE_BATCH_SIZE=20
       CLIPROXY_API_KEY=${config.sops.placeholder."cliproxy/api_key"}
       AI_MODEL_DEFAULT_PROFILE=deepseek
       AI_MODEL_PROFILES_JSON='${qqBotModelProfiles}'
@@ -887,6 +896,9 @@ in {
   systemd.services.qq-deepseek-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
     config.sops.templates."qq-deepseek-bot-postgres.env".path
   ];
+  systemd.services.qq-deepseek-bot.serviceConfig.ReadWritePaths = [
+    "/mnt/kennethbot-archive"
+  ];
   systemd.services.qq-deepseek-bot.after = lib.mkAfter [
     "tailscaled.service"
     "qq-bot-postgres-bootstrap.service"
@@ -895,6 +907,22 @@ in {
     "tailscaled.service"
     "qq-bot-postgres-node.service"
   ];
+
+  fileSystems."/mnt/kennethbot-archive" = {
+    device = "100.64.0.4:/data/services/kennethbot-archive";
+    fsType = "nfs";
+    options = [
+      "nfsvers=4.2"
+      "_netdev"
+      "nofail"
+      "noauto"
+      "x-systemd.automount"
+      "x-systemd.idle-timeout=300"
+      "soft"
+      "timeo=50"
+      "retrans=2"
+    ];
+  };
 
   environment = {
     variables = {
