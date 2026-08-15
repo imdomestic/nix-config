@@ -47,6 +47,27 @@ in {
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelModules = ["pppoe"];
+
+  # 根要搬到 SD 卡(mmcblk0)上的 f2fs。**这一步只是把能力装上**,根还在 eMMC
+  # 的 ext4 上;真正切换是改 hardware-configuration.nix 里的 UUID。
+  #
+  # 为什么是 f2fs:这张卡上报 `DISC-GRAN = 4M`,擦除块 4 MB。ext4 那种就地更新
+  # 的小块 fsync 落进 4 MB 块里要读-改-写整块;f2fs 是 log-structured,顺序写进
+  # segment,正是冲着这个形态设计的(Android 上跑了十亿台设备的也是它)。
+  #
+  # initrd 里必须有,否则 stage-1 挂不上根 —— 而 r6s 无头,挂不上就是全家断网
+  # 且没人能进去。回退路径见 docs/ 里的迁移记录:eMMC 上的 ext4 根原封不动留着,
+  # 旧的 generation 各自带自己的 stage-1,从引导菜单选回去就能起来。
+  boot.supportedFilesystems = ["f2fs"];
+  boot.initrd.supportedFilesystems = ["f2fs"];
+
+  # 强制在 initrd 里插入 f2fs,而不是依赖 mount(2) 触发的按需自动加载。
+  # 运行中的系统实测自动加载是好的,但 initrd 用的是 modules-shrunk 树,
+  # 少一个不确定变量 —— 这条路上出问题的代价是无头机器起不来。
+  boot.initrd.kernelModules = ["f2fs"];
+
+  # 保证引导菜单里始终留得下可回退的旧 generation(ESP 只有 600M)。
+  boot.loader.systemd-boot.configurationLimit = 10;
   powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
