@@ -95,10 +95,18 @@ jobs:
       # 和目标架构无关,x86 那遍已经覆盖。
       #
       # nix 把进度和警告都写 stderr,所以 2>&1。
+      # **--all-systems**:不加的话 nix 只检查 runner 自己那个 system 的输出,
+      # 并打一句 "The check omitted these incompatible systems: ..." —— 被跳过的是
+      # packages.aarch64-linux(rpi4 内核、mihomo-smart、templar 内核)和
+      # packages.aarch64-darwin(字体)。cachix.yml 会原生构建它们,但那个 workflow
+      # 只在 main 上跑,**PR 上是空的**。
+      #
+      # 求值而已(--no-build),本地实测 21.5s -> 1m08s。拿这点时间换掉一条
+      # "有东西没检查" 的警告,比把警告加进白名单诚实。
       - name: nix flake check
         run: |
           set -o pipefail
-          nix flake check --no-build 2>&1 | tee /tmp/flake-check.log
+          nix flake check --no-build --all-systems 2>&1 | tee /tmp/flake-check.log
 
       # 求值警告门禁。**只拦新出现的**,已知的上游警告放行 —— 否则这一步从第一天
       # 起就是红的,然后所有人开始无视它(和告警疲劳一个道理)。
@@ -125,9 +133,14 @@ jobs:
           # nixos/modules/nix.nix 修掉,和这条无关。
           renamed to/replaced by 'stdenv\.hostPlatform\.system'
 
-          # deploy / hosts / systemConfigs 不是 nix 认识的标准 flake 输出,nix 只会
-          # 说一句"没检查"。deploy 的 schema 其实是查了的 —— 走 flake.nix 的
-          # checks 输出。
+          # deploy / deployChecks / hosts / systemConfigs 不是 nix 认识的标准 flake
+          # 输出,nix 只会说一句"没检查"。
+          #
+          # **deployChecks 是故意放在这里的**,不是遗漏:它原本叫 checks,而
+          # `nix flake check` 会把 checks 里每一个都求值,于是一个进程扛下全部 9 个
+          # 节点 / 35 个 profile,加了 h310 之后直接把 runner 撑爆
+          # (见 docs/incidents.md#deploy-schema-timeout)。现在改成每台一个、由下面
+          # 矩阵 job 各验各的 —— 覆盖面没减,反而多了 home。
           #
           # 两条都要:本地(nix 2.34)打的是汇总形式,CI 上打的是每个输出一行。
           # 光配一条会在另一边漏网 —— 2026-08-12 实测就是这么被绊住的。
@@ -246,22 +259,22 @@ jobs:
 
           - host: r2s
             arch: aarch64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
           - host: r5sjp
             arch: aarch64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
           - host: r5s
             arch: aarch64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
           - host: r6s
             arch: aarch64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
           - host: aarch64-wsl
             arch: aarch64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
           - host: rpi4
             arch: aarch64
-            os: ubuntu-latest
+            os: ubuntu-24.04-arm
 
           - host: m1elite
             arch: aarch64-darwin
@@ -284,14 +297,21 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # Linux runners: the classic installer is proven for these jobs.
+      # Linux runners: the classic installer is proven for these jobs。
+      # aarch64 那几台跑在原生 arm64 runner(ubuntu-24.04-arm,公开仓库免费)上,
+      # 所以**不需要** extra-platforms —— 那行原本是给 x86 runner 上的 binfmt 用的。
+      # cachix.yml 早就是原生 ARM 了(那边是真构建,注释里记着 QEMU 慢 5-20 倍、
+      # 会撞 6 小时上限),这里跟它统一。
+      #
+      # 这个 job 只跑 --dry-run,本来就不构建,所以换 runner 不是为了提速,是为了
+      # 拆雷:哪天某台 aarch64 的配置引入 IFD,x86 runner 上会静默用 QEMU 去编,
+      # 慢得莫名其妙。
       - name: Install Nix (Linux)
         if: runner.os == 'Linux'
         uses: cachix/install-nix-action@v27
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-            ${{ matrix.arch == 'aarch64' && 'extra-platforms = aarch64-linux' || '' }}
 
       # macOS runners ship a build group / _nixbld users, which makes the
       # classic installer abort with eDSRecordAlreadyExists. The Determinate
