@@ -66,8 +66,14 @@ in {
   # 少一个不确定变量 —— 这条路上出问题的代价是无头机器起不来。
   boot.initrd.kernelModules = ["f2fs"];
 
-  # 保证引导菜单里始终留得下可回退的旧 generation(ESP 只有 600M)。
-  boot.loader.systemd-boot.configurationLimit = 10;
+  # ESP 只有 599M,每代的 kernel + initrd 约 32M(两个文件),10 代最坏要 640M ——
+  # 装不下。5 代够回退用,最坏约 320M,留一半余量。
+  #
+  # 2026-08-15 清理过一次:`/boot/nixos` + `/boot/extlinux` 是 r2s 时代的遗留
+  # (extlinux.conf 里引用的是 rk3328-nanopi-r2s.dtb),382M 死重,占了 ESP 的
+  # 三分之二。generic-extlinux-compatible 已经是 false、不再生成,所以搬走即可,
+  # 搬到了 /var/lib/stale-boot-backup。清理后 /boot 从 91% 降到 28%。
+  boot.loader.systemd-boot.configurationLimit = 5;
   powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
