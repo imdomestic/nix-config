@@ -344,8 +344,10 @@ in {
         enable = true;
         config = ''
           plugin pppoe.so wan0
-          user "051002554981"
-          password "741852"
+          # user "051002554981"
+          # password "741852"
+          user "15861587760"
+          password "512907"
 
           # usepeerdns
 
