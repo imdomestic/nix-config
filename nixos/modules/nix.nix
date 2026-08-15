@@ -1,4 +1,9 @@
-{inputs, ...}: {
+{
+  inputs,
+  pkgs,
+  lib,
+  ...
+}: {
   # The options below come from nixpkgs' config/nix-channel.nix and
   # config/nix-remote-build.nix, neither of which system-manager imports — hence
   # the split. system-manager hosts take nix-settings.nix on its own, which
@@ -41,7 +46,13 @@
   # randomizedDelaySec 是因为这些机器的 timer 会同时到点 —— h610 上并发的
   # GC 加上正在跑的构建,把内存打满过一次(见 alerts.nix 里 MemoryPressureHigh
   # 那条的注释)。错开来跑。
-  nix.gc = {
+  #
+  # **只在 NixOS 上开。** 这个文件被 darwin/profiles/base.nix 一起 import,而
+  # nix-darwin 那边:`dates`/`randomizedDelaySec` 根本没有对应选项(它用 launchd
+  # 的 `interval`),而且 `nix.gc.automatic` 要求 `nix.enable` —— 那几台跑的是
+  # Determinate Nix,nix.enable 是关的,GC 由它自己管。
+  # 2026-08-15 就是漏了这个分支,4 台 darwin 全部求值失败而本地只验了 nixos。
+  nix.gc = lib.optionalAttrs (!pkgs.stdenv.hostPlatform.isDarwin) {
     automatic = true;
     dates = "weekly";
     options = "--delete-older-than 30d";
