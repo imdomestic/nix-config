@@ -240,6 +240,8 @@ in {
     services.nix-daemon.environment.TMPDIR = "/data/builds";
   };
 
+  # NFS 的 2049 放行写在下面 networking.firewall 里,不在这儿另起一个
+  # networking.* —— 见那边的说明。
   services.nfs.server = {
     enable = true;
     exports = ''
@@ -247,7 +249,6 @@ in {
       /data/services/kennethbot-archive 100.64.0.3(rw,sync,no_subtree_check,all_squash,anonuid=1004,anongid=100)
     '';
   };
-  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [2049];
 
   services.filebrowser = {
     enable = true;
@@ -373,10 +374,17 @@ in {
     useDHCP = false;
     useNetworkd = true;
     nftables.enable = true;
+    # **firewall 的所有设置都写在这一个块里。** 别在文件别处再写
+    # `networking.firewall.xxx = ...` —— 那样就有了两个 networking 定义,
+    # 新版 Nix 会静默合并,但 CI 用的 install-nix-action@v27 那个旧 Nix 会报
+    # `attribute 'firewall' already defined` 直接失败。本地绿、CI 红,而且
+    # 本地怎么试都复现不出来。
     firewall = {
       enable = false;
       trustedInterfaces = ["enp5s0" "ens6" "br-lan"];
       checkReversePath = false;
+      # NFS。只对 tailscale 放行(exports 里给的也是 tailnet 地址)。
+      interfaces.tailscale0.allowedTCPPorts = [2049];
     };
   };
 
