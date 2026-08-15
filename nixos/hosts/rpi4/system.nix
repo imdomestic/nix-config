@@ -384,24 +384,12 @@ in {
     };
   };
 
-  # **这里原本开着 niri + firefox。** 树莓派是这个 LAN 的网关(192.168.20.1),
-  # 没有接显示器,那套桌面栈从来没人用过 —— 是历史遗留,2026-08-12 清掉。
+  # 原本开着 niri + firefox,2026-08-12 清掉 —— 这台是网关、没接显示器,那套
+  # 桌面栈从来没人用过,却往 closure 里拖了 2 GiB(明细见
+  # docs/decisions.md#rpi4-drop-desktop)。
   #
-  # 它当时把这些拖进了 system closure(实测 narSize):
-  #
-  #   mbrola-voices      645 MiB   etc → speech-dispatcher → mbrola → voices
-  #   llvm-21.1.8-lib    532 MiB   tmpfiles → graphics-driver.conf → mesa → llvm
-  #   firefox-unwrapped  356 MiB   system-path → firefox
-  #   nautilus           277 MiB   etc → dbus-1 → nautilus
-  #   mesa               260 MiB   graphics-drivers
-  #   speech-dispatcher + flite  120 MiB
-  #
-  # 645 MiB 的语音合成音色库,在一台当路由器用的树莓派上 —— 那是 niri 带的
-  # xdg portal / a11y 那一串的末端。
-  #
-  # 下面 gdm/gnome 的两个显式 false 留着:它们是"这台不要桌面"的意图声明,
-  # 而不是对某个 profile 的覆盖(rpi4 的 profile 列表里 desktop 本来就是
-  # 注释掉的)。真有人哪天手滑加回 desktop profile,那两行会挡一下。
+  # 下面 gdm/gnome 的两个显式 false 留着:它们是"这台不要桌面"的意图声明,不是
+  # 对某个 profile 的覆盖。真有人手滑加回 desktop profile,那两行会挡一下。
 
   time.timeZone = "Asia/Hong_Kong";
 

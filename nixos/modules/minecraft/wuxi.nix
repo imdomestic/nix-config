@@ -439,32 +439,6 @@
       };
 
 
-      # files."config/FabricProxy-Lite.toml".value = {
-      #   secret = "hbhbhb";
-      #   disconnectMessage = "Please connect via the proxy (Velocity).";
-      # };
-      #
-      # files."config/luckperms/luckperms.conf" = {
-      #   format = pkgs.formats.json {};
-      #   value = {
-      #     server = "speedrun";
-      #     storage-method = "postgresql";
-      #     allow-invalid-usernames = true;
-      #     use-server-uuid-cache = false;
-      #     skip-username-check-on-login = true;
-      #     unloaded-user-action = "warn";
-      #     data = {
-      #       address = "10.0.0.66:5432";
-      #       database = "luckperms";
-      #       username = "minecraft";
-      #       password = "hbhbhb";
-      #       pool-settings = {
-      #         maximum-pool-size = 10;
-      #       };
-      #     };
-      #     messaging-service = "pluginmsg";
-      #   };
-      # };
 
       # jvmOpts = "-Xms4G -Xmx8G -Dluckperms.base-directory=config/luckperms";
 

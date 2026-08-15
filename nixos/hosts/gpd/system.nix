@@ -48,24 +48,6 @@ in {
     };
   };
 
-  #
-  #   networks."20-lan-uplink" = {
-  #     matchConfig.Name = "eno1";
-  #     networkConfig.Bridge = "br-lan";
-  #     linkConfig.RequiredForOnline = "enslaved";
-  #   };
-  #
-  #   networks."30-br-lan" = {
-  #     matchConfig.Name = "br-lan";
-  #     networkConfig = {
-  #       DHCP = "yes";
-  #       IPv6AcceptRA = true;
-  #     };
-  #     linkConfig = {
-  #       RequiredForOnline = "routable";
-  #     };
-  #   };
-  # };
 
   time.timeZone = "Asia/Hong_Kong";
 
