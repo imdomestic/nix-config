@@ -1,8 +1,13 @@
-# 三个 job,由快到慢:
+# 四个 job:
 #
 #   flake-check           整个 flake 求值一遍 + 求值警告门禁 + inventory 概览
-#   check-configurations  每台 host 一个 --dry-run,顺便量出闭包体积
+#   ci-matrix             从 flake 的 `ciMatrix` 输出读出要检查哪些 host
+#   check-configurations  每台 host 一个 --dry-run + 自己那份 deploy schema,
+#                         顺便量出闭包体积;矩阵由 ci-matrix 喂进来
 #   summary               把上面每台的数字汇总成一张表,贴在 run 页面上
+#
+# **host 名单不在这个文件里。** 它由 flake.nix 的 ciMatrix 生成 —— 这里手抄过
+# 一份,结果 h310/marble/alex 三台漂在名单外没人发现。
 #
 # 和 cachix.yml 的分工不变:那边只在 main 上跑**真构建**并推缓存,这里全是
 # 求值和 dry-run,PR 也跑。
@@ -80,29 +85,24 @@ jobs:
 
       # --no-build:这里只要求值通过。真正的构建归 cachix.yml 和下面的 dry-run。
       #
-      # **不要加 --all-systems。** 2026-08-12 加过一次,runner 直接 OOM
-      # (exit 143 / SIGTERM),死在:
+      # **--all-systems 现在是安全的,但 2026-08-12 到 08-15 之间不是** —— 那段时间
+      # 加上它 runner 会直接 OOM(exit 143),死在
+      # `checking derivation checks.aarch64-linux.deploy-schema...`。原因是当时
+      # `checks` 是 deploy-rs 的 `deployChecks self.deploy`:求值它等于把整个
+      # deploy.nodes 展开一遍(全部 nixosConfigurations 的 activate 包**加上**全部
+      # homeConfigurations 的),--all-systems 让这件事按 4 个 system 各来一遍。
       #
-      #   checking derivation checks.aarch64-linux.deploy-schema...
+      # 08-15 把 deploy check 拆成每台一个、挪去非标准输出 `deployChecks` 之后,
+      # 这个负担就没了(见 docs/incidents.md#deploy-schema-timeout),于是 --all-systems
+      # 重新加了回来。**它现在覆盖的是 packages.aarch64-linux(rpi4 内核、
+      # mihomo-smart、templar 内核)和 packages.aarch64-darwin(字体)** —— 这些
+      # cachix.yml 会原生构建,但那个 workflow 只在 main 上跑,PR 上是空的。
       #
-      # 原因是 `checks` 走的是 deploy-rs 的 deployChecks self.deploy —— 求值它
-      # 等于把整个 deploy.nodes 展开一遍,也就是全部 nixosConfigurations 的
-      # activate 包**加上**全部 homeConfigurations 的。--all-systems 让这件事
-      # 按 4 个 system 各来一遍,16 GiB 的 runner 扛不住。
-      #
-      # 代价是 ARM 那几台的 deploy schema 不单独验(nix 会打一句 "omitted these
-      # incompatible systems",在白名单里)。可以接受:schema 校验是同一份逻辑,
-      # 和目标架构无关,x86 那遍已经覆盖。
+      # 实测代价:本地 21.5s -> 1m08s,而 CI 上只贵 2 秒(2m46s -> 2m48s)。
+      # runner 的 store 是干净的、本来就要拉 nixpkgs,多求值几个包摊进去可以忽略
+      # —— 本地量出来的相对增量不能直接外推到 CI。
       #
       # nix 把进度和警告都写 stderr,所以 2>&1。
-      # **--all-systems**:不加的话 nix 只检查 runner 自己那个 system 的输出,
-      # 并打一句 "The check omitted these incompatible systems: ..." —— 被跳过的是
-      # packages.aarch64-linux(rpi4 内核、mihomo-smart、templar 内核)和
-      # packages.aarch64-darwin(字体)。cachix.yml 会原生构建它们,但那个 workflow
-      # 只在 main 上跑,**PR 上是空的**。
-      #
-      # 求值而已(--no-build),本地实测 21.5s -> 1m08s。拿这点时间换掉一条
-      # "有东西没检查" 的警告,比把警告加进白名单诚实。
       - name: nix flake check
         run: |
           set -o pipefail
@@ -155,8 +155,6 @@ jobs:
           # 让人本地跑同一条命令时结果一致。
           Git tree .* has uncommitted changes
 
-          # 故意的 —— 见上面不加 --all-systems 的理由。
-          The check omitted these incompatible systems
           ALLOW
           sed -e 's/^[[:space:]]*//' -e '/^#/d' -e '/^$/d' /tmp/allow.raw > /tmp/allow.txt
 
@@ -218,81 +216,68 @@ jobs:
           PY
 
   # ---------------------------------------------------------------------------
+  # 矩阵从 flake 生成,不再手抄。
+  #
+  # 2026-08-15 之前 ci.yml 里躺着一份 17 条的 include 列表,而它已经漂了:
+  # h310 / marble / alex 三台从来没进过矩阵 —— 其中 h310 正是把 nix flake check
+  # 撑爆的那台。加机器的人改了 nixos/hosts 却没人记得改 workflow,这种漂移不靠
+  # 纪律能防住,只能靠让它没法漂。
+  #
+  # 规则写在 flake.nix 的 ciMatrix 输出里(哪些跳过、哪个 system 用哪个 runner),
+  # 这里只负责把它读出来喂给 GitHub。
+  # ---------------------------------------------------------------------------
+  ci-matrix:
+    name: 生成矩阵
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.gen.outputs.include }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: 从 flake 读矩阵
+        id: gen
+        run: |
+          set -euo pipefail
+          include=$(nix eval --json .#ciMatrix)
+          echo "include=$include" >> "$GITHUB_OUTPUT"
+          # 也贴进 summary,免得要点进这个 job 才知道这轮跑了哪几台。
+          python3 - <<PY >> "$GITHUB_STEP_SUMMARY"
+          import json
+          m = json.loads('''$include''')
+          print(f"## CI 矩阵（{len(m)} 台，由 \`.#ciMatrix\` 生成）\n")
+          print("| host | arch | runner |")
+          print("| --- | --- | --- |")
+          for e in sorted(m, key=lambda e: (e["os"], e["host"])):
+              print(f"| **{e['host']}** | {e['arch']} | \`{e['os']}\` |")
+          PY
+
+  # ---------------------------------------------------------------------------
   # 逐台 host 的 dry-run。除了"能不能构建"之外,顺便把闭包体积量出来 ——
   # runner 是干净的 store,所以 dry-run 报的 "unpacked" 基本就是这台的
   # system closure 大小。这样闭包涨了在 PR 里直接看得见,不用等部署完再
   # ssh 上去 `nix path-info -S`。
   # ---------------------------------------------------------------------------
   check-configurations:
+    needs: ci-matrix
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - host: wsl
-            arch: x86_64
-            os: ubuntu-latest
-          - host: shanghai
-            arch: x86_64
-            os: ubuntu-latest
-          - host: x470
-            arch: x86_64
-            os: ubuntu-latest
-          - host: tank
-            arch: x86_64
-            os: ubuntu-latest
-          - host: h610
-            arch: x86_64
-            os: ubuntu-latest
-          - host: gpd
-            arch: x86_64
-            os: ubuntu-latest
-          - host: m16
-            arch: x86_64
-            os: ubuntu-latest
-          - host: b650
-            arch: x86_64
-            os: ubuntu-latest
-          - host: "9950x"
-            arch: x86_64
-            os: ubuntu-latest
-
-          - host: r2s
-            arch: aarch64
-            os: ubuntu-24.04-arm
-          - host: r5sjp
-            arch: aarch64
-            os: ubuntu-24.04-arm
-          - host: r5s
-            arch: aarch64
-            os: ubuntu-24.04-arm
-          - host: r6s
-            arch: aarch64
-            os: ubuntu-24.04-arm
-          - host: aarch64-wsl
-            arch: aarch64
-            os: ubuntu-24.04-arm
-          - host: rpi4
-            arch: aarch64
-            os: ubuntu-24.04-arm
-
-          - host: m1elite
-            arch: aarch64-darwin
-            os: macos-latest
-          - host: m1pro
-            arch: aarch64-darwin
-            os: macos-latest
-
-    name: Check ${{ matrix.host }} (${{ matrix.arch }})
+        include: ${{ fromJSON(needs.ci-matrix.outputs.include) }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        if: matrix.arch == 'aarch64'
-        uses: docker/setup-qemu-action@v3
-
+      # 这里原本有一步 `docker/setup-qemu-action`,条件是 arch == aarch64 ——
+      # 那是 aarch64 还跑在 x86 runner 上时用来装 binfmt 的。2026-08-15 换成原生
+      # ubuntu-24.04-arm 之后就是纯浪费(给一台 arm64 机器装 arm64 模拟),删掉。
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
