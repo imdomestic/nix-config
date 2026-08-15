@@ -249,41 +249,6 @@
     };
   };
 
-  # services.pppd = {
-  #   enable = true;
-  #   peers = {
-  #     mobile = {
-  #       autostart = true;
-  #       enable = true;
-  #       config = ''
-  #         plugin pppoe.so wan0
-  #         user "19551998351"
-  #         password "837145"
-  #
-  #         # usepeerdns
-  #
-  #         # 关键参数
-  #         defaultroute    # 自动添加默认路由
-  #         persist         # 断线重连
-  #         maxfail 0       # 无限次重试
-  #         holdoff 5       # 重试间隔
-  #         noipdefault
-  #         noauth
-  #         hide-password
-  #         lcp-echo-interval 30
-  #         lcp-echo-failure 20
-  #         lcp-echo-adaptive
-  #
-  #         +ipv6
-  #         ipv6cp-use-ipaddr
-  #
-  #         # MTU 设置 (PPPoE 标准)
-  #         mtu 1400
-  #         mru 1400
-  #       '';
-  #     };
-  #   };
-  # };
 
   services.dnsmasq.enable = false;
   services.resolved = {

@@ -1543,18 +1543,5 @@ in {
       vim.cmd.colorscheme("evergarden")
     '';
 
-    # extraConfigLuaPost = ''
-    #   require('kanso').setup {
-    #     -- compile = true,
-    #     transparent = false,
-    #     keywordStyle = { italic = false, bold = true },
-    #     overrides = function(colors)
-    #       return {
-    #         WinSeparator = { fg = colors.palette.inkBg2, bold = false },
-    #       }
-    #     end,
-    #   }
-    #   vim.cmd("colorscheme kanso-zen")
-    # '';
   };
 }

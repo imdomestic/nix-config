@@ -117,3 +117,24 @@ up to date:
    incoming commits (`git log`) and a diff overview (`git diff --stat`), and
    let the user decide whether to pull/rebase before rebuilding. Never
    silently rebuild over an out-of-date checkout.
+
+### After a rebuild: commit and push promptly
+
+The freshness check above is the other half of this rule, and it only works if
+everyone's commits actually reach the remote. So once a rebuild/deploy has
+landed and the change is committed, **push it** (ask first if the user has not
+already said to; do not leave it sitting).
+
+Why it matters, in order of how much it bites:
+
+1. **A machine running code that is not on the remote is unreproducible.** The
+   next deploy from a clean checkout silently reverts it, and nobody sees a
+   conflict — the change just disappears.
+2. The freshness check on every *other* machine will report "up to date" while
+   actually being behind, because the commit exists only in one working tree.
+3. A dirty tree makes `git status` noise indistinguishable from real drift, so
+   the next person skips reading it.
+
+If a change is deployed but deliberately not committed yet (mid-investigation,
+say), say so explicitly in the handoff rather than leaving it implicit — a
+deployed-but-uncommitted generation is a landmine for the next rebuild.

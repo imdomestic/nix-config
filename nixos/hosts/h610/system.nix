@@ -1046,30 +1046,9 @@ in {
     };
   };
 
-  # services.headplane = {
-  #   enable = true;
-  #   debug = true;
-  #   settings = {
-  #     server = {
-  #       host = "127.0.0.1";
-  #       port = 3000;
-  #       base_url = "https://tailscale.imdomestic.com:8443";
-  #       cookie_secure = true;
-  #       cookie_secret_path = "/var/lib/secrets/headplane/cookie_secret";
-  #     };
-  #     headscale = {
-  #       url = "http://127.0.0.1:8080";
-  #       public_url = "https://tailscale.imdomestic.com:8443";
-  #     };
-  #     integration = {
-  #       agent = {
-  #         enabled = false;
-  #         pre_authkey_path = "/var/lib/secrets/headplane/agent_preauthkey";
-  #       };
-  #       proc.enabled = true;
-  #     };
-  #   };
-  # };
+  # headplane(headscale 的 Web UI)试过、没启用,完整配置在 git 历史里。
+  # 别顺手删这条注释:modules/monitoring 里 Grafana 端口那条说明引用了它 ——
+  # 3000 在这个 fleet 上是空的,就是因为 headplane 没启用。
 
   services.coturn = {
     enable = true;
@@ -1265,23 +1244,6 @@ in {
         proxy_send_timeout 3600s;
       '';
     };
-    # locations."= /admin" = {
-    #   extraConfig = ''
-    #     return 302 /admin/;
-    #   '';
-    # };
-    # locations."/admin/" = {
-    #   proxyPass = "http://127.0.0.1:3000";
-    #   proxyWebsockets = true;
-    #   extraConfig = ''
-    #     proxy_set_header Host $host;
-    #     proxy_set_header X-Real-IP $remote_addr;
-    #     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    #     proxy_set_header X-Forwarded-Proto $scheme;
-    #     proxy_read_timeout 3600s;
-    #     proxy_send_timeout 3600s;
-    #   '';
-    # };
   };
   services.nginx.virtualHosts."matrix.imdomestic.com" = {
     serverName = "matrix.imdomestic.com";

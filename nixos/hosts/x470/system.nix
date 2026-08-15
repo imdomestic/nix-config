@@ -108,16 +108,6 @@ in {
       };
     };
 
-    # networks."30-10g-backend" = {
-    #   matchConfig.Name = "enp40s0d1";
-    #   networkConfig = {
-    #     Address = "192.168.254.2/30";
-    #   };
-    #   linkConfig = {
-    #     MTUBytes = 9000;
-    #     RequiredForOnline = "no";
-    #   };
-    # };
   };
 
   # Set your time zone.
