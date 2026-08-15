@@ -17,6 +17,7 @@
   networking = {
     networkmanager.enable = false;
     useNetworkd = true;
+    wireless.iwd.enable = true;
   };
 
   systemd.network.networks."10-wired" = {
