@@ -9,6 +9,56 @@
 
 ---
 
+## 2026-08-15 · CI 连红 8 次而本地全绿 —— Nix 版本对重复属性的宽容度不同 {#nix-dup-attr-ci}
+
+**症状:** `flake-check` 连续 8 次失败,而本地 `nix eval` 17 台全过、
+`nix-instantiate --parse` 也过,怎么试都复现不出来。
+
+**错误:**
+
+```
+error: attribute 'firewall' already defined at nixos/hosts/tank/system.nix:376:5
+at nixos/hosts/tank/system.nix:250:3
+```
+
+文件里同时有:
+
+```nix
+networking.firewall.interfaces.tailscale0.allowedTCPPorts = [2049];   # 250 行
+...
+networking = { ... firewall = { ... }; ... };                         # 371-381 行
+```
+
+**根因是 Nix 版本差异,不是配置逻辑错。** 小实验:
+
+```nix
+{ a.b.c = 1; a = { b = { d = 2; }; }; }
+```
+
+- 本地 Determinate Nix 3.21.9 (2.34.8):**合并**成 `{ a.b = { c = 1; d = 2; }; }`
+- CI 的 `cachix/install-nix-action@v27` 装的旧 Nix:**报错**
+
+所以「本地绿、CI 红」而且本地无法复现 —— 差别不在代码,在跑代码的那个 Nix。
+
+**修法:** 把同一个 `networking.firewall` 的定义合并到一个块里。tank 和 h610 各
+有一处(h610 那处当时还没炸,是 tank 修好后的下一颗雷)。改完两台的 toplevel
+drvPath **与改前逐一比对完全一致** —— 纯结构调整,语义零变化。
+
+**留下的护栏:** 两个 firewall 块上面都写了「别在文件别处再写
+`networking.firewall.xxx =`」。扫描全仓库的命令:
+
+```sh
+for f in $(find nixos -name "*.nix"); do
+  b=$(grep -cE "^\s*networking\s*=\s*\{" "$f"); d=$(grep -cE "^\s*networking\.[a-zA-Z]" "$f")
+  [ "$b" -gt 0 ] && [ "$d" -gt 0 ] && echo "$f"
+done
+```
+
+**更值得记的一点:** 「我本地验过了」在这个仓库里不足以证明 CI 会绿 —— 本地是
+Determinate Nix,CI 是 install-nix-action 的 stock Nix,两者对语法的宽容度不同。
+
+---
+
 ## 2026-08-15 · 手机 QQ 图片转半天才出来 —— mihomo 静默丢掉了所有 QUIC {#quic-blackhole}
 
 **症状:** 换到 mihomo 之后,手机 QQ 看图要转很久才出来。其它上网感觉正常。

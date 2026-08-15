@@ -278,10 +278,17 @@ in {
         '';
       };
     };
+    # **firewall 的所有设置都写在这一个块里。** 别在文件别处再写
+    # `networking.firewall.xxx = ...` —— 那样就有了两个 networking 定义,新版
+    # Nix 会静默合并,但 CI 用的 install-nix-action@v27 那个旧 Nix 会报
+    # `attribute 'firewall' already defined` 直接失败。本地绿、CI 红,而且本地
+    # 怎么试都复现不出来(tank 上刚踩过,见 docs/incidents.md#nix-dup-attr-ci)。
     firewall = {
       enable = false;
       trustedInterfaces = ["br-lan"];
       interfaces."ppp0".allowedUDPPorts = [546];
+      # nginx 的 80,只对 tailscale 放行。
+      interfaces.tailscale0.allowedTCPPorts = [80];
       checkReversePath = false;
     };
   };
@@ -1129,8 +1136,6 @@ in {
       '';
     };
   };
-
-  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [80];
 
   # 订阅端点。和 headscale 共用 8443,靠 SNI 分流。
   services.nginx.virtualHosts."h610.imdomestic.com" = {
