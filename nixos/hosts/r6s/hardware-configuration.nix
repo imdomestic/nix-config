@@ -17,23 +17,11 @@
   boot.kernelModules = [];
   boot.extraModulePackages = [];
 
-  # 根在 SD 卡(mmcblk0p1)的 f2fs 上,2026-08-15 从 eMMC 搬过来的。
+  # 根在 SD 卡的 f2fs 上(2026-08-15 从 eMMC 搬过来)。选 f2fs 是因为这张卡上报
+  # DISC-GRAN = 4M,log-structured 的顺序写正对这个擦除块尺寸。
   #
-  # **eMMC 上那个 ext4 根原封不动留着**(UUID 91dd2c0a-58ca-4d28-846d-a608244aa146),
-  # 它就是回退路径:旧的 generation 各自带自己的 stage-1、各自指向 eMMC,从引导
-  # 菜单选回去就能起来,不用重装也不用重刷。r6s 无头,进引导菜单要么接 HDMI,
-  # 要么接串口(ttyS2,serial-getty 已启用)。
-  #
-  # 搬的两个理由(都不是「更快」—— 实测卡比 eMMC 顺序慢 3 倍、同步写慢 1.5 倍):
-  #   1. 28G -> 238G。原来 nixos-rebuild 升 nixpkgs 时撞过 ENOSPC。
-  #   2. eMMC 那 19.7 GB/天 的写入归零。它 life_time 已经 0x03(用掉 20~30%),
-  #      而 92% 的写入来自 journald —— 见 modules/mihomo 那边的日志量。
-  #      卡是能换的消耗品,eMMC 是焊死的。
-  #
-  # 用 f2fs 是因为这张卡上报 DISC-GRAN = 4M(擦除块 4 MB),log-structured 的
-  # 顺序写正对这个形态;ext4 就地更新的小块 fsync 落进 4 MB 块要读-改-写整块。
-  # 注意 SD 卡不暴露任何健康信息(没有 life_time/pre_eol),只能拿
-  # node_disk_written_bytes_total{device="mmcblk0"} 的累计写入量当替代指标。
+  # **eMMC 上的 ext4 根原封不动留着**(UUID 91dd2c0a-…),是回退目标。
+  # 迁移的理由、实测数据、以及恢复方法见 docs/runbooks/r6s.md。
   fileSystems."/" = {
     device = "/dev/disk/by-uuid/99e8c9ba-539f-45a2-8b80-aecebef9a1af";
     fsType = "f2fs";

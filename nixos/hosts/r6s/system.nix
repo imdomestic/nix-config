@@ -66,38 +66,13 @@ in {
   # 少一个不确定变量 —— 这条路上出问题的代价是无头机器起不来。
   boot.initrd.kernelModules = ["f2fs"];
 
-  # **eMMC 救援入口:/boot/EFI/rescue/ + /boot/loader/entries/rescue-emmc.conf**
+  # ESP 只有 599M,每代 kernel + initrd 约 32M,10 代最坏 640M —— 装不下。
+  # 5 代够回退,最坏约 320M;加上 eMMC 救援入口那份 94M,当前占用 38%。
   #
-  # 这是 ESP 上的**命令式**状态,配置里没有对应项 —— 写在这儿是因为不写下来
-  # 早晚会丢,而它是 SD 卡挂掉时唯一的回家路。
-  #
-  # 为什么需要它:根搬到 SD 卡后,eMMC 上那个 ext4 根还完整留着,但通往它的
-  # 唯一入口是 generation 112 的引导项 —— 而 configurationLimit 会把它裁掉。
-  # 到那时 eMMC 系统还在盘上,却没有任何办法启动它:菜单里每一项都指向 SD 卡,
-  # 卡没了就全部起不来,而 r6s 无头,连引导菜单都得接 HDMI 才看得见。
-  #
-  # 为什么不能声明式:extraFiles 要引用 store path,而 gen112 的 initrd 会被
-  # nix.gc 在 30 天后回收;builtins.storePath 在 flake 的纯求值里用不了,而且
-  # 求值发生在发起方(macOS),那台机器上根本没有这个路径。
-  #
-  # 关键细节:
-  #   - init= 必须钉死 gen112 的 toplevel,**不能**用
-  #     /nix/var/nix/profiles/system 那个符号链接 —— eMMC 根上的 profile 已经
-  #     被当初的 `nixos-rebuild boot` 推到了 114,而 114 的 fstab 写的是 f2fs。
-  #   - sort-key 用 a-rescue,排在 `nixos` 前面,所以不会被选成 default
-  #     (实测:加完之后 default 仍是最新的 generation)。
-  #   - 文件放 /boot/EFI/rescue/ 而不是 /boot/EFI/nixos/,后者会被裁剪。
-  #     实测扛过了 nixos-rebuild switch。
-  #
-  # 要重建的话(gen112 的两个文件哈希写在 rescue-emmc.conf 里):
-  #   mkdir -p /boot/EFI/rescue
-  #   cp /boot/EFI/nixos/<kernel>.efi  /boot/EFI/rescue/kernel.efi
-  #   cp /boot/EFI/nixos/<initrd>.efi  /boot/EFI/rescue/initrd.efi
-  #   # 然后写 entries/rescue-emmc.conf,options 里 init=<gen112 toplevel>/init
-  #   #                                          root=fstab
-  #
-  # ESP 只有 599M,每代的 kernel + initrd 约 32M(两个文件),10 代最坏要 640M ——
-  # 装不下。5 代够回退用,最坏约 320M;加上救援那份 94M,当前占用 38%。
+  # **注意 ESP 上还有一份不受 NixOS 管理的 eMMC 救援入口**(/boot/EFI/rescue/),
+  # 它是 SD 卡挂掉时唯一的回家路,不会被这个 limit 裁掉。用法、重建步骤、以及
+  # 引导相关的两个坑(EFI 变量不持久、别写显式 default)见
+  # docs/runbooks/r6s.md。
   #
   # 2026-08-15 清理过一次:`/boot/nixos` + `/boot/extlinux` 是 r2s 时代的遗留
   # (extlinux.conf 里引用的是 rk3328-nanopi-r2s.dtb),382M 死重,占了 ESP 的
