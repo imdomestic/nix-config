@@ -337,6 +337,32 @@ jobs:
             "${build:-0}" "${fetch:-0}" "${size:-—}" > /tmp/row.md
           cat /tmp/row.md
 
+      # 这台的 deploy schema。**放在这一步而不是 flake-check job 里**,因为上面
+      # 那步已经把这台的 toplevel 求值过了,顺手验自己这一个节点几乎不要钱;而
+      # `deployChecks self.deploy` 是一个进程扛下全部 9 个节点 / 35 个 profile,
+      # 2026-08-15 加了 h310 之后就撑爆 runner —— 完整经过见
+      # docs/incidents.md#deploy-schema-timeout。
+      #
+      # 输出在 flake 的 `deployChecks` 而不是 `checks`,正是为了让
+      # `nix flake check` 不去碰它。
+      #
+      # 矩阵覆盖的机器比 deploy 节点多(笔记本、WSL、没有 tsIp 的那些),不是
+      # deploy 节点的直接跳过 —— 用 `nix eval` 探一下有没有这个 attr,而不是在
+      # 这里再维护一份主机名单(那种名单一定会和 mkDeployNodes 的判据漂移)。
+      - name: Deploy schema (this host)
+        run: |
+          set -euo pipefail
+          sys=x86_64-linux
+          [ "${{ runner.os }}" = "macOS" ] && sys=aarch64-darwin
+          attr=".#deployChecks.${sys}.deploy-schema-${{ matrix.host }}"
+          if nix eval "$attr.drvPath" --raw >/dev/null 2>&1; then
+            echo "验 ${{ matrix.host }} 的 deploy schema..."
+            nix build "$attr" --no-link
+            echo "OK"
+          else
+            echo "${{ matrix.host }} 不是 deploy 节点(没有 tsIp),跳过。"
+          fi
+
       # 每台先各自落一个 artifact,由下面的 summary job 拼成一张表。
       # 不直接往 $GITHUB_STEP_SUMMARY 写:那样会变成 17 个各写各的小片段,
       # 没法排序也没法一眼比较。

@@ -9,6 +9,51 @@
 
 ---
 
+## 2026-08-15 · 加了一台机器,`nix flake check` 就撑爆 runner {#deploy-schema-timeout}
+
+**症状:** `flake-check` 工作流里的 `nix flake check` job,卡在
+
+```
+checking derivation checks.x86_64-linux.deploy-schema...
+```
+
+十几分钟不动,然后 `exit code 143`(SIGTERM)。日志里没有 OOM、没有磁盘告警,
+所有 NixOS 配置在这之前都已经检查通过。
+
+**触发点:** 最后一次绿是 2026-08-14 11:31,之后进来的第一批就是
+`4a90b29 added h310` 那几个 commit。h310 进了 deploy 节点,还带 4 个 home:
+
+```
+deploy 节点数 9,profile 总数 35
+h310: [home-fendada, home-hank, home-kenneth, home-linwhite, system]
+```
+
+**机制:** `checks` 原本是 `deployLib.deployChecks self.deploy` —— 吃的是**整个**
+deploy,于是 `nix flake check` 在一个进程里深度展开 9 个节点、35 个 profile
+(其中约 26 个是 home)。注意用的是 `--no-build`,所以卡的是**求值**不是构建。
+再加一台带 4 个 home 的机器就越过了 runner 的资源线。
+
+**排查时踩的坑(值得记):** 一开始怀疑是同一天开的 `nix.gc` 改了所有 host 的
+closure、导致缓存全失效。**这个猜测是错的** —— 翻我第一个 commit 之前的三次
+run,签名完全一样(14m32s / 12m57s / 12m24s,全部卡在 deploy-schema、全部 143)。
+比对「最后一次绿之后进来了什么」比对着现象猜快得多。
+
+**修法:** 拆成每台一个,并从 `checks` 挪到非标准输出 `deployChecks`:
+
+- `nix flake check` 不再碰它(只会说一句 "unknown flake output",已在 ci.yml 的
+  警告白名单里)。本地实测从「跑不完」变成 **21.5 秒**。
+- 真正的验证挪进矩阵 job:那边每台**本来就**求值过自己的 toplevel,顺手验自己
+  这一个节点几乎不要钱。而且从「一个大 check」变成「每台一个」,哪台坏了一眼
+  看得出来。
+- 顺带补上一个真实缺口:矩阵原本只验 system 不验 home
+  (`just switch` 也是 system only),现在每台会一并求值自己的 home profile。
+
+矩阵覆盖的机器比 deploy 节点多(笔记本、WSL、没有 tsIp 的那些),CI 里用
+`nix eval` 探一下 attr 存不存在来跳过,而不是再维护一份主机名单 —— 那种名单
+一定会和 `mkDeployNodes` 的判据漂移。
+
+---
+
 ## 2026-08-15 · CI 连红 8 次而本地全绿 —— Nix 版本对重复属性的宽容度不同 {#nix-dup-attr-ci}
 
 **症状:** `flake-check` 连续 8 次失败,而本地 `nix eval` 17 台全过、
