@@ -271,6 +271,11 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.ci-matrix.outputs.include) }}
 
+    # **这行别删。** include 是 fromJSON 来的,不给显式 name 的话 GitHub 会把
+    # 每个键都塞进默认标题,变成
+    #   check-configurations (x86_64, h310, nixos, ubuntu-latest, x86_64-linux)
+    name: Check ${{ matrix.host }} (${{ matrix.arch }})
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -313,7 +318,9 @@ jobs:
         run: |
           set -euo pipefail
           echo "Checking configuration for host: ${{ matrix.host }}..."
-          if [ "${{ runner.os }}" = "macOS" ]; then
+          # 用 matrix.kind 而不是 runner.os —— kind 是 hosts registry 里的原始事实,
+          # runner.os 只是它的一个副产物。
+          if [ "${{ matrix.kind }}" = "darwin" ]; then
             attr='.#darwinConfigurations."${{ matrix.host }}".system'
           else
             attr='.#nixosConfigurations."${{ matrix.host }}".config.system.build.toplevel'
@@ -357,9 +364,12 @@ jobs:
       - name: Deploy schema (this host)
         run: |
           set -euo pipefail
-          sys=x86_64-linux
-          [ "${{ runner.os }}" = "macOS" ] && sys=aarch64-darwin
-          attr=".#deployChecks.${sys}.deploy-schema-${{ matrix.host }}"
+          # **用 matrix.system,不要从 runner.os 猜。** 之前写的是
+          #   sys=x86_64-linux; [ runner.os = macOS ] && sys=aarch64-darwin
+          # 那是 aarch64 还跑在 x86 runner 上时凑合能用的;换成原生
+          # ubuntu-24.04-arm 之后 runner.os 仍然是 Linux,于是拿 x86_64-linux 的
+          # check 去验一个 aarch64 节点 —— 侥幸没炸(--dry-run 只求值),但是错的。
+          attr=".#deployChecks.${{ matrix.system }}.deploy-schema-${{ matrix.host }}"
           if nix eval "$attr.drvPath" --raw >/dev/null 2>&1; then
             echo "验 ${{ matrix.host }} 的 deploy schema..."
             # **--dry-run,不是真 build。** deploy-rs 的 schema check 是
