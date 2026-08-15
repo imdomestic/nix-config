@@ -25,7 +25,7 @@ in {
         ];
         modules = [
           userModules.hank.module
-          userModules.hank.dev
+          # userModules.hank.dev
         ];
       };
     };
