@@ -230,6 +230,7 @@ in {
       "d     /data/srv        0777 root  root  -"
       "d     /data/lib/ollama 0777 root  root  -"
       "d     /data/services   0755 root  root  -"
+      "d     /data/services/kennethbot-archive 0750 kenneth users -"
       "d     /data/nas        0755 hank  users -"
       "d     /data/nas/public 0775 hank  users -"
       "d     /data/backup/postgresql 0700 postgres postgres 30d"
@@ -240,10 +241,13 @@ in {
   };
 
   services.nfs.server = {
+    enable = true;
     exports = ''
       /data/rdma 192.168.1.7(rw,sync,no_subtree_check,no_root_squash,insecure)
+      /data/services/kennethbot-archive 100.64.0.3(rw,sync,no_subtree_check,all_squash,anonuid=1004,anongid=100)
     '';
   };
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [2049];
 
   services.filebrowser = {
     enable = true;
@@ -542,7 +546,7 @@ in {
       hostname = "100.64.0.4";
       stateDir = "/data/lib/qq-bot-postgres-ha/control";
       dataDir = "/data/lib/qq-bot-postgres-ha/17";
-      candidatePriority = 100;
+      candidatePriority = 50;
       maximumBackupRate = "250M";
       walKeepSize = "2GB";
       maxSlotWalKeepSize = "32GB";
