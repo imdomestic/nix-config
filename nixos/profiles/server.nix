@@ -23,28 +23,9 @@
     info.enable = lib.mkDefault false;
   };
 
-  # **cockpit 删了(2026-08-12)。** 在 NixOS 上它 15 个页面里大部分没有后端 ——
-  # h610 上实测 pkcon / nmcli / udisksctl / sosreport / setenforce 全部 MISSING,
-  # 于是 apps、packagekit、networkmanager、storaged、sosreport、selinux 六页
-  # 全是死的。剩下能用的 shell / systemd / metrics 三页,这个 fleet 里分别有
-  # ssh、node_exporter 的 systemd collector、和 Prometheus 做得更好。
-  #
-  # users 页更糟:全 fleet mutableUsers = true,在里面改一个 users.users 声明过
-  # 的用户,下次 switch 会被静默改回去 —— 不报错,就是没了。这不是打包问题,是
-  # 理念相反:cockpit 的前提是"用 GUI 改一台可变的机器",NixOS 的前提是"改配置
-  # 再重建"。
-  #
-  # 实际使用情况也印证了:h610 和 r6s 早就各自 mkForce false 掉了,而还开着的
-  # r5s / shanghai 三十天日志零条。
-  #
-  # 另外它是这个仓库"服务只绑 tailscale"这条规矩的唯一例外,而且三个最不该
-  # 例外的选项凑齐了 —— openFirewall = true + allowed-origins = ["*"] +
-  # AllowUnencrypted = true,实测监听在 [::]:9090(r5s 有 WAN + PPPoE,
-  # shanghai 是公网 VPS,两台都 firewall.enable = false)。对比
-  # modules/telemetry/default.nix:79 那条"绑定地址是唯一真正起作用的边界"。
-  #
-  # 顺带:Prometheus 当初为它让到 9009(见 modules/monitoring 的 port 选项),
-  # 那个理由现在不成立了,但 9009 已经写进两份配置和看板,不值得再挪回去。
+  # cockpit 删了(2026-08-12):大半页面在 NixOS 上没有后端,users 页还会静默
+  # 回滚用户改动,而且它是"服务只绑 tailscale"这条规矩的唯一例外。
+  # 完整理由和实测见 docs/decisions.md#drop-cockpit。
 
   # hardware.pulseaudio.enable = lib.mkDefault false;
   services.pipewire.enable = lib.mkDefault false;
