@@ -39,16 +39,5 @@ in {
         ];
       };
     };
-    # nix = {
-    #   home = {
-    #     profiles = with homeProfiles; [
-    #       core
-    #       gui.linux
-    #     ];
-    #     modules = [
-    #       userModules.nix.module
-    #     ];
-    #   };
-    # };
   };
 }

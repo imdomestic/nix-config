@@ -438,28 +438,6 @@
         "rcon.port" = 25576;
       };
 
-      # symlinks = {
-      #   "mods/FabricAPI.jar" = pkgs.fetchurl {
-      #     url = "https://cdn.modrinth.com/data/P7dR8mSH/versions/5oK85X7C/fabric-api-0.140.0%2B1.21.11.jar";
-      #     sha512 = "f33d3aa6d4da877975eb0f814f9ac8c02f9641e0192402445912ddab43269efcc685ef14d59fd8ee53deb9b6ff4521442e06e1de1fd1284b426711404db5350b";
-      #   };
-      #   "mods/FabricProxyLite.jar" = pkgs.fetchurl {
-      #     url = "https://cdn.modrinth.com/data/8dI2tmqs/versions/nR8AIdvx/FabricProxy-Lite-2.11.0.jar";
-      #     sha512 = "c2e1d9279f6f19a561f934b846540b28a033586b4b419b9c1aa27ac43ffc8fad2ce60e212a15406e5fa3907ff5ecbe5af7a5edb183a9ee6737a41e464aec1375";
-      #   };
-      #   "mods/LuckPerms.jar" = pkgs.fetchurl {
-      #     url = "https://download.luckperms.net/1610/fabric/LuckPerms-Fabric-5.5.21.jar";
-      #     sha256 = "sha256-mNsvmLvat0o2x06LQuX18V5pkQUfSipV9N2rShDOEwQ=";
-      #   };
-      #   "mods/Lithium.jar" = pkgs.fetchurl {
-      #     url = "https://cdn.modrinth.com/data/gvQqBUqZ/versions/4DdLmtyz/lithium-fabric-0.21.1%2Bmc1.21.11.jar";
-      #     sha256 = "sha256-bPXo/SctwzIGa2XLXC6KFrmfueg92Hu5upxZU+LPUw4=";
-      #   };
-      #   "mods/TAB-Bridge" = pkgs.fetchurl {
-      #     url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/cOXgQQKY/TAB-Bridge%20v6.2.0.jar";
-      #     sha256 = "sha256-7L2IOopc3SOQ7fnCQbVVJTB1vWc9NQcXgt+kMn82BnE=";
-      #   };
-      # };
 
       # files."config/FabricProxy-Lite.toml".value = {
       #   secret = "hbhbhb";
