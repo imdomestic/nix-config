@@ -357,7 +357,19 @@ jobs:
           attr=".#deployChecks.${sys}.deploy-schema-${{ matrix.host }}"
           if nix eval "$attr.drvPath" --raw >/dev/null 2>&1; then
             echo "验 ${{ matrix.host }} 的 deploy schema..."
-            nix build "$attr" --no-link
+            # **--dry-run,不是真 build。** deploy-rs 的 schema check 是
+            #   runCommand { } "jsonschema -i ${writeText "deploy.json" (toJSON deploy)} ..."
+            # 而 toJSON 出来的 profiles.*.path 是带 string context 的 store 路径,
+            # 所以真 build 它 = 把这台的整个 system + home closure 全部拉下来。
+            # 实测 shanghai 从 54s 涨到 4m35s。
+            #
+            # 原来的 `nix flake check --no-build` 也从没真跑过 jsonschema —— 它同样
+            # 只求值。覆盖面全在求值这一步(deploy 节点的 profile 能不能求值出来),
+            # 所以 --dry-run 是等价替换,不是降级。
+            #
+            # 真想跑那个 JSON schema 校验的话,得先 unsafeDiscardStringContext 把
+            # 路径变成纯文本、自己重写一份 check —— 那是另一件事,别顺手在这里做。
+            nix build "$attr" --dry-run
             echo "OK"
           else
             echo "${{ matrix.host }} 不是 deploy 节点(没有 tsIp),跳过。"
