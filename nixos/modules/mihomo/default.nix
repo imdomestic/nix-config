@@ -83,6 +83,28 @@
       }
       else {type = "url-test";}
     );
+
+  # 拦 QUIC(UDP/443)。`sub` 为 null 时无条件拦,否则再 AND 上一条子规则。
+  #
+  # **拦它的唯一理由是逼客户端回退到 TCP** —— 反向隧道(portal/bridge)对 UDP
+  # 支持差,这一点 dae 的配置注释里也写过,QUIC 走进代理比不走还慢。但这个理由
+  # 只对**最终要出国**的流量成立;对直连的目标拦它是纯亏,没有任何收益。
+  #
+  # 而且 mihomo 的 REJECT 对 UDP 是**静默丢包**,不回 ICMP port unreachable。
+  # 客户端拿不到「此路不通」的信号,只能把 QUIC 握手超时整个等完才回退 TCP。
+  # 2026-08-15 从 LAN 客户端实测:往 UDP/443 发包 3 秒零响应、无 ICMP。
+  #
+  # 这条原来是无条件写在规则第一位的(dae 时代没有任何等价规则,是换 mihomo
+  # 引入的),一天拦掉 22074 个连接,其中 42%(9467 个)打的是国内目标 ——
+  # 包括 shquic.weixin.qq.com、腾讯上海的 101.227.133.99、以及南京本地的 CDN
+  # 边缘节点(单台设备一天撞 1186 次)。症状是手机 QQ 图片要转好久才出来:
+  # QQ 先试 QUIC,等满超时,才回退 TCP 重新拿图。
+  #
+  # 拆成多处而不是一条,是因为下面 DIRECT / im 的规则是交错的,没有单一插入点
+  # 能把两者分开。
+  quicReject = sub: let
+    parts = ["(NETWORK,UDP)" "(DST-PORT,443)"] ++ lib.optional (sub != null) sub;
+  in "AND,(${lib.concatStringsSep "," parts}),REJECT";
 in {
   options.my.mihomo = {
     smart = lib.mkOption {
@@ -299,7 +321,6 @@ in {
         rules =
           cfg.extraRules
           ++ [
-            "AND,(NETWORK,UDP),(DST-PORT,443),REJECT"
             "GEOSITE,category-ads-all,REJECT"
 
             # 自建基础设施直连,必须排在兜底之前。没有这条的话,ssh 到
@@ -323,11 +344,15 @@ in {
             "IP-CIDR6,ff00::/8,DIRECT,no-resolve"
             "GEOIP,private,DIRECT,no-resolve"
 
-            "GEOSITE,github,im"
-            "GEOSITE,google-gemini,im"
-            "GEOSITE,google,im"
-            "GEOSITE,telegram,im"
-
+          ]
+          # **QUIC 只在「这条流量最终要出国」时才拦。** 见上面 quicReject 的说明。
+          # 每个 tag 生成两条:先拦掉它的 QUIC,再把它的 TCP 送进代理。两条写在
+          # 一起是为了改不漏 —— 新增 `,im` 规则时照抄这个形状即可。
+          ++ lib.concatMap (tag: [
+            (quicReject "(GEOSITE,${tag})")
+            "GEOSITE,${tag},im"
+          ]) ["github" "google-gemini" "google" "telegram"]
+          ++ [
             "GEOSITE,cn,DIRECT"
             "GEOSITE,bilibili,DIRECT"
             "GEOSITE,steam@cn,DIRECT"
@@ -340,6 +365,8 @@ in {
             "GEOSITE,microsoft,DIRECT"
             "GEOIP,cn,DIRECT"
 
+            # 到这里还没匹配上的都要走下面的 MATCH,im 出国,所以拦掉它们的 QUIC。
+            (quicReject null)
             "MATCH,im"
           ];
       };
