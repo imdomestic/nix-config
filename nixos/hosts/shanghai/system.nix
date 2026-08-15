@@ -207,26 +207,12 @@ in {
       group = "derper";
       reloadServices = ["derper.service"];
 
-      # 不做 DNS 探测,固定等待。**根因是 dae 劫持 DNS**,完整说明见 h610 的
-      # security.acme 那一段(hosts/h610/system.nix)—— 两台是同一个 bug。
+      # 不做 DNS 探测,固定等待 —— 和 h610 是同一个 bug(dae 劫持 DNS),
+      # 经过和证据见 docs/incidents.md#dae-breaks-lego-dns01。
       #
-      # 这台的具体表现:从 2026-07-31 起就没拿到过真证书,每天定时器跑一次、
-      # 每次都是
-      #
-      #   [INFO] cloudflare: new record for sh.imdomestic.com, ID 7844f84e...
-      #   propagation: time limit exceeded: last error: authoritative
-      #   nameservers: NS ophelia.ns.cloudflare.com.:53 returned SERVFAIL
-      #
-      # TXT 记录建成功了(Cloudflare API 返回了 record ID),挂的是 lego 建完
-      # 之后去权威 NS 复查那一步 —— 而那个"权威 NS"被 dae 换成了 alidns。
-      #
-      # 后果不只是"少一张证书":derper 会拿 NixOS 生成的自签占位证书照常启动,
-      # 而节点选 home DERP 只看 **UDP 3478 的 STUN 延迟**——那个是通的。于是
-      # tank/rpi4/r5s 都把这台选成了 home DERP,再连 TLS 时被拒:
-      #   derper 日志 : TLS handshake error ... connection reset by peer
-      #   tank 健康检查: Tailscale could not connect to the 'Shanghai' relay server
-      # 也就是说一个证书坏掉的 DERP 比没有 DERP 更糟 —— 它会把节点吸过来再拒绝
-      # 服务。
+      # 这台尤其不能让证书坏掉:derper 拿自签占位证书照样启动,而节点选 home
+      # DERP 只看 UDP 3478 的 STUN 延迟 —— 那个是通的。于是节点被吸过来、再在
+      # TLS 阶段被拒。**证书坏掉的 DERP 比没有 DERP 更糟。**
       extraLegoFlags = ["--dns.propagation-wait" "120s"];
     };
   };
