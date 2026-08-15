@@ -122,8 +122,27 @@ up to date:
 
 The freshness check above is the other half of this rule, and it only works if
 everyone's commits actually reach the remote. So once a rebuild/deploy has
-landed and the change is committed, **push it** (ask first if the user has not
-already said to; do not leave it sitting).
+landed and the change is committed, **push it**.
+
+**Pushing this repo is pre-authorized — do not stop to ask.** Commit with a real
+message and push. (This is a standing instruction from the owner, 2026-08-15.)
+
+Push is not just `git push`: **`git fetch` first and expect the remote to have
+moved.** This repo is edited from several machines, so a straight push will
+often be rejected. Rebase onto `origin/main`, then — because the incoming
+commits are real config changes, not just text — verify every host still
+evaluates before pushing:
+
+```sh
+for h in <hosts>; do
+  nix eval --raw ".#nixosConfigurations.$h.config.system.build.toplevel.drvPath" \
+    >/dev/null || echo "★ $h eval failed"
+done
+```
+
+If the rebase conflicts in a way that is not obviously mechanical, stop and
+report — a silently mis-resolved conflict in a host config is worse than an
+unpushed commit.
 
 Why it matters, in order of how much it bites:
 
