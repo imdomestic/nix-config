@@ -283,7 +283,7 @@ in {
     networks."30-br-lan" = {
       matchConfig.Name = "br-lan";
       networkConfig = {
-        Address = "192.168.3.1/24";
+        Address = "192.168.20.1/24";
         DHCPServer = true;
         IPMasquerade = "ipv4";
 
@@ -299,7 +299,7 @@ in {
         PoolOffset = 100;
         PoolSize = 100;
         EmitDNS = true;
-        DNS = ["192.168.3.1"];
+        DNS = ["192.168.20.1"];
       };
 
       # SLAAC
@@ -470,7 +470,7 @@ in {
     settings.Resolve = {
       FallbackDNS = ["223.5.5.5"];
       DNSStubListener = "yes";
-      DNSStubListenerExtra = ["192.168.3.1" "::"];
+      DNSStubListenerExtra = ["192.168.20.1" "::"];
     };
   };
   services.irqbalance.enable = true;
