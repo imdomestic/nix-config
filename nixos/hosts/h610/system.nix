@@ -759,7 +759,7 @@ in {
       environmentFiles = ["/var/lib/max-bot/napcat.env"]; # NAPCAT_ACCESS_TOKEN
     };
     wechatpad = {
-      enable = true;
+      enable = false;
       adminKey = "hbhbhb";
       webBindAddress = "100.64.0.3";
     };
