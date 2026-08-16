@@ -109,30 +109,14 @@ in
             annotations.summary = "{{ $labels.instance }} 的 {{ $labels.mountpoint }} 按当前速度 24 小时内写满";
           }
           {
-            # **SD 卡没有健康指标可读。** eMMC 有 life_time / pre_eol
-            # (/sys/block/mmcblk*/device/),SD 卡什么都不暴露 —— 它是毫无预兆
-            # 地坏。累计写入量是唯一能拿到的磨损替代指标。
+            # **SD 卡没有健康指标可读**(eMMC 有 life_time / pre_eol,SD 卡
+            # 什么都不暴露),累计写入量是唯一能拿到的磨损替代指标。所以这条盯
+            # 的是**速率异常**而不是绝对寿命 —— 写入量突然翻几倍意味着有东西
+            # 在失控地写,那才是会提前烧掉卡的情形。
             #
-            # 这条盯的是**速率异常**,不是绝对寿命。绝对寿命 Prometheus 存不住
-            # (retention 90 天),要长期跟踪只能手工记账。速率异常才是能自动抓的:
-            # 写入量突然翻几倍,意味着有东西在失控地写(跑飞的日志、重试循环),
-            # 那才是真正会提前烧掉卡的情形。
-            #
-            # 阈值 40 GB/天 的来历(2026-08-15 实测全 fleet 稳态):
-            #   r6s mmcblk0 (SD 根, f2fs)  9.7   ← 最高的一台
-            #   r2s mmcblk0                3.1
-            #   r5s mmcblk1                2.2
-            #   r6s mmcblk1 (只剩 /boot)   0.0
-            # r6s 迁到 SD 之前在 eMMC 上是 19.7 GB/天(92% 来自 journald),
-            # 也就是说"正常但偏高"能到 20。取 40 = 稳态最高值的 4 倍、
-            # 历史最坏值的 2 倍。
-            #
-            # **窗口用 24h 不是 6h,这是拿真实数据试出来的。** 写完规则先在
-            # h610 的 Prometheus 上跑了一遍,6h 窗口下 r6s mmcblk0 报 103 GB/天,
-            # 直接触发 —— 那不是故障,是当天迁移的两次 14GB rsync 加 6GB 写测试
-            # 落在窗口里。6h 窗口 + for 6h 意味着一次大操作能让它响最多 12 小时。
-            # 换 24h 窗口后同一时刻降到 25.7,不触发;等那批写入滚出窗口会回到
-            # ~10。规则上线前拿实测数据验一遍,否则第一周就把群刷炸。
+            # 40 GB/天 = 全 fleet 稳态最高值的 4 倍;窗口取 24h 而不是 6h 是
+            # 拿真实数据试出来的(6h 窗口下一次 rsync 就会误报)。两个数字的
+            # 完整推导见 docs/incidents.md#sd-card-write-threshold。
             alert = "FlashWriteRateHigh";
             expr = ''rate(node_disk_written_bytes_total{device=~"mmcblk[0-9]"}[24h]) * 86400 / 1e9 > 40'';
             "for" = "6h";

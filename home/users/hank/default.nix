@@ -630,30 +630,16 @@ in {
     autocd = true;
     defaultKeymap = "viins";
 
-    # 这台机器上开一个交互 zsh 要 1458ms,其中约 1170ms 是补全缓存每次启动都在重建。
-    # 原因是有**两个** compinit 抢同一个 ~/.zcompdump:
+    # 补全缓存提速。系统那份 compinit 和 home-manager 这份会抢同一个
+    # ~/.zcompdump 并互相判废,每开一个 shell 白花 ~1170ms;`-d` 给这份一个
+    # 自己的 dump,`-C` 再跳过扫描。详见 docs/incidents.md#zsh-double-compinit。
     #
-    #   1. nix-darwin 的 /etc/zshrc(programs.zsh.enableCompletion)跑一次
-    #   2. home-manager 生成的 .zshrc 再跑一次
+    # 去重 fpath 时**只拿解析后的真实路径当 key,保留原来的写法** —— 换成
+    # /nix/store/... 的真实路径会让 compaudit 把整个 fpath 判成 insecure,
+    # 在没有 tty 的嵌套 shell 里直接 "initialization aborted"。
     #
-    # 两次之间 home-manager 往 fpath 里塞了插件目录,所以第二次数到的文件数和第一次
-    # 不一样。compinit 复用 dump 的条件正是"dump 头一行记的文件数 == 这次数到的",
-    # 于是两边永远互相判定对方的 dump 失效:每开一个 shell 就重扫三千多个补全文件、
-    # 重写 89KB 的 dump 两遍。-d 给我们这次一个**自己的** dump 文件,两边就不打架了。
-    #
-    # fpath 里还有一堆重复目录:~/.nix-profile、/run/current-system/sw、
-    # /nix/var/nix/profiles/default 三条路径指向 store 里同一份 zsh(各 1233 个文件),
-    # macOS 上还要再算一份自带的 /usr/share/zsh/5.9 —— 跟正在跑的 5.9.1 都不是同一个
-    # 版本。typeset -U 去不掉,因为路径字符串本身不同。
-    #
-    # 去重时**只拿解析后的真实路径当 key,保留原来的写法**。直接把 fpath 换成
-    # /nix/store/... 的真实路径会出事:compaudit 判断安全性时会一路检查父目录,
-    # 走到 group-writable 的 /nix/store 就把整个 fpath 判成 insecure,于是系统那份
-    # compinit 弹出交互确认 —— 在没有 tty 的嵌套 shell 里直接 "initialization aborted"。
-    # 而 ~/.nix-profile/... 这种写法它只看软链本身,不会走到 /nix/store。
-    #
-    # -C 是在此之上再跳过"有没有新补全"的扫描。代价是装了新工具 dump 不会自己更新,
-    # 所以下面配了 activation 在每次 home-manager 切换后删掉它。
+    # -C 的代价是装了新工具 dump 不会自己更新,所以下面配了 activation 在每次
+    # home-manager 切换后删掉它。
     # (这段是在 .zshrc 顶层展开的,不是函数体,所以不能用 local,只能自己收尾。)
     completionInit = ''
       typeset -A _hm_seen

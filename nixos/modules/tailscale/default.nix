@@ -8,19 +8,9 @@
 # 策略在 hosts/h610/system.nix 的 headscale policy 里(`ssh` 段),规则是
 # `group:imdomestic → autogroup:member`,users 含 root。
 #
-# ---------------------------------------------------------------------------
-# 2026-08-08 在 r6s 上实测过的行为,记在这里免得以后重新推一遍:
-#
-#   - 不带任何密钥(IdentityFile=/nonexistent + IdentityAgent=none)能以 root
-#     登进去 —— 认证确实走 tailnet 身份。
-#   - **带密钥的 ssh 也照常能连**,但日志显示它同样是 tailscaled 处理的,
-#     只是策略放行了 —— 那把密钥根本没被用到。
-#   - 来自 wireguard 地址(10.0.0.x)的连接仍然走 sshd,publickey 认证,
-#     完全不受影响。这是永远的退路。
-#   - 附带好处:tailscaled 会记 `audit: SSH login: user=root ...
-#     ts_user=hank@imdomestic.com node=h610...`。以前四个人共用一份 master
-#     authorized_keys 登 root,日志里分不出是谁,现在分得出。
-# ---------------------------------------------------------------------------
+# **退路是 wireguard:** 来自 10.0.0.x 的连接仍然走 sshd + publickey,不受
+# tailscale SSH 影响。2026-08-08 在 r6s 上的完整实测(零密钥能登、带密钥其实
+# 没被用到、审计日志长什么样)见 docs/incidents.md#tailscale-ssh-r6s-probe。
 {
   config,
   lib,

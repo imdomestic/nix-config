@@ -97,21 +97,12 @@
       ];
 
     # **每台一个 deploy check,而且放在 `deployChecks` 而不是 `checks`。**
+    # 放 `checks` 里 `nix flake check` 会把它们全求值一遍,那会撑爆 CI runner
+    # (见 docs/incidents.md#deploy-schema-timeout)。放在非标准输出上,nix 只会
+    # 说一句 "unknown flake output" —— 已经在 ci.yml 的警告白名单里。
     #
-    # 放 `checks` 里的话 `nix flake check` 会把它们全求值一遍 —— 那正是原来的
-    # 毛病:`deployChecks self.deploy` 吃的是整个 deploy,一个进程里深度展开
-    # 9 个节点、35 个 profile(其中约 26 个是 home)。2026-08-15 加了 h310
-    # (带 4 个 home)之后越过 runner 的资源线,那个 job 卡在 deploy-schema 上
-    # 十几分钟然后被 SIGTERM,CI 连红。见 docs/incidents.md#deploy-schema-timeout。
-    #
-    # 挪到非标准输出之后,nix 只会说一句 "unknown flake output"(已经在 ci.yml
-    # 的警告白名单里,当初为 deploy/hosts/systemConfigs 加的),不再求值它。
-    #
-    # 真正的验证挪进矩阵 job:那边每台**本来就**求值过自己的 toplevel,顺手验
-    # 自己这一个节点几乎是白捡的;而且从"一个大 check"变成"每台一个",哪台坏了
-    # 一眼看得出来。代价是每台会多求值自己的 home profile(35 个里约 26 个是
-    # home,摊到 9 个节点上每台约 3 个)—— 那反而补上了一个真实缺口:矩阵原本
-    # 只验 system 不验 home。
+    # 真正的验证在矩阵 job 里:那边每台本来就求值过自己的 toplevel,顺手验自己
+    # 这一个节点几乎是白捡的,而且哪台坏了一眼看得出来。
     deployChecks = let
       inherit (inputs.nixpkgs) lib;
     in

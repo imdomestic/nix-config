@@ -94,23 +94,12 @@ in
       then {
         hostname = hostConfig.tsIp;
 
-        # **在目标机上构建,不在发起方。**
-        #
-        # 默认(false)是发起方组装完整闭包再 nix copy 过去,那意味着发起方要把
-        # 目标平台的全部产物在本地物化一遍。实测 `deploy .#r6s`:发起方要下载
-        # 641 MiB / 549 个路径,而这些路径 **r6s 自己已经有 88%**(上一代
-        # generation 留下的)。抽样 60 个"待下载"路径,r6s 上有 53 个,h610 上
-        # 一个都没有。
-        #
-        # 而这部分开销 remote builder 帮不上忙 —— 那些路径是缓存命中的**下载**
-        # 不是构建,而 buildMachines 只 offload 构建。
-        #
-        # 顺带解决另一件事:ARM 目标机原生构建比拿 x86 机器 QEMU 模拟快得多。
-        # 实测同一个 derivation(drv 哈希一致),r6s 原生 4.3s,tank 模拟 15.7s ——
-        # 快 3.7 倍,尽管 tank 有 20 线程而 r6s 只有 8。
-        #
-        # 代价:目标机得自己扛构建。对 rpi4 这种弱机,遇到真要编的大东西会慢;
-        # 那时候手动 `deploy .#rpi4 --no-remote-build` 覆盖回来。
+        # **现在是在发起方构建**(commit 0645dfa 把 `remoteBuild = true;` 注释
+        # 掉了,而 deploy-rs 的默认值就是 false)。后果:从 mac 部署任何 linux
+        # 主机都要显式加 `--remote-build`,否则会尝试本地构建 x86_64-linux 然后
+        # 失败。当初改成在目标机构建的实测理由(641 MiB 里 88% 目标机本来就有、
+        # ARM 原生比 QEMU 快 3.7 倍)见 docs/incidents.md#deploy-remote-build,
+        # 那条也记着这个矛盾。
         # remoteBuild = false;
 
         fastConnection = false;

@@ -9,6 +9,55 @@
 
 ---
 
+## 2026-08-16 · tailnet 上的 web 面板在浏览器里全是 502,curl 却全绿 {#tailnet-panels-502}
+
+**症状:** 刚部署好的 headplane,浏览器开 `http://100.64.0.3:3001/admin` 返回
+502。服务本身没问题 —— h610 上 `systemctl is-active headplane` 是 active、
+`ss -ltn` 看得到 `100.64.0.3:3001`,从 h610 本地和从 mac 上 curl 都拿到 302。
+
+**这不是 headplane 的问题,而且不只 headplane。** 走代理时整个 tailnet 的面板
+都是 502:
+
+```
+http://100.64.0.3:3000/    (Grafana)      502
+http://100.64.0.5:9090/ui  (metacubexd)   502
+http://100.64.0.3:9009/    (Prometheus)   502
+```
+
+**根因是 mac 上的 Clash Verge。** 三种写法的结果不一样,而差别正好指出机制:
+
+| 写法 | 直连 | 经 `-x 127.0.0.1:7897` |
+|---|---|---|
+| `http://h610:3001/admin`(MagicDNS 短名) | 302 | **302** |
+| `http://h610.inner.imdomestic.com:3001/admin` | 302 | 502 |
+| `http://100.64.0.3:3001/admin` | 302 | 502 |
+
+- **裸 IP:** Verge 的系统代理 bypass 用的是它的默认表(`use_default_bypass:
+  true` + `system_proxy_bypass: null`),里面有 `127.0.0.1` / `192.168/16` /
+  `10/8` / `172.16/12`,**唯独没有 `100.64.0.0/10`**。浏览器于是把 tailnet
+  地址交给了 mihomo。规则文件里其实有 `IP-CIDR,100.64.0.0/10,DIRECT,no-resolve`
+  (主配置第 153 行),但当前 profile 挂着 `script` 扩展 —— **live 配置和文件里
+  读到的不是一回事**,照样 502。
+- **FQDN:** 命中 `DOMAIN-SUFFIX,imdomestic.com,DIRECT`,可 DIRECT 要 mihomo
+  自己解析,而它那套 DNS 不认 `100.100.100.100`;TUN 模式又劫持了 DNS,
+  `dig h610.inner.imdomestic.com @1.1.1.1` 返回 `198.18.0.4` —— fake-ip 段,
+  连不出去。
+- **短名能过**是因为它走系统 resolver + 搜索域 `inner.imdomestic.com`,直接落到
+  `100.100.100.100`。
+
+**修法:** 面板地址一律用 MagicDNS 短名(`http://h610:3001/admin`)。想让裸 IP
+也能用,得在 Clash Verge 的系统代理 bypass 里加 `100.64.0.0/10` —— 那是 GUI
+应用自己的配置,不归这个仓库管。
+
+**最值得记的一条:`curl` 验证不出这个问题。** curl 不读 macOS 系统代理设置
+(只认 `http_proxy` 环境变量,那台没设),所以它天然绕过 Verge,三种写法全是
+302。要复现浏览器那条路必须显式 `curl -x http://127.0.0.1:7897 ...`。这和
+[#dae-breaks-lego-dns01](#dae-breaks-lego-dns01) 那次正好反过来 —— 当时是 curl
+成功而 openssl 失败,这次是 curl 全绿而浏览器全挂。**判定一个服务"没问题"之前,
+先确认你的探针和真实使用者走的是同一条路。**
+
+---
+
 ## 2026-08-15 · 加了一台机器,`nix flake check` 就撑爆 runner {#deploy-schema-timeout}
 
 **症状:** `flake-check` 工作流里的 `nix flake check` job,卡在
@@ -185,6 +234,258 @@ INIT=$(grep ^options /boot/loader/entries/nixos-generation-N.conf \
   和选 f2fs 的理由(log-structured 对 4 MB 擦除块写放大更低)方向一致。
 
 相关:[r6s 恢复手册](runbooks/r6s.md)
+
+---
+
+## 2026-08-15 · SD 卡写入告警的阈值和窗口是怎么定出来的 {#sd-card-write-threshold}
+
+**背景:SD 卡没有健康指标可读。** eMMC 有 `life_time` / `pre_eol`
+(`/sys/block/mmcblk*/device/`),SD 卡什么都不暴露 —— 它是毫无预兆地坏。累计
+写入量是唯一能拿到的磨损替代指标。
+
+所以这条规则盯的是**速率异常**,不是绝对寿命。绝对寿命 Prometheus 存不住
+(retention 90 天),要长期跟踪只能手工记账。速率异常才是能自动抓的:写入量
+突然翻几倍意味着有东西在失控地写(跑飞的日志、重试循环),那才是真正会提前
+烧掉卡的情形。
+
+**阈值 40 GB/天的来历**(2026-08-15 实测全 fleet 稳态):
+
+| 设备 | GB/天 |
+|---|---|
+| r6s mmcblk0(SD 根,f2fs) | 9.7 ← 最高的一台 |
+| r2s mmcblk0 | 3.1 |
+| r5s mmcblk1 | 2.2 |
+| r6s mmcblk1(只剩 /boot) | 0.0 |
+
+r6s 迁到 SD 之前在 eMMC 上是 19.7 GB/天(92% 来自 journald),也就是说"正常但
+偏高"能到 20。取 40 = 稳态最高值的 4 倍、历史最坏值的 2 倍。
+
+**窗口用 24h 不是 6h,这是拿真实数据试出来的。** 写完规则先在 h610 的
+Prometheus 上跑了一遍:6h 窗口下 r6s mmcblk0 报 103 GB/天,直接触发 —— 那不是
+故障,是当天迁移的两次 14GB rsync 加 6GB 写测试落在窗口里。6h 窗口 + `for 6h`
+意味着一次大操作能让它响最多 12 小时。换 24h 窗口后同一时刻降到 25.7,不触发;
+等那批写入滚出窗口会回到 ~10。
+
+**教训:告警规则上线前拿实测数据验一遍**,否则第一周就把群刷炸,然后所有人
+开始无视这个群。相关:[#r6s-root-migration](#r6s-root-migration)。
+
+---
+
+## 2026-08-15 · 这个 fleet 从来没跑过 GC,而补上的时候漏了 darwin 分支 {#nix-gc-never-ran}
+
+**症状:** 升 nixpkgs 时 `nixos-rebuild` 撞 ENOSPC。
+
+**根因:GC 一次都没跑过。** r6s 上实测 `nix-gc` / `nix-optimise` 两个 unit 是
+`linked, ignored` —— 有 unit 文件、没 timer。8 代 generation 堆着,nix store
+11G,而根分区总共才 28G。
+
+**保留期取 30d 而不是原来注释里写的 1w:** generation 是出事时唯一的回退手段,
+一周太短。30 天既能压住增长,又留得下足够的回滚余地。
+
+`randomizedDelaySec` 是因为这些机器的 timer 会同时到点 —— h610 上并发的 GC
+加上正在跑的构建,把内存打满过一次(见 `modules/monitoring/alerts.nix` 里
+MemoryPressureHigh 那条)。
+
+**当天的二次事故:漏了 darwin 分支,4 台 darwin 全部求值失败。** `modules/nix.nix`
+被 `darwin/profiles/base.nix` 一起 import,而 nix-darwin 那边 `dates` /
+`randomizedDelaySec` 根本没有对应选项(它用 launchd 的 `interval`),并且
+`nix.gc.automatic` 要求 `nix.enable` —— 那几台跑的是 Determinate Nix,
+`nix.enable` 是关的,GC 由它自己管。**本地只验了 nixos 就推了。** 这正是
+AGENTS.md 里"逐台验证求值"那条规矩的由来。
+
+---
+
+## 2026-08-14 · 开一个交互 zsh 要 1458ms —— 两个 compinit 互相判废对方的 dump {#zsh-double-compinit}
+
+**症状:** 这台 mac 上开一个交互 zsh 要 1458ms,其中约 1170ms 是补全缓存**每次
+启动都在重建**。
+
+**根因:有两个 compinit 抢同一个 `~/.zcompdump`。**
+
+1. nix-darwin 的 `/etc/zshrc`(`programs.zsh.enableCompletion`)跑一次
+2. home-manager 生成的 `.zshrc` 再跑一次
+
+两次之间 home-manager 往 `fpath` 里塞了插件目录,所以第二次数到的文件数和第一次
+不一样。而 compinit 复用 dump 的条件正是「dump 头一行记的文件数 == 这次数到的」
+—— 于是两边永远互相判定对方的 dump 失效:每开一个 shell 就重扫三千多个补全
+文件、重写 89KB 的 dump 两遍。给 home-manager 那次一个 `-d` 指向**自己的** dump
+文件,两边就不打架了。
+
+**fpath 里还有一堆重复目录:** `~/.nix-profile`、`/run/current-system/sw`、
+`/nix/var/nix/profiles/default` 三条路径指向 store 里同一份 zsh(各 1233 个
+文件),macOS 上还要再算一份自带的 `/usr/share/zsh/5.9` —— 跟正在跑的 5.9.1
+都不是同一个版本。`typeset -U` 去不掉,因为路径字符串本身不同。
+
+**去重时只拿解析后的真实路径当 key,保留原来的写法。** 直接把 fpath 换成
+`/nix/store/...` 的真实路径会出事:compaudit 判断安全性时会一路检查父目录,走到
+group-writable 的 `/nix/store` 就把整个 fpath 判成 insecure,于是系统那份
+compinit 弹出交互确认 —— 在没有 tty 的嵌套 shell 里直接 "initialization
+aborted"。而 `~/.nix-profile/...` 这种写法它只看软链本身,不会走到 `/nix/store`。
+
+`-C` 是在此之上再跳过"有没有新补全"的扫描。代价是装了新工具 dump 不会自己更新,
+所以配了 activation 在每次 home-manager 切换后删掉它。
+
+---
+
+## 2026-08-09 · tank 的默认构建并发是灾难性超额订阅 {#tank-build-concurrency}
+
+**症状:** 一次 ARM 构建期间,tank 上 load1 = 42、CPU 93%、47 个 `qemu-aarch64`
+进程,连 node_exporter 的抓取都从 ~20ms 涨到 **504ms**。
+
+**机制:** 默认值在这台上是超额订阅(和它是不是构建机无关,自己编东西也一样):
+
+```
+max-jobs = auto  → nproc = 20,而这是 E5-2666 v3,10 物理核 / 20 线程
+cores    = 0     → 每个构建再用满 20
+```
+
+最多 20 个并发构建 × 每个 20 路并行 = 400 个进程抢 10 个核。
+
+**关键在于这不是"用满硬件",而是比不超额还慢** —— 上下文切换的开销吃掉了并行
+收益。ARM 构建全是 QEMU 用户态模拟,纯 CPU 密集、吃执行单元,SMT 在这种负载下
+几乎没有增益,按线程数配等于按两倍物理核配。
+
+**修法:** 6 × 2 = 12 路并行,略高于 10 个物理核(构建有一部分时间在等 I/O),
+剩下的留给这台上跑着的 matrix-synapse、postgres、minecraft、samba、
+Prometheus/Grafana。
+
+---
+
+## 2026-08-09 · h610 摘掉 binfmt —— 问题是溢出,不是抢跑 {#h610-drop-binfmt}
+
+h610 以前是 deploy-rs 的构建机,靠 QEMU 模拟给 r6s/rpi4/r5s 那几台 SBC 编闭包,
+那个角色已经交给 tank 了。摘掉 binfmt 的理由**是溢出,不是"抢在 tank 前面"**。
+
+**nix 的调度本来就是远程优先:** `derivation-building-goal.cc` 先问 build hook,
+hook 在 tank 有空闲 slot 时就 accept,所以 ARM 构建本来就会去 tank。
+
+**但 binfmt 会把 `aarch64-linux` 加进 `extra-platforms`**,于是
+`build-remote.cc` 里的 `couldBuildLocally` 为真;一旦 tank 的 16 个 slot 全占满,
+hook 返回 **decline 而不是 postpone** —— 溢出的 ARM 构建就落到这台 12 核 /
+15 GiB 的机器上用 QEMU 跑。那是最坏的组合,而这台当天已经 OOM 两次。
+
+摘掉之后那种情况变成 postpone(排队等 tank),不再有慢速回落。**代价:** tank
+不可达时这台编不了 ARM(直接失败而不是慢慢磨),`just build-local <arm-host>`
+在这台上也不再可用 —— 那条路本来就慢到没有实用价值。
+
+相关:[#tank-build-concurrency](#tank-build-concurrency)。
+
+---
+
+## 2026-08-09 · deploy 改成在目标机构建 {#deploy-remote-build}
+
+**默认(`remoteBuild = false`)是发起方组装完整闭包再 `nix copy` 过去**,那意味着
+发起方要把目标平台的全部产物在本地物化一遍。实测 `deploy .#r6s`:发起方要下载
+641 MiB / 549 个路径,而这些路径 **r6s 自己已经有 88%**(上一代 generation
+留下的)。抽样 60 个"待下载"路径,r6s 上有 53 个,h610 上一个都没有。
+
+**这部分开销 remote builder 帮不上忙** —— 那些路径是缓存命中的**下载**不是构建,
+而 `buildMachines` 只 offload 构建。
+
+顺带解决另一件事:ARM 目标机原生构建比拿 x86 机器 QEMU 模拟快得多。实测同一个
+derivation(drv 哈希一致),r6s 原生 4.3s,tank 模拟 15.7s —— 快 3.7 倍,尽管
+tank 有 20 线程而 r6s 只有 8。
+
+**代价:** 目标机得自己扛构建。对 rpi4 这种弱机,遇到真要编的大东西会慢。
+
+**⚠️ 当前状态和上面这段结论相反,注意别被误导。** `lib/mkDeployNodes.nix` 里那行
+现在是注释掉的(commit `0645dfa` "disable remote build and added dev on marble"
+把 `remoteBuild = true;` 改成了 `# remoteBuild = false;`),而 deploy-rs 的默认
+值就是 false。**所以现在实际是在发起方构建。** 后果:从 mac(aarch64-darwin,
+没有 builders)部署任何 linux 主机都必须显式加 `--remote-build`,否则会尝试本地
+构建 x86_64-linux 然后失败。2026-08-16 踩到一次。
+
+---
+
+## 2026-08-08 · headscale 的 SSH 策略有三个坑,照抄 tailscale 官方示例会踩 {#headscale-ssh-policy-traps}
+
+策略在 `nixos/hosts/h610/system.nix` 的 headscale `policy` 里(`ssh` 段)。
+
+**1. `dst` 不能用 group。** headscale 的校验里 Group 不是合法的 SSH destination
+(实测报 `alias *v2.Group is not supported for SSH destination`)。允许的是 tag、
+`autogroup:self/member/tagged`,以及"同一个人自己的用户名"。
+
+这里用 `autogroup:member` —— 它是"所有用户拥有的非 tag 节点",正好覆盖全部机器,
+**不需要给节点打 tag**。打 tag 反而会出事:tag 化的节点不再属于
+`group:imdomestic`,上面那条 acl 的 `dst` 就匹配不到它们了。(同一个陷阱在
+headplane agent 的 pre-auth key 上又出现了一次 —— 那把 key 也不能带 `--tags`。)
+
+**2. `action` 必须是 accept,不能是 check。** check 要求发起方每隔一段时间
+(默认 12 小时)在浏览器里重新认证一次,会直接打断 deploy-rs 和远程构建这类
+非交互场景。
+
+**3. `headscale policy check` 是必要条件不是充分条件。** 实测它能抓住第 1 条
+(类型错误),但 `action: "check"` 和**漏写 `users`** 这两种它都照样报
+"Policy is valid" —— 尽管源码里就有 `ErrSSHUsersMustBeSpecified`。**校验过了
+不等于行为符合预期。**
+
+改这一段要 rebuild + switch h610(策略是 nix store 里的文件)。需要频繁调试时
+可以临时切 `policy.mode = "database"` 用 `headscale policy set` 热更新,定稿再
+切回来。
+
+---
+
+## 2026-08-08 · tailscale SSH 在 r6s 上的实测行为 {#tailscale-ssh-r6s-probe}
+
+记在这里免得以后重新推一遍。
+
+- **不带任何密钥**(`IdentityFile=/nonexistent` + `IdentityAgent=none`)能以 root
+  登进去 —— 认证确实走 tailnet 身份。
+- **带密钥的 ssh 也照常能连**,但日志显示它同样是 tailscaled 处理的,只是策略
+  放行了 —— 那把密钥根本没被用到。
+- **来自 wireguard 地址(10.0.0.x)的连接仍然走 sshd**,publickey 认证,完全不受
+  影响。**这是永远的退路。**
+- 附带好处:tailscaled 会记 `audit: SSH login: user=root ...
+  ts_user=hank@imdomestic.com node=h610...`。以前四个人共用一份 master
+  authorized_keys 登 root,日志里分不出是谁,现在分得出。
+
+一旦某台开了 `--ssh`,**从 tailnet 地址过去的 22 端口就由 tailscaled 接管**,
+成败改由 headscale 的策略决定,带密钥也救不回来 —— 所以策略要先落地、节点后开。
+策略本身的坑见 [#headscale-ssh-policy-traps](#headscale-ssh-policy-traps)。
+
+---
+
+## 2026-08-08 · Grafana 数据源加了 uid 之后整个服务起不来 {#grafana-provisioning-uid}
+
+**症状:** 给数据源加上 `uid = "prometheus"` 之后 Grafana 直接起不来,浏览器
+"refused to connect",而 Prometheus 和 Alertmanager 还好好的 —— 很容易往网络
+方向排查。
+
+**根因:** 给一个**已经存在于 `grafana.db` 里的**数据源改 uid,provisioning 会
+报 "data source not found" —— 它按新 uid 去找要更新的记录,而库里那条是旧的
+随机 uid。
+
+**而 Grafana 把 provisioning 失败当致命错误,不是警告。** 数据源配错、看板
+JSON 不合法,都会让整个服务拒绝启动。
+
+**修法:** provisioning 里长期留一条"先删同名的再建",而不是手动删一次 ——
+tank 万一从旧的 `grafana.db` 恢复,同样的冲突会再来一遍。删掉再建对一个纯声明式
+的数据源没有任何代价:它不存查询、不存状态,uid 又是钉死的,看板的引用不会断。
+
+---
+
+## 2026-08-08 · r6s 和 rpi4 之间的直连只能走 IPv6,而隐私扩展会把它周期性打断 {#r6s-rpi4-ipv6-privacy}
+
+**IPv4 直连在这一对之间结构性不可能。** 两边的 WAN v4 都是电信 CGNAT 地址
+(r6s `100.84.115.12`,rpi4 `100.112.172.41`),双双落在 `100.64.0.0/10` 里,于是
+互相被对方 tailscale 的反欺骗规则丢掉:
+
+```
+ip saddr 100.64.0.0/10 iifname != "tailscale0" drop
+```
+
+(同一条规则的另一个症状见 `modules/singbox` 里 autoRedirect 的说明。)
+
+**所以只剩 IPv6,而隐私扩展会让临时地址定期轮换**,tailscale 通告出去的端点跟着
+失效,直连就周期性断掉回落到 DERP。实测抓到过:r6s 把 rpi4 钉在
+`2409:8a20:1951:a350:...` 上,而那时 rpi4 的首选临时地址已经换到
+`2409:8a20:1905:228f` 前缀了 —— 用的是一个**还没过期但已不是首选**的旧地址,
+等它彻底失效这条直连就断。
+
+**取舍:** 隐私扩展防的是"通过接口标识符追踪这台设备",但这是路由器自己的 WAN
+地址,运营商给的前缀本来就标识了这条线路,标识符稳不稳定几乎不增加暴露面。换来
+唯一可用的直连路径不再周期性抖动。前缀本身仍会在 PPPoE 重拨时变,那躲不掉,但比
+每天一次的临时地址轮换少得多。
 
 ---
 
