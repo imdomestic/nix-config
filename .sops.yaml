@@ -14,6 +14,11 @@ keys:
   # host keys: ssh-keyscan -t ed25519 <ip> | ssh-to-age
   - &host_shanghai age1q9r44n8y323qs4yyke49pgqpv9xa75qwtjx9x4z49rmdfm584dxq2lwm2a
   - &host_h610 age1m70ml5ff2cxswwqy8vz8al9ptjd4sfqmmk7mufem9gejgk5t34tqp7v7zr
+  # h310 只有 tsIp,没有 wireguard 地址,所以 keyscan 得走 100.64.0.30。它的 22
+  # 端口是 Tailscale SSH 接的(banner 是 SSH-2.0-Tailscale,不像别的机器是
+  # OpenSSH),但透传出来的就是本机 /etc/ssh/ssh_host_ed25519_key —— 已和机器上
+  # 那份逐字比对过。换台机器扫之前最好也核一遍,拿错了 sops 会在激活时才炸。
+  - &host_h310 age1a2j0kukmv638aeuyskcw6xa0sgejvmhja5p6etnn70h93270ap8q0dn6vt
   - &host_r6s age1spxgjvmk89lxzu56nrssy3hsgkzkc79w9pkncesxdjmugk2t9vus56esfj
   - &host_r5s age1weu2ymkv0pa79n3f5rcxj90dya57lktk42q2kwl5ytug646dgfdqpgrzw5
   - &host_tank age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs
@@ -28,6 +33,9 @@ creation_rules:
   - path_regex: secrets/hosts/h610\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
+  - path_regex: secrets/hosts/h310\.yaml$
+    key_groups:
+      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h310]
   - path_regex: secrets/hosts/r6s\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r6s]
@@ -60,6 +68,7 @@ creation_rules:
           - *kenneth
           - *host_shanghai
           - *host_h610
+          - *host_h310
           - *host_r6s
           - *host_r5s
           - *host_tank
