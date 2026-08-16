@@ -106,7 +106,13 @@ in {
     grafanaPort = lib.mkOption {
       type = lib.types.port;
       default = 3000;
-      description = "Grafana 端口。3000 在这个 fleet 上是空的(h610 那个 3000 是注释掉的 headplane)。";
+      description = ''
+        Grafana 端口。3000 在这个 fleet 上没有别的占用者。
+
+        h610 上曾经有一份注释掉的 headplane 也写着 3000;2026-08-16 headplane
+        真正启用时挪到了 3001,就是为了不跟这里撞(见 hosts/h610/system.nix)。
+        Grafana 只绑 tsIp、headplane 也只绑 tsIp,同端口会是硬冲突。
+      '';
     };
 
     scrapeInterval = lib.mkOption {

@@ -287,8 +287,10 @@ in {
       enable = false;
       trustedInterfaces = ["br-lan"];
       interfaces."ppp0".allowedUDPPorts = [546];
-      # nginx 的 80,只对 tailscale 放行。
-      interfaces.tailscale0.allowedTCPPorts = [80];
+      # nginx 的 80 和 headplane 的 3001,只对 tailscale 放行。
+      # (enable = false,这条现在不生效;写着是为了哪天把 firewall 打开时
+      # 这两个不用重新考古。)
+      interfaces.tailscale0.allowedTCPPorts = [80 3001];
       checkReversePath = false;
     };
   };
@@ -1054,9 +1056,73 @@ in {
     };
   };
 
-  # headplane(headscale 的 Web UI)试过、没启用,完整配置在 git 历史里。
-  # 别顺手删这条注释:modules/monitoring 里 Grafana 端口那条说明引用了它 ——
-  # 3000 在这个 fleet 上是空的,就是因为 headplane 没启用。
+  # headplane —— headscale 的 Web UI。
+  #
+  # **不要再挂 `github:tale/headplane` 那个 flake input**(2026-03 那版是这么
+  # 干的,在 git 历史里)。nixpkgs 26.05 自带 `services.headplane` 模块和
+  # headplane/headplane-agent 两个包(0.6.2 / 0.6.3),少一个 input、少一份
+  # 跟着 nixpkgs 漂的 follows。
+  #
+  # **端口是 3001 不是 3000。** 3000 在这台上被 Grafana 占着(h610 的 roles
+  # 里有 monitor,grafana 绑 100.64.0.3:3000)。下面 headplane 绑的是同一个
+  # 地址,所以 3000 会是硬冲突 —— 后起的那个直接 bind 失败,不是"两个都能
+  # 跑"。modules/monitoring 里 grafanaPort 的说明记着这件事的另一半。
+  #
+  # 只绑 tailnet 地址,不进 nginx —— **tailnet 就是这里的认证边界**,和
+  # Grafana、r6s 的 metacubexd 面板同一个思路。headscale 的 ACL 已经把能连
+  # 上来的人限定成 group:imdomestic 那四个。代价是 cookie_secure 只能是
+  # false(明文 HTTP),但这条链路整段在 WireGuard 里,没有额外暴露面。
+  #
+  # 登录方式是 headscale API key(fleet 里没有 OIDC provider):
+  #   headscale apikeys create -e 87600h
+  # 生成后粘进 http://100.64.0.3:3001/admin 的登录框。**/admin 这个前缀是
+  # headplane 构建期烤进去的**(vite.config.ts 里的 __INTERNAL_PREFIX),
+  # 不是可配置项,直接开根路径会 404。
+  #
+  # UI 里"配置"和"ACL"两页是只读的:config_path 和 policy.path 都指向 nix
+  # store。这是 NixOS 上的正常形态,不是坏了 —— 用户、节点、pre-auth key
+  # 这些走数据库的东西照常能改。
+  sops.secrets."headplane/cookie_secret" = {
+    owner = "headscale";
+    restartUnits = ["headplane.service"];
+  };
+  # agent 的 pre-auth key。reusable,2036 年过期(`headscale preauthkeys
+  # create --user 1 --reusable -e 87600h`,user 1 = hank@imdomestic.com)。
+  # **不能带 --tags**:打了 tag 的节点不再属于 group:imdomestic,上面 ACL
+  # 那条 dst 就匹配不到它。
+  sops.secrets."headplane/agent_preauthkey" = {
+    owner = "headscale";
+    restartUnits = ["headplane.service"];
+  };
+
+  services.headplane = {
+    enable = true;
+    settings = {
+      server = {
+        host = config.my.host.tsIp;
+        port = 3001;
+        base_url = "http://${config.my.host.tsIp}:3001";
+        cookie_secure = false;
+        cookie_secret_path = config.sops.secrets."headplane/cookie_secret".path;
+      };
+      # headscale.url / public_url / config_path 三个默认值都是从
+      # services.headscale 推出来的(127.0.0.1:8080、server_url、configFile),
+      # 照抄一遍只会多一处漂移点,所以不写。
+      integration.agent = {
+        enabled = true;
+        pre_authkey_path = config.sops.secrets."headplane/agent_preauthkey".path;
+      };
+    };
+  };
+
+  # 绑 tsIp 的服务都得等 tailscaled 把地址配上,否则首次启动 bind 失败。
+  # 和 modules/monitoring 里 prometheus/grafana/alertmanager 同样的处理。
+  systemd.services.headplane = {
+    after = ["tailscaled.service"];
+    wants = ["tailscaled.service"];
+  };
+  # 3001 的放行写在文件上方那个唯一的 firewall 块里(见那里的说明:这个文件
+  # 只能有一个 networking 定义,否则 CI 的旧 Nix 会报 already defined)。
 
   services.coturn = {
     enable = true;
