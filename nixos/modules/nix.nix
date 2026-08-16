@@ -35,23 +35,19 @@
   # r6s 迁到 SD 卡后根盘还剩 223G,空间根本不是瓶颈。
   # nix.optimise.automatic = true;
 
-  # 这个 fleet 从来没开过 GC —— 实测 r6s 上 `nix-gc`/`nix-optimise` 两个 unit
-  # 是 `linked, ignored`(有 unit 文件、没 timer,一次都没跑过),8 代堆着、
-  # nix store 11G,而根分区总共才 28G。升 nixpkgs 时 nixos-rebuild 撞 ENOSPC
-  # 就是这么来的。
+  # 这个 fleet 在 2026-08-15 之前从来没跑过 GC(unit 是 `linked, ignored`),
+  # 升 nixpkgs 时撞 ENOSPC 就是这么来的。见 docs/incidents.md#nix-gc-never-ran。
   #
   # 30d 而不是原来注释里写的 1w:generation 是出事时唯一的回退手段,一周太短。
-  # 30 天既能压住增长,又留得下足够的回滚余地。
   #
   # randomizedDelaySec 是因为这些机器的 timer 会同时到点 —— h610 上并发的
   # GC 加上正在跑的构建,把内存打满过一次(见 alerts.nix 里 MemoryPressureHigh
-  # 那条的注释)。错开来跑。
+  # 那条)。错开来跑。
   #
   # **只在 NixOS 上开。** 这个文件被 darwin/profiles/base.nix 一起 import,而
-  # nix-darwin 那边:`dates`/`randomizedDelaySec` 根本没有对应选项(它用 launchd
-  # 的 `interval`),而且 `nix.gc.automatic` 要求 `nix.enable` —— 那几台跑的是
-  # Determinate Nix,nix.enable 是关的,GC 由它自己管。
-  # 2026-08-15 就是漏了这个分支,4 台 darwin 全部求值失败而本地只验了 nixos。
+  # nix-darwin 那边 `dates`/`randomizedDelaySec` 没有对应选项,`nix.gc.automatic`
+  # 又要求 `nix.enable`(那几台跑 Determinate Nix,是关的)。漏掉这个分支会让
+  # 4 台 darwin 全部求值失败 —— 踩过。
   nix.gc = lib.optionalAttrs (!pkgs.stdenv.hostPlatform.isDarwin) {
     automatic = true;
     dates = "weekly";

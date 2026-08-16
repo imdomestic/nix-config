@@ -46,6 +46,35 @@ Neovim is configured with **nixvim** (flake input, pinned to the
 - Overlays for system-manager hosts go in `systemManager.overlays`, not
   `nixpkgs.overlays` (see README).
 
+## Where prose goes: `docs/`, not a 40-line comment block
+
+Comments in `.nix` files answer **「这一行为什么这么写」** and nothing else.
+Investigation narratives, benchmark tables, and the paths you tried and
+abandoned go in `docs/`, with a **one-line pointer** left at the code site.
+
+| Kind of writing | Where | Test |
+|---|---|---|
+| 「这一行为什么这么写」 | inline comment | the question occurs to someone staring at that line |
+| 「那次到底怎么回事」 — root cause, measured numbers, dead ends | `docs/incidents.md` | it is a story with a date |
+| 「某样东西为什么不在」 — a deleted service, a deliberately unset option | `docs/decisions.md` | there is no line to attach it to |
+
+Both docs are reverse-chronological, each entry carries an anchor
+(`## 2026-08-16 · 标题 {#anchor}`), and code references them as
+`docs/incidents.md#<anchor>`.
+
+**Rule of thumb: a comment block past ~10 lines is the signal.** Not a hard
+limit — a dense table of keybindings or a module header explaining why the
+module exists can be long and still belong in the file. But if those lines
+contain a timeline, a measurement, or a "踩过一次", split it: the conclusion
+stays, the story moves.
+
+Why it matters: the story is the part that goes stale. A 40-line block about
+one afternoon's debugging buries the one sentence a reader actually needed,
+and nobody edits it when the situation changes — so it quietly becomes wrong
+while still looking authoritative. In `docs/` it is dated, so a reader knows
+what it is. **When you write the incident entry, also write down what
+misled you** — the wrong first guess is usually more valuable than the fix.
+
 ## System and home are separate closures
 
 Home Manager is **never** a NixOS or nix-darwin module here, not even on hosts

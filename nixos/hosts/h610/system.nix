@@ -142,23 +142,11 @@ in {
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  # **故意不开 binfmt。** 这台以前是 deploy-rs 的构建机,靠 QEMU 模拟给
-  # r6s/rpi4/r5s 那几台 SBC 编闭包;那个角色已经交给 tank 了
-  # (见 modules/nix.nix 的 buildMachines)。
-  #
-  # 摘掉的理由是**溢出**,不是"抢在 tank 前面"。nix 的调度是远程优先:
-  # derivation-building-goal.cc 先问 build hook,hook 在 tank 有空闲 slot
-  # 时就 accept,所以 ARM 构建本来就会去 tank。
-  #
-  # 但 binfmt 会把 aarch64-linux 加进 `extra-platforms`,于是 build-remote.cc
-  # 里的 `couldBuildLocally` 为真;一旦 tank 的 16 个 slot 全占满,hook 返回
-  # decline 而不是 postpone —— 溢出的 ARM 构建就落到这台 12 核 / 15 GiB 的
-  # 机器上用 QEMU 跑。那是最坏的组合,而这台今天已经 OOM 两次。
-  #
-  # 摘掉之后那种情况变成 postpone(排队等 tank),不再有慢速回落。
-  # 代价:tank 不可达时这台编不了 ARM(直接失败而不是慢慢磨),
-  # `just build-local <arm-host>` 在这台上也不再可用 —— 那条路本来就
-  # 慢到没有实用价值。
+  # **故意不开 binfmt。** ARM 构建交给 tank(见 modules/nix.nix 的
+  # buildMachines)。开着 binfmt 的坏处不是"抢在 tank 前面"而是**溢出** ——
+  # 它把 aarch64-linux 加进 extra-platforms,于是 tank 满载时 nix 会 decline
+  # 而不是 postpone,溢出的 ARM 构建落到这台上用 QEMU 跑。
+  # 详见 docs/incidents.md#h610-drop-binfmt。
   # boot.binfmt.emulatedSystems = ["aarch64-linux"];
   # boot.kernelParams = [
   #   "pcie_aspm=off"
@@ -993,28 +981,11 @@ in {
         # 零密钥,新机器接进 tailnet 就能用。这也顺带解决 tank 当远程构建机的
         # 认证问题(nix-daemon 以 root 发起 ssh,原本需要一把 root 能读的私钥)。
         #
-        # ---------------------------------------------------------------
-        # 写法上有三个坑,都是 headscale 特有的,照抄 tailscale 官方示例会踩:
-        #
-        # 1. **dst 不能用 group。** headscale 的校验里 Group 不是合法的 SSH
-        #    destination(实测报 `alias *v2.Group is not supported for SSH
-        #    destination`)。允许的是 tag、autogroup:self/member/tagged,
-        #    以及"同一个人自己的用户名"。
-        #
-        #    这里用 `autogroup:member` —— 它是"所有用户拥有的非 tag 节点",
-        #    正好覆盖全部机器,**不需要给节点打 tag**。打 tag 反而会出事:
-        #    tag 化的节点不再属于 group:imdomestic,上面那条 acl 的 dst 就
-        #    匹配不到它们了。
-        #
-        # 2. **action 必须是 accept,不能是 check。** check 要求发起方每隔
-        #    一段时间(默认 12 小时)在浏览器里重新认证一次,会直接打断
-        #    deploy-rs 和远程构建这类非交互场景。
-        #
-        # 3. **`headscale policy check` 是必要条件不是充分条件。** 实测它能
-        #    抓住第 1 条(类型错误),但 `action: "check"` 和**漏写 users**
-        #    这两种它都照样报 "Policy is valid" —— 尽管源码里就有
-        #    ErrSSHUsersMustBeSpecified。所以校验过了不等于行为符合预期。
-        # ---------------------------------------------------------------
+        # **这三行的每一处写法都是踩出来的**,照抄 tailscale 官方示例会错:
+        # dst 不能用 group(headscale 不认)、action 不能用 check(会打断
+        # deploy-rs)、users 必须显式列 root。而 `headscale policy check`
+        # 只抓得住第一条 —— 后两种它照样报 "Policy is valid"。
+        # 完整的三个坑见 docs/incidents.md#headscale-ssh-policy-traps。
         #
         # 改这一段要 rebuild + switch h610(策略是 nix store 里的文件)。
         # 需要频繁调试时可以临时切 policy.mode = "database" 用
@@ -1078,22 +1049,9 @@ in {
   # 生成后粘进登录框。**/admin 这个前缀是 headplane 构建期烤进去的**
   # (vite.config.ts 里的 __INTERNAL_PREFIX),不是可配置项,开根路径会 404。
   #
-  # **入口用 MagicDNS 短名:http://h610:3001/admin。**
-  # 另外两种写法在开着 Clash Verge 的 mac 上都是 502,2026-08-16 查过一轮:
-  #
-  # - `http://100.64.0.3:3001/admin` —— 系统代理的 bypass 用的是 Verge 默认表
-  #   (127.0.0.1 / 192.168/16 / 10/8 / 172.16/12),**没有 100.64.0.0/10**,
-  #   所以浏览器把 tailnet 地址交给了 mihomo。规则里其实有
-  #   `IP-CIDR,100.64.0.0/10,DIRECT,no-resolve`,但 live 配置被 profile 的
-  #   script 扩展改写过,和文件里读到的不是一回事,照样 502。
-  # - `http://h610.inner.imdomestic.com:3001/admin` —— 命中
-  #   `DOMAIN-SUFFIX,imdomestic.com,DIRECT`,可 DIRECT 要 mihomo 自己解析,
-  #   而它那套 DNS 不认 100.100.100.100;TUN 模式又劫持了 DNS,查出来是
-  #   fake-ip(198.18.0.0/15),连不出去。
-  #
-  # 短名能过是因为它走系统 resolver + 搜索域 inner.imdomestic.com,
-  # 直接落到 100.100.100.100。curl 三种写法都正常 —— curl 不读 macOS 系统
-  # 代理设置,所以**用 curl 验证不出这个问题**,别拿它当"没问题"的依据。
+  # **入口一律用 MagicDNS 短名 http://h610:3001/admin** —— 裸 tailnet IP 和
+  # FQDN 两种写法在开着 Clash Verge 的 mac 上浏览器都是 502(而 curl 全绿,
+  # 验证不出来)。见 docs/incidents.md#tailnet-panels-502。
   #
   # UI 里"配置"和"ACL"两页是只读的:config_path 和 policy.path 都指向 nix
   # store。这是 NixOS 上的正常形态,不是坏了 —— 用户、节点、pre-auth key
