@@ -853,6 +853,7 @@ in {
       AI_MEDIA_ENABLED=true
       AI_MEDIA_ROOT=/var/lib/qq-deepseek-bot/media
       AI_VISION_PROFILE=gpt-5.6-luna
+      AI_VISION_AUTO_DESCRIBE=true
       AI_MEDIA_MAX_SOURCE_MB=100
       AI_VISION_MAX_IMAGE_MB=20
       AI_MEDIA_PREPARE_THRESHOLD_MB=1
