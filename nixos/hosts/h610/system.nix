@@ -1075,9 +1075,25 @@ in {
   #
   # 登录方式是 headscale API key(fleet 里没有 OIDC provider):
   #   headscale apikeys create -e 87600h
-  # 生成后粘进 http://100.64.0.3:3001/admin 的登录框。**/admin 这个前缀是
-  # headplane 构建期烤进去的**(vite.config.ts 里的 __INTERNAL_PREFIX),
-  # 不是可配置项,直接开根路径会 404。
+  # 生成后粘进登录框。**/admin 这个前缀是 headplane 构建期烤进去的**
+  # (vite.config.ts 里的 __INTERNAL_PREFIX),不是可配置项,开根路径会 404。
+  #
+  # **入口用 MagicDNS 短名:http://h610:3001/admin。**
+  # 另外两种写法在开着 Clash Verge 的 mac 上都是 502,2026-08-16 查过一轮:
+  #
+  # - `http://100.64.0.3:3001/admin` —— 系统代理的 bypass 用的是 Verge 默认表
+  #   (127.0.0.1 / 192.168/16 / 10/8 / 172.16/12),**没有 100.64.0.0/10**,
+  #   所以浏览器把 tailnet 地址交给了 mihomo。规则里其实有
+  #   `IP-CIDR,100.64.0.0/10,DIRECT,no-resolve`,但 live 配置被 profile 的
+  #   script 扩展改写过,和文件里读到的不是一回事,照样 502。
+  # - `http://h610.inner.imdomestic.com:3001/admin` —— 命中
+  #   `DOMAIN-SUFFIX,imdomestic.com,DIRECT`,可 DIRECT 要 mihomo 自己解析,
+  #   而它那套 DNS 不认 100.100.100.100;TUN 模式又劫持了 DNS,查出来是
+  #   fake-ip(198.18.0.0/15),连不出去。
+  #
+  # 短名能过是因为它走系统 resolver + 搜索域 inner.imdomestic.com,
+  # 直接落到 100.100.100.100。curl 三种写法都正常 —— curl 不读 macOS 系统
+  # 代理设置,所以**用 curl 验证不出这个问题**,别拿它当"没问题"的依据。
   #
   # UI 里"配置"和"ACL"两页是只读的:config_path 和 policy.path 都指向 nix
   # store。这是 NixOS 上的正常形态,不是坏了 —— 用户、节点、pre-auth key
