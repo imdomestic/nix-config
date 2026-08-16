@@ -53,12 +53,16 @@ in {
     # 节点 URI。
     #
     # **必须显式指定 sopsFile。** profiles/base.nix 把 defaultSopsFile 设成了
-    # secrets/hosts/<host>.yaml(存在的话),而这份节点清单是三台 dae 主机共用的,
+    # secrets/hosts/<host>.yaml(存在的话),而这份节点清单是几台 dae 主机共用的,
     # 放在共享的 secrets/secrets.yaml 里。不写这行的话 sops-install-secrets 会
     # 去每主机文件里找,构建时报 "the key 'dae' cannot be found"。
     #
-    # 加解密范围见 .sops.yaml 的 `secrets/.*\.yaml$` 那条 —— 覆盖全部 16 个
-    # 收件人,包括重新启用的 host_r2s。
+    # 加解密范围见 .sops.yaml 的 `secrets/.*\.yaml$` 那条 —— 覆盖全部 17 个
+    # 收件人,包括重新启用的 host_r2s 和 2026-08-16 加入的 host_h310。
+    #
+    # **往这个文件加收件人之后必须跑 `sops updatekeys secrets/secrets.yaml`。**
+    # 改 .sops.yaml 只影响之后新建的文件,已加密的那份不会自动重新加密 ——
+    # 漏了这步,新机器上 sops-install-secrets 会在激活阶段才报解不开。
     sops.secrets."dae/nodes".sopsFile = ../../../secrets/secrets.yaml;
 
     sops.templates."dae.dae" = {
