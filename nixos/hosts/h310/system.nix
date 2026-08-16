@@ -1,4 +1,10 @@
 {pkgs, ...}: {
+  imports = [
+    ../../modules/dae
+  ];
+
+  my.dae.lanInterfaces = ["enp4s0"];
+
   boot = {
     loader = {
       systemd-boot = {
@@ -21,7 +27,7 @@
   };
 
   systemd.network.networks."10-wired" = {
-    matchConfig.Name = "en*";
+    matchConfig.Name = "enp4s0";
     networkConfig.DHCP = "yes";
   };
 
