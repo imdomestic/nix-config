@@ -160,6 +160,16 @@ in {
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
 
+    # nginx 里有一个只绑 tailnet 地址的 server 块(kennethbot 那个,
+    # `listen 100.64.0.3:80`),而 100.64.0.3 要等 tailscaled 登录成功才存在;
+    # 偏偏 tailscaled 要连的 headscale 又挂在同一个 nginx 的 8443 后面 ——
+    # 冷启动时两者互等:nginx 的 config test 绑不上就退出,试满 5 次耗尽
+    # StartLimitBurst 之后永久放弃,headscale 从此对外失联,而且不会自愈。
+    # 2026-08-17 真实发生过,持续 13 小时。见 docs/incidents.md#nginx-tailnet-bind-deadlock
+    #
+    # 允许绑定当前不存在的地址,从根上打断这个环 —— keepalived/HA 场景的标准做法。
+    "net.ipv4.ip_nonlocal_bind" = 1;
+
     # --- 内存压力 (见下面 zramSwap / systemd.oomd) ---
     #
     # zram 的 swap 是内存里的压缩块,不是磁盘,读写快两三个数量级。默认的
@@ -1156,6 +1166,20 @@ in {
       limit_req_zone $binary_remote_addr zone=maxapi:1m rate=60r/m;
     '';
   };
+
+  # 即使上面的 ip_nonlocal_bind 已经打断了那个环,这条也值得留着:nginx 依赖的
+  # 晚到资源不止一个地址(ACME 证书、上游 socket…),任何一个在开机时慢一步,都会
+  # 让它连败 5 次然后**永久**放弃。
+  #
+  # 上游 nginx 模块自己设了 `startLimitIntervalSec = 60`(nixos/modules/services/
+  # web-servers/nginx/default.nix),配上默认的 StartLimitBurst=5,就是"60 秒内失败
+  # 5 次就再也不启动"。2026-08-17 那次实测正好落在这个窗口里:22:38:13 起第一次,
+  # 22:39:04 放弃,51 秒 5 次。而同一个单元里写着 `Restart = "always"` —— 那句话
+  # 很容易让人以为它会一直重试,实际不会。
+  #
+  # 必须 mkForce:上游那 60 是普通定义,不覆盖就是定义冲突而不是取较小值。
+  # 0 = 取消时间窗,不再有"失败太快"的判定,按 RestartSec 一直重试下去。
+  systemd.services.nginx.startLimitIntervalSec = lib.mkForce 0;
 
   # Kennethbot 管理台只在 tailnet 地址上提供服务。Headscale 的 MagicDNS
   # 把 kennethbot.inner.imdomestic.com 解析到 100.64.0.3，公网接口不监听。

@@ -9,6 +9,70 @@
 
 ---
 
+## 2026-08-17 · h610 冷启动后 headscale 对外失联 13 小时 —— nginx 和 tailscaled 互等 {#nginx-tailnet-bind-deadlock}
+
+**症状:** h610 在 10:45 硬崩(日志戛然而止,没有任何 shutdown 序列),22:38 重新
+开机之后,tailnet 一直没有恢复。人还能从公网 ssh 进去,`systemctl status
+headscale` 是 active、进程在跑、日志在刷 —— 但外面所有节点都连不上。
+
+**headscale 本身从头到尾没出过问题。** 它监听 `127.0.0.1:8080`,一直好好的;
+headplane-agent 能连上是因为走 loopback。真正挂掉的是它前面的 nginx:
+
+```
+× nginx.service - failed (Result: start-limit-hit) since 22:39:04
+  nginx-pre-start: bind() to 100.64.0.3:80 failed (99: Cannot assign requested address)
+```
+
+**根因是一个自锁的环:**
+
+```
+nginx 起不来
+   └─ 要 bind 100.64.0.3:80          (kennethbot 那个 tailnet-only 的 server 块)
+        └─ 这个地址由 tailscaled 分配
+             └─ tailscaled 登录不上
+                  └─ 要连 https://tailscale.imdomestic.com:8443/key
+                       └─ 解析到 114.225.151.40:8443 = h610 自己的公网口
+                            └─ connection refused ← 因为 nginx 没起来
+```
+
+三个证据同时成立才敢下这个结论:
+
+| 探针 | 结果 |
+|---|---|
+| `ip -brief addr show tailscale0` | 只有 `fe80::/64`,**没有 IPv4** |
+| `tailscale status` | `You are logged out. fetch control key: … connect: connection refused` |
+| `ss -lntp \| grep 8443` | 空 —— 没有任何监听者 |
+
+**为什么不自愈:** `Restart=always` 看着像会一直重试,但 `StartLimitBurst=5`
+在 51 秒内(22:38:13 → 22:39:04)就被耗尽,systemd 从此拒绝再启动它。
+`Restart=always` 和"永远会重试"不是一回事。
+
+**为什么以前没事:** 这个环一直都在。热重启时 tailscaled 常常能从状态文件里
+快速恢复地址,赶在那 5 次重试窗口内;这次冷启动 + 前面 12 小时宕机,赶不上了。
+**能自愈的竞态和不能自愈的死锁,区别只在于运气。**
+
+**救火:**
+
+```bash
+sysctl -w net.ipv4.ip_nonlocal_bind=1
+systemctl reset-failed nginx.service && systemctl start nginx.service
+```
+
+`reset-failed` 不能省 —— 不清掉 start-limit 计数,`start` 会被 systemd 直接
+拒绝,而且不给任何解释。
+
+**永久修法:** `boot.kernel.sysctl."net.ipv4.ip_nonlocal_bind" = 1`(允许绑定
+尚不存在的地址,从根上打断环)+ `systemd.services.nginx.startLimitIntervalSec = 0`
+(别再永久放弃,后者防的是别的晚到资源,比如 ACME 证书)。两条都在
+`nixos/hosts/h610/system.nix`。
+
+**最值得记的一条:一个只服务内网的 server 块,可以把整台机器的对外服务全部
+带走。** nginx 的 config test 是全有或全无 —— `kennethbot.inner.imdomestic.com`
+这个只给 tailnet 用的面板绑不上地址,连带 8443 上的 headscale 和订阅端点一起
+起不来。凡是 listen 到"要等别的服务才存在"的地址上,都有这个性质。
+
+---
+
 ## 2026-08-16 · tailnet 上的 web 面板在浏览器里全是 502,curl 却全绿 {#tailnet-panels-502}
 
 **症状:** 刚部署好的 headplane,浏览器开 `http://100.64.0.3:3001/admin` 返回
