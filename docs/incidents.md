@@ -9,6 +9,72 @@
 
 ---
 
+## 2026-08-19 · 未提交的 flake.lock 让 h610 上三次 max 部署被静默回滚 {#max-uncommitted-lock-rollback}
+
+**症状:** 14:50 部署完 max 的镜像功能,验证通过 —— QQ 群消息扇出到 iMessage,
+`relay:108806:28` 落库。三分钟后同样的操作不再产生 relay 行,`message_deliveries`
+只剩 `source:` 一条。数据库里 endpoint 28 从 `mirror` 变回了 `standalone`。
+
+**根因:** 14:52:59 有人从**已提交的树**跑了一次 rebuild。当时 `flake.lock` 里
+max 的 bump 只在工作区,没提交:
+
+```
+committed flake.lock max rev: 7ef8ee35   ← 当天所有工作之前
+工作区 flake.lock max rev:   bb64147
+```
+
+于是 gen 338 把当天三次部署一起换掉了:
+
+```
+gen 336  14:32:20  max=nh8qv2ym   iMessage @ 修复
+gen 337  14:50:33  max=3g7mrkdf   镜像
+gen 338  14:52:59  max=m3xf7ssv   ← 从 committed tree 构建,退回 7ef8ee35
+```
+
+直接 grep 两个 build 的源码快照,不用猜:
+
+```
+gen 337 的 source: mirrorQQGroup 8 次
+gen 338 的 source: mirrorQQGroup 0 次,anchorSelf 也 0 次   ← 连 @ 修复都没有
+```
+
+**回滚不是"少了个功能",它会改数据。** 旧 max 的 `iMessageWorker` 里
+`EndpointStandalone` 和 `Nothing` 是写死的,启动时执行
+
+```sql
+UPDATE conversation_endpoints SET endpoint_mode = 'standalone' ... WHERE endpoint_id = ?
+```
+
+把 endpoint 28 降了级。max 那边配置是权威、每次开机覆盖 DB,所以**把二进制换旧等于
+让它按旧配置重写状态**。这类设计下,回滚一个版本和回滚一次数据迁移是同一件事。
+
+**误导我的地方:** 我先去查镜像的代码和扇出 SQL 了。14:50 拓扑对、14:53 拓扑错,
+中间只隔三分钟,第一反应是条件写错或者配置没生效。真正的线索是日志里少了一个字段:
+
+```
+14:50:37 iMessage worker started  endpoint_id=28 mode=mirror native_replies=true
+14:53:03 iMessage worker started  endpoint_id=28 native_replies=true      ← 没有 mode
+```
+
+`mode` 是当天新加的字段。**它不是值变了,是根本没打印** —— 说明换掉的是二进制,不是
+数据。两行并排看才反应过来。教训:排查"刚才还好现在不好"时,先确认跑的还是不是同一个
+东西,再去看它的行为。
+
+**AGENTS.md 早就写了这条。**「After a rebuild: commit and push promptly」下面第一句就是
+"A machine running code that is not on the remote is unreproducible. The next deploy
+from a clean checkout silently reverts it, and nobody sees a conflict — the change just
+disappears."我跳过了 rebuild 前的 freshness check,而那一步正是会发现 flake.lock
+未提交的地方。
+
+**修复:** 回到 gen 337 激活 —— endpoint 28 自愈成 mirror,因为新二进制读得到
+`mirror_qq_group`,不用手改数据。然后提交推送 `flake.lock` 与 `system.nix`。验证是从
+**已提交的干净树**重新构建,和正在跑的系统同一个 store path:
+
+```
+built:   /nix/store/pl7r7p25...-nixos-system-h610
+running: /nix/store/pl7r7p25...-nixos-system-h610
+```
+
 ## 2026-08-17 · h610 冷启动后 headscale 对外失联 13 小时 —— nginx 和 tailscaled 互等 {#nginx-tailnet-bind-deadlock}
 
 **症状:** h610 在 10:45 硬崩(日志戛然而止,没有任何 shutdown 序列),22:38 重新
