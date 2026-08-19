@@ -749,11 +749,6 @@ in {
       qq = "2107570581";
       environmentFiles = ["/var/lib/max-bot/napcat.env"]; # NAPCAT_ACCESS_TOKEN
     };
-    wechatpad = {
-      enable = false;
-      adminKey = "hbhbhb";
-      webBindAddress = "100.64.0.3";
-    };
   };
   # headscale owns 127.0.0.1:8080, so bind the OneBot WS on the docker
   # bridge only; napcat reaches it via host.docker.internal (host-gateway).
