@@ -789,6 +789,7 @@ in {
     runtimePackages = [pkgs.ffmpeg-headless];
     sandbox.enable = true;
     browser.enable = true;
+    videoDeep.enable = true;
     napcat = {
       enable = true;
       account = "3580515978";
