@@ -84,6 +84,28 @@ with lib; let
   clashTags = concatMapStringsSep "\n" (t: "      - ${t}") tags;
   egernTags = concatMapStringsSep "\n" (t: "    - ${t}") tags;
 
+  # 拦 QUIC(UDP/443)。`sub` 为 null 时无条件拦,否则再 AND 上一条子规则。
+  #
+  # **只在「这条流量最终要出国」时才拦。** 拦它的唯一理由是逼客户端回退到 TCP
+  # —— 反向隧道对 UDP 支持差。对直连目标拦它是纯亏,而且 REJECT 对 UDP 是静默
+  # 丢包,客户端只能干等 QUIC 超时,见 docs/incidents.md#quic-blackhole。
+  #
+  # 拆成多处而不是开头一条,是因为下面 DIRECT / im 的规则是交错的,没有单一
+  # 插入点能把两者分开。形状和 modules/mihomo 里那份一致,改一边记得看另一边。
+  quicReject = sub: let
+    parts = ["(NETWORK,UDP)" "(DST-PORT,443)"] ++ optional (sub != null) sub;
+  in "AND,(${concatStringsSep "," parts}),REJECT";
+
+  # 走 im 组的 geosite。每个生成两条:先拦掉它的 QUIC,再把它的 TCP 送进代理。
+  # 两条写在一起是为了改不漏 —— 新增一条 `,im` 规则时照抄这个形状即可。
+  proxiedSites = ["github" "google-gemini" "google" "telegram"];
+  proxiedRules = concatMapStringsSep "\n" (tag:
+    concatStringsSep "\n" [
+      "  - ${quicReject "(GEOSITE,${tag})"}"
+      "  - GEOSITE,${tag},im"
+    ])
+  proxiedSites;
+
   clashConfig = ''
     # 由 nix-config 的 nixos/modules/imsub 生成,别手改 —— 下次拉订阅就没了。
     port: 7890
@@ -134,10 +156,8 @@ with lib; let
     ${clashTags}
 
     rules:
-      # ===== QUIC/UDP 拦截 & 广告屏蔽 =====
-      # 拦 QUIC 是为了逼客户端回退到 TCP —— 反向隧道对 UDP 支持差。注意这条
-      # 无条件拦,直连目标的 QUIC 也一起没了,见 docs/incidents.md#quic-blackhole。
-      - AND,(NETWORK,UDP),(DST-PORT,443),REJECT
+      # ===== 广告屏蔽 =====
+      # QUIC 的拦截不在这里 —— 它按目的地分散在下面,见 quicReject 的说明。
       - GEOSITE,category-ads-all,REJECT
 
       # ===== 自建基础设施直连 =====
@@ -164,10 +184,7 @@ with lib; let
       - GEOIP,private,DIRECT,no-resolve
 
       # ===== 特定应用代理 (走 im 策略组) =====
-      - GEOSITE,github,im
-      - GEOSITE,google-gemini,im
-      - GEOSITE,google,im
-      - GEOSITE,telegram,im
+    ${proxiedRules}
 
       # ===== 国内网站 & 游戏平台直连 =====
       - GEOSITE,cn,DIRECT
@@ -183,6 +200,8 @@ with lib; let
       - GEOIP,cn,DIRECT
 
       # ===== Fallback 兜底规则 =====
+      # 到这里还没匹配上的都要走下面的 MATCH,im 出国,所以拦掉它们的 QUIC。
+      - ${quicReject null}
       - MATCH,im
   '';
 
