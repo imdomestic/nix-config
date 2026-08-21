@@ -78,6 +78,7 @@
 in {
   imports = [
     ../../modules/airport
+    ../../modules/imsub
     ../../modules/cliproxy
     # 2026-07-31 试过 mihomo,因为 cliproxy 一直 EOF 而回滚,见
     # docs/proxy-todo.md 第 9 节。r6s 上同一份配置是好的,所以问题多半出在
@@ -676,6 +677,16 @@ in {
     };
   };
 
+  # 自用订阅。和上面的 airport 共用这台机器和这个 8443,但内容完全不同:
+  # 六个节点全给、永久有效、带完整分流规则。token 是唯一的认证,换掉它
+  # 就等于吊销全部旧链接。链接用 `sudo imsub-url` 打印。
+  sops.secrets."imsub/token".owner = "imsub";
+  services.imsub = {
+    enable = true;
+    baseUrl = "https://h610.imdomestic.com:8443";
+    tokenFile = config.sops.secrets."imsub/token".path;
+  };
+
   # 订阅走已有的 8443,证书用现成的 Cloudflare DNS-01 签。h610.imdomestic.com
   # 本来就由 ddns-go 在更新,所以不用额外加 DNS 记录。
   security.acme.certs."h610.imdomestic.com" = {
@@ -1156,6 +1167,8 @@ in {
     # 别让人拿这个公网端口慢慢撞。
     appendHttpConfig = ''
       limit_req_zone $binary_remote_addr zone=airportsub:1m rate=10r/m;
+      # 自用订阅同理。只有我自己在拉,10r/m 绰绰有余。
+      limit_req_zone $binary_remote_addr zone=imsub:1m rate=10r/m;
       # max 管理面板的唯一凭据是一个 bearer token,而它挂在公网上,
       # 所以给 /api/ 一个桶:正常用起来一次翻页也就几个请求,
       # 但撞 token 需要的量级远在这之上。
@@ -1225,6 +1238,14 @@ in {
         proxy_set_header Host $host;
         # 订阅客户端靠这个响应头显示已用/总量/到期,别被过滤掉
         proxy_pass_header Subscription-Userinfo;
+      '';
+    };
+    # 自用订阅(modules/imsub)。和 /sub/ 分开是为了各限各的速。
+    locations."/imsub/" = {
+      proxyPass = "http://127.0.0.1:8082";
+      extraConfig = ''
+        limit_req zone=imsub burst=5 nodelay;
+        proxy_set_header Host $host;
       '';
     };
     locations."/" = {
