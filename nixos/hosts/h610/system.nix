@@ -800,7 +800,13 @@ in {
     runtimePackages = [pkgs.ffmpeg-headless];
     sandbox.enable = true;
     browser.enable = true;
-    videoDeep.enable = true;
+    videoDeep = {
+      enable = true;
+      frameCount = 12;
+      maxDownloadMB = 1024;
+      maxDurationMinutes = 60;
+      timeoutSeconds = 1800;
+    };
     napcat = {
       enable = true;
       account = "3580515978";
