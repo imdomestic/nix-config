@@ -49,6 +49,9 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
+          # 她自己的 zsh 里有 `ls = "eza --icons"`,而 eza 在 base 里 ——
+          # 没有 base 的时候那条别名是坏的,只是没人报过。
+          base
         ];
         modules = [
           userModules.fendada.module

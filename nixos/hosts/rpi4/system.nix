@@ -406,9 +406,8 @@ in {
   security.sudo.wheelNeedsPassword = false;
 
   # 见 profiles/netdiag.nix。iproute2 是冗余声明,删了。
-  environment.systemPackages = with pkgs; [
-    ddns-go
-  ];
+  # ddns-go 删了:上面那个单元写的是 ${pkgs.ddns-go.outPath}/bin/ddns-go,
+  # 走绝对 store 路径,不吃 PATH。
 
   programs.zsh.enable = true;
 

@@ -43,8 +43,8 @@
   security.sudo.wheelNeedsPassword = false;
   programs.zsh.enable = true;
 
+  # git 删了:hank 的 programs.git 已经装了。vim 留着 —— root 进来修东西用。
   environment.systemPackages = with pkgs; [
-    git
     vim
   ];
 

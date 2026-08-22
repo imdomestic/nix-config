@@ -33,21 +33,14 @@
   };
   programs.command-not-found.enable = false;
 
+  # 其余的都搬去了 home:wget/starship/zsh/duf/bat/just 在 profiles/base.nix,
+  # git 是 hank 自己的 programs.git,neovim 是 nixvim,gcc 在 profiles/dev.nix,
+  # distrobox 挂在 users/hank 的 host 条件里。
   environment.systemPackages = with pkgs; [
     kmod
     tzdata
+    # 系统坏掉时是以 root 身份进来修的,那时候 home 的 PATH 帮不上忙。
     vim
-    wget
-    neovim
-    git
-    gcc
-    starship
-    zsh
-    duf
-    bat
-    just
-
-    distrobox
   ];
 
   virtualisation.podman = {

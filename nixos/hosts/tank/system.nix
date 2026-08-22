@@ -706,6 +706,16 @@ in {
     pulse.enable = true;
   };
 
+  # 这里只留 tank 这台机器自己需要的。搬走的去处:
+  #   GUI / 桌面配套 (clapper radeontop brightnessctl waybar nwg-dock-hyprland
+  #                  + waybar 那个 python)  -> home/modules/gui
+  #   内核构建那几个 (flex bison elfutils libelf pkg-config) -> home/profiles/dev.nix
+  #   虚拟化那一组 -> profiles/virtualisation 本来就装了,这里是抄的第二遍
+  #   wget git starship zsh duf bat just btop cachix -> home 的 base / dev 早就有
+  #   ddns-go 删了:单元里写的是 ${pkgs.ddns-go.outPath}/bin/ddns-go,不吃 PATH
+  #   jellyfin 三件套删了:services.jellyfin 是注释掉的,全文件再无第二处引用
+  #
+  # vim 留着:系统坏掉时是以 root 身份进来修的,那时候 home 的 PATH 帮不上忙。
   environment.systemPackages = with pkgs; [
     rdma-core
     # infiniband-diags
@@ -713,60 +723,22 @@ in {
 
     # pkgs-unstable.llama-cpp-rocm
 
+    # 造 chroot 用,要 root 跑,所以留在 system。
     debootstrap
-    cachix
-    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
-    wget
-    git
+    vim
+    # gcc / gnumake 没搬。这台上有 hank / linwhite / kenneth / fendada / genisys
+    # 五个账户,只有 hank 和 linwhite 引了 dev profile,而 pip / npm / cargo 会
+    # 隐式去找 cc 和 make。按 AGENTS.md 的说法这属于
+    # "every account must have regardless of who logs in"。
     gcc
+    gnumake
     wqy_microhei
     ntfs3g
-    qemu
-    starship
-    zsh
-    brightnessctl
-    waybar
-    nwg-dock-hyprland
-    duf
-    gnumake
-    flex
-    bison
-    elfutils
-    libelf
-    pkg-config
-    clapper
-    bat
-    just
     mihomo
     xfsprogs
-
-    #virtualisation
-    virt-manager
-    virt-viewer
-    spice
-    spice-gtk
-    spice-protocol
-    virtio-win
-    win-spice
     adwaita-icon-theme
-    radeontop
-    # corectrl
-    # daed
-    ddns-go
-    btop
-    pkgs.jellyfin
-    pkgs.jellyfin-web
-    pkgs.jellyfin-ffmpeg
 
     # pkgsCross.riscv64.gcc14
-
-    # make waybar happy
-    (pkgs.python3.withPackages (python-pkgs:
-      with python-pkgs; [
-        # select Python packages here
-        pandas
-        requests
-      ]))
 
     steam-run
     steamcmd

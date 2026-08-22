@@ -1,6 +1,7 @@
 {pkgs, ...}: {
   environment.systemPackages = with pkgs; [
-    virt-manager
+    # virt-manager 不在这里:下面的 programs.virt-manager.enable 自己就有
+    # `environment.systemPackages = [cfg.package]`,写两遍只是让人以为有两个来源。
     cloud-utils
     cdrtools
     qemu

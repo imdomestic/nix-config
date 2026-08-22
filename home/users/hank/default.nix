@@ -1159,5 +1159,28 @@ in {
     # mermaid(mmdc)和 tectonic 仍然只在 dev profile —— 那两个是真的重。
     pkgs.imagemagick
     pkgs.ghostscript
+  ]
+  # 下面这些原本在各自 host 的 environment.systemPackages 里。都是"我"用的
+  # 单机工具,不是机器跑起来需要的,所以按 host 挂在这儿。
+  #
+  # iproute2mac 不在这儿:profiles/dev.nix 的 darwin 分支早就有了,
+  # m1elite 的 system 那份纯属重复。
+  ++ lib.optionals (config.my.host.name == "aarch64-wsl") [pkgs.distrobox]
+  ++ lib.optionals (config.my.host.name == "r5sjp") [pkgs.wakeonlan]
+  # tank 的图形界面是 host 级开的 hyprland,而 tank 的 hank 没引 gui.linux
+  # (那行是注释掉的),所以 modules/gui 到不了这台 —— 它的桌面包只能挂这儿。
+  ++ lib.optionals (config.my.host.name == "tank") [
+    pkgs.waybar
+    pkgs.nwg-dock-hyprland
+    pkgs.brightnessctl
+    pkgs.radeontop
+    pkgs.clapper
+    # waybar 的脚本要用。原注释写着 "make waybar happy",waybar 搬到哪它就跟到哪。
+    (pkgs.python3.withPackages (ps: with ps; [pandas requests]))
+  ]
+  ++ lib.optionals (config.my.host.name == "m1elite") [
+    # 用来推别的机器,不是这台 Mac 自己要的。
+    pkgs.nixos-rebuild
+    pkgs.nixos-rebuild-ng
   ];
 }
