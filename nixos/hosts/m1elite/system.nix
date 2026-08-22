@@ -32,12 +32,9 @@
   nix.enable = false;
   nixpkgs.hostPlatform = "aarch64-darwin";
 
-  environment.systemPackages = with pkgs; [
-    iproute2mac
-    nixos-rebuild
-    nixos-rebuild-ng
-  ];
-
+  # 三个都搬走了:iproute2mac 在 home/profiles/dev.nix 的 darwin 分支里本来就有,
+  # nixos-rebuild 那两个挂到了 users/hank —— 它们是用来推别的机器的,不是这台
+  # Mac 自己要的。
   # host-users
   networking.computerName = config.my.host.name;
   system.defaults.smb.NetBIOSName = config.my.host.name;

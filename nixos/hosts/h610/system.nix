@@ -937,12 +937,20 @@ in {
   };
 
   environment.systemPackages = with pkgs; [
-    gcc
-    neovim
     # nginx 删了:services.nginx.enable 已经把它装进 system path 了,再声明一遍
     # 只会让人以为这台上有两个来源。
+    #
+    # deploy-rs 删了:home/profiles/dev.nix 里本来就有。
+    #
+    # gcc 没搬。这台上有 hank / linwhite / kenneth / fendada / genisys 五个账户,
+    # 只有 hank 引了 dev profile —— 而 pip / npm / cargo 会隐式去找 cc。
+    # 按 AGENTS.md 的说法这属于"every account must have regardless of who logs in",
+    # 留在 system 是对的。
+    gcc
+    neovim
+    # 核显转码出问题时要看的,root 侧工具。
     intel-gpu-tools
-    deploy-rs
+    # 这台的容器是 root 起的(hank 不在 docker 组),所以它得在 root 的 PATH 里。
     docker-compose
   ];
 
