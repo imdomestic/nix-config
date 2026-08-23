@@ -727,7 +727,15 @@ in {
     };
   };
   programs.noctalia-shell = {
-    enable = false;
+    # 这几台原来是在 environment.systemPackages 里塞一个 noctalia 包了事 ——
+    # 包在 PATH 上,但模块下面这一大坨 settings 全是死的(enable = false 时
+    # 不产生任何文件),启动也得自己手敲。改成真的启用:模块负责写配置、
+    # systemd.enable 负责拉起 user service。
+    #
+    # 引 gui.linux 的有六台,但另外三台(9950x / x470 / x86_64-headless)本来
+    # 就没装过 noctalia。在那三台上打开等于凭空多一个桌面 shell 服务,那是
+    # 行为变更不是迁移,所以这里按 host 卡住。想全开就把这行换成 true。
+    enable = builtins.elem hostname ["b650" "gpd" "m16"];
     systemd.enable = true;
     settings = {
       settingsVersion = 21;

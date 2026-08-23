@@ -2,7 +2,6 @@
   pkgs,
   lib,
   config,
-  inputs,
   ...
 }: let
   host = config.my.host.name;
@@ -42,9 +41,7 @@ in {
       radeontop
       corectrl
       btop-rocm
-      # 只搬包,没打开 programs.noctalia-shell.enable —— 那个连带会起一个
-      # systemd user service,是行为变更,不是搬家。想启用的话把
-      # modules/noctalia 里那个 enable 翻成 true,再把这行删掉。
-      inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default
+      # noctalia 不在这儿:它由 modules/noctalia 的 programs.noctalia-shell
+      # 装,那边同时会写配置、起 user service。
     ];
 }
