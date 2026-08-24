@@ -240,11 +240,13 @@
       pg_autoctl config set \
         --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
         postgresql.auth_method \
-        scram-sha-256
+        scram-sha-256 \
+        >/dev/null
       pg_autoctl config set \
         --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
         replication.password \
-        "$ha_password"
+        "$ha_password" \
+        >/dev/null
 
       # `create postgres` registers candidatePriority. Reapplying it here waits
       # for every formation member and can deadlock recovery when a peer is down.
@@ -942,12 +944,25 @@
         mv "$data_state_dir" "$data_state_archive"
       fi
 
+      report_data_archives() {
+        found=0
+        for archive in "$data_dir".pre-rejoin-*; do
+          if [ -d "$archive" ]; then
+            echo "Preserved PGDATA: $archive"
+            found=1
+          fi
+        done
+        if [ "$found" -eq 0 ]; then
+          echo "No previous PGDATA directory was present."
+        fi
+      }
+
       if ${runNodePrepareAsPostgres "enroll"}
       then
         :
       else
         echo "Replica enrollment failed. The node remains fenced." >&2
-        echo "Preserved PGDATA: $data_archive" >&2
+        report_data_archives >&2
         exit 1
       fi
 
@@ -957,7 +972,7 @@
       for _ in $(seq 1 720); do
         if ${lib.getExe healthLocalTool} >/dev/null 2>&1; then
           echo "Node ${cfg.node.name} rejoined as a healthy synchronized replica."
-          echo "Preserved previous PGDATA: $data_archive"
+          report_data_archives
           exit 0
         fi
         sleep 5
@@ -965,7 +980,7 @@
 
       echo "Replica enrollment started but did not become healthy within one hour." >&2
       echo "The service remains running so base backup or catch-up can continue." >&2
-      echo "Preserved previous PGDATA: $data_archive" >&2
+      report_data_archives >&2
       exit 1
     '';
   };
@@ -1183,6 +1198,9 @@ in {
     systemd.services.qq-bot-postgres-node = mkIf cfg.node.enable {
       description = "QQ bot PostgreSQL HA data node (${cfg.node.name})";
       wantedBy = ["multi-user.target"];
+      # Package and unit changes are staged by rebuild but PostgreSQL restarts
+      # are coordinated explicitly, one replica at a time.
+      restartIfChanged = false;
       unitConfig.ConditionPathExists = "!${nodeFenceMarker}";
       after =
         ["network-online.target" "tailscaled.service" "sops-install-secrets.service"]
