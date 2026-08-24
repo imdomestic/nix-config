@@ -229,10 +229,9 @@
         --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
         replication.password \
         "$ha_password"
-      pg_autoctl set node candidate-priority \
-        --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
-        --name=${lib.escapeShellArg cfg.node.name} \
-        ${toString cfg.node.candidatePriority}
+
+      # `create postgres` registers candidatePriority. Reapplying it here waits
+      # for every formation member and can deadlock recovery when a peer is down.
 
       install -m 0600 ${nodeHba} ${lib.escapeShellArg "${cfg.node.dataDir}/qq-bot-ha-access.conf"}
       install -m 0600 ${nodePostgresConfig} ${lib.escapeShellArg "${cfg.node.dataDir}/qq-bot-ha-local.conf"}
