@@ -586,6 +586,7 @@
     import os
     import pathlib
     import sys
+    import time
 
     import psycopg
 
@@ -617,55 +618,85 @@
         raise SystemExit(exit_code)
 
 
-    try:
-        with psycopg.connect(
-            dbname="postgres",
-            user="postgres",
-            host="/run/postgresql",
-            port=local_port,
-            connect_timeout=2,
-        ) as local:
-            in_recovery, server_version = local.execute(
-                "SELECT pg_is_in_recovery(), current_setting('server_version')"
-            ).fetchone()
-    except Exception as error:
-        result["reason"] = f"local PostgreSQL is unavailable: {type(error).__name__}"
+    local_error = None
+    for attempt in range(5):
+        try:
+            with psycopg.connect(
+                dbname="postgres",
+                user="postgres",
+                host="/run/postgresql",
+                port=local_port,
+                connect_timeout=2,
+            ) as local:
+                in_recovery, server_version = local.execute(
+                    "SELECT pg_is_in_recovery(), current_setting('server_version')"
+                ).fetchone()
+            local_error = None
+            break
+        except Exception as error:
+            local_error = error
+            if attempt < 4:
+                time.sleep(1)
+    if local_error is not None:
+        result["reason"] = (
+            f"local PostgreSQL is unavailable: {type(local_error).__name__}"
+        )
         finish(1)
 
     result["in_recovery"] = bool(in_recovery)
     result["server_version"] = server_version
 
-    try:
-        with psycopg.connect(
-            dbname="pg_auto_failover",
-            user="autoctl_node",
-            host=monitor_host,
-            port=monitor_port,
-            connect_timeout=2,
-            sslmode="require",
-            passfile=passfile,
-        ) as monitor:
-            row = monitor.execute(
-                """
-                SELECT
-                    nodeid,
-                    reportedstate::text,
-                    goalstate::text,
-                    reportedpgisrunning,
-                    health,
-                    GREATEST(
-                        0,
-                        EXTRACT(EPOCH FROM now() - reporttime)
-                    )::double precision
-                FROM pgautofailover.node
-                WHERE formationid = 'default'
-                  AND groupid = 0
-                  AND nodename = %s
-                """,
-                (node_name,),
-            ).fetchone()
-    except Exception as error:
-        result["reason"] = f"HA monitor is unavailable: {type(error).__name__}"
+    monitor_error = None
+    row = None
+    for attempt in range(5):
+        try:
+            with psycopg.connect(
+                dbname="pg_auto_failover",
+                user="autoctl_node",
+                host=monitor_host,
+                port=monitor_port,
+                connect_timeout=2,
+                sslmode="require",
+                passfile=passfile,
+            ) as monitor:
+                row = monitor.execute(
+                    """
+                    SELECT
+                        nodeid,
+                        reportedstate::text,
+                        goalstate::text,
+                        reportedpgisrunning,
+                        health,
+                        GREATEST(
+                            0,
+                            EXTRACT(EPOCH FROM now() - reporttime)
+                        )::double precision
+                    FROM pgautofailover.node
+                    WHERE formationid = 'default'
+                      AND groupid = 0
+                      AND nodename = %s
+                    """,
+                    (node_name,),
+                ).fetchone()
+            monitor_error = None
+        except Exception as error:
+            monitor_error = error
+
+        converged = (
+            row is not None
+            and row[3]
+            and row[4] == 1
+            and float(row[5]) <= 90
+        )
+        if monitor_error is None and converged:
+            break
+        if attempt < 4:
+            time.sleep(1)
+
+    if monitor_error is not None:
+        result["reason"] = (
+            f"HA monitor is unavailable: {type(monitor_error).__name__}"
+        )
         finish(1)
 
     if row is None:
