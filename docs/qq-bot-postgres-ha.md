@@ -128,6 +128,10 @@ sudo qq-bot-postgres-enroll-local --confirm-enroll
 该命令仅用于全新、没有旧身份和 PGDATA 的节点。已有数据节点必须使用下面的受控
 重建流程，不能用 enroll 覆盖。
 
+数据节点的 unit 或软件包变化也不会在 rebuild 时自动重启 PostgreSQL。需要升级
+keeper 或应用新 PostgreSQL 配置时，必须先确认另一个节点健康，再逐台显式重启，
+避免一次系统切换同时扰动主库和副本。
+
 ## 故障恢复闭环
 
 强制移除节点前必须先在故障节点执行持久化隔离：
