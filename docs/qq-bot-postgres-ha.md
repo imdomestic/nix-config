@@ -5,12 +5,12 @@
 机器人使用一套独立的 PostgreSQL 17 集群，不再依赖 Tank 上同时承载
 Matrix、Minecraft 的 5432 集群。
 
-- Tank 是首选数据节点，Tailscale 地址 `100.64.0.4:55432`。
-- h610 是故障接管节点，Tailscale 地址 `100.64.0.3:55432`。
-- Tank 离线的过渡期由 h610 运行 `pg_auto_failover` monitor，端口为 `55431`。
+- h610 是首选主数据节点，Tailscale 地址 `100.64.0.3:55432`，优先级 100。
+- Tank 是热备数据节点，Tailscale 地址 `100.64.0.4:55432`，优先级 50。
+- h610 同时运行 `pg_auto_failover` monitor，端口为 `55431`。
 - 两个数据节点都在线时使用同步流复制。
-- Tank 离线时，monitor 提升 h610；连接串会自动选择当前可写节点。
-- Tank 恢复后先作为副本追平，再进行受控切回，不自动来回切换。
+- Tank 离线时 h610 继续提供写入；连接串会自动选择当前可写节点。
+- Tank 恢复后只作为副本追平，不自动提升为主库。
 
 应用连接串同时列出两个节点，并带有
 `target_session_attrs=read-write`。机器人不会把只读副本误认为主库。
@@ -39,8 +39,8 @@ Matrix、Minecraft 的 5432 集群。
 写入；旧主重新上线时会先被降级，再通过 `pg_rewind` 或全量基础备份追上新主。
 
 正式生产形态应把 monitor 放到第三台独立、常在线的小主机或 VPS。它只保存集群
-状态，几乎不消耗磁盘；14T 与 1T 的容量差异不会影响它。当前 Tank 离线，因此先
-把 monitor 放在 h610 上完成迁移。这个过渡形态能防止双主，但不是完整三节点 HA：
+状态，几乎不消耗磁盘；14T 与 1T 的容量差异不会影响它。当前先把 monitor 放在
+h610 上。这个形态能防止双主，但不是完整三节点 HA：
 若 h610 整机离线，Tank 会同时失去 monitor 和副本，并为避免双主而自我停写。
 
 等第三台仲裁机确定后，需要先迁移 monitor 状态，再把两个 keeper 的 monitor URI
@@ -102,6 +102,7 @@ Tank 的保护参数：
 
 ```bash
 sudo qq-bot-postgres-status
+sudo qq-bot-postgres-health
 ```
 
 查看服务日志：
@@ -110,16 +111,51 @@ sudo qq-bot-postgres-status
 systemctl status qq-bot-postgres-monitor
 systemctl status qq-bot-postgres-node
 journalctl -u qq-bot-postgres-node -n 100 --no-pager
+journalctl -u qq-bot-postgres-health -n 100 --no-pager
 ```
 
-Tank 恢复并显示为健康的 `secondary` 后，安全切回 Tank：
+`qq-bot-postgres-health` 不只看 systemd 进程，还会同时核对本机 PostgreSQL、
+monitor 注册、节点角色和最近上报时间。keeper 活着但数据库已停止时，该命令会失败，
+并把结果写到 `/run/qq-bot-postgres-health/health.json`。定时器每 30 秒检查一次。
+
+日常 `nixos-rebuild` 不会创建、删除或重建节点身份。节点配置或 PGDATA 缺失时，
+服务会快速失败并要求管理员运行显式注册命令：
 
 ```bash
-sudo qq-bot-postgres-prefer-tank
+sudo qq-bot-postgres-enroll-local --confirm-enroll
 ```
 
-该命令会先检查 Tank 是否在线、同步完成且状态新鲜；条件不满足时会拒绝切换。
-不要为了“看起来主库应该在 Tank”而强制改 PostgreSQL recovery 文件。
+该命令仅用于全新、没有旧身份和 PGDATA 的节点。已有数据节点必须使用下面的受控
+重建流程，不能用 enroll 覆盖。
+
+## 故障恢复闭环
+
+强制移除节点前必须先在故障节点执行持久化隔离：
+
+```bash
+sudo qq-bot-postgres-fence-local --confirm-fence
+```
+
+该命令先写入节点状态目录中的 `FENCED`，再停止 keeper，并确认 PostgreSQL 端口
+关闭。`FENCED` 会让后续 rebuild 和重启继续保持隔离，避免旧节点带着过期身份复活。
+
+确认剩余主库健康并完成必要的 monitor 操作后，在被移除的节点执行：
+
+```bash
+sudo qq-bot-postgres-rejoin-local --confirm-rebuild-from-primary
+```
+
+rejoin 会拒绝以下危险情况：monitor 仍注册着同名节点、没有新鲜可写主库、或者磁盘
+不足以同时保留旧数据和接收新副本。检查通过后，它会：
+
+1. 再次隔离本机并确认端口关闭。
+2. 将旧 PGDATA 和旧 pg_autoctl 身份改名为带时间戳的 `pre-rejoin` 目录，不直接删除。
+3. 从 monitor 当前认可的主库执行基础同步并注册新节点身份。
+4. 启动 keeper，最多等待一小时，直到本机与 monitor 一致且成为健康副本。
+5. 输出旧 PGDATA 的保留路径，供人工确认稳定后再择期清理。
+
+恢复只有在 `sudo qq-bot-postgres-health` 成功、monitor 同时显示 h610 为可写主库且
+Tank 为 `secondary` 后才算完成。不能把单节点 `single` 状态当作长期恢复成功。
 
 手动验证逻辑备份：
 
@@ -136,11 +172,12 @@ sudo systemctl status qq-bot-postgres-backup.service
 4. 从 `/var/lib/qq-deepseek-bot/state.pre-postgres-20260811` 执行 legacy dry-run、回填和一致性校验。
 5. 保持机器人服务关闭，直到迁移检查全部通过。
 6. Tank 恢复后部署同一份 Nix 配置，让它从 h610 做基础备份并进入 `secondary`。
-7. 运行 `sudo qq-bot-postgres-prefer-tank`，再确认 Tank 为 `primary`、h610 为 `secondary`。
+7. 运行两台机器的健康检查，确认 h610 为主库、Tank 为 `secondary`。
 
 ## 恢复原则
 
 - 不要同时手动启动数据目录里的 `postgres` 和 `pg_autoctl`；keeper 必须管理实例。
+- 不要在未隔离旧节点时强制从 monitor 删除注册；顺序必须是先 fence、再移除。
 - 不要在两台机器间用 `rsync` 复制正在运行的 PGDATA。
 - 不要删除旧 5432 集群中的 `qq_bot` 数据库，直到新集群迁移、校验和备份都完成。
 - 恢复优先使用已验证的 custom-format `pg_dump`；物理数据目录只由

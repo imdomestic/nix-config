@@ -814,9 +814,9 @@ in {
     };
   };
 
-  # The monitor and fallback data node live on h610. Tank joins the same
-  # formation with a higher candidate priority when it is online. Keep the
-  # h610 footprint bounded: its root filesystem has far less room than Tank.
+  # The monitor and preferred writable data node live on h610. Tank joins the
+  # same formation as the lower-priority hot standby. Keep the h610 footprint
+  # bounded: its root filesystem has far less room than Tank.
   services.qq-bot-postgres-ha = {
     enable = true;
     preferredNodeName = "h610";

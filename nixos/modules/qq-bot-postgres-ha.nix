@@ -30,6 +30,9 @@
   monitorUri = "postgres://autoctl_node@${cfg.monitor.hostname}:${toString cfg.monitor.port}/pg_auto_failover?sslmode=require";
   monitorConfigPath = "${cfg.monitor.stateDir}/config/pg_autoctl${cfg.monitor.dataDir}/pg_autoctl.cfg";
   nodeConfigPath = "${cfg.node.stateDir}/config/pg_autoctl${cfg.node.dataDir}/pg_autoctl.cfg";
+  nodeConfigDir = builtins.dirOf nodeConfigPath;
+  nodeFenceMarker = "${cfg.node.stateDir}/FENCED";
+  nodeHealthPath = "/run/qq-bot-postgres-health/health.json";
 
   waitForAddress = address: ''
     found=0
@@ -176,6 +179,12 @@
       set -euo pipefail
       umask 0077
 
+      mode="''${1:-runtime}"
+      if [ "$mode" != "runtime" ] && [ "$mode" != "enroll" ]; then
+        echo "Usage: qq-bot-postgres-node-prepare [runtime|enroll]" >&2
+        exit 2
+      fi
+
       ${waitForAddress cfg.node.hostname}
 
       ha_password="$(tr -d '\r\n' < ${lib.escapeShellArg haPasswordFile})"
@@ -205,6 +214,12 @@
       export PGPASSFILE="$pgpass"
 
       if [ ! -f ${lib.escapeShellArg nodeConfigPath} ] || [ ! -f ${lib.escapeShellArg "${cfg.node.dataDir}/PG_VERSION"} ]; then
+        if [ "$mode" != "enroll" ]; then
+          echo "PostgreSQL node identity is missing or incomplete." >&2
+          echo "Routine service startup will not register or rebuild a cluster member." >&2
+          echo "Run sudo qq-bot-postgres-enroll-local for a new node, or sudo qq-bot-postgres-rejoin-local --confirm-rebuild-from-primary for a replacement replica." >&2
+          exit 1
+        fi
         pg_autoctl create postgres \
           --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
           --pgport=${toString cfg.node.port} \
@@ -564,6 +579,359 @@
         --wait 120
     '';
   };
+
+  nodeHealthScript = pkgs.writeText "qq-bot-postgres-health.py" ''
+    import datetime as dt
+    import json
+    import os
+    import pathlib
+    import sys
+
+    import psycopg
+
+
+    node_name = sys.argv[1]
+    local_port = int(sys.argv[2])
+    monitor_host = sys.argv[3]
+    monitor_port = int(sys.argv[4])
+    output_path = pathlib.Path(sys.argv[5])
+    passfile = sys.argv[6]
+
+    result = {
+        "checked_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "node": node_name,
+        "status": "unhealthy",
+        "reason": "health check did not complete",
+    }
+
+
+    def finish(exit_code: int) -> None:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = output_path.with_name(f".{output_path.name}.{os.getpid()}.tmp")
+        temporary.write_text(
+            json.dumps(result, ensure_ascii=True, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, output_path)
+        print(json.dumps(result, ensure_ascii=True, sort_keys=True))
+        raise SystemExit(exit_code)
+
+
+    try:
+        with psycopg.connect(
+            dbname="postgres",
+            user="postgres",
+            host="/run/postgresql",
+            port=local_port,
+            connect_timeout=2,
+        ) as local:
+            in_recovery, server_version = local.execute(
+                "SELECT pg_is_in_recovery(), current_setting('server_version')"
+            ).fetchone()
+    except Exception as error:
+        result["reason"] = f"local PostgreSQL is unavailable: {type(error).__name__}"
+        finish(1)
+
+    result["in_recovery"] = bool(in_recovery)
+    result["server_version"] = server_version
+
+    try:
+        with psycopg.connect(
+            dbname="pg_auto_failover",
+            user="autoctl_node",
+            host=monitor_host,
+            port=monitor_port,
+            connect_timeout=2,
+            sslmode="require",
+            passfile=passfile,
+        ) as monitor:
+            row = monitor.execute(
+                """
+                SELECT
+                    nodeid,
+                    reportedstate::text,
+                    goalstate::text,
+                    reportedpgisrunning,
+                    health,
+                    GREATEST(
+                        0,
+                        EXTRACT(EPOCH FROM now() - reporttime)
+                    )::double precision
+                FROM pgautofailover.node
+                WHERE formationid = 'default'
+                  AND groupid = 0
+                  AND nodename = %s
+                """,
+                (node_name,),
+            ).fetchone()
+    except Exception as error:
+        result["reason"] = f"HA monitor is unavailable: {type(error).__name__}"
+        finish(1)
+
+    if row is None:
+        result["reason"] = "node is not registered in the HA monitor"
+        finish(1)
+
+    node_id, reported, goal, postgres_running, monitor_health, age = row
+    result.update(
+        {
+            "node_id": node_id,
+            "reported_state": reported,
+            "goal_state": goal,
+            "monitor_postgres_running": bool(postgres_running),
+            "monitor_health": monitor_health,
+            "report_age_seconds": round(float(age), 3),
+        }
+    )
+
+    expected_states = {"secondary"} if in_recovery else {"single", "primary"}
+    reasons = []
+    if not postgres_running:
+        reasons.append("monitor reports PostgreSQL stopped")
+    if monitor_health != 1:
+        reasons.append("monitor health is not healthy")
+    if age > 90:
+        reasons.append("monitor report is stale")
+    if reported not in expected_states or goal not in expected_states:
+        reasons.append(
+            f"local role and monitor state disagree ({reported} -> {goal})"
+        )
+
+    if reasons:
+        result["reason"] = "; ".join(reasons)
+        finish(1)
+
+    result["status"] = "healthy"
+    result["reason"] = "local PostgreSQL and HA monitor agree"
+    finish(0)
+  '';
+
+  rejoinPreflightScript = pkgs.writeText "qq-bot-postgres-rejoin-preflight.py" ''
+    import sys
+
+    import psycopg
+
+
+    node_name = sys.argv[1]
+    monitor_host = sys.argv[2]
+    monitor_port = int(sys.argv[3])
+    passfile = sys.argv[4]
+
+    with psycopg.connect(
+        dbname="pg_auto_failover",
+        user="autoctl_node",
+        host=monitor_host,
+        port=monitor_port,
+        connect_timeout=3,
+        sslmode="require",
+        passfile=passfile,
+    ) as monitor:
+        existing = monitor.execute(
+            """
+            SELECT nodeid, reportedstate::text, goalstate::text
+            FROM pgautofailover.node
+            WHERE formationid = 'default' AND groupid = 0 AND nodename = %s
+            """,
+            (node_name,),
+        ).fetchone()
+        if existing is not None:
+            raise RuntimeError(
+                f"node {node_name!r} is still registered as nodeid {existing[0]} "
+                f"({existing[1]} -> {existing[2]}); refusing to replace it"
+            )
+
+        primary = monitor.execute(
+            """
+            SELECT nodename, reportedstate::text, goalstate::text
+            FROM pgautofailover.node
+            WHERE formationid = 'default'
+              AND groupid = 0
+              AND nodename <> %s
+              AND reportedstate::text IN ('single', 'primary')
+              AND goalstate::text IN ('single', 'primary')
+              AND reportedpgisrunning
+              AND health = 1
+              AND reporttime > now() - interval '30 seconds'
+            ORDER BY candidatepriority DESC
+            LIMIT 1
+            """,
+            (node_name,),
+        ).fetchone()
+        if primary is None:
+            raise RuntimeError("no fresh healthy writable primary is available")
+
+    print(f"Verified writable source primary: {primary[0]}")
+  '';
+
+  runNodePrepareAsPostgres = mode: ''
+    runuser -u postgres -- env \
+      HOME=${lib.escapeShellArg cfg.node.stateDir} \
+      XDG_CONFIG_HOME=${lib.escapeShellArg "${cfg.node.stateDir}/config"} \
+      XDG_DATA_HOME=${lib.escapeShellArg "${cfg.node.stateDir}/share"} \
+      XDG_RUNTIME_DIR=/run/qq-bot-postgres-node \
+      PATH=${lib.makeBinPath [pgAutoFailover postgres openssl pkgs.coreutils pkgs.gnugrep pkgs.iproute2]} \
+      ${lib.getExe nodePrepare} ${mode}
+  '';
+
+  healthLocalTool = pkgs.writeShellApplication {
+    name = "qq-bot-postgres-health";
+    runtimeInputs = [pkgs.coreutils pkgs.util-linux bootstrapPython];
+    text = ''
+      set -euo pipefail
+      if [ "$EUID" -ne 0 ]; then
+        echo "Run this command with sudo." >&2
+        exit 1
+      fi
+      install -d -m 0755 -o postgres -g postgres /run/qq-bot-postgres-health
+      exec runuser -u postgres -- env \
+        PGPASSFILE=${lib.escapeShellArg "${cfg.node.stateDir}/.pgpass"} \
+        ${bootstrapPython}/bin/python ${nodeHealthScript} \
+        ${lib.escapeShellArg cfg.node.name} \
+        ${toString cfg.node.port} \
+        ${lib.escapeShellArg cfg.monitor.hostname} \
+        ${toString cfg.monitor.port} \
+        ${lib.escapeShellArg nodeHealthPath} \
+        ${lib.escapeShellArg "${cfg.node.stateDir}/.pgpass"}
+    '';
+  };
+
+  fenceLocalTool = pkgs.writeShellApplication {
+    name = "qq-bot-postgres-fence-local";
+    runtimeInputs = [pkgs.coreutils pkgs.systemd postgres];
+    text = ''
+      set -euo pipefail
+      if [ "$EUID" -ne 0 ]; then
+        echo "Run this command with sudo." >&2
+        exit 1
+      fi
+      if [ "''${1:-}" != "--confirm-fence" ]; then
+        echo "Usage: sudo qq-bot-postgres-fence-local --confirm-fence" >&2
+        exit 2
+      fi
+
+      install -m 0600 -o postgres -g postgres /dev/null ${lib.escapeShellArg nodeFenceMarker}
+      systemctl stop qq-bot-postgres-node.service
+
+      for _ in $(seq 1 30); do
+        if ! pg_isready --host=/run/postgresql --port=${toString cfg.node.port} --quiet; then
+          echo "Node ${cfg.node.name} is fenced; PostgreSQL port ${toString cfg.node.port} is closed."
+          exit 0
+        fi
+        sleep 1
+      done
+      echo "PostgreSQL is still accepting connections; fencing failed." >&2
+      exit 1
+    '';
+  };
+
+  enrollLocalTool = pkgs.writeShellApplication {
+    name = "qq-bot-postgres-enroll-local";
+    runtimeInputs = [pkgs.coreutils pkgs.systemd pkgs.util-linux];
+    text = ''
+      set -euo pipefail
+      if [ "$EUID" -ne 0 ]; then
+        echo "Run this command with sudo." >&2
+        exit 1
+      fi
+      if [ "''${1:-}" != "--confirm-enroll" ]; then
+        echo "Usage: sudo qq-bot-postgres-enroll-local --confirm-enroll" >&2
+        exit 2
+      fi
+      if [ -e ${lib.escapeShellArg nodeConfigPath} ] || [ -e ${lib.escapeShellArg "${cfg.node.dataDir}/PG_VERSION"} ]; then
+        echo "Existing node identity or PGDATA found; use qq-bot-postgres-rejoin-local instead." >&2
+        exit 1
+      fi
+
+      systemctl stop qq-bot-postgres-node.service
+      ${runNodePrepareAsPostgres "enroll"}
+      rm -f ${lib.escapeShellArg nodeFenceMarker}
+      systemctl start qq-bot-postgres-node.service
+      echo "Node ${cfg.node.name} enrolled. Run sudo qq-bot-postgres-health to verify convergence."
+    '';
+  };
+
+  rejoinLocalTool = pkgs.writeShellApplication {
+    name = "qq-bot-postgres-rejoin-local";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.systemd
+      pkgs.util-linux
+      postgres
+      bootstrapPython
+    ];
+    text = ''
+      set -euo pipefail
+      umask 0077
+      if [ "$EUID" -ne 0 ]; then
+        echo "Run this command with sudo." >&2
+        exit 1
+      fi
+      if [ "''${1:-}" != "--confirm-rebuild-from-primary" ]; then
+        echo "Usage: sudo qq-bot-postgres-rejoin-local --confirm-rebuild-from-primary" >&2
+        exit 2
+      fi
+
+      passfile=${lib.escapeShellArg "${cfg.node.stateDir}/.pgpass"}
+      runuser -u postgres -- env PGPASSFILE="$passfile" \
+        ${bootstrapPython}/bin/python ${rejoinPreflightScript} \
+        ${lib.escapeShellArg cfg.node.name} \
+        ${lib.escapeShellArg cfg.monitor.hostname} \
+        ${toString cfg.monitor.port} \
+        "$passfile"
+
+      ${lib.getExe fenceLocalTool} --confirm-fence
+
+      data_dir=${lib.escapeShellArg cfg.node.dataDir}
+      config_dir=${lib.escapeShellArg nodeConfigDir}
+      parent="$(dirname "$data_dir")"
+      current_bytes=0
+      if [ -d "$data_dir" ]; then
+        current_bytes="$(du --summarize --block-size=1 "$data_dir" | cut -f1)"
+      fi
+      available="$(df --output=avail --block-size=1 "$parent" | tail -n 1 | tr -d ' ')"
+      required=$((current_bytes + ${toString cfg.backup.minimumFreeBytes}))
+      if [ "$available" -lt "$required" ]; then
+        echo "Not enough free space to preserve old PGDATA and create a replacement replica." >&2
+        exit 1
+      fi
+
+      stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+      data_archive="$data_dir.pre-rejoin-$stamp"
+      config_archive="$config_dir.pre-rejoin-$stamp"
+      if [ -e "$data_dir" ]; then
+        mv "$data_dir" "$data_archive"
+      fi
+      if [ -e "$config_dir" ]; then
+        mv "$config_dir" "$config_archive"
+      fi
+
+      if ${runNodePrepareAsPostgres "enroll"}
+      then
+        :
+      else
+        echo "Replica enrollment failed. The node remains fenced." >&2
+        echo "Preserved PGDATA: $data_archive" >&2
+        exit 1
+      fi
+
+      rm -f ${lib.escapeShellArg nodeFenceMarker}
+      systemctl start qq-bot-postgres-node.service
+
+      for _ in $(seq 1 720); do
+        if ${lib.getExe healthLocalTool} >/dev/null 2>&1; then
+          echo "Node ${cfg.node.name} rejoined as a healthy synchronized replica."
+          echo "Preserved previous PGDATA: $data_archive"
+          exit 0
+        fi
+        sleep 5
+      done
+
+      echo "Replica enrollment started but did not become healthy within one hour." >&2
+      echo "The service remains running so base backup or catch-up can continue." >&2
+      echo "Preserved previous PGDATA: $data_archive" >&2
+      exit 1
+    '';
+  };
 in {
   options.services.qq-bot-postgres-ha = {
     enable = mkEnableOption "the dedicated highly available QQ bot PostgreSQL cluster";
@@ -778,6 +1146,7 @@ in {
     systemd.services.qq-bot-postgres-node = mkIf cfg.node.enable {
       description = "QQ bot PostgreSQL HA data node (${cfg.node.name})";
       wantedBy = ["multi-user.target"];
+      unitConfig.ConditionPathExists = "!${nodeFenceMarker}";
       after =
         ["network-online.target" "tailscaled.service" "sops-install-secrets.service"]
         ++ lib.optionals cfg.monitor.enable ["qq-bot-postgres-monitor.service"];
@@ -787,7 +1156,7 @@ in {
       startLimitIntervalSec = 0;
       path = [pgAutoFailover postgres openssl pkgs.coreutils pkgs.gnugrep pkgs.iproute2];
       environment = nodeEnvironment;
-      preStart = lib.getExe nodePrepare;
+      preStart = "${lib.getExe nodePrepare} runtime";
       serviceConfig = {
         Type = "simple";
         User = "postgres";
@@ -797,7 +1166,9 @@ in {
         ExecStart = "${pgAutoFailover}/bin/pg_autoctl run --pgdata ${cfg.node.dataDir}";
         Restart = "always";
         RestartSec = "5s";
-        TimeoutStartSec = "1h";
+        # Enrollment and base backup are explicit commands. Routine rebuilds
+        # must never hold the system switch lock for an hour.
+        TimeoutStartSec = "5min";
         TimeoutStopSec = "5min";
         KillMode = "mixed";
         LimitNOFILE = 65536;
@@ -814,6 +1185,52 @@ in {
         ReadWritePaths = [cfg.node.stateDir (builtins.dirOf cfg.node.dataDir) "/run/postgresql"];
         RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6" "AF_NETLINK"];
         LockPersonality = true;
+      };
+    };
+
+    systemd.services.qq-bot-postgres-health = mkIf cfg.node.enable {
+      description = "Verify the QQ bot PostgreSQL keeper and database agree";
+      after = ["qq-bot-postgres-node.service" "network-online.target"];
+      wants = ["qq-bot-postgres-node.service" "network-online.target"];
+      unitConfig.ConditionPathExists = "!${nodeFenceMarker}";
+      path = [bootstrapPython pkgs.coreutils];
+      environment.PGPASSFILE = "${cfg.node.stateDir}/.pgpass";
+      serviceConfig = {
+        Type = "oneshot";
+        User = "postgres";
+        Group = "postgres";
+        RuntimeDirectory = "qq-bot-postgres-health";
+        RuntimeDirectoryMode = "0755";
+        RuntimeDirectoryPreserve = true;
+        ExecStart = lib.concatStringsSep " " [
+          "${bootstrapPython}/bin/python"
+          (lib.escapeShellArg nodeHealthScript)
+          (lib.escapeShellArg cfg.node.name)
+          (toString cfg.node.port)
+          (lib.escapeShellArg cfg.monitor.hostname)
+          (toString cfg.monitor.port)
+          (lib.escapeShellArg nodeHealthPath)
+          (lib.escapeShellArg "${cfg.node.stateDir}/.pgpass")
+        ];
+        TimeoutStartSec = "15s";
+        NoNewPrivileges = true;
+        PrivateDevices = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        ProtectSystem = "strict";
+        ReadWritePaths = ["/run/qq-bot-postgres-health"];
+        RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6"];
+      };
+    };
+
+    systemd.timers.qq-bot-postgres-health = mkIf cfg.node.enable {
+      description = "Periodically verify the QQ bot PostgreSQL data node";
+      wantedBy = ["timers.target"];
+      timerConfig = {
+        OnBootSec = "2min";
+        OnUnitActiveSec = "30s";
+        AccuracySec = "5s";
+        Unit = "qq-bot-postgres-health.service";
       };
     };
 
@@ -870,9 +1287,16 @@ in {
       };
     };
 
-    environment.systemPackages = lib.optionals cfg.monitor.enable [
-      statusTool
-      preferPrimaryTool
-    ];
+    environment.systemPackages =
+      lib.optionals cfg.monitor.enable [
+        statusTool
+        preferPrimaryTool
+      ]
+      ++ lib.optionals cfg.node.enable [
+        healthLocalTool
+        fenceLocalTool
+        enrollLocalTool
+        rejoinLocalTool
+      ];
   };
 }
