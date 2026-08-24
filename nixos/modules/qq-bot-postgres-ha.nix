@@ -31,6 +31,7 @@
   monitorConfigPath = "${cfg.monitor.stateDir}/config/pg_autoctl${cfg.monitor.dataDir}/pg_autoctl.cfg";
   nodeConfigPath = "${cfg.node.stateDir}/config/pg_autoctl${cfg.node.dataDir}/pg_autoctl.cfg";
   nodeConfigDir = builtins.dirOf nodeConfigPath;
+  nodeDataStateDir = "${cfg.node.stateDir}/share/pg_autoctl${cfg.node.dataDir}";
   nodeFenceMarker = "${cfg.node.stateDir}/FENCED";
   nodeHealthPath = "/run/qq-bot-postgres-health/health.json";
 
@@ -914,6 +915,7 @@
 
       data_dir=${lib.escapeShellArg cfg.node.dataDir}
       config_dir=${lib.escapeShellArg nodeConfigDir}
+      data_state_dir=${lib.escapeShellArg nodeDataStateDir}
       parent="$(dirname "$data_dir")"
       current_bytes=0
       if [ -d "$data_dir" ]; then
@@ -929,11 +931,15 @@
       stamp="$(date -u +%Y%m%dT%H%M%SZ)"
       data_archive="$data_dir.pre-rejoin-$stamp"
       config_archive="$config_dir.pre-rejoin-$stamp"
+      data_state_archive="$data_state_dir.pre-rejoin-$stamp"
       if [ -e "$data_dir" ]; then
         mv "$data_dir" "$data_archive"
       fi
       if [ -e "$config_dir" ]; then
         mv "$config_dir" "$config_archive"
+      fi
+      if [ -e "$data_state_dir" ]; then
+        mv "$data_state_dir" "$data_state_archive"
       fi
 
       if ${runNodePrepareAsPostgres "enroll"}
