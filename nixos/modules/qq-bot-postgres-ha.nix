@@ -477,12 +477,6 @@
       }
       prune_backup_count
 
-      recovery="$(psql --host=/run/postgresql --port=${toString cfg.node.port} --username=postgres --dbname=postgres --tuples-only --no-align --command='SELECT pg_is_in_recovery()')"
-      if [ "$recovery" = "t" ]; then
-        echo "Local node is a standby; skipping the logical backup."
-        exit 0
-      fi
-
       database_size="$(psql --host=/run/postgresql --port=${toString cfg.node.port} --username=postgres --dbname=postgres --tuples-only --no-align --command="SELECT pg_database_size('qq_bot')")"
       available="$(df --output=avail --block-size=1 "$backup_dir" | tail -n 1 | tr -d ' ')"
       required=$((database_size * 2 + ${toString cfg.backup.minimumFreeBytes}))
@@ -509,6 +503,79 @@
       mv "$temporary" "$target"
       trap - EXIT
       prune_backup_count
+    '';
+  };
+
+  restoreCheck = pkgs.writeShellApplication {
+    name = "qq-bot-postgres-restore-check";
+    runtimeInputs = [
+      postgres
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.gnused
+    ];
+    text = ''
+      set -euo pipefail
+      umask 0077
+
+      backup_dir=${lib.escapeShellArg cfg.backup.directory}
+      latest="$(find "$backup_dir" -maxdepth 1 -type f -name 'qq_bot-*.dump' -printf '%T@ %p\n' \
+        | sort --numeric-sort --reverse \
+        | sed -n '1{s/^[^ ]* //;p;}')"
+      if [ -z "$latest" ]; then
+        echo "No verified qq_bot backup is available for restore validation." >&2
+        exit 1
+      fi
+
+      work="$(mktemp --directory "$backup_dir/.restore-check.XXXXXX")"
+      data="$work/data"
+      socket="$work/socket"
+      mkdir -p "$socket"
+      running=0
+      cleanup() {
+        if [ "$running" -eq 1 ]; then
+          pg_ctl --pgdata="$data" --mode=fast --wait stop >/dev/null 2>&1 || true
+        fi
+        rm -rf -- "$work"
+      }
+      trap cleanup EXIT INT TERM
+
+      initdb --pgdata="$data" --auth-local=trust --auth-host=reject >/dev/null
+      pg_ctl \
+        --pgdata="$data" \
+        --options="-k $socket -p 55439 -c listen_addresses= -c fsync=off -c synchronous_commit=off" \
+        --wait start >/dev/null
+      running=1
+
+      pg_restore \
+        --host="$socket" \
+        --port=55439 \
+        --username=postgres \
+        --dbname=postgres \
+        --create \
+        --no-owner \
+        --no-privileges \
+        --exit-on-error \
+        "$latest"
+
+      revision="$(psql --host="$socket" --port=55439 --username=postgres --dbname=qq_bot \
+        --tuples-only --no-align --command='SELECT version_num FROM qq_bot.alembic_version')"
+      table_count="$(psql --host="$socket" --port=55439 --username=postgres --dbname=qq_bot \
+        --tuples-only --no-align --command="SELECT count(*) FROM pg_tables WHERE schemaname = 'qq_bot' AND tablename <> 'alembic_version'")"
+      message_count="$(psql --host="$socket" --port=55439 --username=postgres --dbname=qq_bot \
+        --tuples-only --no-align --command='SELECT count(*) FROM qq_bot.messages')"
+      if [ -z "$revision" ] || [ "$table_count" -le 0 ]; then
+        echo "Restored database failed revision or business-table validation." >&2
+        exit 1
+      fi
+
+      checked_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      marker="$backup_dir/restore-check-latest.json"
+      temporary="$marker.tmp"
+      printf '{"ok":true,"checked_at":"%s","backup":"%s","revision":"%s","tables":%s,"messages":%s}\n' \
+        "$checked_at" "$(basename "$latest")" "$revision" "$table_count" "$message_count" > "$temporary"
+      mv "$temporary" "$marker"
+      echo "Restore validation succeeded for $(basename "$latest") at revision $revision."
     '';
   };
 
@@ -1107,6 +1174,17 @@ in {
         type = types.str;
         default = "*-*-* 03:20:00";
       };
+      restoreCheck = {
+        enable = mkOption {
+          type = types.bool;
+          default = true;
+          description = "Restore the newest logical backup into a disposable PostgreSQL instance and validate it.";
+        };
+        onCalendar = mkOption {
+          type = types.str;
+          default = "Sun *-*-* 04:20:00";
+        };
+      };
     };
   };
 
@@ -1312,7 +1390,7 @@ in {
     };
 
     systemd.services.qq-bot-postgres-backup = mkIf (cfg.node.enable && cfg.backup.enable) {
-      description = "Capacity-aware verified backup of the QQ bot PostgreSQL database";
+      description = "Capacity-aware verified local backup of the QQ bot PostgreSQL database";
       after = ["qq-bot-postgres-node.service"];
       requires = ["qq-bot-postgres-node.service"];
       serviceConfig = {
@@ -1342,6 +1420,37 @@ in {
       };
     };
 
+    systemd.services.qq-bot-postgres-restore-check = mkIf (cfg.node.enable && cfg.backup.enable && cfg.backup.restoreCheck.enable) {
+      description = "Restore and validate the latest QQ bot PostgreSQL backup";
+      after = ["qq-bot-postgres-backup.service"];
+      serviceConfig = {
+        Type = "oneshot";
+        User = "postgres";
+        Group = "postgres";
+        ExecStart = lib.getExe restoreCheck;
+        TimeoutStartSec = "2h";
+        UMask = "0077";
+        NoNewPrivileges = true;
+        PrivateNetwork = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        ProtectSystem = "strict";
+        ReadWritePaths = [cfg.backup.directory];
+        RestrictAddressFamilies = ["AF_UNIX"];
+      };
+    };
+
+    systemd.timers.qq-bot-postgres-restore-check = mkIf (cfg.node.enable && cfg.backup.enable && cfg.backup.restoreCheck.enable) {
+      description = "Weekly verified restore drill for the QQ bot database";
+      wantedBy = ["timers.target"];
+      timerConfig = {
+        OnCalendar = cfg.backup.restoreCheck.onCalendar;
+        Persistent = true;
+        RandomizedDelaySec = "20m";
+        Unit = "qq-bot-postgres-restore-check.service";
+      };
+    };
+
     environment.systemPackages =
       lib.optionals cfg.monitor.enable [
         statusTool
@@ -1352,6 +1461,7 @@ in {
         fenceLocalTool
         enrollLocalTool
         rejoinLocalTool
+        restoreCheck
       ];
   };
 }

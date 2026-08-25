@@ -125,6 +125,18 @@ in {
       '';
     };
 
+    extraScrapeConfigs = lib.mkOption {
+      type = lib.types.listOf lib.types.attrs;
+      default = [];
+      description = "Additional low-cardinality Prometheus scrape jobs supplied by a host.";
+    };
+
+    extraRules = lib.mkOption {
+      type = lib.types.listOf lib.types.attrs;
+      default = [];
+      description = "Additional Prometheus rule groups supplied by a host.";
+    };
+
     alertmanagerPort = lib.mkOption {
       type = lib.types.port;
       default = 9093;
@@ -213,12 +225,14 @@ in {
         scrape_timeout = "10s";
       };
 
-      rules = [
-        (import ./alerts.nix {
-          inherit lib;
-          monitorCount = builtins.length monitors;
-        })
-      ];
+      rules =
+        [
+          (import ./alerts.nix {
+            inherit lib;
+            monitorCount = builtins.length monitors;
+          })
+        ]
+        ++ cfg.extraRules;
 
       # **推给所有 Alertmanager,不是只推自己那个。**
       #
@@ -332,7 +346,8 @@ in {
               labels.instance = m.name;
             })
             monitors;
-        };
+        }
+        ++ cfg.extraScrapeConfigs;
     };
 
     services.prometheus.alertmanager = {
