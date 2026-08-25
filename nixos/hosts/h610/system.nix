@@ -801,6 +801,8 @@ in {
     environment = {
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
+      AI_PROMETHEUS_URL = "http://100.64.0.3:9009";
+      AI_ALERTMANAGER_URL = "http://100.64.0.3:9093";
       OTEL_SERVICE_NAME = "kennethbot";
     };
     runtimePackages = [pkgs.ffmpeg-headless];
