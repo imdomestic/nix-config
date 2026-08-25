@@ -766,6 +766,7 @@ in {
   systemd.services.max.environment = {
     MAX_WS_HOST = "172.17.0.1";
     MAX_LOG_COLOR = "always";
+    MAX_IMESSAGE_MIRROR_QQ_GROUP = "611798505";
     # max 的 GET /api/quota 拿这个问 cliproxy:池子里哪把凭据还在服务、烧完的
     # 什么时候回来。地址不是秘密,写这里;口令在下面的 sops 模板里。
     #
