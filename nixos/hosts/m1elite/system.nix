@@ -9,7 +9,7 @@
   imports = [
     inputs.paneru.darwinModules.paneru
     ../../modules/nerdfonts
-    ../../modules/aerospace
+    ../../modules/aerospace/hank.nix
     # ../../modules/paneru
   ];
   system.stateVersion = 5;
