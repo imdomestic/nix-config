@@ -80,12 +80,15 @@ h610 的保护参数：
 - 本地只保留最新 1 份已验证逻辑备份，且最长保留 3 天
 - 做备份后必须仍能预留至少 `30GB` 空间
 - PostgreSQL collector 日志保留 7 天
+- 每周把最新逻辑备份恢复到一次性 PostgreSQL 实例并检查 Schema
 
 Tank 的保护参数：
 
 - 复制槽最多保留约 `32GB` WAL
 - 逻辑备份最多保留 30 份、30 天
 - 做备份后必须仍能预留至少 `200GB` 空间
+- 主库和副本都各自在本机执行 `pg_dump`，避免备份只存在 h610
+- 每周独立执行一次恢复验证
 
 当一台副本离线过久、所需 WAL 已超过上限时，它恢复后需要重新做基础备份。这比
 让当前主库磁盘被无限 WAL 填满更安全。
@@ -167,7 +170,18 @@ Tank 为 `secondary` 后才算完成。不能把单节点 `single` 状态当作�
 ```bash
 sudo systemctl start qq-bot-postgres-backup.service
 sudo systemctl status qq-bot-postgres-backup.service
+sudo systemctl start qq-bot-postgres-restore-check.service
+sudo systemctl status qq-bot-postgres-restore-check.service
+cat /var/lib/qq-bot-postgres-backups/restore-check-latest.json
 ```
+
+Tank 的结果位于
+`/data/backup/postgresql/qq-bot-ha/restore-check-latest.json`。恢复检查使用独立临时
+PGDATA 和 Unix socket，检查结束后删除，不会覆盖或停止生产 keeper 管理的数据目录。
+
+当前是双节点物理复制加两份独立逻辑备份。完整 PITR 还需要第三个持久仓库保存
+物理基础备份和连续 WAL；在该仓库确定前不能把同步 `archive_command` 指向 Tank
+的 NFS，否则 Tank 离线可能让 h610 的 WAL 无上限堆积。
 
 ## 首次迁移顺序
 

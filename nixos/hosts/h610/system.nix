@@ -798,6 +798,11 @@ in {
     group = "users";
     host = "172.17.0.1";
     port = 18080;
+    environment = {
+      AI_OBSERVABILITY_ENABLED = "true";
+      AI_METRICS_PATH = "/metrics";
+      OTEL_SERVICE_NAME = "kennethbot";
+    };
     runtimePackages = [pkgs.ffmpeg-headless];
     sandbox.enable = true;
     browser.enable = true;
@@ -814,6 +819,62 @@ in {
       webuiPort = 6100;
     };
   };
+
+  my.monitoring.extraScrapeConfigs = [
+    {
+      job_name = "kennethbot";
+      metrics_path = "/metrics";
+      scrape_interval = "15s";
+      static_configs = [
+        {
+          targets = ["172.17.0.1:18080"];
+          labels.instance = "h610";
+        }
+      ];
+    }
+  ];
+  my.monitoring.extraRules = [
+    {
+      name = "kennethbot";
+      rules = [
+        {
+          alert = "KennethbotMetricsUnavailable";
+          expr = ''up{job="kennethbot"} == 0'';
+          "for" = "2m";
+          labels.severity = "critical";
+          annotations = {
+            summary = "Kennethbot metrics endpoint is unavailable";
+            description = "Prometheus cannot scrape the Kennethbot process on h610.";
+          };
+        }
+        {
+          alert = "KennethbotModelFailureRateHigh";
+          expr = ''
+            sum(increase(kennethbot_model_requests_total[15m])) >= 5
+            and
+            sum(increase(kennethbot_model_requests_total{status!="succeeded",status!="circuit_open"}[15m]))
+              / sum(increase(kennethbot_model_requests_total[15m])) > 0.5
+          '';
+          "for" = "5m";
+          labels.severity = "warning";
+          annotations = {
+            summary = "Kennethbot model failure rate is above 50%";
+            description = "At least five model attempts occurred in 15 minutes and more than half failed.";
+          };
+        }
+        {
+          alert = "KennethbotOutboxAmbiguous";
+          expr = ''kennethbot_outbox_deliveries{status="ambiguous"} > 0'';
+          "for" = "10m";
+          labels.severity = "warning";
+          annotations = {
+            summary = "Kennethbot has ambiguous outbound deliveries";
+            description = "A platform timeout may have sent a message without a confirmed receipt; inspect before retrying.";
+          };
+        }
+      ];
+    }
+  ];
 
   # The monitor and preferred writable data node live on h610. Tank joins the
   # same formation as the lower-priority hot standby. Keep the h610 footprint
@@ -841,6 +902,8 @@ in {
       retentionDays = 3;
       retentionCount = 1;
       minimumFreeBytes = 30 * 1024 * 1024 * 1024;
+      onCalendar = "*-*-* 03:20:00";
+      restoreCheck.onCalendar = "Sun *-*-* 04:20:00";
     };
   };
 

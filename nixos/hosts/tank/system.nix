@@ -546,6 +546,8 @@ in {
       retentionDays = 30;
       retentionCount = 30;
       minimumFreeBytes = 200 * 1024 * 1024 * 1024;
+      onCalendar = "*-*-* 03:50:00";
+      restoreCheck.onCalendar = "Sun *-*-* 05:20:00";
     };
   };
   services.matrix-synapse = {
