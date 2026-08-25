@@ -232,7 +232,7 @@ in {
             monitorCount = builtins.length monitors;
           })
         ]
-        ++ cfg.extraRules;
+        ++ map builtins.toJSON cfg.extraRules;
 
       # **推给所有 Alertmanager,不是只推自己那个。**
       #
