@@ -8,7 +8,7 @@
   # $ darwin-rebuild changelog
   imports = [
     ../../modules/nerdfonts
-    ../../modules/aerospace
+    ../../modules/aerospace/hank.nix
   ];
   system.stateVersion = 5;
 
@@ -35,7 +35,4 @@
   networking.computerName = config.my.host.name;
   system.defaults.smb.NetBIOSName = config.my.host.name;
   system.primaryUser = "hank";
-
-
-
 }

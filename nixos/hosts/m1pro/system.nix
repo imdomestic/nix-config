@@ -8,7 +8,7 @@
   # $ darwin-rebuild changelog
   imports = [
     ../../modules/nerdfonts
-    ../../modules/aerospace
+    ../../modules/aerospace/linwhite.nix
   ];
   system.stateVersion = 5;
 
