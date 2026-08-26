@@ -701,6 +701,7 @@ in {
   services.ollama = {
     enable = true;
     package = pkgs-unstable.ollama-vulkan;
+    loadModels = ["bge-m3"];
   };
 
   users.users.turnserver.extraGroups = ["nginx"];
@@ -803,6 +804,12 @@ in {
       AI_METRICS_PATH = "/metrics";
       AI_PROMETHEUS_URL = "http://100.64.0.3:9009";
       AI_ALERTMANAGER_URL = "http://100.64.0.3:9093";
+      AI_SEMANTIC_ENABLED = "true";
+      AI_EMBEDDING_BASE_URL = "http://127.0.0.1:11434/v1";
+      AI_EMBEDDING_API_KEY = "ollama-local";
+      AI_EMBEDDING_MODEL = "bge-m3";
+      AI_EMBEDDING_DIMENSIONS = "1024";
+      AI_EMBEDDING_TIMEOUT_SECONDS = "60";
       OTEL_SERVICE_NAME = "kennethbot";
     };
     runtimePackages = [pkgs.ffmpeg-headless];
@@ -973,10 +980,12 @@ in {
   ];
   systemd.services.qq-deepseek-bot.after = lib.mkAfter [
     "tailscaled.service"
+    "ollama.service"
     "qq-bot-postgres-bootstrap.service"
   ];
   systemd.services.qq-deepseek-bot.wants = lib.mkAfter [
     "tailscaled.service"
+    "ollama.service"
     "qq-bot-postgres-node.service"
   ];
 
