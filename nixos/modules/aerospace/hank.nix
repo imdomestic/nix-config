@@ -39,6 +39,14 @@ _: {
         "alt-w" = "layout h_accordion"; # 对应 i3 的 'layout tabbed'
         "alt-e" = "layout tiles horizontal vertical"; # 对应 i3 的 'layout toggle split'
 
+        # 三态轮换:水平平铺 → 垂直平铺 → 水平手风琴 → 回到水平平铺。
+        # `layout` 不是循环,而是「从左往右取第一个不描述当前布局的参数」
+        # (man aerospace-layout),所以这个顺序是推出来的、调不得:前两态
+        # 都被 tiles 匹配掉,轮到手风琴态时 tiles 不匹配,于是换回平铺并保留
+        # 水平朝向,刚好闭环。手风琴那一档必须写死 h_accordion —— 写成裸
+        # accordion 的话回程会停在垂直平铺,三态退化成两态来回。
+        "alt-r" = "layout tiles v_tiles h_accordion";
+
         "alt-shift-space" = "layout floating tiling"; # 对应 i3 的 'floating toggle'
 
         # i3 的 focus toggle_tiling_floating / focus parent 也没搬:
