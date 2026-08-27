@@ -241,19 +241,25 @@ in {
   ];
 
   # nix 构建跑在 nix-daemon 里(system.slice),上面刻意没让 oomd 管那一片,
-  # 所以在这里单独给它一个上限。
-  #
-  # 用 MemoryHigh 不用 MemoryMax:High 是软限,超了内核给这个 cgroup 加回收
-  # 压力让它变慢,而 Max 是硬限,超了直接杀 —— 构建跑到一半被杀掉只会浪费
-  # 前面所有的编译。这台 12 核,max-jobs 默认 auto 就是 12 个并行构建,
-  # 10G 差不多是"能同时开满但别把机器拖垮"的位置。
+  # 所以在这里单独限制并行度和内存。h610 还承载数据库、Bot、反代和监控,
+  # 不能把 12 个硬构建同时塞满整机。
+  nix.settings = {
+    max-jobs = 4;
+    cores = 2;
+  };
+
+  # MemoryHigh 负责提前施加回收压力,MemoryMax 是最后保险。宁可某个异常大的
+  # 构建明确失败,也不能再让 SSH、数据库和所有 Bot 一起进入回收风暴。
   #
   # 这台用的是 Determinate 的 nix,nix-daemon.service 本体是软链到 nix 包里
   # 那份 unit 的。不用自己写 drop-in —— nixpkgs 对这种包提供的 unit 已经
   # 设了 overrideStrategy = "asDropinIfExists",下面这行会自动落到
   # nix-daemon.service.d/overrides.conf 里。
   # (别改成 systemd.units + asDropin,那会和 nixpkgs 的 asDropinIfExists 打架。)
-  systemd.services.nix-daemon.serviceConfig.MemoryHigh = "10G";
+  systemd.services.nix-daemon.serviceConfig = {
+    MemoryHigh = "8G";
+    MemoryMax = "11G";
+  };
 
   time.timeZone = "Asia/Hong_Kong";
 
