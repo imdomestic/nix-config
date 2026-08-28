@@ -100,7 +100,7 @@ in {
         listen_on = "unix:/tmp/kitty";
         shell_integration = "enabled";
       }
-      // kanso;
+      // lib.mapAttrs (_: lib.mkDefault) kanso;
     # // noir;
   };
 }

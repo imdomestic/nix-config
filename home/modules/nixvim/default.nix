@@ -11,22 +11,18 @@
   # everything gated on `dev` below stays out of the closure elsewhere.
   dev = config.my.nixvim.dev.enable;
 
-  # 不在 nixpkgs 里(vimPlugins 下没有任何 token 包),只能自建。
-  # 上游没有稳定分支,tag 和 hash 一起手动升。
+  # 不在 nixpkgs 里(vimPlugins 下没有任何 token 包),只能自建。源码和
+  # 版本由 token-theme 模块统一持有,终端那套配色用的是同一份。
   token-nvim = pkgs.vimUtils.buildVimPlugin {
     pname = "token-nvim";
     version = "2.5.0";
-    src = pkgs.fetchFromGitHub {
-      owner = "ThorstenRhau";
-      repo = "token";
-      tag = "v2.5.0";
-      hash = "sha256-eEXySoETgCvoi9wWfGAnG5/1Zn7DhVZkGeOmDdc8jUE=";
-    };
+    src = config.my.theme.token.src;
   };
 in {
   imports = [
     inputs.nixvim.homeModules.nixvim
     ./options.nix
+    ../token-theme
   ];
 
   # nixvim replaces the plain neovim enabled by home/profiles/base.nix
