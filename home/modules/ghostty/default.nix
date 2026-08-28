@@ -1,5 +1,6 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }: let
@@ -59,7 +60,9 @@ in {
       };
     };
     settings = {
-      theme = "kanso";
+      # mkDefault: 换配色的模块(home/modules/token-theme)直接盖掉就行,
+      # 不用 mkForce。
+      theme = lib.mkDefault "kanso";
       font-size =
         if isLinux
         then 11.5
