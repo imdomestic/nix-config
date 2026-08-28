@@ -810,6 +810,9 @@ in {
       AI_METRICS_PATH = "/metrics";
       AI_PROMETHEUS_URL = "http://100.64.0.3:9009";
       AI_ALERTMANAGER_URL = "http://100.64.0.3:9093";
+      AI_ALERT_NOTIFY_ENABLED = "true";
+      AI_ALERT_NOTIFY_GROUP_ID = "611798505";
+      AI_ALERT_NOTIFY_CHECK_SECONDS = "30";
       AI_SEMANTIC_ENABLED = "true";
       AI_EMBEDDING_BASE_URL = "http://127.0.0.1:11434/v1";
       AI_EMBEDDING_API_KEY = "ollama-local";
