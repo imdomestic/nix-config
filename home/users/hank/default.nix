@@ -9,6 +9,11 @@
   imports = [
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
     ../../modules/nixvim
+    # 只 import 不 enable:2026-08-28 整套试过一轮,终端那边不合用,退回
+    # kanso + evergarden。模块留着(默认关),想再试就
+    # `my.theme.token.enable = true`。import 在这里的另一个作用是让它继续
+    # 参与求值,不会烂在仓库里没人发现。
+    ../../modules/token-theme
   ];
 
   programs.git = {
@@ -21,8 +26,6 @@
       user.signingkey = "~/.ssh/id_ed25519.pub";
       commit.gpgsign = true;
       column.ui = "auto";
-      diff.tool = "nvimdiff";
-      difftool.prompt = false;
     };
   };
 
@@ -813,18 +816,10 @@
     ];
   };
 
-  # 终端和命令行工具跟着 nvim 一起走 token 配色。调色板和每个工具的映射都
-  # 在 home/modules/token-theme/,这里只是打开开关。
-  my.theme.token.enable = true;
-
-  # 下面几个原来只是 home.packages 里的裸二进制,没人管它们的配置。要上色
-  # 就得由 home-manager 接管配置文件,所以在这里 enable,颜色由 token-theme
-  # 填。
-  programs.bat.enable = true;
-  programs.ripgrep.enable = true;
-  programs.lazygit.enable = true;
-
-  # git diff / show / log -p / blame 走 delta。
+  # git diff / show / log -p / blame 走 delta,取代原来的 diff.tool = nvimdiff。
+  #
+  # 没配 syntax-theme,用 delta 自带的默认。token 那套配色试过一轮不合用,
+  # 见 my.theme.token(默认关着)。
   #
   # jujutsu 那边**没**开:delta 的 jj 集成会写 ui.diff-formatter = ":git",
   # 和下面 programs.jujutsu 里那句 "git" 撞;而且 ui.paginate = "never" 意味

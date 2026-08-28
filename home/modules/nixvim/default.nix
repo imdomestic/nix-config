@@ -10,19 +10,10 @@
   # Dev machines (importing home/users/<user>/dev.nix) get the full setup;
   # everything gated on `dev` below stays out of the closure elsewhere.
   dev = config.my.nixvim.dev.enable;
-
-  # 不在 nixpkgs 里(vimPlugins 下没有任何 token 包),只能自建。源码和
-  # 版本由 token-theme 模块统一持有,终端那套配色用的是同一份。
-  token-nvim = pkgs.vimUtils.buildVimPlugin {
-    pname = "token-nvim";
-    version = "2.5.0";
-    src = config.my.theme.token.src;
-  };
 in {
   imports = [
     inputs.nixvim.homeModules.nixvim
     ./options.nix
-    ../token-theme
   ];
 
   # nixvim replaces the plain neovim enabled by home/profiles/base.nix
@@ -44,8 +35,7 @@ in {
     withRuby = false;
 
     extraPlugins = [
-      token-nvim
-      # pkgs.vimPlugins."evergarden-nvim"
+      pkgs.vimPlugins."evergarden-nvim"
       # pkgs.vimPlugins.kanso-nvim
     ];
 
@@ -1535,24 +1525,22 @@ in {
     };
 
     extraConfigLuaPost = ''
-      require("token").setup({
-        -- 只开本仓库真的装了的插件,其余高亮组不必生成。
-        plugins = {
-          blink = true,
-          dap_ui = true,
-          diffview = true,
-          flash = true,
-          gitsigns = true,
-          markview = true,
-          mini = true,
-          noice = true,
-          snacks = true,
-          todo_comments = true,
+      require("evergarden").setup({
+        theme = {
+          variant = "winter",
+          accent = "green",
+        },
+        editor = {
+          transparent_background = false,
+        },
+        style = {
+          types = {},
+          keyword = {},
+          search = { "reverse", "bold" },
+          incsearch = { "reverse", "bold" },
         },
       })
-      -- 显式钉死,否则 nvim 会用 OSC 11 探终端底色,换个亮色终端就翻成 light。
-      vim.o.background = "dark"
-      vim.cmd.colorscheme("token")
+      vim.cmd.colorscheme("evergarden")
     '';
 
   };
