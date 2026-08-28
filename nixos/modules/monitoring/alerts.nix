@@ -249,7 +249,7 @@ in
             # 这条规则一口气 firing 了 7 次,把同时存在的**真问题**
             # (多台到 r5sjp 12-20% 丢包)埋在里面看不见。
             expr = ''
-              ping_loss_ratio > 0.1
+              ping_loss_ratio > 0.25
               and on(instance, peer) tailscale_peer_online{kind="server"} == 1
             '';
             "for" = "15m";
