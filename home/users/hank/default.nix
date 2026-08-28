@@ -817,12 +817,22 @@
   # 在 home/modules/token-theme/,这里只是打开开关。
   my.theme.token.enable = true;
 
-  # 下面三个原来只是 home.packages 里的裸二进制,没人管它们的配置。要上色
+  # 下面几个原来只是 home.packages 里的裸二进制,没人管它们的配置。要上色
   # 就得由 home-manager 接管配置文件,所以在这里 enable,颜色由 token-theme
   # 填。
   programs.bat.enable = true;
   programs.ripgrep.enable = true;
   programs.lazygit.enable = true;
+
+  # git diff / show / log -p / blame 走 delta。
+  #
+  # jujutsu 那边**没**开:delta 的 jj 集成会写 ui.diff-formatter = ":git",
+  # 和下面 programs.jujutsu 里那句 "git" 撞;而且 ui.paginate = "never" 意味
+  # 着 pager 根本不会启动,接上去也不生效。要用得先把那两项一起改。
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+  };
 
   programs.carapace = {
     enable = true;
