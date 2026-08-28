@@ -12,7 +12,6 @@
     # inputs.catppuccin.homeModules.catppuccin
     inputs.noctalia.homeModules.default
     inputs.niri.homeModules.niri
-    ../../modules/kitty
     ../../modules/ghostty
     ../../modules/gui
     ../../modules/noctalia

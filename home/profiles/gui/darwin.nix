@@ -6,7 +6,6 @@
   ...
 }: {
   imports = [
-    ../../modules/kitty
     ../../modules/ghostty
   ];
   home.packages =

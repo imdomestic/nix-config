@@ -6,6 +6,9 @@
 # 的原生 option。两个例外:bat 的 .tmTheme 是资源文件,carapace 在
 # home-manager 里根本没有配色 option。
 #
+# 覆盖到的:ghostty、tmux、fzf、bat、delta、ripgrep、lazygit、starship、
+# zsh、carapace。
+#
 # nvim 不在这里,它在 home/modules/nixvim/ 里自己 setup。
 {
   config,
@@ -16,11 +19,11 @@
   cfg = config.my.theme.token;
   c = cfg.colors;
 
-  # 某个程序是不是既被 import 了、又开着。headless 的 home 里没有 kitty /
-  # ghostty 这些模块,`or false` 让整条定义直接不生成。
+  # 某个程序是不是既被 import 了、又开着。headless 的 home 里没有 ghostty
+  # 这类模块,`or false` 让整条定义直接不生成。
   on = name: config.programs.${name}.enable or false;
 
-  # 终端 ANSI 0-15,ghostty / kitty 共用。
+  # 终端 ANSI 0-15。
   ansi = [
     c.bg1 # 0  black
     c.red # 1
@@ -72,8 +75,8 @@
 in {
   options.my.theme.token = {
     enable = lib.mkEnableOption ''
-      把 token 配色铺到终端(ghostty / kitty / tmux)和命令行工具
-      (fzf / bat / ripgrep / lazygit / starship / zsh / carapace)。
+      把 token 配色铺到终端(ghostty / tmux)和命令行工具
+      (fzf / bat / delta / ripgrep / lazygit / starship / zsh / carapace)。
       只对已经 enable 的程序生效
     '';
 
@@ -133,6 +136,12 @@ in {
           sel = "#3a3a37"; # 选区
           match = "#4a4030"; # 搜索命中
           line_nr = "#585855";
+          # diff 底色,给 delta 用
+          diff_add_inline = "#2e5232";
+          diff_del_inline = "#5a2529";
+          diff_add_strong = "#3a6e3e";
+          diff_del_strong = "#7a2e34";
+          diff_text = "#444039";
         };
       };
     }
@@ -152,28 +161,6 @@ in {
         };
         settings.theme = "token-dark";
       };
-    })
-
-    # kitty 的颜色就是 settings 里的普通键,和 kitty 模块里那份 kanso 撞
-    # 同名。那边已经 mkDefault 了,这里正常写就能盖过去。
-    (lib.mkIf (cfg.enable && on "kitty") {
-      programs.kitty.settings = ({
-          background = c.bg3;
-          foreground = c.fg0;
-          cursor = c.fg0;
-          cursor_text_color = c.bg3;
-          selection_background = c.sel;
-          selection_foreground = c.fg0;
-          url_color = c.blue;
-          active_tab_background = c.bg3;
-          active_tab_foreground = c.accent;
-          inactive_tab_background = c.bg1;
-          inactive_tab_foreground = c.fg2;
-          tab_bar_background = c.bg0;
-        }
-        // builtins.listToAttrs (
-          lib.imap0 (i: v: lib.nameValuePair "color${toString i}" v) ansi
-        ));
     })
 
     # tmux 是顺序执行的,mkAfter 排在模块那份 tokyonight 之后就赢了,不用
@@ -256,6 +243,43 @@ in {
         "--colors=column:fg:${rgb c.fg3}"
         "--colors=column:style:nobold"
       ];
+    })
+
+    # delta 的语法高亮用的是 bat 的主题缓存,所以 syntax-theme 只在 bat 也
+    # 开着(= token-dark.tmTheme 会被下发、激活时 `bat cache --build`)的时候
+    # 才设,否则 delta 会因为找不到主题名报警告。
+    (lib.mkIf (cfg.enable && on "delta") {
+      programs.delta.options =
+        {
+          # 值里**不要**自己加引号。上游 contrib 的 .gitconfig 里那圈引号是
+          # 为了让 `#` 不被 git 当成注释起头,而 home-manager 生成 ini 时已经
+          # 把整个值加了一层双引号 —— 自己再写就变成字面量引号,delta 解析
+          # 颜色时会失败。
+          dark = true;
+          blame-palette = "${c.bg1} ${c.bg2} ${c.bg3} ${c.bg4} ${c.bg5}";
+          commit-decoration-style = "${c.fg3} bold box ul";
+          file-style = c.fg0;
+          file-decoration-style = c.fg3;
+          hunk-header-style = "file line-number syntax";
+          hunk-header-decoration-style = "${c.fg3} box ul";
+          hunk-header-file-style = "bold";
+          hunk-header-line-number-style = "bold ${c.fg2}";
+          line-numbers-left-style = c.fg3;
+          line-numbers-right-style = c.fg3;
+          line-numbers-minus-style = "bold ${c.red}";
+          line-numbers-plus-style = "bold ${c.green}";
+          line-numbers-zero-style = c.fg2;
+          minus-style = "syntax ${c.diff_del_inline}";
+          minus-non-emph-style = "syntax ${c.diff_del_inline}";
+          minus-emph-style = "bold ${c.fg0} ${c.diff_del_strong}";
+          minus-empty-line-marker-style = "syntax ${c.diff_del_inline}";
+          plus-style = "syntax ${c.diff_add_inline}";
+          plus-non-emph-style = "syntax ${c.diff_add_inline}";
+          plus-emph-style = "bold ${c.fg0} ${c.diff_add_strong}";
+          plus-empty-line-marker-style = "syntax ${c.diff_add_inline}";
+          map-styles = "bold purple => syntax '${c.diff_text}', bold cyan => syntax '${c.diff_text}'";
+        }
+        // lib.optionalAttrs (on "bat") {syntax-theme = "token-dark";};
     })
 
     (lib.mkIf (cfg.enable && on "lazygit") {
