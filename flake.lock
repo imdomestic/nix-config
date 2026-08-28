@@ -2052,11 +2052,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1787884205,
-        "narHash": "sha256-0FNgKmbHaWUut5Fa7d8VIMATsMiTEwQjAgmL28ZcsbQ=",
+        "lastModified": 1787899054,
+        "narHash": "sha256-21pQ14RNOltX8BcKfPvjKG5tC0bhWey7fVRJxTE9nEY=",
         "owner": "zty20040403",
         "repo": "chat-bot",
-        "rev": "246809cc13bd06a66d63da3d5e0fdf8499313832",
+        "rev": "baba54f2351a34316a42718748eb19f8d49491df",
         "type": "github"
       },
       "original": {
