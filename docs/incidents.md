@@ -9,6 +9,47 @@
 
 ---
 
+## 2026-08-31 · tmux-agent-sidebar 的状态图标挤成一团 —— ghostty 回退到中文字体 {#ghostty-ambiguous-width-fallback}
+
+**症状:** 刚装上 tmux-agent-sidebar,顶部那排过滤器 `≡1 ●2 ◎0 ◐1 ○1 ✕0` 里,
+圆圈后面的计数数字看不见,几个图标糊在一起。而第一个 `≡1` 显示完全正常。
+
+**根因是字体回退,不是插件。** 图标定义在插件的 `src/ui/icons.rs`,七个默认字形
+逐个查 `RecMonoSmCasualNerdFontMono-Regular.ttf` 的 cmap:
+
+| 码位 | 字符 | 用途 | 字体里有没有 |
+|---|---|---|---|
+| U+2261 | `≡` | all | 有 |
+| U+25CF | `●` | running | **缺** |
+| U+25CE | `◎` | background | **缺** |
+| U+25D0 | `◐` | waiting | **缺** |
+| U+25CB | `○` | idle | **缺** |
+| U+2715 | `✕` | error | **缺** |
+| U+00B7 | `·` | unknown | 有 |
+
+缺的五个正好就是显示错乱的五个。这五个都是 UAX #11 里的 **East Asian
+Ambiguous** 宽度字符:插件用 Rust 的 `unicode-width` 算宽度,非 CJK 模式下一律
+返回 1;而字体里没有,ghostty 顺着 `font-family` 的下一项回退到 PingFang SC ——
+中文字体把这些几何符号按全角设计,画出来占两格。程序按一格排版、字体按两格画,
+后面那一列就被盖掉了。
+
+**误导我的是原来那条注释。** 它写的是「Recursive 没有 CJK 字形,不给 fallback
+的话 ghostty 会挑到宋体楷体」—— 于是我一开始只往「中文显示」的方向找,还去数了
+`~/Library/Fonts` 里的 SimSun/SimHei,怀疑是它们被 cascade 选中。实际问题是
+**非 CJK 的符号也会掉进这条回退链**,而链上第二级(也是最后一级)偏偏是中文字体。
+两级回退、且末级是 CJK 字体,这个组合本身就是坑。
+
+**修法:** 在中间插一层拉丁等宽字体。Menlo 是 macOS 自带的,查过 cmap,那五个
+字形全有、都是半角;它完全没有 CJK 字形,所以中文照样落到 PingFang SC,顺序不会
+被抢。
+
+绕过去的办法也有:插件自己暴露了 `@sidebar_icon_*`,可以换成 Nerd Font 的 PUA
+图标(U+F0C9 / F111 / F192 / F042 / F10C / F00D,`NerdFontMono` 变体的字形本来
+就被压进单格)。但那只治这一个插件,下一个用几何符号的 TUI 还会再撞一次,所以
+最后改的是字体链。
+
+---
+
 ## 2026-08-19 · 未提交的 flake.lock 让 h610 上三次 max 部署被静默回滚 {#max-uncommitted-lock-rollback}
 
 **症状:** 14:50 部署完 max 的镜像功能,验证通过 —— QQ 群消息扇出到 iMessage,
