@@ -14,7 +14,10 @@
 
   login = pkgs.writeShellApplication {
     name = "captive-portal-login";
-    runtimeInputs = with pkgs; [curl jq iproute2];
+    # systemd 给的 PATH 里没有 gawk,所以网关那一步不能用 awk —— 改用
+    # `ip -j` 出 JSON 交给 jq(它本来就要用来读 check-login)。coreutils
+    # 也得显式列上,`sleep` 从那里来。
+    runtimeInputs = with pkgs; [curl jq iproute2 coreutils];
     text = ''
       host=${lib.escapeShellArg cfg.host}
       iface=${lib.escapeShellArg cfg.interface}
@@ -27,7 +30,7 @@
       # 不能依赖 DNS**:认证之前 walled garden 只放行到网关,dae 配的那些
       # 上游(alidns/dns.google)一个都解析不出来,而 --resolve 只覆盖地址、
       # 保留 SNI 和证书校验,不用降级成 --insecure。
-      gw=$(ip -4 route show default dev "$iface" | awk '{print $3; exit}')
+      gw=$(ip -j -4 route show default dev "$iface" | jq -r '.[0].gateway // empty')
       if [ -z "$gw" ]; then
         echo "no default route on $iface yet; skipping" >&2
         exit 0
