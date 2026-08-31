@@ -74,8 +74,14 @@ in {
         # Recursive/Nerd Font has no CJK glyphs; without an explicit fallback
         # Ghostty's own font matching lands on a Song/Kai-style face instead
         # of the system cascade (PingFang SC). Order matters: first hit wins.
+        #
+        # Menlo 夹在中间是为了非 CJK 的符号:RecMono 缺 ● ◎ ◐ ○ ✕ 这类
+        # ambiguous 宽度字符,直接掉到 PingFang SC 会拿到全角字形塞进一格,
+        # 把后面一列盖掉。Menlo 有这些字形、且是半角,又完全没有 CJK,
+        # 所以中文照样落到 PingFang SC。见 docs/incidents.md#ghostty-ambiguous-width-fallback
         else [
           "RecMonoSmCasual Nerd Font Mono"
+          "Menlo"
           "PingFang SC"
         ];
       background-opacity = 0.85;
