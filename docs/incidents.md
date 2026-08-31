@@ -9,6 +9,41 @@
 
 ---
 
+## 2026-08-31 · 悉尼到国内绕欧洲,而且是晚高峰才绕 {#syd-cn-route-via-europe}
+
+rpi4 落到悉尼公寓之后,到国内 451ms。`nexttrace sh.imdomestic.com` 的形状:
+
+```
+2  27.122.122.169  Superloop 悉尼本地           0.91 ms
+3  172.21.68.229   RFC1918 + MPLS             286.10 ms   ← 一跳 +285ms
+...  (9 跳 MPLS 私有地址,全部 285ms 上下,纹丝不动)
+12 212.222.6.54    GTT  法国马赛              286.65 ms
+13 213.200.117.178 GTT  荷兰阿姆斯特丹        292.30 ms
+14 81.173.18.1     ChinaTelecom 阿姆斯特丹    293.86 ms
+16 202.97.83.145   ChinaTelecom 上海          404.57 ms
+26 101.132.183.117 阿里云上海                 451.90 ms
+```
+
+**判据是 hop2 → hop3 那一跳:0.91ms 变 286.10ms,而之后九跳全部停在 285ms
+不动。** 那 285ms 不是某一跳慢,是整条跨洋链路的 RTT —— 到 hop 3 时人已经在
+欧洲了,后面那串 RFC1918 是 Superloop 的 MPLS 内网。所以这是
+悉尼 → 马赛 → 阿姆斯特丹 → 上海,绕了大半个地球,太平洋方向那条 ~130ms
+的路压根没走。
+
+**是时段性的,不是固定路由。** hank 白天测到日本约 120ms,当晚(悉尼傍晚)
+`tailscale ping r5sjp` 是 257ms —— 而且那是 direct(`219.104.128.80`),
+不是 relay 绕的。同一条链路白天正常、高峰绕欧洲,像是 Superloop 在高峰
+把出国流量甩给 GTT transit。
+
+**别拿 anycast 目标当"到国内"的样本。** `ping 223.5.5.5` 只有 191ms,
+`ping 1.1.1.1 / 8.8.8.8 / www.google.com` 更是 0.7ms —— 前者阿里 DNS 有
+海外节点,后者是公寓网络里就有 Google Global Cache。这些数字全都不反映
+到中国大陆真实服务器的路径,只有 451ms 那个才是。第一次量的时候差点被
+0.7ms 骗过去,以为"这网络哪都快"。
+
+这条路 rpi4 改不了,是上游的 transit 选择。真正能做的是别让本地配置雪上
+加霜 —— 见 docs/decisions.md#rpi4-drop-dae。
+
 ## 2026-08-31 · rpi4 搬到悉尼公寓 —— 挖出 captive portal 的登录表单 {#rpi4-sydney-captive-portal}
 
 rpi4 从国内的 PPPoE 网关变成悉尼公寓里的旁路路由,上游是 Vostro/Superloop 的
