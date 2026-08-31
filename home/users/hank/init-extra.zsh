@@ -16,7 +16,6 @@
 
 zstyle ':completion:*:git-checkout:*' sort false
 zstyle ':completion:*:descriptions' format '[%d]'
-zstyle ':completion:*' list-colors ${(s.:.)LS_COLORS}
 zstyle ':fzf-tab:complete:cd:*' fzf-preview 'eza -1 --color=always $realpath'
 zstyle ':fzf-tab:*' switch-group ',' '.'
 
@@ -89,7 +88,7 @@ umask 022
 # LESS_TERMCAP_* 是唯一没搬进 home.sessionVariables 的一组环境变量:它们的值必须是
 # 真的 ESC 字节,而 sessionVariables 生成的是 POSIX sh 的 export NAME="value",
 # 写不出 $'\e' 这种 zsh 专有引用,除非在 .nix 里塞裸 0x1B —— 那个更难维护。
-# (LESS / MANPAGER / LS_COLORS 没有转义,已经搬走了。)
+# (LESS / MANPAGER 没有转义,已经搬走了。)
 export LESS_TERMCAP_mb=$'\e[1;32m'
 export LESS_TERMCAP_md=$'\e[1;32m'
 export LESS_TERMCAP_me=$'\e[0m'
