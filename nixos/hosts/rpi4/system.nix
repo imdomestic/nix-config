@@ -26,6 +26,7 @@ in {
     # 这台没有显示器,登录走串口/ssh,agetty 的默认登录提示完全够用。
     # tank 和 x470 是真桌面,它们那两处的 tuigreet 不动。
     ../../modules/keyd
+    ../../modules/captive-portal
   ];
 
   boot.loader.grub.enable = false;
@@ -47,8 +48,10 @@ in {
           chain postrouting {
             type filter hook forward priority 0; policy accept;
 
-            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1452
-            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1432
+            # 原来这里钉死 1452/1432,那是 PPPoE 的 1492 减掉 TCP/IP 头算出来的。
+            # WAN 改成 DHCP 之后 MTU 由上游决定(这台现在的公寓网络是 1500),
+            # `rt mtu` 让 nftables 按实际路由 MTU 算,换网络不用再改数字。
+            oifname "enp1s0u2" tcp flags syn tcp option maxseg size set rt mtu
           }
         '';
       };
@@ -72,39 +75,24 @@ in {
     "net.ipv4.tcp_congestion_control" = "bbr";
   };
 
-  services.pppd = {
+  # PPPoE(中国移动)那份 peer 删了 —— 这台 2026-08-31 搬到悉尼的公寓,
+  # 上游从「自己拨号」变成「DHCP + captive portal」。见
+  # docs/decisions.md#rpi4-drop-pppoe。
+
+  # 公寓的 hotspot 认证。凭据走 sops,不进 store。
+  my.captivePortal = {
     enable = true;
-    peers = {
-      chinamobile = {
-        autostart = true;
-        enable = true;
-        config = ''
-          plugin pppoe.so enp1s0u2
-          user "15861587760"
-          password "512907"
-
-          # usepeerdns
-
-          defaultroute
-          persist
-          maxfail 0
-          holdoff 5
-          noipdefault
-          noauth
-          hide-password
-          lcp-echo-interval 30
-          lcp-echo-failure 20
-          lcp-echo-adaptive
-
-          +ipv6
-          ipv6cp-use-ipaddr
-
-          mtu 1492
-          mru 1492
-        '';
-      };
-    };
+    interface = "enp1s0u2";
+    host = "iglu.authentication.technology";
+    credentialsFile = config.sops.templates."captive-portal.env".path;
   };
+
+  sops.secrets."captive-portal/usernames" = {};
+  sops.secrets."captive-portal/password" = {};
+  sops.templates."captive-portal.env".content = ''
+    CAPTIVE_PORTAL_USERNAMES=${config.sops.placeholder."captive-portal/usernames"}
+    CAPTIVE_PORTAL_PASSWORD=${config.sops.placeholder."captive-portal/password"}
+  '';
 
   systemd.network = {
     enable = true;
@@ -124,39 +112,26 @@ in {
       linkConfig.RequiredForOnline = "enslaved";
     };
 
+    # WAN。USB 那个 2.5G 网卡(RTL8156,见下面 udev 里的 0bda:8156),现在直接
+    # 插公寓的墙口吃 DHCP,认证由 my.captivePortal 补上。
     networks."20-wan-uplink" = {
       matchConfig.Name = "enp1s0u2";
-      linkConfig.RequiredForOnline = "no";
       networkConfig = {
-        LinkLocalAddressing = "no";
-        DHCP = "no";
-      };
-    };
-
-    networks."25-wan-ppp" = {
-      matchConfig.Name = "ppp0";
-      networkConfig = {
+        DHCP = "yes";
         IPv6AcceptRA = true;
-        DHCP = "ipv6";
-        # pppd installs the IPv4 (IPCP) address; keep it across networkd
-        # restarts so `nixos-rebuild switch` doesn't flush it.
-        KeepConfiguration = "yes";
-
-        # 关掉 IPv6 隐私扩展,理由见 hosts/r6s/system.nix 里同一处的长注释。
-        # 简版:这台的 WAN v4 是 100.112.172.41,r6s 是 100.84.115.12,双双
-        # 落在 tailscale 认领的 100.64.0.0/10 里,互相被对方的反欺骗规则丢包,
-        # 所以这一对只能靠 IPv6 直连;而临时地址轮换会让那条直连周期性断。
-        # 这台尤其明显 —— ppp0 上一度积了 8 个全局 v6 地址,好几个已 deprecated。
         IPv6PrivacyExtensions = "no";
       };
-      linkConfig = {
-        RequiredForOnline = "carrier";
+      dhcpV4Config = {
+        # 公寓网关(172.24.0.1)同时是 DNS 和 hotspot portal。认证之前
+        # walled garden 只放行到它,所以这条上游必须收下 —— 换句话说
+        # 它是登录那一刻唯一能用的解析器。
+        UseDNS = true;
+        UseDomains = true;
+        RouteMetric = 100;
       };
-      dhcpV6Config = {
-        WithoutRA = "solicit";
-        PrefixDelegationHint = "::/60";
-        UseDelegatedPrefix = true;
-      };
+      # 认证前也是 routable(有地址有默认路由,只是出不去),所以这里能当
+      # network-online 的判据 —— captive-portal-login 正是要在这之后才跑。
+      linkConfig.RequiredForOnline = "routable";
     };
 
     networks."30-br-lan" = {
@@ -166,9 +141,11 @@ in {
         DHCPServer = true;
         IPMasquerade = "ipv4";
 
-        IPv6SendRA = true;
+        # LAN 侧的 IPv6 全关了。原来 SendRA + PD 是把 PPPoE 拨到的 ::/60
+        # 分一段下来,而公寓这种 hotspot 上游只给一个 NAT 后的 v4 地址,
+        # 不会有前缀委派 —— 开着只会让 networkd 反复找不到可委派的前缀。
+        IPv6SendRA = false;
         IPv6AcceptRA = false;
-        DHCPPrefixDelegation = true;
       };
       linkConfig = {
         RequiredForOnline = "no"; # carrier
@@ -179,13 +156,6 @@ in {
         PoolSize = 100;
         EmitDNS = true;
         DNS = ["192.168.20.1"];
-      };
-
-      # SLAAC
-      ipv6SendRAConfig = {
-        Managed = false; # no DHCPv6
-        OtherInformation = false;
-        EmitDNS = true; # send DNS with RA
       };
     };
   };
@@ -253,11 +223,15 @@ in {
     '';
   };
 
+  # 搬到悉尼之后关掉:这台现在蹲在公寓 hotspot 的 NAT 后面,WAN 拿到的是
+  # 172.24/16,也没有全局 IPv6 —— 上面那份 config 盯的 ppp0 根本不存在了,
+  # 就算改成盯 enp1s0u2,把一个私有地址推到 rpi4.imdomestic.com 也没有意义。
+  # 配置整份留着,搬回去把这两行翻回来即可。见 docs/decisions.md#rpi4-drop-pppoe。
   systemd.services.ddns-go = {
-    enable = true;
+    enable = false;
     description = "ddns";
 
-    wantedBy = ["multi-user.target"];
+    wantedBy = [];
     wants = ["network-online.target"];
     after = ["network-online.target"];
 

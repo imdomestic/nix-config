@@ -9,6 +9,52 @@
 
 ---
 
+## 2026-08-31 · rpi4 搬到悉尼公寓 —— 挖出 captive portal 的登录表单 {#rpi4-sydney-captive-portal}
+
+rpi4 从国内的 PPPoE 网关变成悉尼公寓里的旁路路由,上游是 Vostro/Superloop 的
+`iglu` 网络,先认证才给网。要让一台没人值守的机器自己登进去,得先知道表单长什么样。
+
+**portal 的地址不用猜,DHCP 就给了。** `ipconfig getpacket`(macOS)/networkd 的
+租约里有 option 114 `captive_portal_url = https://iglu.authentication.technology/api`,
+这是 RFC 8908。那个 `/api` 端点返回 `{"captive":false,"seconds-remaining":86191}`,
+可以直接当"还剩多久掉线"用。
+
+**登录是两段,而只有第二段真的放行网络。** 前端是个 Gatsby SPA(`iglu.vostro.live`),
+第一段 `POST https://iglu-api.vostro.app/rest.api/login` 收 JSON `{userName,password}`,
+返回 JWT —— 那是给 portal 自己(改套餐、管设备)用的。真正让网关放行的是第二段:
+SPA 里一个隐藏的 `<form method="post">` 提交到网关,
+
+```
+POST https://iglu.authentication.technology/login
+Content-Type: application/x-www-form-urlencoded
+radius11=hotspot&username=<user>&password=<pass>
+```
+
+`radius11=hotspot` 是写死的隐藏字段。网关是 MikroTik hotspot —— 认出来是因为
+`/check-login.html` 的返回里有 `link-login`、`interface-name`,还有一个没被替换的
+模板变量 `"uptime-sec": "$(uptime-sec)"`。状态判据就用这个端点的 `.loggedIn == "yes"`。
+
+**怎么挖出来的:source map 是开着的。** `iglu.vostro.live` 上每个 chunk 都能取到
+同名 `.js.map`,`sourcesContent` 里是完整的 React 源码,`src/controls/login.jsx`
+一眼就看到那个隐藏 form。不用逆混淆代码,也不用真的登录一次去抓包。
+
+**踩过的两个坑:**
+
+- **在已认证的机器上测不出成功/失败。** 拿假用户名 POST 过去,返回的也是 302 到
+  SPA 首页,和成功一模一样;已登录的客户端网关根本不做认证。想验证只能先登出,
+  代价是真的断网,所以判据只能靠事后查 `/check-login.html`。
+- **用户名不是邮箱。** 邮箱能过第一段(REST API 支持按 email 查),但第二段是把
+  表单原样丢给 RADIUS 的。账号真实的 `userName` 是一串数字(portal 的
+  `getCurrentUser` 里能看到),邮箱未必认。脚本因此按候选列表依次试,而不是钉死一个。
+
+**为什么脚本用 `curl --resolve` 而不是靠 DNS:** `iglu.authentication.technology`
+的 A 记录指向 `172.24.0.1`,也就是默认网关自己(公共 DNS 也这么返回)。认证之前
+walled garden 只放行到网关,dae 配的那些上游(alidns / dns.google)一个都解析不出来。
+`--resolve` 把域名钉到网关地址,同时保留 SNI 和证书校验,不用降级成 `--insecure`。
+
+顺带:portal 的设备是登录时自动注册的(`deviceLimit: 100`,已经躺着 4 个 MAC),
+所以 rpi4 不需要事先去 portal 里登记 MAC。
+
 ## 2026-08-31 · tmux-agent-sidebar 的状态图标挤成一团 —— ghostty 回退到中文字体 {#ghostty-ambiguous-width-fallback}
 
 **症状:** 刚装上 tmux-agent-sidebar,顶部那排过滤器 `≡1 ●2 ◎0 ◐1 ○1 ✕0` 里,

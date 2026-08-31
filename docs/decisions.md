@@ -11,6 +11,31 @@
 
 ---
 
+## 2026-08-31 · rpi4 不再拨 PPPoE,ddns-go 也停了 {#rpi4-drop-pppoe}
+
+这台 2026-08-31 从国内搬到悉尼的公寓,上游性质彻底变了:原来是自己拨号
+(`services.pppd` 的 `chinamobile` peer,PPPoE over `enp1s0u2`),现在是插墙口吃 DHCP,
+再过一道 captive portal。
+
+**删掉的:**
+
+- `services.pppd` 整块。PPPoE 的凭据是运营商宽带账号,换了国家就没有对应的东西了;
+  留着一份拨不上的 peer 只会让 `maxfail 0 / holdoff 5` 无限重试刷日志。
+  WAN 现在是 `20-wan-uplink` 里的 `DHCP = "yes"`,认证交给
+  `my.captivePortal`(表单怎么来的见 docs/incidents.md#rpi4-sydney-captive-portal)。
+- `25-wan-ppp` 那份 network。它 match 的 `ppp0` 不会再出现。
+- `30-br-lan` 的 `IPv6SendRA` / `DHCPPrefixDelegation`。这两个原来是把 PPPoE 拨到的
+  `::/60` 往 LAN 分一段,而公寓 hotspot 只给一个 NAT 后的 v4 地址,没有前缀委派。
+
+**停掉但没删的:** `ddns-go`。它盯的 `netinterface: ppp0` 已经不存在,而且这台现在
+整个在 hotspot 的 NAT 后面 —— WAN 地址是 `172.24/16`,也没有全局 IPv6,
+把这种地址推到 `rpi4.imdomestic.com` 毫无意义。配置整份留在文件里,
+`enable`/`wantedBy` 两行翻回来就能恢复,所以没必要为了"干净"把它删了再抄回来。
+
+**连带失效、但这次没动的:** `services.xray` 的两个 inbound(2444 / 54322)和
+wireguard 的 `10.0.0.6` —— 在 NAT 后面收不到入站连接。它们只是白监听,不报错也不
+拖别的东西下水,等确定这台在悉尼要扮演什么角色再一起处理,不在这次改动范围里。
+
 ## 2026-08-31 · 删掉 LS_COLORS {#drop-ls-colors}
 
 `home.sessionVariables.LS_COLORS` 原来是一条 1.8k、115 条规则的字符串,来自
