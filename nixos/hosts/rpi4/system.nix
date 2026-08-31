@@ -14,7 +14,9 @@ in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    ../../modules/dae
+    # dae 摘了 —— 搬到悉尼之后它是净损害,实测数据见
+    # docs/decisions.md#rpi4-drop-dae。另外八台照旧。
+    # ../../modules/dae
     # ../../modules/singbox
     # tuigreet 摘掉了。它是个图形登录管理器(services.greetd),而 NixOS 26.05 里
     # greetd 算 displayManager —— 一开就把 graphical-desktop.nix 整个拉进来。

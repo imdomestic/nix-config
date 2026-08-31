@@ -11,6 +11,37 @@
 
 ---
 
+## 2026-08-31 · rpi4 摘掉 dae {#rpi4-drop-dae}
+
+这台搬到悉尼之后 dae 是**净损害**,所以从 `imports` 里摘了。另外八台
+(shanghai/tank/x470/h310/h610/r2s/r5s/r6s)照旧,它们在国内,那套规则是对的。
+
+那套规则的前提是「人在国内,需要翻墙出去」:`fallback: im`,而 im 组是经
+六个国内 portal 的反向隧道到 r5sjp(日本)。人到了悉尼,这个前提整个翻转:
+
+**公寓网络的国际线路极好。** 本地有 Google Global Cache —— `ping
+www.google.com` 是 **0.7ms**(走 IPv6,`2001:4860:...`),1.1.1.1 / 8.8.8.8
+同样 0.7ms 左右,Telstra 悉尼 1.1ms 作参照。国际主流服务基本是本地落地的。
+
+**而 dae 把这条线路绕成了 悉尼 → 国内 portal → 日本 → 目标。** 同一时刻
+的 A/B(规则里 Apple/Microsoft 判 direct、Google/GitHub 判 im,四个都是
+国外站):
+
+| 目标 | dae 判定 | `curl` total |
+|---|---|---|
+| apple.com | direct | 0.12s |
+| microsoft.com | direct | 0.27s |
+| google.com | im | 2.90s |
+| github.com | im | 3.91s |
+
+**10 到 30 倍。** 注意 `time_connect` 看不出来(5~7ms),因为透明代理的 TCP
+握手是和本地 dae 完成的 —— 只有 `time_total` / `time_starttransfer` 才暴露
+真实路径,拿 connect 时间判断代理健康度会得出完全相反的结论。
+
+到国内确实慢(晚高峰 `sh.imdomestic.com` 452ms),但那是上游 Superloop 的
+transit 决定的,不是 dae 能救的 —— 恰恰相反,im 组要先绕回国内再去日本,
+比直连更远。那条路的形状见 docs/incidents.md#syd-cn-route-via-europe。
+
 ## 2026-08-31 · rpi4 不再拨 PPPoE,ddns-go 也停了 {#rpi4-drop-pppoe}
 
 这台 2026-08-31 从国内搬到悉尼的公寓,上游性质彻底变了:原来是自己拨号
