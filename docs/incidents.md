@@ -45,7 +45,16 @@ radius11=hotspot&username=<user>&password=<pass>
   代价是真的断网,所以判据只能靠事后查 `/check-login.html`。
 - **用户名不是邮箱。** 邮箱能过第一段(REST API 支持按 email 查),但第二段是把
   表单原样丢给 RADIUS 的。账号真实的 `userName` 是一串数字(portal 的
-  `getCurrentUser` 里能看到),邮箱未必认。脚本因此按候选列表依次试,而不是钉死一个。
+  `getCurrentUser` 里能看到)。当时在已认证的机器上分辨不出哪个能用,所以脚本
+  写成按候选列表依次试;**实测结果是数字 userName 过,列表已收敛成它一个**。
+  候选循环的机制留着 —— 换一处网络时它还是那个"先试哪个"的问题。
+
+**部署时踩的:`writeShellApplication` 的 runtimeInputs 就是全部 PATH。** 第一版
+漏了 gawk,服务起来直接 `awk: command not found` —— systemd 给的 PATH 里没有它,
+不像交互 shell 那样有 `/run/current-system/sw/bin` 兜着。取网关那一步因此改成
+`ip -j` 出 JSON 交给 jq(反正要用 jq 读 check-login),顺带把 `sleep` 依赖的
+coreutils 也显式列上。同一类错误还有一个在后面等着:脚本在 awk 那行就 errexit
+退出了,`sleep` 那处根本没走到。
 
 **为什么脚本用 `curl --resolve` 而不是靠 DNS:** `iglu.authentication.technology`
 的 A 记录指向 `172.24.0.1`,也就是默认网关自己(公共 DNS 也这么返回)。认证之前
