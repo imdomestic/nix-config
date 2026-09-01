@@ -35,6 +35,7 @@
       nixos = systems.nixosConfigurations;
       darwin = systems.darwinConfigurations;
       font = cfg: cfg.pkgs.callPackage ./pkgs/recursive-mono-cascadia-italic {};
+      agentSidebar = cfg: cfg.pkgs.callPackage ./pkgs/tmux-agent-sidebar {};
       templarDroidspacesKernel = cfg: cfg.pkgs.callPackage ./pkgs/templar-droidspaces-kernel {};
     in {
       aarch64-linux = {
@@ -48,13 +49,19 @@
         # 由 Determinate 的原生 aarch64-linux builder 构建。工具链全部来自
         # nixpkgs;这个输出只产出可塞进 boot.img 的 Image,不是 NixOS kernelPackages。
         templar-droidspaces-kernel = templarDroidspacesKernel nixos.rpi4;
+        # hank 的 home 在每台机器上都一样,所以这个 Rust TUI 会跟到 r2s / rpi4
+        # 这种小 ARM 盒子上去 —— 而 home 是 deploy 时在**目标机**上编的
+        # (deploy 走 --remote-build)。不缓存的话那几台要现编一遍。
+        tmux-agent-sidebar = agentSidebar nixos.rpi4;
       };
       x86_64-linux = {
         # b650 / x470 两台解析出来是同一个 drv,取哪台都一样。
         recursive-mono-cascadia-italic = font nixos.b650;
+        tmux-agent-sidebar = agentSidebar nixos.b650;
       };
       aarch64-darwin = {
         recursive-mono-cascadia-italic = font darwin.m1elite;
+        tmux-agent-sidebar = agentSidebar darwin.m1elite;
       };
       # x86_64-darwin(hackintosh)没进来:macos-13 runner 正在退役,而且 26.05
       # 是 nixpkgs 最后一个支持 x86_64-darwin 的版本,不值得为它单开一条流水线。
