@@ -1,7 +1,7 @@
 # 自用订阅。和 modules/airport 是两回事:那个发给朋友,一个节点、有配额、有
-# 到期;这个发给我自己,六个节点全给、永久有效、带完整分流规则。
+# 到期;这个发给我自己,节点全给、永久有效、带完整分流规则。
 #
-# 存在的理由是「改一处、六台客户端跟着变」。以前 Mac 上的 clash 和手机上的
+# 存在的理由是「改一处、所有客户端跟着变」。以前 Mac 上的 clash 和手机上的
 # Egern 各存一份手抄配置,加一台机器就要手动补两处 —— r2s 上线之后两边都漏了,
 # 这个模块就是把那两份配置收编成仓库里的唯一真相。
 #
@@ -16,19 +16,21 @@
 with lib; let
   cfg = config.services.imsub;
 
-  # 六台 portal 的 client-in2 凭据,和 modules/mihomo、modules/singbox 共用
-  # 同一个 sops 文件(按 .sops.yaml 的兜底规则加密给全部 admin + 全部 host)。
-  # 顺序就是客户端里节点的显示顺序。
-  #
-  # 这份名单在三个模块里各抄了一份(这里、mihomo、singbox)。加第七台机器时
-  # 三处都要改 —— 少改一处不会报错,只会静悄悄地少一个节点。
-  nodeNames = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
+  # 节点凭据,和 modules/mihomo、modules/singbox 共用同一个 sops 文件
+  # (按 .sops.yaml 的兜底规则加密给全部 admin + 全部 host)。名单本身在
+  # ../im-nodes.nix,三个模块共用一份;列表顺序就是客户端里的显示顺序。
+  nodes = import ../im-nodes.nix;
   nodeFields = ["uuid" "public_key" "short_id"];
 
-  s = config.sops.placeholder;
-  sec = node: field: s."imdomestic/${node}/${field}";
+  # 自动测速组只收日本出口。悉尼那两个带宽只有 1/9,进了自动组就会被随机
+  # 选中,见 ../im-nodes.nix 顶部。
+  autoNodes = filter (n: n.exit == "jp") nodes;
 
-  tags = map (n: "imdomestic-${n}") nodeNames;
+  s = config.sops.placeholder;
+  sec = node: field: s."imdomestic/${node.secret}/${field}";
+
+  tags = map (n: "imdomestic-${n.name}") nodes;
+  autoTags = map (n: "imdomestic-${n.name}") autoNodes;
 
   # 缩进一整块文本。空行保持空,免得留下一串只有空格的行。
   indent = pad: text:
@@ -42,10 +44,10 @@ with lib; let
   # 占位符**必须**放在双引号里。sops 做的是纯文本替换,不加引号的话,一个碰巧
   # 全是数字的 short_id 会被 YAML 解析成整数,客户端那边就报类型错误。
   clashProxy = node: ''
-    - name: "imdomestic-${node}"
+    - name: "imdomestic-${node.name}"
       type: vless
-      server: ${node}.imdomestic.com
-      port: 54322
+      server: ${node.host}
+      port: ${toString node.port}
       uuid: "${sec node "uuid"}"
       network: tcp
       tls: true
@@ -61,9 +63,9 @@ with lib; let
 
   egernProxy = node: ''
     - vless:
-        name: imdomestic-${node}
-        server: ${node}.imdomestic.com
-        port: 54322
+        name: imdomestic-${node.name}
+        server: ${node.host}
+        port: ${toString node.port}
         user_id: "${sec node "uuid"}"
         tfo: false
         udp_relay: true
@@ -78,11 +80,14 @@ with lib; let
   '';
 
   # clash 的 proxies 是 2 空格缩进的列表,egern 的顶格。
-  clashProxies = concatMapStringsSep "\n" (n: indent "  " (clashProxy n)) nodeNames;
-  egernProxies = concatMapStringsSep "\n" (n: indent "" (egernProxy n)) nodeNames;
+  clashProxies = concatMapStringsSep "\n" (n: indent "  " (clashProxy n)) nodes;
+  egernProxies = concatMapStringsSep "\n" (n: indent "" (egernProxy n)) nodes;
 
   clashTags = concatMapStringsSep "\n" (t: "      - ${t}") tags;
   egernTags = concatMapStringsSep "\n" (t: "    - ${t}") tags;
+
+  clashAutoTags = concatMapStringsSep "\n" (t: "      - ${t}") autoTags;
+  egernAutoTags = concatMapStringsSep "\n" (t: "    - ${t}") autoTags;
 
   # 拦 QUIC(UDP/443)。`sub` 为 null 时无条件拦,否则再 AND 上一条子规则。
   #
@@ -134,7 +139,8 @@ with lib; let
         - 119.29.29.29
         - 8.8.8.8
 
-    # 端口 54322 = 各 portal 的 client-in2 入口。每台的 uuid / public-key /
+    # 端口 54322 = 各 portal 的 client-in2 入口(经隧道从 r5sjp 出);
+    # 54324 = client-au(经隧道从 rpi4 出)。每台每口的 uuid / public-key /
     # short-id 都是独立的,不共用。
     proxies:
     ${clashProxies}
@@ -146,14 +152,16 @@ with lib; let
           - auto
     ${clashTags}
 
-      # 六个节点分处不同运营商和线路,延迟差别不小;自动择优比手动切实用。
+      # 各节点分处不同运营商和线路,延迟差别不小;自动择优比手动切实用。
+      # **只放日本出口的节点。** 澳洲那两个延迟低、带宽却只有 1/9,url-test
+      # 只比延迟,放进来它们会稳定胜出然后把大文件传输拖垮。
       - name: auto
         type: url-test
         url: http://cp.cloudflare.com/generate_204
         interval: 300
         tolerance: 100
         proxies:
-    ${clashTags}
+    ${clashAutoTags}
 
     rules:
       # ===== 广告屏蔽 =====
@@ -228,7 +236,7 @@ with lib; let
     - smart:
         name: AUTO
         policies:
-    ${egernTags}
+    ${egernAutoTags}
         latency_test_url: http://cp.cloudflare.com/generate_204
         hidden: true
     - select:
@@ -350,18 +358,18 @@ in {
     };
     users.groups.imsub = {};
 
-    # 六个节点的凭据。mihomo / singbox 模块声明的是同名同文件的 secret,
+    # 各节点的凭据。mihomo / singbox 模块声明的是同名同文件的 secret,
     # 同一台机器上同时开也不冲突(定义相同,模块系统直接合并)。
     #
     # 这里不设 restartUnits:服务读的是下面渲染出来的成品,而且每次请求都重新
     # 打开文件,所以换了凭据只要激活过一次就生效,不用重启。
     sops.secrets = listToAttrs (concatMap (node:
       map (field: {
-        name = "imdomestic/${node}/${field}";
+        name = "imdomestic/${node.secret}/${field}";
         value.sopsFile = ../../../secrets/clients/imdomestic.yaml;
       })
       nodeFields)
-    nodeNames);
+    nodes);
 
     # 渲染成品直接落在 /run,服务只读不拼 —— 所以进程本身不需要任何解密能力。
     sops.templates."imsub-clash.yaml" = {

@@ -11,6 +11,56 @@
 
 ---
 
+## 2026-09-01 · rpi4 从 portal 改成 bridge {#rpi4-portal-to-bridge}
+
+rpi4 原本是六台 portal 之一:国内客户端连它的 `client-in2`(54322),流量经反向
+隧道到 r5sjp,从日本出去。搬到悉尼之后这个身份**已经名存实亡**,只是没人去
+删 —— 它在 hotspot 的 NAT 后面,没有任何公网入口;`ddns-go` 也早关了,而
+`rpi4.imdomestic.com` 还留着一条指向它国内旧地址的 AAAA。
+
+于是在此之前的一段时间里,r5sjp 一直在重试拨一条死链
+(`rpi4.imdomestic.com:2444`),订阅里有一个连不上的节点,dae 的 `im` 组里也有
+一个死节点在参与选路。这次一并删掉。
+
+**改成 bridge 而不是修好 portal,是因为 portal 这个角色它当不了。** Xray 反向
+代理的两端分工是固定的:portal 是有公网入口、被拨的那端;bridge 是主动拨出去
+的那端,不需要任何入站可达性。悉尼这条线正好只满足后者 —— 这也正是 r5sjp 一直
+用 bridge 的原因,它挂在 NTT 消费线上,同样没有稳定公网入口。
+
+所以现在有两条反向隧道,方向一致(国内 portal ← 境外 bridge),出口不同:
+
+- `reverse-<h>.hank.internal` → r5sjp(日本),客户端口 54322
+- `reverse-<h>-au.hank.internal` → rpi4(悉尼),客户端口 54324
+
+**只接 h610 和 sh 两台。** 其余几台 portal(r5s / r6s / r2s)的 ddns-go 只发
+AAAA,而悉尼那条线没有 IPv6,拨不过去 —— 加进去只会再造几条死链。
+
+## 2026-09-01 · 悉尼出口不进任何自动测速组 {#au-exit-not-in-auto-group}
+
+`imdomestic-h610-au` / `imdomestic-sh-au`(以及 dae 里的 `au-h610` / `au-sh`)
+只出现在**手动选择**的策略组里。clash 的 `auto`(url-test)、Egern 的 `AUTO`
+(smart)、sing-box 的 `im`(urltest)、dae 的 `im` 组,四处都把它们排除在外。
+
+理由是这些自动组**只比延迟**,而这条链路上延迟和带宽是反的:
+
+| 出口 | 隧道段带宽(实测) |
+|---|---|
+| r5sjp(日本) | 187 Mbps |
+| rpi4(悉尼) | 21 Mbps |
+
+约 1:9。悉尼那条从国内量过去延迟往往更低,于是它会在 url-test 里**稳定胜出**,
+然后把所有大文件传输拖进一条慢九倍的路 —— 而且因为它"活着且延迟低",健康检查
+永远不会把它换掉。
+
+dae 那边还有一个额外的坑值得单独记:`im` 组是靠 `name(keyword: 'imdomestic')`
+筛的,所以那两个节点在 dae 里**故意不叫 `imdomestic-*`**,叫 `au-h610` /
+`au-sh`。哪天有人为了"统一命名"把它们改回去,它们会**静悄悄地**混进 im 组,
+不报任何错。
+
+带宽数据的来源见 docs/incidents.md#syd-jp-relay-beats-direct。
+
+---
+
 ## 2026-08-31 · rpi4 摘掉 dae {#rpi4-drop-dae}
 
 这台搬到悉尼之后 dae 是**净损害**,所以从 `imports` 里摘了。另外八台

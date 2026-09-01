@@ -6,18 +6,18 @@
 }: let
   cfg = config.my.mihomo;
 
-  # 六台 portal 的 client-in2 凭据,和 modules/singbox 用的是同一个 sops 文件
-  # (加密给全部 admin + 全部 host)。
-  nodeNames = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
+  # 节点凭据,和 modules/singbox、modules/imsub 用的是同一个 sops 文件
+  # (加密给全部 admin + 全部 host)。名单在 ../im-nodes.nix,三个模块共用一份。
+  nodes = import ../im-nodes.nix;
   nodeFields = ["uuid" "public_key" "short_id"];
   s = config.sops.placeholder;
-  sec = node: field: s."imdomestic/${node}/${field}";
+  sec = node: field: s."imdomestic/${node.secret}/${field}";
 
   mkProxy = node: {
-    name = "imdomestic-${node}";
+    name = "imdomestic-${node.name}";
     type = "vless";
-    server = "${node}.imdomestic.com";
-    port = 54322;
+    server = node.host;
+    inherit (node) port;
     uuid = sec node "uuid";
     network = "tcp";
     tls = true;
@@ -32,7 +32,11 @@
     };
   };
 
-  nodeTags = map (n: "imdomestic-${n}") nodeNames;
+  nodeTags = map (n: "imdomestic-${n.name}") nodes;
+
+  # 自动组只收日本出口。悉尼那两个延迟更低、带宽却只有 1/9,而 url-test/smart
+  # 只比延迟 —— 放进来它们会稳定胜出,然后把大文件传输拖垮。
+  autoTags = map (n: "imdomestic-${n.name}") (lib.filter (n: n.exit == "jp") nodes);
 
   # 国外 DNS,经代理出去(respect-rules)。
   #
@@ -53,7 +57,7 @@
   autoGroup =
     {
       name = "auto";
-      proxies = nodeTags;
+      proxies = autoTags;
       url = "http://cp.cloudflare.com/generate_204";
       interval = 300;
       tolerance = 100;
@@ -176,16 +180,16 @@ in {
       }
       // lib.listToAttrs (lib.concatMap (node:
         map (field: {
-          name = "imdomestic/${node}/${field}";
+          name = "imdomestic/${node.secret}/${field}";
           value = {
             sopsFile = ../../../secrets/clients/imdomestic.yaml;
             restartUnits = ["mihomo.service"];
           };
         })
         nodeFields)
-      nodeNames);
+      nodes);
 
-    # 整份配置由 sops 渲染。里面有五个节点的 UUID 和 Reality 公钥,内联进
+    # 整份配置由 sops 渲染。里面有各节点的 UUID 和 Reality 公钥,内联进
     # `settings` 会同时写进这个公开仓库和 world-readable 的 nix store。
     # mihomo.service 是 DynamicUser + LoadCredential:systemd 先以 root 读取
     # 渲染结果再投给动态用户,所以 root-only 的 /run/secrets 够用。
@@ -298,7 +302,7 @@ in {
           };
         };
 
-        proxies = map mkProxy nodeNames;
+        proxies = map mkProxy nodes;
 
         proxy-groups = [
           {

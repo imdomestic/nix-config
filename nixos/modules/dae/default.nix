@@ -91,7 +91,9 @@ in {
         }
 
         node {
-            # imdomestic —— 六个 portal,每个经反向隧道到 r5sjp。
+            # imdomestic-* —— 五台 portal 的 client-in2(54322),经反向隧道从
+            # r5sjp 出去(日本)。au-* —— 同样两台 portal 的 client-au(54324),
+            # 经反向隧道从 rpi4 出去(悉尼)。
             # 内容来自 sops(dae/nodes),不进 nix store。
         ${config.sops.placeholder."dae/nodes"}
         }
@@ -149,6 +151,19 @@ in {
         group {
             im {
                 filter: name(keyword: 'imdomestic')
+                policy: min_moving_avg
+            }
+
+            # 悉尼出口。**节点名故意不含 "imdomestic"** —— 上面 im 组是按关键字
+            # 筛的,一旦叫成 imdomestic-*-au 就会被收进去,而 min_moving_avg 只看
+            # 延迟:悉尼延迟更低、带宽却只有日本的约 1/9(实测 21 vs 187 Mbps),
+            # 于是它会稳定当选然后把一切拖垮。
+            #
+            # 下面 routing 里没有任何规则指向 au,它现在是备着的 —— 要用就加一条
+            # 形如 `domain(suffix: example.com) -> au`。留着组是为了让存活检查一直
+            # 跑,真要用的时候不必先排查隧道通不通。
+            au {
+                filter: name(keyword: 'au-')
                 policy: min_moving_avg
             }
         }

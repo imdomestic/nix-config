@@ -544,6 +544,12 @@ in {
   sops.secrets."xray/interconn2_short_id" = {};
   sops.secrets."xray/client_in2_uuid" = {};
   sops.secrets."xray/client_in2_short_id" = {};
+  # 悉尼出口那条隧道的两个入口。复用本机同一对 REALITY 密钥,各自一个 shortId
+  # —— 和上面三个入口的做法一致。
+  sops.secrets."xray/interconn_au_uuid" = {};
+  sops.secrets."xray/interconn_au_short_id" = {};
+  sops.secrets."xray/client_au_uuid" = {};
+  sops.secrets."xray/client_au_short_id" = {};
   # 订阅服务要把这两个值写进给客户端的配置里,所以 airport 用户得读得到。
   sops.secrets."xray/friends_short_id".owner = "airport";
   sops.secrets."xray/reality_public_key".owner = "airport";
@@ -609,10 +615,17 @@ in {
           };
         };
 
+        # 两条反向隧道,两个 portal。domain 是它们唯一的区分 —— 对面那台
+        # bridge 注册的名字必须和这里一字不差。
         reverse.portals = [
           {
             tag = "portal-h610";
             domain = "reverse-h610.hank.internal";
+          }
+          # rpi4(悉尼)。它没有公网入口,所以由它拨进来。
+          {
+            tag = "portal-h610-au";
+            domain = "reverse-h610-au.hank.internal";
           }
         ];
 
@@ -630,6 +643,17 @@ in {
           # 朋友专用。clients 故意留空,由 airport 控制器在运行时用
           # `xray api adu` 注入(Step 6),这样 UUID 既不进 git 也不进 nix store。
           (vlessIn "friends-in" 54323 [] (reality s."xray/friends_short_id"))
+
+          # ↓ 悉尼出口。端口取 +1 / +2,和上面日本那套错开。
+          # rpi4 的 bridge 拨进来的落点。
+          (vlessIn "interconn-au" 1445
+            [(vision s."xray/interconn_au_uuid")]
+            (reality s."xray/interconn_au_short_id"))
+
+          # 自己用:想从悉尼出网时连这个口。
+          (vlessIn "client-au" 54324
+            [(vision s."xray/client_au_uuid")]
+            (reality s."xray/client_au_short_id"))
         ];
 
         outbounds = [
@@ -639,12 +663,21 @@ in {
           }
         ];
 
-        # 五个入口一律丢进反向隧道,从 r5sjp 的日本出口出去。
+        # 入口决定出口:前三个进日本那条隧道,后两个进悉尼那条。
+        #
+        # 每条规则都必须同时收下 interconn-* 和 client-*:前者是 bridge 拨进来
+        # 的控制信道(目的地正是 portal 的内部域名),后者是真正的用户流量。
+        # 少收一个,隧道要么建不起来,要么建起来了没人用。
         routing.rules = [
           {
             type = "field";
             inboundTag = ["interconn2" "client-in2" "friends-in"];
             outboundTag = "portal-h610";
+          }
+          {
+            type = "field";
+            inboundTag = ["interconn-au" "client-au"];
+            outboundTag = "portal-h610-au";
           }
         ];
       };
