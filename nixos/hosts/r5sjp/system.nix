@@ -272,9 +272,6 @@
   sops.secrets."xray/peers/h610/uuid" = {};
   sops.secrets."xray/peers/h610/public_key" = {};
   sops.secrets."xray/peers/h610/short_id" = {};
-  sops.secrets."xray/peers/rpi4/uuid" = {};
-  sops.secrets."xray/peers/rpi4/public_key" = {};
-  sops.secrets."xray/peers/rpi4/short_id" = {};
   sops.secrets."xray/peers/sh/uuid" = {};
   sops.secrets."xray/peers/sh/public_key" = {};
   sops.secrets."xray/peers/sh/short_id" = {};
@@ -333,7 +330,9 @@
         s."xray/peers/${host}/public_key"
         s."xray/peers/${host}/short_id";
 
-      hosts = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
+      # rpi4 不在这里 —— 2026-09-01 它从 portal 改成了第二个 bridge(悉尼
+      # 出口),不再有公网入口可拨。理由见 docs/decisions.md#rpi4-portal-to-bridge。
+      hosts = ["h610" "sh" "r5s" "r6s" "r2s"];
     in
       builtins.toJSON {
         log.loglevel = "warning";
@@ -347,7 +346,6 @@
 
         outbounds = [
           (peer "h610" "h610.imdomestic.com" 1444 aliyun)
-          (peer "rpi4" "rpi4.imdomestic.com" 2444 aliyun)
           (peer "sh" "sh.imdomestic.com" 3444 aliyun)
           (peer "r5s" "r5s.imdomestic.com" 2444 aliyun)
           (peer "r6s" "r6s.imdomestic.com" 2444 aliyun)

@@ -28,6 +28,9 @@ in {
     # 这台没有显示器,登录走串口/ssh,agetty 的默认登录提示完全够用。
     # tank 和 x470 是真桌面,它们那两处的 tuigreet 不动。
     ../../modules/keyd
+    # ts-relay:这台到 r5sjp 的直连绕洛杉矶(276ms),东京 DERP 反而只有 111ms。
+    # 见 docs/incidents.md#syd-jp-relay-beats-direct。
+    ../../modules/ts-relay
     ../../modules/captive-portal
   ];
 
@@ -82,6 +85,8 @@ in {
   # docs/decisions.md#rpi4-drop-pppoe。
 
   # 公寓的 hotspot 认证。凭据走 sops,不进 store。
+  my.tsRelay.enable = true;
+
   my.captivePortal = {
     enable = true;
     interface = "enp1s0u2";
@@ -243,17 +248,22 @@ in {
       RestartSec = 5;
     };
   };
+  # Xray 的凭据全部走 sops。内联到 `settings` 会把每个 portal 的 UUID 写进这个
+  # 公开仓库和 world-readable 的 nix store,所以整份 config 改由 sops.templates
+  # 渲染,再用 settingsFile 交给 xray。
+  #
+  # **这台是 bridge,不是 portal。** 2026-09-01 搬到悉尼之后它没有任何公网入口
+  # (hotspot 后面的 NAT,而且那条线没有 IPv6),所以只能由它主动拨出去。反向代理
+  # 恰好就是为这种处境设计的:拨出去的一端叫 bridge,有公网入口的那端叫 portal。
+  # 形状照抄 r5sjp —— 那台也是 bridge,只是出口在日本。
+  # 来龙去脉见 docs/decisions.md#rpi4-portal-to-bridge。
+  sops.secrets."xray/peers/h610/uuid" = {};
+  sops.secrets."xray/peers/h610/public_key" = {};
+  sops.secrets."xray/peers/h610/short_id" = {};
+  sops.secrets."xray/peers/sh/uuid" = {};
+  sops.secrets."xray/peers/sh/public_key" = {};
+  sops.secrets."xray/peers/sh/short_id" = {};
 
-  # Xray 的凭据全部走 sops。内联到 `settings` 会把 UUID 和 Reality 私钥同时写进
-  # 这个公开仓库和 world-readable 的 nix store,所以整份 config 改由
-  # sops.templates 渲染,再用 settingsFile 交给 xray。xray.service 是
-  # DynamicUser + LoadCredential:systemd 先以 root 读取渲染结果,再投给动态用户,
-  # 所以 root-only 的 /run/secrets/rendered 够用。
-  sops.secrets."xray/reality_private_key" = {};
-  sops.secrets."xray/interconn2_uuid" = {};
-  sops.secrets."xray/interconn2_short_id" = {};
-  sops.secrets."xray/client_in2_uuid" = {};
-  sops.secrets."xray/client_in2_short_id" = {};
   services.xray.enable = true;
   services.xray.settingsFile = config.sops.templates."xray-config.json".path;
 
@@ -262,76 +272,82 @@ in {
     content = let
       s = config.sops.placeholder;
 
-      # www.aliyun.com:证书记录 2845B(远低于 REALITY 硬编码的 8192 上限,
-      # 见 Xray #6356),解析到本省电信段,dest 拨号不出省。
-      aliyun = {
-        dest = "www.aliyun.com:443";
-        serverNames = ["www.aliyun.com"];
-      };
+      aliyun = "www.aliyun.com";
 
-      reality = target: privateKey: shortId: {
-        network = "tcp";
-        security = "reality";
-        realitySettings =
-          target
-          // {
-            show = false;
-            inherit privateKey;
-            shortIds = [shortId];
-          };
-      };
-
-      vision = id: {
-        inherit id;
-        flow = "xtls-rprx-vision";
-      };
-
-      vlessIn = tag: port: clients: streamSettings: {
-        inherit tag port streamSettings;
+      interconn = tag: address: port: serverName: uuid: publicKey: shortId: {
+        inherit tag;
         protocol = "vless";
-        settings = {
-          inherit clients;
-          decryption = "none";
+        settings.vnext = [
+          {
+            inherit address port;
+            users = [
+              {
+                id = uuid;
+                flow = "xtls-rprx-vision";
+                encryption = "none";
+              }
+            ];
+          }
+        ];
+        streamSettings = {
+          network = "tcp";
+          security = "reality";
+          realitySettings = {
+            inherit serverName;
+            fingerprint = "chrome";
+            inherit publicKey shortId;
+          };
         };
       };
+
+      peer = host: address: port: serverName:
+        interconn "interconn-${host}" address port serverName
+        s."xray/peers/${host}/uuid"
+        s."xray/peers/${host}/public_key"
+        s."xray/peers/${host}/short_id";
+
+      # 只有这两台。其余几台 portal 的 ddns-go 只发 AAAA,而悉尼这条线没有
+      # IPv6 —— 拨不过去,加进来只会得到一条一直重试的死链。
+      hosts = ["h610" "sh"];
     in
       builtins.toJSON {
         log.loglevel = "warning";
 
-        reverse.portals = [
-          {
-            tag = "portal-rpi4";
-            domain = "reverse-rpi4.hank.internal";
-          }
-        ];
-
-        inbounds = [
-          # r5sjp 的 bridge 拨进来的新落点(Step 4 切换)。
-          (vlessIn "interconn2" 2444
-            [(vision s."xray/interconn2_uuid")]
-            (reality aliyun s."xray/reality_private_key" s."xray/interconn2_short_id"))
-
-          # 自己用的新入口,凭据与老的完全无关。
-          (vlessIn "client-in2" 54322
-            [(vision s."xray/client_in2_uuid")]
-            (reality aliyun s."xray/reality_private_key" s."xray/client_in2_short_id"))
-        ];
+        # 域名后缀 `-au` 是这条隧道和 r5sjp 那条的唯一区分。portal 侧按域名把
+        # 连接分派给不同的 portal tag,两边**必须一字不差**。
+        reverse.bridges =
+          map (h: {
+            tag = "bridge-${h}";
+            domain = "reverse-${h}-au.hank.internal";
+          })
+          hosts;
 
         outbounds = [
+          (peer "h610" "h610.imdomestic.com" 1445 aliyun)
+          (peer "sh" "sh.imdomestic.com" 3445 aliyun)
           {
-            tag = "direct";
+            tag = "out";
             protocol = "freedom";
           }
         ];
 
-        # 四个入口一律丢进反向隧道,从 r5sjp 的日本出口出去。
-        routing.rules = [
-          {
+        routing.rules =
+          # 每条隧道的控制信道:发往该 portal 内部域名的流量回到它自己那条 outbound
+          map (h: {
             type = "field";
-            inboundTag = ["interconn2" "client-in2"];
-            outboundTag = "portal-rpi4";
-          }
-        ];
+            inboundTag = ["bridge-${h}"];
+            domain = ["full:reverse-${h}-au.hank.internal"];
+            outboundTag = "interconn-${h}";
+          })
+          hosts
+          ++ [
+            # 其余经隧道进来的流量一律从本机直出 —— 这就是悉尼出口
+            {
+              type = "field";
+              inboundTag = map (h: "bridge-${h}") hosts;
+              outboundTag = "out";
+            }
+          ];
       };
   };
 

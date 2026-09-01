@@ -66,6 +66,12 @@ in {
       "xray/interconn2_short_id" = {};
       "xray/client_in2_uuid" = {};
       "xray/client_in2_short_id" = {};
+      # 悉尼出口那条隧道的两个入口。复用本机同一对 REALITY 密钥,各自一个
+      # shortId —— 和上面两个入口的做法一致。
+      "xray/interconn_au_uuid" = {};
+      "xray/interconn_au_short_id" = {};
+      "xray/client_au_uuid" = {};
+      "xray/client_au_short_id" = {};
       "k3s/token" = {};
       "acme/cloudflare_env" = {};
     }
@@ -363,12 +369,18 @@ in {
       builtins.toJSON {
         log.loglevel = "warning";
 
+        # 两条反向隧道,两个 portal。domain 是它们唯一的区分。
         reverse.portals = [
           {
             tag = "portal-sh";
             # 这台的目录名是 shanghai,但隧道两端一直用短名 sh：r5sjp 的
             # bridge-sh 注册的是 reverse-sh.hank.internal,两边必须一字不差。
             domain = "reverse-sh.hank.internal";
+          }
+          # rpi4(悉尼)。它没有公网入口,所以由它拨进来。
+          {
+            tag = "portal-sh-au";
+            domain = "reverse-sh-au.hank.internal";
           }
         ];
 
@@ -382,6 +394,17 @@ in {
           (vlessIn "client-in2" 54322
             [(vision s."xray/client_in2_uuid")]
             (reality aliyun s."xray/reality_private_key" s."xray/client_in2_short_id"))
+
+          # ↓ 悉尼出口。端口取 +1 / +2,和上面日本那套错开。
+          # rpi4 的 bridge 拨进来的落点。
+          (vlessIn "interconn-au" 3445
+            [(vision s."xray/interconn_au_uuid")]
+            (reality aliyun s."xray/reality_private_key" s."xray/interconn_au_short_id"))
+
+          # 自己用:想从悉尼出网时连这个口。
+          (vlessIn "client-au" 54324
+            [(vision s."xray/client_au_uuid")]
+            (reality aliyun s."xray/reality_private_key" s."xray/client_au_short_id"))
         ];
 
         outbounds = [
@@ -391,12 +414,20 @@ in {
           }
         ];
 
-        # 四个入口一律丢进反向隧道,从 r5sjp 的日本出口出去。
+        # 入口决定出口:前两个进日本那条隧道,后两个进悉尼那条。
+        #
+        # 每条规则都必须同时收下 interconn-* 和 client-*:前者是 bridge 拨进来
+        # 的控制信道(目的地正是 portal 的内部域名),后者是真正的用户流量。
         routing.rules = [
           {
             type = "field";
             inboundTag = ["interconn2" "client-in2"];
             outboundTag = "portal-sh";
+          }
+          {
+            type = "field";
+            inboundTag = ["interconn-au" "client-au"];
+            outboundTag = "portal-sh-au";
           }
         ];
       };

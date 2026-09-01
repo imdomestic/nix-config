@@ -6,27 +6,31 @@
 }: let
   cfg = config.my.singbox;
 
-  # 六台 portal 的 client-in2 凭据。这个文件按 .sops.yaml 的兜底 creation_rule
-  # 加密给全部 admin + 全部 host，所以任何一台路由器都能解出全部六个节点,
-  # urltest 才有得挑。绝不能写死在这里 —— 本仓库是公开的。
+  # 节点凭据。这个文件按 .sops.yaml 的兜底 creation_rule 加密给全部 admin +
+  # 全部 host，所以任何一台路由器都能解出全部节点,urltest 才有得挑。
+  # 绝不能写死在这里 —— 本仓库是公开的。
   clientSecrets = ../../../secrets/clients/imdomestic.yaml;
 
-  # <name>.imdomestic.com:54322 = 各 portal 的 client-in2 入口。
-  nodeNames = ["h610" "rpi4" "sh" "r5s" "r6s" "r2s"];
-  nodeTags = map (n: "im-${n}") nodeNames;
+  # 名单在 ../im-nodes.nix,和 modules/{imsub,mihomo} 共用一份。
+  nodes = import ../im-nodes.nix;
   nodeFields = ["uuid" "public_key" "short_id"];
 
-  secretPath = node: field: config.sops.secrets."imdomestic/${node}/${field}".path;
+  # urltest 只比延迟。悉尼那两个节点延迟更低、带宽却只有日本的 1/9,放进
+  # urltest 会稳定胜出然后把大文件传输拖垮 —— 所以它们只进下面的 au 选择器。
+  jpTags = map (n: "im-${n.name}") (lib.filter (n: n.exit == "jp") nodes);
+  auTags = map (n: "im-${n.name}") (lib.filter (n: n.exit == "au") nodes);
+
+  secretPath = node: field: config.sops.secrets."imdomestic/${node.secret}/${field}".path;
 
   # `_secret` 由 NixOS sing-box 模块的 ExecStartPre 处理:那一句带 `+` 前缀,
   # 以 root 运行 jq 把文件内容填进 /run/sing-box/config.json,再 chown 给
   # sing-box 用户。所以 /run/secrets 下这些文件保持 root-only 就够了。
-  mkNode = name: {
+  mkNode = node: {
     type = "vless";
-    tag = "im-${name}";
-    server = "${name}.imdomestic.com";
-    server_port = 54322;
-    uuid._secret = secretPath name "uuid";
+    tag = "im-${node.name}";
+    server = node.host;
+    server_port = node.port;
+    uuid._secret = secretPath node "uuid";
     flow = "xtls-rprx-vision";
     packet_encoding = "xudp";
     tls = {
@@ -38,8 +42,8 @@
       };
       reality = {
         enabled = true;
-        public_key._secret = secretPath name "public_key";
-        short_id._secret = secretPath name "short_id";
+        public_key._secret = secretPath node "public_key";
+        short_id._secret = secretPath node "short_id";
       };
     };
   };
@@ -126,14 +130,14 @@ in {
 
   config.sops.secrets = lib.listToAttrs (lib.concatMap (node:
     map (field: {
-      name = "imdomestic/${node}/${field}";
+      name = "imdomestic/${node.secret}/${field}";
       value = {
         sopsFile = clientSecrets;
         restartUnits = ["sing-box.service"];
       };
     })
     nodeFields)
-  nodeNames);
+  nodes);
 
   config.services.sing-box = {
     enable = true;
@@ -168,7 +172,7 @@ in {
             rule_set = ["geosite-category-ads-all"];
             action = "reject";
           }
-          # 自建域名必须用国内 DNS 解析,而且要排在最前面:im 的五个 outbound
+          # 自建域名必须用国内 DNS 解析,而且要排在最前面:im 的 outbound
           # 全是 *.imdomestic.com,如果它们的解析又绕回 dns-proxy(detour = im)
           # 就成了死循环,sing-box 起不来。
           {
@@ -218,13 +222,20 @@ in {
           {
             type = "urltest";
             tag = "im";
-            outbounds = nodeTags;
+            outbounds = jpTags;
             url = "http://cp.cloudflare.com/generate_204";
             interval = "3m";
             tolerance = 50;
           }
+          # 悉尼出口。没有任何 route 规则指向它 —— 要用就手动加一条,
+          # 理由见 ../im-nodes.nix 顶部和 docs/decisions.md#au-exit-not-in-auto-group。
+          {
+            type = "selector";
+            tag = "au";
+            outbounds = auTags;
+          }
         ]
-        ++ map mkNode nodeNames
+        ++ map mkNode nodes
         ++ [
           {
             type = "direct";
