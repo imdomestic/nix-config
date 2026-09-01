@@ -5,7 +5,9 @@
   pkgs,
   pkgs-unstable,
   ...
-}: {
+}: let
+  tmux-agent-sidebar = pkgs.callPackage ../../../pkgs/tmux-agent-sidebar {};
+in {
   imports = [
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
     ../../modules/nixvim
@@ -149,6 +151,26 @@
           set -g @thumbs-command 'tmux set-buffer -w -- {} && tmux display-message "已复制 {}"'
           # 大写提示 = 复制并直接粘到当前 pane
           set -g @thumbs-upcase-command 'tmux set-buffer -w -- {} && tmux paste-buffer && tmux display-message "已粘贴 {}"'
+        '';
+      }
+
+      # 跨 session/window 监控 Claude Code 的侧边栏。prefix e 开当前 window,
+      # prefix E 开所有 window。包在 pkgs/tmux-agent-sidebar —— 上游只给 TPM
+      # 装法,那条路会往插件目录里写下载来的二进制,在 store 里行不通。
+      #
+      # hook 那半边不归 nix 管,见下面 home.file 里 .claude/plugin-sources 那条。
+      {
+        plugin = tmux-agent-sidebar;
+        # agent-sidebar.conf 里这些选项全是 `if -F '#{==:#{@x},}'` 的
+        # 「没设才给默认值」,而 home-manager 把插件自己的 extraConfig 排在它的
+        # run-shell **前面** —— 所以这里设的值会被 conf 认账。和 dotbar 同一条
+        # 规矩,写到 programs.tmux.extraConfig 里就晚了。
+        extraConfig = ''
+          set -g @sidebar_position right
+
+          # 上游默认 on:每开一个新 window 都自动塞一个侧边栏 pane 进去。
+          # 关掉,只在按 prefix e 的时候出现。
+          set -g @sidebar_auto_create off
         '';
       }
     ];
@@ -883,6 +905,19 @@
     executable = true;
   };
 
+  # 侧边栏的另一半:Claude Code 要靠 hook 才拿得到 prompt / tool call /
+  # subagent 树,而 hook 是以「plugin marketplace」的形式装的,它的 source 是一个
+  # **目录的绝对路径**(记在 ~/.claude/plugins/known_marketplaces.json 里)。
+  # 直接填 store 路径的话,每次升级路径一变就得重新 add;所以在固定位置放一个
+  # 软链,marketplace 指着它,升级自动跟上。
+  #
+  # 装的动作本身是一次性的、不归 nix 管(和上面 statusline / tmux-agent-status
+  # 一样,settings.json 不在 nix 手里):
+  #   /plugin marketplace add ~/.claude/plugin-sources/tmux-agent-sidebar
+  #   /plugin install tmux-agent-sidebar@hiroppy
+  home.file.".claude/plugin-sources/tmux-agent-sidebar".source =
+    "${tmux-agent-sidebar}/share/tmux-plugins/tmux-agent-sidebar";
+
   home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;
   home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../../../fonts/Recursive-Italic.ttf;
   home.file.".local/share/fonts/Recursive-Regular.ttf".source = ../../../fonts/Recursive-Regular.ttf;
@@ -937,6 +972,11 @@
 
   home.packages = [
     pkgs.zsh-completions
+
+    # 二进制单独进 PATH,不只是躺在插件目录里:Claude Code 那份 hook.sh 是从
+    # 它自己的 plugin cache 里跑的,查找顺序的最后一档才是 PATH —— 没有这条,
+    # 它会退回 cache 里那个 TPM 时代下载来的副本。
+    tmux-agent-sidebar
 
     # snacks.image 的转换在 **nvim 所在的机器** 上跑,所以 ssh 过去看图要求远端也有
     # 这两个。它们本来只在 profiles/dev.nix 里,而 dev profile 只有 b650 引了
