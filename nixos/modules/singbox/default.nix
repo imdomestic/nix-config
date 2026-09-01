@@ -15,8 +15,9 @@
   nodes = import ../im-nodes.nix;
   nodeFields = ["uuid" "public_key" "short_id"];
 
-  # urltest 只比延迟。悉尼那两个节点延迟更低、带宽却只有日本的 1/9,放进
-  # urltest 会稳定胜出然后把大文件传输拖垮 —— 所以它们只进下面的 au 选择器。
+  # **每个出口一个 urltest,两个出口之间只手动切。** urltest 只比延迟,而这两条
+  # 线延迟和吞吐是反的:悉尼延迟更低,吞吐却只有日本的 1/3 到 1/7(同一台 h610
+  # 实测,见 docs/decisions.md#au-exit-separate-auto-group)。
   jpTags = map (n: "im-${n.name}") (lib.filter (n: n.exit == "jp") nodes);
   auTags = map (n: "im-${n.name}") (lib.filter (n: n.exit == "au") nodes);
 
@@ -219,20 +220,28 @@ in {
 
       outbounds =
         [
+          # route 的落点是 `im`(final = "im"),所以它得是 selector:默认走
+          # 列表第一个 auto-jp,要换出口就在客户端里选 auto-au。
+          {
+            type = "selector";
+            tag = "im";
+            outbounds = ["auto-jp" "auto-au"] ++ jpTags ++ auTags;
+          }
           {
             type = "urltest";
-            tag = "im";
+            tag = "auto-jp";
             outbounds = jpTags;
             url = "http://cp.cloudflare.com/generate_204";
             interval = "3m";
             tolerance = 50;
           }
-          # 悉尼出口。没有任何 route 规则指向它 —— 要用就手动加一条,
-          # 理由见 ../im-nodes.nix 顶部和 docs/decisions.md#au-exit-not-in-auto-group。
           {
-            type = "selector";
-            tag = "au";
+            type = "urltest";
+            tag = "auto-au";
             outbounds = auTags;
+            url = "http://cp.cloudflare.com/generate_204";
+            interval = "3m";
+            tolerance = 50;
           }
         ]
         ++ map mkNode nodes
