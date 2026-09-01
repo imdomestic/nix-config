@@ -22,15 +22,18 @@ with lib; let
   nodes = import ../im-nodes.nix;
   nodeFields = ["uuid" "public_key" "short_id"];
 
-  # 自动测速组只收日本出口。悉尼那两个带宽只有 1/9,进了自动组就会被随机
-  # 选中,见 ../im-nodes.nix 顶部。
-  autoNodes = filter (n: n.exit == "jp") nodes;
-
   s = config.sops.placeholder;
   sec = node: field: s."imdomestic/${node.secret}/${field}";
 
   tags = map (n: "imdomestic-${n.name}") nodes;
-  autoTags = map (n: "imdomestic-${n.name}") autoNodes;
+
+  # **每个出口一个自动测速组,两个出口之间只手动切。** 自动组只比延迟,而这
+  # 两条线延迟和吞吐是反的:悉尼延迟更低,吞吐却只有日本的 1/3 到 1/7(同一台
+  # h610 实测,见 docs/decisions.md#au-exit-separate-auto-group)。所以组内择优
+  # 交给客户端,跨出口的取舍留给人。
+  tagsOf = exit: map (n: "imdomestic-${n.name}") (filter (n: n.exit == exit) nodes);
+  jpTags = tagsOf "jp";
+  auTags = tagsOf "au";
 
   # 缩进一整块文本。空行保持空,免得留下一串只有空格的行。
   indent = pad: text:
@@ -86,8 +89,10 @@ with lib; let
   clashTags = concatMapStringsSep "\n" (t: "      - ${t}") tags;
   egernTags = concatMapStringsSep "\n" (t: "    - ${t}") tags;
 
-  clashAutoTags = concatMapStringsSep "\n" (t: "      - ${t}") autoTags;
-  egernAutoTags = concatMapStringsSep "\n" (t: "    - ${t}") autoTags;
+  clashJpTags = concatMapStringsSep "\n" (t: "      - ${t}") jpTags;
+  clashAuTags = concatMapStringsSep "\n" (t: "      - ${t}") auTags;
+  egernJpTags = concatMapStringsSep "\n" (t: "    - ${t}") jpTags;
+  egernAuTags = concatMapStringsSep "\n" (t: "    - ${t}") auTags;
 
   # 拦 QUIC(UDP/443)。`sub` 为 null 时无条件拦,否则再 AND 上一条子规则。
   #
@@ -149,19 +154,28 @@ with lib; let
       - name: im
         type: select
         proxies:
-          - auto
+          - auto-jp
+          - auto-au
     ${clashTags}
 
-      # 各节点分处不同运营商和线路,延迟差别不小;自动择优比手动切实用。
-      # **只放日本出口的节点。** 澳洲那两个延迟低、带宽却只有 1/9,url-test
-      # 只比延迟,放进来它们会稳定胜出然后把大文件传输拖垮。
-      - name: auto
+      # 组内各节点分处不同运营商和线路,延迟差别不小,自动择优比手动切实用。
+      # 但两个出口不合并:url-test 只比延迟,而悉尼延迟更低、吞吐只有日本的
+      # 1/3 到 1/7。要用澳洲 IP 就手动选 auto-au,平时留在 auto-jp。
+      - name: auto-jp
         type: url-test
         url: http://cp.cloudflare.com/generate_204
         interval: 300
         tolerance: 100
         proxies:
-    ${clashAutoTags}
+    ${clashJpTags}
+
+      - name: auto-au
+        type: url-test
+        url: http://cp.cloudflare.com/generate_204
+        interval: 300
+        tolerance: 100
+        proxies:
+    ${clashAuTags}
 
     rules:
       # ===== 广告屏蔽 =====
@@ -232,17 +246,26 @@ with lib; let
 
     # Egern 的自动测速组叫 smart,测试地址的键是 latency_test_url —— 不是
     # clash 那边的 url-test / url。
+    # 组名沿用这个文件里的大写惯例(PROXY / AUTO-*),和 clash 那边的
+    # auto-jp / auto-au 是同一组东西。
     policy_groups:
     - smart:
-        name: AUTO
+        name: AUTO-JP
         policies:
-    ${egernAutoTags}
+    ${egernJpTags}
+        latency_test_url: http://cp.cloudflare.com/generate_204
+        hidden: true
+    - smart:
+        name: AUTO-AU
+        policies:
+    ${egernAuTags}
         latency_test_url: http://cp.cloudflare.com/generate_204
         hidden: true
     - select:
         name: PROXY
         policies:
-        - AUTO
+        - AUTO-JP
+        - AUTO-AU
     ${egernTags}
         flatten: false
         hidden: false

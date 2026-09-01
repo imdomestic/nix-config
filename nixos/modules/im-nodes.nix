@@ -13,12 +13,13 @@
 #   port   54322 = client-in2,流量经反向隧道从 r5sjp(日本)出去。
 #          54324 = client-au,经反向隧道从 rpi4(悉尼)出去。
 #   secret secrets/clients/imdomestic.yaml 里的键名。
-#   exit   这个节点最终从哪儿出网:"jp" = r5sjp,"au" = rpi4。**只有它决定
-#          节点进不进自动测速组** —— 别拿 port 或名字里的 "-au" 去判断。
+#   exit   这个节点最终从哪儿出网:"jp" = r5sjp,"au" = rpi4。**它决定节点落进
+#          哪一个自动测速组** —— 别拿 port 或名字里的 "-au" 去判断。
 #
-# 悉尼那条出口带宽只有日本的约 1/9(实测 21 vs 187 Mbps),所以两个 au 节点
-# 只进「手动选择」的策略组,绝不能进 urltest/auto 这类自动组 —— 详见
-# docs/decisions.md#au-exit-not-in-auto-group。
+# `exit` 的用法:**每个出口一个自动测速组(auto-jp / auto-au),两个出口绝不
+# 合并成一个。** 自动组比的都是延迟,而这两条线延迟和吞吐是反的 —— 悉尼延迟
+# 更低、吞吐只有日本的 1/3 到 1/7,合并的话它会稳定胜出然后把一切拖垮。
+# 实测数据见 docs/decisions.md#au-exit-separate-auto-group。
 [
   {
     name = "h610";

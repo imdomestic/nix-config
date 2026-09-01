@@ -35,29 +35,39 @@ rpi4 原本是六台 portal 之一:国内客户端连它的 `client-in2`(54322),
 **只接 h610 和 sh 两台。** 其余几台 portal(r5s / r6s / r2s)的 ddns-go 只发
 AAAA,而悉尼那条线没有 IPv6,拨不过去 —— 加进去只会再造几条死链。
 
-## 2026-09-01 · 悉尼出口不进任何自动测速组 {#au-exit-not-in-auto-group}
+## 2026-09-01 · 两个出口各有自己的自动组,绝不合并 {#au-exit-separate-auto-group}
 
-`imdomestic-h610-au` / `imdomestic-sh-au`(以及 dae 里的 `au-h610` / `au-sh`)
-只出现在**手动选择**的策略组里。clash 的 `auto`(url-test)、Egern 的 `AUTO`
-(smart)、sing-box 的 `im`(urltest)、dae 的 `im` 组,四处都把它们排除在外。
+每个客户端里是**两个**自动测速组,不是一个:
 
-理由是这些自动组**只比延迟**,而这条链路上延迟和带宽是反的:
+| | 日本出口 | 悉尼出口 | 手动选择组 |
+|---|---|---|---|
+| clash / imsub | `auto-jp` (url-test) | `auto-au` (url-test) | `im` (select) |
+| Egern | `AUTO-JP` (smart) | `AUTO-AU` (smart) | `PROXY` (select) |
+| mihomo | `auto-jp` | `auto-au` | `im` (select) |
+| sing-box | `auto-jp` (urltest) | `auto-au` (urltest) | `im` (selector) |
+| dae | `im` 组 | `au` 组 | 无(靠 routing 规则指) |
 
-| 出口 | 隧道段带宽(实测) |
-|---|---|
-| r5sjp(日本) | 187 Mbps |
-| rpi4(悉尼) | 21 Mbps |
+**组内自动择优,跨出口只手动切。** 理由是自动组比的全是延迟,而这两条线上
+延迟和吞吐是**反的**。同一台 h610、同一时刻、同一目标实测:
 
-约 1:9。悉尼那条从国内量过去延迟往往更低,于是它会在 url-test 里**稳定胜出**,
-然后把所有大文件传输拖进一条慢九倍的路 —— 而且因为它"活着且延迟低",健康检查
-永远不会把它换掉。
+| 目标 | 日本出口 54322 | 悉尼出口 54324 |
+|---|---|---|
+| AARNet 镜像(在悉尼) | **39 Mbps** | 13 Mbps |
+| Cloudflare | **132 Mbps** | 18 Mbps |
+
+连目标就在悉尼的时候,日本出口都快 3 倍。而同一时刻 dae 的延迟检查里,悉尼组
+是 446–564ms 且稳定,日本组在 0.7–2.9s 之间反复判死判活 —— **按延迟看悉尼明显
+更优,按吞吐看它差 3 到 7 倍**。合成一个自动组,悉尼会稳定胜出,然后把一切拖垮。
+
+所以悉尼出口的定位是**冗余 + 一个澳洲 IP**,不是性能。要用澳洲 IP 或者日本那条
+挂了,手动切 `auto-au`;平时留在 `auto-jp`。
 
 dae 那边还有一个额外的坑值得单独记:`im` 组是靠 `name(keyword: 'imdomestic')`
 筛的,所以那两个节点在 dae 里**故意不叫 `imdomestic-*`**,叫 `au-h610` /
 `au-sh`。哪天有人为了"统一命名"把它们改回去,它们会**静悄悄地**混进 im 组,
 不报任何错。
 
-带宽数据的来源见 docs/incidents.md#syd-jp-relay-beats-direct。
+隧道段的带宽数据见 docs/incidents.md#syd-jp-relay-beats-direct。
 
 ---
 

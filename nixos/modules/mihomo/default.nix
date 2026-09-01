@@ -34,9 +34,11 @@
 
   nodeTags = map (n: "imdomestic-${n.name}") nodes;
 
-  # 自动组只收日本出口。悉尼那两个延迟更低、带宽却只有 1/9,而 url-test/smart
-  # 只比延迟 —— 放进来它们会稳定胜出,然后把大文件传输拖垮。
-  autoTags = map (n: "imdomestic-${n.name}") (lib.filter (n: n.exit == "jp") nodes);
+  # **每个出口一个自动组,两个出口之间只手动切。** 自动组比的是延迟,而这两条
+  # 线延迟和吞吐是反的:悉尼延迟更低,吞吐却只有日本的 1/3 到 1/7(同一台 h610
+  # 实测,见 docs/decisions.md#au-exit-separate-auto-group)。合成一个组的话,
+  # 澳洲会稳定胜出然后把大文件传输拖垮。
+  tagsOf = exit: map (n: "imdomestic-${n.name}") (lib.filter (n: n.exit == exit) nodes);
 
   # 国外 DNS,经代理出去(respect-rules)。
   #
@@ -54,10 +56,9 @@
   # 主策略组的类型。smart 是 vernesong fork 独有的,上游 mihomo 会直接报
   # `unsupported type: smart` 而拒绝启动 —— 所以这两个开关必须一起动,
   # 不能只开一个。
-  autoGroup =
+  autoGroup = name: proxies:
     {
-      name = "auto";
-      proxies = autoTags;
+      inherit name proxies;
       url = "http://cp.cloudflare.com/generate_204";
       interval = 300;
       tolerance = 100;
@@ -308,9 +309,10 @@ in {
           {
             name = "im";
             type = "select";
-            proxies = ["auto"] ++ nodeTags;
+            proxies = ["auto-jp" "auto-au"] ++ nodeTags;
           }
-          autoGroup
+          (autoGroup "auto-jp" (tagsOf "jp"))
+          (autoGroup "auto-au" (tagsOf "au"))
         ];
 
         rules =
