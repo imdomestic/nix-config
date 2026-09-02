@@ -46,12 +46,21 @@ rustPlatform.buildRustPackage (finalAttrs: {
     ln -s $out/bin/tmux-agent-sidebar $plugindir/bin/tmux-agent-sidebar
   '';
 
-  # 测试照跑(1022 条通过),只跳掉两条:它们要在一个**真的 git 仓库**里跑
-  # (group.rs:175 / :192 断言 "should detect git repo"),而 fetchFromGitHub
-  # 拿到的是 tarball,没有 .git。剩下的都是纯逻辑,值得当构建期的护栏。
+  # 测试照跑(1021 条通过),跳掉三条对环境有假设的:
+  #
+  #   前两条要在一个**真的 git 仓库**里跑(group.rs:175 / :192 断言
+  #   "should detect git repo"),而 fetchFromGitHub 拿到的是 tarball,没有 .git。
+  #
+  #   第三条卡在文件系统的 mtime 精度上,只在 Linux 上挂。refresh_task_progress
+  #   有个短路(state/refresh.rs:249):活动日志的 mtime 和上一轮相同就跳过重新
+  #   解析。而这条测试往 /tmp/tmux-agent-activity_101.log 连写两次、中间只隔几
+  #   微秒,再断言第二次能读出新任务 —— 两次写落进同一个 mtime 刻度,短路就生效,
+  #   断言必挂。darwin 上碰巧每次都拿到不同的 mtime,所以只有 Linux 报错。
+  #   全套测试里只有它「写两次并指望第二次重新解析」,也只有它挂,对得上。
   checkFlags = [
     "--skip=group::tests::resolve_git_info_for_real_repo"
     "--skip=group::tests::worktree_and_main_share_same_repo_root"
+    "--skip=state::tests::task_progress_reshows_when_new_tasks_added"
   ];
 
   # home-manager 的 programs.tmux.plugins 认的是 `rtp`(它照着这个值写
