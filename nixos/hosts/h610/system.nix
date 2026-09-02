@@ -43,6 +43,24 @@
         thinking = "disabled";
         aliases = ["pro"];
       };
+      "qwen-local" = {
+        provider = "qwen";
+        protocol = "openai-chat";
+        base_url = "http://wsl.inner.imdomestic.com:8000/v1";
+        api_key_required = false;
+        model = "qwen3.8-27b";
+        timeout_seconds = 30;
+        thinking = "disabled";
+        aliases = ["qwen" "qwen27b"];
+        fallback_profiles = ["deepseek"];
+        capabilities = {
+          tools = true;
+          streaming = true;
+          json_mode = true;
+          model_listing = true;
+          vision = false;
+        };
+      };
       "gpt-5.3-codex-spark" = mkCliProxyProfile "gpt-5.3-codex-spark" ["spark"];
       "gpt-5.4" = mkCliProxyProfile "gpt-5.4" ["gpt" "gpt54"];
       "gpt-5.4-mini" = mkCliProxyProfile "gpt-5.4-mini" ["mini" "gpt54mini"];
@@ -1029,6 +1047,7 @@ in {
       AI_ARCHIVE_BATCH_SIZE=20
       CLIPROXY_API_KEY=${config.sops.placeholder."cliproxy/api_key"}
       AI_MODEL_DEFAULT_PROFILE=deepseek
+      AI_SIMPLE_CHAT_PROFILE=qwen-local
       AI_MODEL_PROFILES_JSON='${qqBotModelProfiles}'
       AI_GROUP_MODEL_PROFILES_JSON='{"201644592":"gpt-5.6-sol"}'
     '';
