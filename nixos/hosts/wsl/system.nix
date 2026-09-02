@@ -38,8 +38,72 @@
 
   virtualisation.podman.enable = true;
   virtualisation.oci-containers.backend = "podman";
-  # Bind only to WSL's tailnet address; my.host.tsIp would also enroll it in deploy-rs/telemetry.
+  # 24 GB tuning and the local image provenance: docs/incidents.md#wsl-ninfer-24g.
   virtualisation.oci-containers.containers.qwen38 = {
+    image = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
+    autoStart = true;
+
+    environment = {
+      HTTP_PROXY = "http://127.0.0.1:7897";
+      HTTPS_PROXY = "http://127.0.0.1:7897";
+      NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
+    };
+
+    volumes = [
+      "/var/lib/qwen38/ninfer-models:/models:ro"
+      "/var/lib/qwen38/ninfer-logs:/logs"
+    ];
+
+    extraOptions = [
+      "--device=nvidia.com/gpu=all"
+      "--network=host"
+      "--ipc=host"
+    ];
+
+    cmd = [
+      "ninfer-serve"
+      "/models/qwen3_8_27b_nvfp4.ninfer"
+      "--model-id"
+      "qwen3.8-27b"
+      "--host"
+      "100.64.0.14"
+      "--port"
+      "8000"
+      "--max-context"
+      "100000"
+      "--kv-capacity"
+      "100000"
+      "--max-concurrency"
+      "1"
+      "--prefill-chunk"
+      "1024"
+      "--kv-dtype"
+      "nvfp4"
+      "--device-state-slots"
+      "0"
+      "--host-state-slots"
+      "2"
+      "--host-kv-mib"
+      "1024"
+      "--max-private-continuations"
+      "1"
+      "--max-shared-prefixes"
+      "1"
+      "--max-long-anchors-per-continuation"
+      "1"
+      "--media-cache-mib"
+      "256"
+      "--media-live-mib"
+      "2048"
+      "--vision-max-tokens"
+      "8192"
+      "--request-log-jsonl"
+      "/logs/qwen38.jsonl"
+    ];
+  };
+
+  # Manual rollback profile; stop qwen38 before starting it because both own GPU 0 and port 8000.
+  virtualisation.oci-containers.containers.qwen38-vllm = {
     image = "docker.io/vllm/vllm-openai:v0.28.0";
     autoStart = false;
 
@@ -71,22 +135,16 @@
       "8000"
       "--quantization"
       "modelopt"
-
       "--kv-cache-dtype"
       "fp8"
-
       "--max-model-len"
       "100000"
-
       "--max-num-seqs"
       "1"
-
       "--max-num-batched-tokens"
       "2048"
-
       "--kv-cache-memory-bytes"
-      "4300M" # 124,285 FP8 tokens; see docs/incidents.md#wsl-qwen-100k-dspark.
-
+      "4300M"
       "--language-model-only"
       "--enable-prefix-caching"
       "--trust-remote-code"
@@ -101,9 +159,15 @@
   systemd.tmpfiles.rules = [
     "d /var/lib/qwen38/huggingface 0755 root root -"
     "d /var/lib/qwen38/vllm 0755 root root -"
+    "d /var/lib/qwen38/ninfer-models 0755 root root -"
+    "d /var/lib/qwen38/ninfer-logs 0755 root root -"
   ];
 
   systemd.services.podman-qwen38 = {
+    after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
+    requires = ["nvidia-container-toolkit-cdi-generator.service"];
+  };
+  systemd.services.podman-qwen38-vllm = {
     after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
     requires = ["nvidia-container-toolkit-cdi-generator.service"];
   };

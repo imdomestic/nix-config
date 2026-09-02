@@ -11,6 +11,15 @@
 
 ---
 
+## 2026-09-03 · WSL 的 NInfer 默认不常驻 MTP {#wsl-ninfer-no-default-mtp}
+
+MTP3 不是不能运行:100K NVFP4 KV 的纯文本服务已经验证会实际接受 draft token。
+它不在默认参数里,是因为 24 GB 上同时常驻 8K Vision 时还差约 241 MiB 才能启动;
+关闭 Vision 后也只剩 379 MiB 内部余量。默认优先保留 100K、多模态和约 727 MiB
+内部余量。完整内存账和替代档见 `docs/incidents.md#wsl-ninfer-24g`。
+
+---
+
 ## 2026-09-01 · rpi4 从 portal 改成 bridge {#rpi4-portal-to-bridge}
 
 rpi4 原本是六台 portal 之一:国内客户端连它的 `client-in2`(54322),流量经反向
