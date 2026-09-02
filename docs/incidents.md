@@ -27,14 +27,17 @@
 `127.0.0.1:8000` 时,`ss` 明明显示 vLLM 正在 listen,但宿主和同容器内的
 连接都立即 `ECONNREFUSED`。对照实验很明确:临时 Python server 绑
 `0.0.0.0` 可以连,绑 WSL 的 `10.255.255.254` 可以连,绑 `::1` 也可以连;
-只有 IPv4 loopback 绑定坏掉。因此正式配置用 IPv6 loopback `::1`,既绕过
-WSL 的坑,也没有为了好连而把无鉴权 API 暴露到局域网。
+只有 IPv4 loopback 绑定坏掉。本机访问时 IPv6 loopback `::1` 可以绕过;
+后来需要从 tailnet 访问,正式配置就直接绑定 WSL 的 Tailscale 地址
+`100.64.0.14`,没有为了好连而把无鉴权 API 暴露到局域网。
 
 最终实测不是"4 bit 所以 27B 只占 13.5 GB":仓库里的两个 safetensors
 合计 **16.69 GiB**,加载后的模型显存 **16.19 GiB**。vLLM 另留了
-**5.0 GiB FP8 KV cache**(126,217 tokens),总驻留约 **23.5/24.5 GB**;
-32K、单并发、eager 模式稳定完成了 256-token 请求,热态端到端约
-**13.4 tokens/s**。
+最初为求稳用 eager 模式留了 **5.0 GiB FP8 KV cache**(126,217 tokens),
+总驻留约 **23.5/24.5 GB**,但热态 256-token 请求只有 **13.4 tokens/s**。
+32K 单并发实际不需要这么大的 cache:改成固定 **2 GiB** 后仍有 49,758
+tokens,同时 CUDA Graph 捕获只占 **0.46 GiB**。相同请求变成
+**63.1 tokens/s**(4.7 倍),空闲驻留约 **20.2/24.5 GB**。
 
 ### 被我带偏的地方
 
