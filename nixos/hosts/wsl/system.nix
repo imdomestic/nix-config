@@ -38,6 +38,7 @@
 
   virtualisation.podman.enable = true;
   virtualisation.oci-containers.backend = "podman";
+  # Bind only to WSL's tailnet address; my.host.tsIp would also enroll it in deploy-rs/telemetry.
   virtualisation.oci-containers.containers.qwen38 = {
     image = "docker.io/vllm/vllm-openai:v0.27.1-cu129-ubuntu2404";
     autoStart = false;
@@ -46,7 +47,7 @@
       MAX_JOBS = "2";
       HTTP_PROXY = "http://127.0.0.1:7897";
       HTTPS_PROXY = "http://127.0.0.1:7897";
-      NO_PROXY = "127.0.0.1,localhost,::1";
+      NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
     };
 
     volumes = [
@@ -65,7 +66,7 @@
       "--served-model-name"
       "qwen3.8-27b"
       "--host"
-      "::1"
+      "100.64.0.14"
       "--port"
       "8000"
       "--quantization"
@@ -78,9 +79,8 @@
       "1"
       "--max-num-batched-tokens"
       "2048"
-      "--gpu-memory-utilization"
-      "0.92"
-      "--enforce-eager"
+      "--kv-cache-memory-bytes"
+      "2147483648" # 49,758 FP8 tokens, while leaving room for CUDA Graph.
       "--language-model-only"
       "--enable-prefix-caching"
       "--trust-remote-code"
@@ -103,7 +103,7 @@
   };
 
   networking.proxy.default = "http://127.0.0.1:7897";
-  networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain,::1";
+  networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain,100.64.0.14";
   services.resolved = {
     enable = true;
     settings.Resolve.FallbackDNS = ["223.5.5.5"];
