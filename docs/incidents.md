@@ -9,6 +9,45 @@
 
 ---
 
+## 2026-09-03 · 24 GB 上的 100K 上下文与 DSpark 不能兼得 {#wsl-qwen-100k-dspark}
+
+给 WSL 上的 Qwen3.8-27B NVFP4 扩窗口时,先用 vLLM 0.28.0 把
+`max_model_len` 设成 100,000,固定分配 `4300M` FP8 KV。vLLM 实际把它解析成
+4,508,876,800 bytes,给出 **124,285 tokens** 的 KV 容量。98,000-token prompt
+加 4-token 输出完整跑通,耗时 20.05 秒;日志里的平均 prefill 是
+9,799 tokens/s。请求后 `nvidia-smi` 显示约 **23,122/24,455 MiB**,只剩
+914 MiB,所以 100K 已经接近这张 24 GB 卡适合长期使用的上限。
+
+随后测试的不是内置 MTP,而是模型作者给最终 checkpoint 配套的
+`Qwen3.8-27B-DSpark-NVFP4` 草稿模型。最终主模型已经明确删除 MTP head:
+`config.json` 是 `mtp_num_hidden_layers = 0`,safetensors index 里也没有 MTP
+tensor。DSpark 只能走专用 `lmsysorg/sglang:qwen38-27b` 构建。
+
+24 GB 下的实测余量不够:
+
+| SGLang 配置 | 实际 KV tokens | 结果 |
+|---|---:|---|
+| static 0.90,8 个 Mamba slot | 0 | 权重后无法创建 KV pool |
+| static 0.95,8 slot | 9,536 | 能启动,远低于声明的 100K |
+| static 0.97,4 slot,关闭 Radix/prefill graph | 27,882 | 27K 请求通过,但只剩 156 MiB |
+
+主模型在 SGLang 中占 **17.35 GB**,DSpark 再占 **1.44 GB**;Mamba cache 和
+目标、草稿各自的 KV cache 还会继续吃显存。最后一行已经牺牲 prefix cache,
+并把状态槽压到单请求所需的绝对下限,不适合作为常驻服务。简单的 256-token
+microbenchmark 热态约 90 tokens/s,加速是真的,但不值得把 100K 窗口换成不足
+28K。正式配置因此保留 vLLM 100K、单并发和 4.2 GiB FP8 KV,不启用推测解码。
+
+### 被我带偏的地方
+
+- 模型卡里仍有“built-in MTP head”的历史对照数据,看上去像当前权重能直接开;
+  实际最终版已经把它删掉,必须同时检查 `config.json` 和 tensor index。
+- `/v1/models` 会照配置报告 `max_model_len = 100000`,即使 SGLang 实际只分到
+  9,536 个 KV token。能启动、API 报 100K 都不能替代真实长 prompt 测试。
+- `--language-only` 在这个 SGLang 构建里没有降低实测的 17.35 GB 权重占用,
+  不能把它当作可用显存预算。
+
+---
+
 ## 2026-09-02 · WSL 上的 vLLM:CDI 驱动串版与 IPv4 回环黑洞 {#wsl-vllm-nvfp4}
 
 在 24 GB 的 RTX 5090 D v2 上部署 Qwen3.8-27B NVFP4,模型本身能跑,

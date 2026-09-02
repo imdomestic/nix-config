@@ -40,7 +40,7 @@
   virtualisation.oci-containers.backend = "podman";
   # Bind only to WSL's tailnet address; my.host.tsIp would also enroll it in deploy-rs/telemetry.
   virtualisation.oci-containers.containers.qwen38 = {
-    image = "docker.io/vllm/vllm-openai:v0.27.1-cu129-ubuntu2404";
+    image = "docker.io/vllm/vllm-openai:v0.28.0";
     autoStart = false;
 
     environment = {
@@ -71,16 +71,22 @@
       "8000"
       "--quantization"
       "modelopt"
+
       "--kv-cache-dtype"
       "fp8"
+
       "--max-model-len"
-      "32768"
+      "100000"
+
       "--max-num-seqs"
       "1"
+
       "--max-num-batched-tokens"
       "2048"
+
       "--kv-cache-memory-bytes"
-      "2147483648" # 49,758 FP8 tokens, while leaving room for CUDA Graph.
+      "4300M" # 124,285 FP8 tokens; see docs/incidents.md#wsl-qwen-100k-dspark.
+
       "--language-model-only"
       "--enable-prefix-caching"
       "--trust-remote-code"
