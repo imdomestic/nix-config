@@ -9,6 +9,69 @@
 
 ---
 
+## 2026-09-03 · NInfer 从 32 GB RTX 5090 移植到 24 GB 5090 D v2 {#wsl-ninfer-24g}
+
+上游 NInfer 的 Qwen3.8-27B NVFP4 路径确实比通用框架更适合 Blackwell:它原生有
+SM120a W4A4、NVFP4/K8V4 KV、Vision、MTP 和 OpenAI/Anthropic API。但作者发布的
+数据来自 **32 GiB RTX 5090**,不能把 240K/260K 示例原样搬到这张 **24,455 MiB**
+的 5090 D v2。
+
+这次固定在 NInfer commit
+`550d0ac3a50cc725c3a1618784a62287ea9df73b`,模型用 Hugging Face revision
+`204e3d92c30d9d05f3300d2f52e443ad1edf6ddf` 的
+`qwen3_8_27b_nvfp4.ninfer`。文件是 21,492,695,040 bytes,SHA-256 为
+`bb3360522a06e136e0367f5703414d26272b7285c8a6ab6194135c17dbd81b32`。
+
+原版 Vision 固定给单个媒体项按 16,384 token 规划 GPU workspace。24 GB 下这会
+浪费掉常规图片根本用不到的空间。移植了 4090 fork 的思路,但没有带入它的 Ada
+量化内核:只增加 `--vision-max-tokens`,同时约束 frontend 总预算、单项 workspace
+和启动日志。可复现补丁是
+`nixos/hosts/wsl/ninfer-24g-vision-budget.patch`(SHA-256
+`1880c63eaacdbefc0aa519d36b69493ad8b9fcfa9453aa62bc7499d2c7bfb890`)。
+镜像 `localhost/ninfer:qwen38-24g-550d0ac-1880c63` 的 image ID 是
+`sha256:4984e3700d88760dba0b592749639c3ac1a4f9a20b06438cb37b90457248ee3a`。
+
+### 24 GB 实测
+
+所有行都是单并发、100,000 logical context、100,032 个实际 KV token、CUDA Graph
+和 prefix reuse 开启。显存数字来自 NInfer 的 `server_start.memory`,不是从
+`nvidia-smi` 总数反推。
+
+| 常驻功能 | KV | 结果 | 权重 bytes | runtime bytes | 启动后剩余 |
+|---|---|---|---:|---:|---:|
+| Text | NVFP4 auto | 通过 | 20,375,587,264 | 2,182,799,360 | 1,330,642,944 |
+| Text + MTP3 | NVFP4 explicit | 通过,但太紧 | 21,183,894,976 | 2,380,771,072 | 397,410,304 |
+| Text + 原版 Vision | NVFP4 explicit | 通过,但太紧 | 20,671,298,912 | 2,889,465,856 | 328,204,288 |
+| Text + 8K Vision | NVFP4 explicit | **正式配置** | 20,671,298,912 | 2,456,141,824 | 762,314,752 |
+| Text + 8K Vision + MTP3 | NVFP4 explicit | 失败,差 252,443,904 bytes | — | 2,654,113,536 | — |
+
+正式档随后完成了三项验收:
+
+- OpenAI Responses 输入 98,012 tokens,再生成 8 tokens,总耗时 22.73 秒,没有 OOM;
+- 320×240 图片实际走 Vision,正确回答出「狗」,请求后 `nvidia-smi` 仍余约 1.37 GiB;
+- 从 tailnet 的 h610 访问 `100.64.0.14` 能取得 `/health` 和 `/v1/models`。
+
+因此默认取舍是 **100K + NVFP4 KV + 8K Vision + 单并发**,不常驻 MTP。MTP3
+本身已验证能工作并实际接受 draft token,但它只适合作为停掉多模态服务后手工启动的
+纯文本性能档;为了默认开启它而把上下文降到 80K,余量依然不够健康。原 vLLM 100K
+配置保留为 `podman-qwen38-vllm.service`,回退时先停 NInfer,再启动该服务。
+
+重建本地镜像时,在上述 commit 的干净 checkout 上应用补丁后运行仓库 Docker build。
+OCI module 使用 `--pull missing`,所以固定 tag 必须先存在于本机 image store;模型文件
+必须位于 `/var/lib/qwen38/ninfer-models/qwen3_8_27b_nvfp4.ninfer` 并先核对 SHA-256。
+
+### 被我带偏的地方
+
+- 最初只看到作者写“RTX 5090”,忽略了性能文档明确是 **32 GiB**;这让 240K 上下文
+  和多组件并存看起来像可以直接复制。
+- “27B × 4 bit ≈ 13.5 GB”只算了理想化的全 4-bit 权重。这个 artifact 还包含
+  FP8/BF16 Text 层、Vision、MTP、proposal head 和 frontend,文件本身就是 20.02 GiB;
+  启动时只按所选组件驻留,仍远大于 13–14 GB。
+- 能启动不代表配置健康。原版 Vision 和 MTP3 各自都能靠取消 1 GiB 自动 headroom
+  塞进 100K,但内部只剩 313–379 MiB;必须读结构化内存账本并做 98K 实际请求。
+
+---
+
 ## 2026-09-03 · 24 GB 上的 100K 上下文与 DSpark 不能兼得 {#wsl-qwen-100k-dspark}
 
 给 WSL 上的 Qwen3.8-27B NVFP4 扩窗口时,先用 vLLM 0.28.0 把

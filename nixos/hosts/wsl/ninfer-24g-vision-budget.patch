@@ -1,0 +1,293 @@
+diff --git a/Dockerfile b/Dockerfile
+index bc3dc5d..759dab4 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -1,6 +1,6 @@
+ # syntax=docker/dockerfile:1
+ 
+-FROM nvidia/cuda:13.1.2-devel-ubuntu24.04 AS build
++FROM docker.io/nvidia/cuda:13.1.2-devel-ubuntu24.04 AS build
+ 
+ ARG DEBIAN_FRONTEND=noninteractive
+ RUN apt-get update \
+@@ -25,7 +25,7 @@ RUN cmake -S . -B /build -G Ninja \
+         -DNINFER_BUILD_BENCHMARKS=OFF \
+     && cmake --build /build --parallel --target ninfer ninfer-serve
+ 
+-FROM nvidia/cuda:13.1.2-runtime-ubuntu24.04
++FROM docker.io/nvidia/cuda:13.1.2-runtime-ubuntu24.04
+ 
+ ARG DEBIAN_FRONTEND=noninteractive
+ RUN apt-get update \
+diff --git a/apps/cli/main.cpp b/apps/cli/main.cpp
+index bd6dfcb..4b75d8a 100644
+--- a/apps/cli/main.cpp
++++ b/apps/cli/main.cpp
+@@ -291,6 +291,7 @@ int main(int argc, char** argv) {
+         engine_options.kv_cache       = cli.kv_cache;
+         engine_options.speculative    = cli.speculative;
+         engine_options.enable_vision  = cli.enable_vision;
++        engine_options.vision_max_tokens = cli.vision_max_tokens;
+         engine_options.use_cuda_graph = cli.use_cuda_graph;
+         // One CLI invocation owns exactly one request, so retained cross-request context has no
+         // consumer and must not reserve an extra Device StateImage or run terminal capture.
+diff --git a/apps/cli/options.cpp b/apps/cli/options.cpp
+index ecd92f8..b9c86a9 100644
+--- a/apps/cli/options.cpp
++++ b/apps/cli/options.cpp
+@@ -86,13 +86,14 @@ std::string usage_text(const char* argv0) {
+            "       [--presence-penalty F] [--frequency-penalty F] [--seed N] [--greedy]\n"
+            "       [--stop-token-id N]... [--stop <text>]... [--reasoning-stop <text>]...\n"
+            "       [--raw-output] [--print-token-ids] [--no-thinking] [--thinking-budget N]\n"
+-           "       [--reasoning-effort low|medium|xhigh] [--vision]\n"
++           "       [--reasoning-effort low|medium|xhigh] [--vision] [--vision-max-tokens N]\n"
+            "       [--no-cuda-graph]\n"
+            "\n"
+            "Streams answer content to stdout and reasoning plus diagnostics to stderr.\n"
+            "Structured message content accepts text, image/image_url, and video/video_url parts;\n"
+            "media sources may be local paths, HTTP(S) URLs, or base64 data URIs.\n"
+            "--vision enables image/video input and loads the fixed Vision GPU allocations.\n"
++           "--vision-max-tokens bounds aggregate Vision tokens and its GPU workspace.\n"
+            "--thinking-budget caps model-origin thinking tokens; inserted control tokens count "
+            "toward --max-new.\n"
+            "--kv-capacity auto leaves " +
+@@ -154,6 +155,9 @@ Options parse_options(int argc, char** argv) {
+             options.reasoning_effort = parse_reasoning_effort(value(arg));
+         } else if (arg == "--vision") {
+             options.enable_vision = true;
++        } else if (arg == "--vision-max-tokens") {
++            options.vision_max_tokens = parse_u32(value(arg), "vision-max-tokens");
++            options.enable_vision     = true;
+         } else if (arg == "--no-cuda-graph") {
+             options.use_cuda_graph = false;
+         } else if (arg == "--stop-token-id") {
+diff --git a/apps/cli/options.h b/apps/cli/options.h
+index 3c0c2e0..554d112 100644
+--- a/apps/cli/options.h
++++ b/apps/cli/options.h
+@@ -25,8 +25,9 @@ struct Options {
+ 
+     KvCacheStorage kv_cache = KvCacheStorage::BFloat16;
+     SpeculativeOptions speculative;
+-    bool enable_vision  = false;
+-    bool use_cuda_graph = true;
++    bool enable_vision              = false;
++    std::uint32_t vision_max_tokens = 32'768;
++    bool use_cuda_graph             = true;
+ 
+     bool raw_output      = false;
+     bool print_token_ids = false;
+diff --git a/include/ninfer/types.h b/include/ninfer/types.h
+index 2cbe7a2..dabdb05 100644
+--- a/include/ninfer/types.h
++++ b/include/ninfer/types.h
+@@ -162,6 +162,7 @@ struct EngineOptions {
+     // Zero selects a bounded worker count from the detected host concurrency.
+     std::uint32_t media_preprocess_threads = 0;
+     bool enable_vision                     = false;
++    std::uint32_t vision_max_tokens        = 32'768;
+     bool use_cuda_graph                    = true;
+     ContextCacheOptions context_cache;
+     ContextCostOptions context_cost;
+diff --git a/src/serve/generation_service.cpp b/src/serve/generation_service.cpp
+index 1c5d156..55d3901 100644
+--- a/src/serve/generation_service.cpp
++++ b/src/serve/generation_service.cpp
+@@ -243,6 +243,7 @@ GenerationService::GenerationService(ServeOptions options, StartupObserver start
+     engine_options.prefill_chunk            = options_.prefill_chunk;
+     engine_options.kv_cache                 = options_.kv_cache;
+     engine_options.enable_vision            = options_.enable_vision;
++    engine_options.vision_max_tokens        = options_.vision_max_tokens;
+     engine_options.use_cuda_graph           = options_.use_cuda_graph;
+     engine_options.speculative              = options_.speculative;
+     engine_options.context_cache            = options_.context_cache;
+diff --git a/src/serve/serve_options.cpp b/src/serve/serve_options.cpp
+index 3dac250..908d6cf 100644
+--- a/src/serve/serve_options.cpp
++++ b/src/serve/serve_options.cpp
+@@ -80,7 +80,7 @@ std::string serve_usage_text(const char* argv0) {
+            "[--response-store-max-records N] [--response-store-max-mib N] "
+            "[--kv-dtype bf16|int8|fp8|nvfp4|k8v4] [--spec mtp|dflash --draft-tokens N] "
+            "[--default-max-tokens N] [--default-thinking-budget N] "
+-           "[--vision] [--no-cuda-graph] [--no-prefix-reuse] "
++           "[--vision] [--vision-max-tokens N] [--no-cuda-graph] [--no-prefix-reuse] "
+            "[--lm-head-draft] [--no-thinking] [--preserve-thinking] [--cors] "
+            "[--temperature F] [--top-p F] [--top-k N] [--min-p F] [--presence-penalty F] "
+            "[--frequency-penalty F] [--seed N] [--greedy]\n"
+@@ -98,6 +98,7 @@ std::string serve_usage_text(const char* argv0) {
+            "default\n"
+            "       --log-stats-interval-ms defaults to 5000; 0 disables periodic throughput logs\n"
+            "       --vision enables media and loads the fixed Vision GPU allocations\n"
++           "       --vision-max-tokens bounds aggregate Vision tokens and its GPU workspace\n"
+            "       --kv-capacity auto leaves " +
+            std::to_string(kDefaultKvCapacityHeadroomBytes / (1024ULL * 1024ULL)) +
+            " MiB of sizing headroom\n"
+@@ -279,6 +280,14 @@ ServeOptions parse_serve_options(int argc, char** argv) {
+             options.default_thinking_budget = static_cast<std::uint32_t>(budget);
+         } else if (arg == "--vision") {
+             options.enable_vision = true;
++        } else if (arg == "--vision-max-tokens") {
++            const int value =
++                parse_nonnegative_int(require_value("--vision-max-tokens"), "vision-max-tokens");
++            if (value == 0) {
++                throw std::invalid_argument("--vision-max-tokens must be positive");
++            }
++            options.vision_max_tokens = static_cast<std::uint32_t>(value);
++            options.enable_vision     = true;
+         } else if (arg == "--no-cuda-graph") {
+             options.use_cuda_graph = false;
+         } else if (arg == "--no-prefix-reuse") {
+diff --git a/src/serve/serve_options.h b/src/serve/serve_options.h
+index c529fbc..c49ecdb 100644
+--- a/src/serve/serve_options.h
++++ b/src/serve/serve_options.h
+@@ -44,8 +44,9 @@ struct ServeOptions {
+     KvCacheStorage kv_cache                = KvCacheStorage::BFloat16;
+     SpeculativeOptions speculative;
+     ContextCacheOptions context_cache;
+-    bool enable_vision      = false;
+-    bool use_cuda_graph     = true;
++    bool enable_vision              = false;
++    std::uint32_t vision_max_tokens = 32'768;
++    bool use_cuda_graph             = true;
+     bool allow_prefix_reuse = true;
+     bool enable_thinking =
+         true; // default thinking mode for the generation prompt (--no-thinking opts out)
+diff --git a/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/frontend.h b/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/frontend.h
+index e450927..854d1f0 100644
+--- a/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/frontend.h
++++ b/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/frontend.h
+@@ -18,6 +18,7 @@ inline constexpr std::size_t kTokenDomain = 248077;
+ struct FrontendOptions {
+     bool vision_enabled                    = true;
+     std::uint32_t max_context              = 2'048;
++    std::uint32_t max_vision_tokens        = 32'768;
+     std::size_t media_cache_bytes          = kDefaultMediaCacheBytes;
+     std::size_t media_live_bytes           = kDefaultMediaLiveBytes;
+     std::uint32_t media_preprocess_threads = 0;
+diff --git a/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/startup_features.h b/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/startup_features.h
+index 67eae7f..212a534 100644
+--- a/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/startup_features.h
++++ b/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/startup_features.h
+@@ -6,6 +6,7 @@ namespace ninfer::targets::qwen3_6 {
+ 
+ struct StartupFeatures {
+     bool vision                    = false;
++    std::uint32_t vision_max_tokens = 32'768;
+     SpeculativeBackend speculative = SpeculativeBackend::None;
+     ProposalHead proposal_head     = ProposalHead::Full;
+ 
+@@ -26,9 +27,10 @@ struct StartupFeatures {
+ 
+ [[nodiscard]] inline StartupFeatures startup_features(const EngineOptions& options) noexcept {
+     return StartupFeatures{
+-        .vision        = options.enable_vision,
+-        .speculative   = options.speculative.backend,
+-        .proposal_head = options.speculative.proposal_head,
++        .vision            = options.enable_vision,
++        .vision_max_tokens = options.vision_max_tokens,
++        .speculative       = options.speculative.backend,
++        .proposal_head     = options.speculative.proposal_head,
+     };
+ }
+ 
+diff --git a/src/targets/qwen3_6/impl/frontend/frontend.cpp b/src/targets/qwen3_6/impl/frontend/frontend.cpp
+index 9e6cfaf..5c64548 100644
+--- a/src/targets/qwen3_6/impl/frontend/frontend.cpp
++++ b/src/targets/qwen3_6/impl/frontend/frontend.cpp
+@@ -851,8 +851,8 @@ public:
+         if (options.max_context == 0) {
+             throw std::invalid_argument("frontend max_context must be nonzero");
+         }
+-        const std::uint64_t vision_tokens =
+-            std::min<std::uint64_t>(options.max_context, kMaximumPromptVisionTokens);
++        const std::uint64_t vision_tokens = std::min<std::uint64_t>(
++            {options.max_context, options.max_vision_tokens, kMaximumPromptVisionTokens});
+         processor.max_vision_tokens = vision_tokens;
+         processor.max_raw_patches   = vision_tokens * kRawPatchesPerVisionToken;
+         if (vision_enabled) {
+diff --git a/src/targets/qwen3_6/impl/runtime/layouts_impl.h b/src/targets/qwen3_6/impl/runtime/layouts_impl.h
+index 9417cd9..732d806 100644
+--- a/src/targets/qwen3_6/impl/runtime/layouts_impl.h
++++ b/src/targets/qwen3_6/impl/runtime/layouts_impl.h
+@@ -561,8 +561,8 @@ WorkspacePlan build_workspace_plan(const SequencePlanImpl& plan) {
+                   out.dflash_context, out.dflash_round, out.causal_score});
+     out.capacity = out.general_capacity;
+     if (plan.features.vision) {
+-        const std::uint32_t merged = static_cast<std::uint32_t>(
+-            std::min<std::uint64_t>(plan.capacity, kMaximumVisionItemTokens));
++        const std::uint32_t merged = static_cast<std::uint32_t>(std::min<std::uint64_t>(
++            {plan.capacity, plan.features.vision_max_tokens, kMaximumVisionItemTokens}));
+         out.vision   = schedule::VisionContext::plan_workspace(merged, out.general_capacity);
+         out.capacity = std::max(out.capacity, out.vision->capacity_bytes);
+     }
+@@ -633,6 +633,11 @@ void validate_target_options(DeviceContext& device, const EngineOptions& options
+     if (device.compute_capability() != 120) {
+         throw std::invalid_argument("Qwen3.6 family runtime requires compute capability 12.0");
+     }
++    if (options.enable_vision &&
++        (options.vision_max_tokens == 0 ||
++         options.vision_max_tokens > kMaximumPromptVisionTokens)) {
++        throw std::invalid_argument("vision_max_tokens must be in [1,32768]");
++    }
+ }
+ 
+ std::unique_ptr<SequencePlanImpl> build_sequence_candidate(const SequencePlanningInputs& inputs,
+diff --git a/src/targets/qwen3_6/impl/runtime/program.h b/src/targets/qwen3_6/impl/runtime/program.h
+index 3108109..2f4325b 100644
+--- a/src/targets/qwen3_6/impl/runtime/program.h
++++ b/src/targets/qwen3_6/impl/runtime/program.h
+@@ -630,6 +630,7 @@ public:
+     const KvCacheStorage kv_storage;
+     const ProposalHead proposal_head;
+     const bool vision_enabled;
++    const std::uint32_t vision_max_tokens;
+     const bool use_cuda_graph;
+     const bool causal_scoring;
+     const std::size_t kv_payload_bytes;
+diff --git a/src/targets/qwen3_6/impl/runtime/program_impl.h b/src/targets/qwen3_6/impl/runtime/program_impl.h
+index d216891..29e9e2b 100644
+--- a/src/targets/qwen3_6/impl/runtime/program_impl.h
++++ b/src/targets/qwen3_6/impl/runtime/program_impl.h
+@@ -733,6 +733,7 @@ ProgramImplCore::ProgramImplCore(const LoadedModelData& model_in, const Sequence
+       prefill_chunk(plan.prefill_chunk), draft_window(plan.draft_window),
+       speculative_backend(plan.speculative_backend), kv_storage(plan.kv_storage),
+       proposal_head(plan.proposal_head), vision_enabled(plan.features.vision),
++      vision_max_tokens(plan.features.vision_max_tokens),
+       use_cuda_graph(plan.use_cuda_graph), causal_scoring(plan.causal_scoring),
+       kv_payload_bytes(plan.persistent.kv_payload_bytes),
+       graph_allowance_bytes(plan.graph_allowance_bytes), workspace_plan(plan.workspace),
+@@ -12231,7 +12232,8 @@ MemorySummary ProgramImplCore::memory_summary() const noexcept {
+     if (workspace_plan.vision) {
+         out.vision_workspace = VisionWorkspaceMemorySummary{
+             .aggregate_prompt_tokens = static_cast<std::uint32_t>(
+-                std::min<std::uint64_t>(capacity, kMaximumPromptVisionTokens)),
++                std::min<std::uint64_t>(
++                    {capacity, vision_max_tokens, kMaximumPromptVisionTokens})),
+             .max_item_tokens        = workspace_plan.vision->max_merged_tokens,
+             .general_capacity_bytes = workspace_plan.vision->general_capacity_bytes,
+             .encode_peak_bytes      = workspace_plan.vision->encode_peak_bytes,
+diff --git a/src/targets/qwen3_6_27b/impl/package.cpp b/src/targets/qwen3_6_27b/impl/package.cpp
+index c844d21..2d5f315 100644
+--- a/src/targets/qwen3_6_27b/impl/package.cpp
++++ b/src/targets/qwen3_6_27b/impl/package.cpp
+@@ -121,6 +121,7 @@ Package::Frontend Package::make_frontend(const LoadedModel& model, const EngineO
+                                   qwen3_6::FrontendOptions{
+                                       .vision_enabled = model.impl_->data.runtime.features.vision,
+                                       .max_context    = options.max_context,
++                                      .max_vision_tokens = options.vision_max_tokens,
+                                       .media_cache_bytes        = options.media_cache_bytes,
+                                       .media_live_bytes         = options.media_live_bytes,
+                                       .media_preprocess_threads = options.media_preprocess_threads,
+diff --git a/src/targets/qwen3_6_35b_a3b/impl/package.cpp b/src/targets/qwen3_6_35b_a3b/impl/package.cpp
+index 15e5573..14f6b58 100644
+--- a/src/targets/qwen3_6_35b_a3b/impl/package.cpp
++++ b/src/targets/qwen3_6_35b_a3b/impl/package.cpp
+@@ -93,6 +93,7 @@ Package::Frontend Package::make_frontend(const LoadedModel& model, const EngineO
+                                   qwen3_6::FrontendOptions{
+                                       .vision_enabled = model.impl_->data.runtime.features.vision,
+                                       .max_context    = options.max_context,
++                                      .max_vision_tokens = options.vision_max_tokens,
+                                       .media_cache_bytes        = options.media_cache_bytes,
+                                       .media_live_bytes         = options.media_live_bytes,
+                                       .media_preprocess_threads = options.media_preprocess_threads,
