@@ -9,6 +9,46 @@
 
 ---
 
+## 2026-09-02 · WSL 上的 vLLM:CDI 驱动串版与 IPv4 回环黑洞 {#wsl-vllm-nvfp4}
+
+在 24 GB 的 RTX 5090 D v2 上部署 Qwen3.8-27B NVFP4,模型本身能跑,
+真正拦路的是 WSL 两个边界条件。
+
+第一处是 NVIDIA CDI。只开 `hardware.nvidia-container-toolkit.enable` 和
+`discovery-mode = "wsl"` 后,生成的 CDI spec 仍把 nixpkgs 的 Linux 595
+用户态驱动和 `nvidia-smi` 挂进容器;Windows 提供的实际驱动则是 610。
+结果不是普通的"找不到 GPU",而是 595 用户态与 610 WSL 驱动混用。
+`mount-nvidia-executables = false` 和
+`mount-nvidia-docker-1-directories = false` 去掉这些覆盖后,容器里的
+`libcuda`/`libnvidia-ml` 才稳定指向 WSL driver store,SM120 的
+`FlashInferCutlassNvFp4LinearKernel` 也随即正常启用。
+
+第二处是 mirrored networking。host-network 容器把 API 绑定到
+`127.0.0.1:8000` 时,`ss` 明明显示 vLLM 正在 listen,但宿主和同容器内的
+连接都立即 `ECONNREFUSED`。对照实验很明确:临时 Python server 绑
+`0.0.0.0` 可以连,绑 WSL 的 `10.255.255.254` 可以连,绑 `::1` 也可以连;
+只有 IPv4 loopback 绑定坏掉。因此正式配置用 IPv6 loopback `::1`,既绕过
+WSL 的坑,也没有为了好连而把无鉴权 API 暴露到局域网。
+
+最终实测不是"4 bit 所以 27B 只占 13.5 GB":仓库里的两个 safetensors
+合计 **16.69 GiB**,加载后的模型显存 **16.19 GiB**。vLLM 另留了
+**5.0 GiB FP8 KV cache**(126,217 tokens),总驻留约 **23.5/24.5 GB**;
+32K、单并发、eager 模式稳定完成了 256-token 请求,热态端到端约
+**13.4 tokens/s**。
+
+### 被我带偏的地方
+
+- `discovery-mode = "wsl"` 看名字很像会自动排除 Linux 驱动,其实不排除
+  那两个额外挂载选项;必须读生成后的 CDI JSON 和容器内 `ldconfig -p`。
+- API 日志出现 `Application startup complete` 不等于客户端可达。最初沿着
+  vLLM、端口和容器 namespace 查,但一个最小 Python server 已足够证明是
+  绑定地址问题。
+- bridge + `-p` 看似能绕过 host network,但冷启动还要访问只监听宿主
+  `127.0.0.1:7897` 的代理;bridge 中的 `host.containers.internal:7897`
+  实测被拒绝。IPv6 loopback 保留 host network,同时解决了 API 可达性。
+
+---
+
 ## 2026-09-01 · 悉尼→日本:打洞比中转慢一倍,但带宽是中转的三倍 {#syd-jp-relay-beats-direct}
 
 起因是一个看着不合理的现象:同在悉尼那条上行后面,**Mac ping r5sjp 130ms,

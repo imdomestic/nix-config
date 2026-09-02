@@ -27,6 +27,81 @@
     LD_LIBRARY_PATH = "/run/opengl-driver/lib:/usr/lib/wsl/lib";
   };
 
+  # WSL-specific CDI/loopback constraints: docs/incidents.md#wsl-vllm-nvfp4.
+  hardware.nvidia-container-toolkit = {
+    enable = true;
+    discovery-mode = "wsl";
+    suppressNvidiaDriverAssertion = true;
+    mount-nvidia-executables = false;
+    mount-nvidia-docker-1-directories = false;
+  };
+
+  virtualisation.podman.enable = true;
+  virtualisation.oci-containers.backend = "podman";
+  virtualisation.oci-containers.containers.qwen38 = {
+    image = "docker.io/vllm/vllm-openai:v0.27.1-cu129-ubuntu2404";
+    autoStart = false;
+
+    environment = {
+      MAX_JOBS = "2";
+      HTTP_PROXY = "http://127.0.0.1:7897";
+      HTTPS_PROXY = "http://127.0.0.1:7897";
+      NO_PROXY = "127.0.0.1,localhost,::1";
+    };
+
+    volumes = [
+      "/var/lib/qwen38/huggingface:/root/.cache/huggingface"
+      "/var/lib/qwen38/vllm:/root/.cache/vllm"
+    ];
+
+    extraOptions = [
+      "--device=nvidia.com/gpu=all"
+      "--network=host"
+      "--ipc=host"
+    ];
+
+    cmd = [
+      "gittensor-model-hub/Qwen3.8-27B-NVFP4-RTX5090"
+      "--served-model-name"
+      "qwen3.8-27b"
+      "--host"
+      "::1"
+      "--port"
+      "8000"
+      "--quantization"
+      "modelopt"
+      "--kv-cache-dtype"
+      "fp8"
+      "--max-model-len"
+      "32768"
+      "--max-num-seqs"
+      "1"
+      "--max-num-batched-tokens"
+      "2048"
+      "--gpu-memory-utilization"
+      "0.92"
+      "--enforce-eager"
+      "--language-model-only"
+      "--enable-prefix-caching"
+      "--trust-remote-code"
+      "--reasoning-parser"
+      "qwen3"
+      "--enable-auto-tool-choice"
+      "--tool-call-parser"
+      "qwen3_xml"
+    ];
+  };
+
+  systemd.tmpfiles.rules = [
+    "d /var/lib/qwen38/huggingface 0755 root root -"
+    "d /var/lib/qwen38/vllm 0755 root root -"
+  ];
+
+  systemd.services.podman-qwen38 = {
+    after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
+    requires = ["nvidia-container-toolkit-cdi-generator.service"];
+  };
+
   networking.proxy.default = "http://127.0.0.1:7897";
   networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
   services.resolved = {
