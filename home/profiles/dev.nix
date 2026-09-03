@@ -104,10 +104,8 @@
       # agents
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex
-
-      # pkgs-unstable.opencode
-      # pkgs-unstable.codex
-      # pkgs-unstable.pi-coding-agent
+      inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.opencode
+      inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.pi
     ]
     ++ lib.optionals (lib.hasInfix "linux" system) [
       iproute2
