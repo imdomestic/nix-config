@@ -194,7 +194,7 @@ in {
             "cmake"
             "cpp"
             "haskell"
-            "java"
+            # java 不在这里:它归 indent-four(两边都列会让生效值取决于列表顺序)。
             "json"
             "lua"
             "nix"
@@ -1405,8 +1405,9 @@ in {
             enable = dev;
             packageFallback = true;
             filetypes = [
+              # templ 不接 html-lsp:dev 机上 cornelis 才是它的 LSP,双挂会刷
+              # 一堆把 templ 当 HTML 解析出来的假诊断;非 dev 机 templ 无 LSP。
               "html"
-              "templ"
             ];
             rootMarkers = [
               "package.json"
