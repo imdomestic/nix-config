@@ -947,6 +947,23 @@
         "type": "github"
       }
     },
+    "llama-swap-proxy": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777564242,
+        "narHash": "sha256-E2ruXP2J+fWN+uXgB2sw7AT6wqpDutSJajY9rNDPQTI=",
+        "owner": "emanspeaks",
+        "repo": "llama-swap-proxy",
+        "rev": "272260e56f4a47911dd46c5b2adf315df07c9938",
+        "type": "github"
+      },
+      "original": {
+        "owner": "emanspeaks",
+        "repo": "llama-swap-proxy",
+        "rev": "272260e56f4a47911dd46c5b2adf315df07c9938",
+        "type": "github"
+      }
+    },
     "llm-agents": {
       "inputs": {
         "bun2nix": "bun2nix",
@@ -1888,6 +1905,23 @@
         "type": "github"
       }
     },
+    "opencode-model-stats": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1777760314,
+        "narHash": "sha256-A4kZ0+KEXSOOa3Eq1gmSQe6JCoha+pxlaTUTEmByFls=",
+        "owner": "emanspeaks",
+        "repo": "opencode-model-stats",
+        "rev": "e461c45e70412ca491c24f0e0dde3e0a96eaeebf",
+        "type": "github"
+      },
+      "original": {
+        "owner": "emanspeaks",
+        "repo": "opencode-model-stats",
+        "rev": "e461c45e70412ca491c24f0e0dde3e0a96eaeebf",
+        "type": "github"
+      }
+    },
     "paneru": {
       "inputs": {
         "flake-parts": "flake-parts_6",
@@ -2120,6 +2154,7 @@
         "deploy-rs": "deploy-rs",
         "determinate": "determinate",
         "home-manager": "home-manager",
+        "llama-swap-proxy": "llama-swap-proxy",
         "llm-agents": "llm-agents",
         "max": "max",
         "niri": "niri",
@@ -2133,6 +2168,7 @@
         "nixvim": "nixvim",
         "noctalia": "noctalia",
         "nur": "nur",
+        "opencode-model-stats": "opencode-model-stats",
         "paneru": "paneru",
         "qq-bot": "qq-bot",
         "quickshell": "quickshell",

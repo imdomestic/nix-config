@@ -1,2 +1,4 @@
 # Other users still have Lua dotfiles; keep them out of GitHub language statistics.
 *.lua linguist-detectable=false
+# Unified diffs require leading context markers that look like whitespace errors.
+*.patch whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab

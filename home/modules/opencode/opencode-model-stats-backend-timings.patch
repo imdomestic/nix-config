@@ -1,0 +1,178 @@
+diff --git a/src/tui.tsx b/src/tui.tsx
+index 3a1bb45..0fa1996 100644
+--- a/src/tui.tsx
++++ b/src/tui.tsx
+@@ -26,6 +26,15 @@ type PrefillProgress = {
+   emaRate: number
+ }
+ 
++type BackendTiming = {
++  sessionID: string
++  messageID: string
++  predictedN: number
++  predictedMs: number
++  predictedPerSecond: number
++  receivedAt: number
++}
++
+ type MessageTiming = {
+   sessionID: string
+   requestStartAt: number
+@@ -47,6 +56,8 @@ type TrackerState = {
+   sessionAverageByID: Record<string, SessionAverage>
+   prefillBySession: Record<string, PrefillProgress>
+   lastPrefillByMessage: Record<string, PrefillProgress>
++  backendTimingBySession: Record<string, BackendTiming>
++  backendTimingByMessage: Record<string, BackendTiming>
+ }
+ 
+ type WsPrefillMessage = {
+@@ -61,8 +72,14 @@ type WsPrefillMessage = {
+   timeMs?: unknown
+   done?: unknown
+   started?: unknown
++  timings?: unknown
+ }
+ 
++type ParsedWsMessage =
++  | { kind: "done"; sessionID: string; messageID: string }
++  | { kind: "prefill"; sessionID: string; messageID: string; started: boolean; total: number; cache: number; processed: number; timeMs: number }
++  | { kind: "timings"; timing: BackendTiming }
++
+ function readString(value: unknown): string | undefined {
+   if (typeof value === "string" && value.length > 0) return value
+   return undefined
+@@ -121,7 +138,7 @@ function activeDurationMs(samples: StreamSample[], tailAt?: number) {
+   return Math.max(duration, SINGLE_SAMPLE_MS)
+ }
+ 
+-function parseWsMessage(value: unknown): { sessionID: string; messageID: string; done: boolean; started: boolean; total: number; cache: number; processed: number; timeMs: number } | undefined {
++function parseWsMessage(value: unknown): ParsedWsMessage | undefined {
+   if (!value || typeof value !== "object") return undefined
+   const data = value as WsPrefillMessage
+ 
+@@ -132,7 +149,26 @@ function parseWsMessage(value: unknown): { sessionID: string; messageID: string;
+   const done = readBoolean(data.done) === true
+   const started = readBoolean(data.started) !== false
+ 
+-  if (done) return { sessionID, messageID, done: true, started, total: 0, cache: 0, processed: 0, timeMs: 0 }
++  if (done) return { kind: "done", sessionID, messageID }
++
++  if (data.timings && typeof data.timings === "object") {
++    const timings = data.timings as Record<string, unknown>
++    const predictedN = readNumber(timings.predicted_n)
++    const predictedMs = readNumber(timings.predicted_ms)
++    const predictedPerSecond = readNumber(timings.predicted_per_second)
++    if (
++      messageID
++      && predictedN !== undefined && predictedN >= 0
++      && predictedMs !== undefined && predictedMs >= 0
++      && predictedPerSecond !== undefined && predictedPerSecond >= 0
++    ) {
++      return {
++        kind: "timings",
++        timing: { sessionID, messageID, predictedN, predictedMs, predictedPerSecond, receivedAt: Date.now() },
++      }
++    }
++    return undefined
++  }
+ 
+   const total = readNumber(data.total)
+   const cache = readNumber(data.cache)
+@@ -148,7 +184,7 @@ function parseWsMessage(value: unknown): { sessionID: string; messageID: string;
+ 
+   if (total <= 0 || cache < 0 || processed < 0 || timeMs < 0) return undefined
+ 
+-  return { sessionID, messageID, done: false, started, total, cache, processed, timeMs }
++  return { kind: "prefill", sessionID, messageID, started, total, cache, processed, timeMs }
+ }
+ 
+ function formatPrefillEta(prefill: PrefillProgress, last: PrefillProgress | undefined): string {
+@@ -197,6 +233,10 @@ function SessionPromptRight(props: {
+     props.clock()
+     const status = props.api.state.session.status(props.sessionID)
+     if (status?.type === "idle") return undefined
++    const backendTiming = props.tracker.backendTimingBySession[props.sessionID]
++    if (backendTiming?.predictedPerSecond && backendTiming.predictedPerSecond > 0) {
++      return formatRate(backendTiming.predictedPerSecond)
++    }
+     const samples = props.tracker.streamSamplesBySession[props.sessionID] ?? []
+     if (samples.length === 0) return undefined
+     const now = Date.now()
+@@ -268,6 +308,8 @@ const tui: TuiPlugin = async (api, options) => {
+     sessionAverageByID: {},
+     prefillBySession: {},
+     lastPrefillByMessage: {},
++    backendTimingBySession: {},
++    backendTimingByMessage: {},
+   }
+   const [version, setVersion] = createSignal(0)
+   const [clock, setClock] = createSignal(Date.now())
+@@ -308,6 +350,13 @@ const tui: TuiPlugin = async (api, options) => {
+       }
+     }
+ 
++    for (const [sessionID] of Object.entries(tracker.backendTimingBySession)) {
++      if (api.state.session.status(sessionID)?.type === "idle") {
++        delete tracker.backendTimingBySession[sessionID]
++        changed = true
++      }
++    }
++
+     if (changed) bump()
+   }
+ 
+@@ -562,7 +611,11 @@ const tui: TuiPlugin = async (api, options) => {
+           return
+         }
+         log?.("ws: parsed:", msg)
+-        if (msg.done || !msg.started) {
++        if (msg.kind === "timings") {
++          tracker.backendTimingBySession[msg.timing.sessionID] = msg.timing
++          tracker.backendTimingByMessage[msg.timing.messageID] = msg.timing
++          bump()
++        } else if (msg.kind === "done" || !msg.started) {
+           clearPrefillProgress(msg.sessionID)
+         } else {
+           setPrefillProgress(msg.sessionID, {
+@@ -703,6 +756,8 @@ const tui: TuiPlugin = async (api, options) => {
+ 
+   const onMessage = api.event.on("message.updated", (evt) => {
+     if (evt.properties.info.role === "user") {
++      delete tracker.backendTimingBySession[evt.properties.sessionID]
++      clearLiveSamples(evt.properties.sessionID)
+       ensureSessionWs(evt.properties.sessionID)
+       return
+     }
+@@ -730,10 +785,19 @@ const tui: TuiPlugin = async (api, options) => {
+ 
+     const timing = tracker.messageTimingByID[evt.properties.info.id]
+     if (timing?.sessionID === evt.properties.sessionID && typeof timing.firstResponseAt === "number") {
+-      const totalTokens = evt.properties.info.tokens.output + evt.properties.info.tokens.reasoning
+-      const durationMs = timing.firstTokenAt && timing.lastTokenAt
+-        ? Math.max(timing.lastTokenAt - timing.firstTokenAt, SINGLE_SAMPLE_MS)
+-        : undefined
++      const backendTiming = tracker.backendTimingByMessage[evt.properties.info.id]
++      const hasBackendTiming = backendTiming
++        && backendTiming.sessionID === evt.properties.sessionID
++        && backendTiming.predictedN > 1
++        && backendTiming.predictedMs > 0
++      const totalTokens = hasBackendTiming
++        ? backendTiming.predictedN - 1
++        : evt.properties.info.tokens.output + evt.properties.info.tokens.reasoning
++      const durationMs = hasBackendTiming
++        ? backendTiming.predictedMs
++        : timing.firstTokenAt && timing.lastTokenAt
++          ? Math.max(timing.lastTokenAt - timing.firstTokenAt, SINGLE_SAMPLE_MS)
++          : undefined
+       const ttftMs = Math.max(timing.firstResponseAt - timing.requestStartAt, 0)
+       if (totalTokens > 0 && durationMs) {
+         const totals = tracker.sessionAverageByID[evt.properties.sessionID] ?? {
+@@ -751,6 +815,7 @@ const tui: TuiPlugin = async (api, options) => {
+       }
+     }
+     delete tracker.messageTimingByID[evt.properties.info.id]
++    delete tracker.backendTimingByMessage[evt.properties.info.id]
+     pruneSamples(evt.properties.info.time.completed)
+     bump()
+   })
