@@ -18,6 +18,26 @@
       prefillWsUrl = "ws://100.64.0.14:8000/prefill-ws";
     }
   ];
+  notificator = pkgs.fetchFromGitHub {
+    owner = "panta82";
+    repo = "opencode-notificator";
+    rev = "7b252f4c0a06b63d27c02f5ae074a8e8f61c5a5b";
+    hash = "sha256-BzU4gtBcLw5RB5AL44+pTFQ+vl79FrzTpyV1cepLZ8U=";
+  };
+  shellStrategy = pkgs.fetchFromGitHub {
+    owner = "JRedeker";
+    repo = "opencode-shell-strategy";
+    rev = "1303f24df1649202834e052f1d66560ed186e413";
+    hash = "sha256-zv5wUMo/8ihyqdzFgLD+dQNandRGA33+NOokFwzsB+Y=";
+  };
+  runtimePlugins = [
+    modelStatsPlugin
+    "file://${notificator}/notificator.js"
+    "@tarquinen/opencode-dcp@3.1.15"
+    "opencode-supermemory@2.0.13"
+    "@franlol/opencode-md-table-formatter@0.0.6"
+    "@zenobius/opencode-skillful@1.2.5"
+  ];
   both = color: {
     dark = color;
     light = color;
@@ -81,7 +101,8 @@ in {
 
     settings = {
       model = "ninfer/qwen3.8-27b";
-      plugin = [modelStatsPlugin];
+      plugin = runtimePlugins;
+      instructions = ["${shellStrategy}/shell_strategy.md"];
       provider.ninfer = {
         npm = "@ai-sdk/openai-compatible";
         name = "NInfer on 5090D v2";
@@ -116,10 +137,19 @@ in {
     # OpenCode 1.14+ 的 server 和 TUI 是两个进程，插件需要两边都加载。
     tui = {
       theme = "evergarden-winter";
-      plugin = [modelStatsPlugin];
+      plugin = [
+        modelStatsPlugin
+        "@tarquinen/opencode-dcp@3.1.15"
+      ];
     };
     themes."evergarden-winter".theme = evergardenWinter;
   };
+
+  # opencode-notificator invokes these programs directly on Linux.
+  home.packages = lib.optionals pkgs.stdenv.isLinux [
+    pkgs.ffmpeg
+    pkgs.libnotify
+  ];
 
   # OpenCode may persist TUI changes at runtime. Keep the schema/settings native,
   # then turn Home Manager's store symlink into a writable copy after activation.
