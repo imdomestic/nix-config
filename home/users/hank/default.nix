@@ -180,6 +180,9 @@ in {
 
       set -g allow-passthrough on
       set -s extended-keys on
+      # tmux 默认发 xterm 的 modifyOtherKeys(^[[27;6;65~),pi 两种都解析但
+      # csi-u(^[[65;6u)才是它的一等公民,带修饰的可打印键走的是打磨较少的分支。
+      set -s extended-keys-format csi-u
       set -as terminal-features 'xterm*:extkeys'
       set -ga update-environment TERM
       set -ga update-environment TERM_PROGRAM
