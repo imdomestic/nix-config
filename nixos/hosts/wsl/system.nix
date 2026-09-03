@@ -1,8 +1,90 @@
 {
   inputs,
+  lib,
   pkgs,
   ...
-}: {
+}: let
+  tailnetAddress = "100.64.0.14";
+  llamaSwapPort = 8001;
+
+  modelUnitRunner = name: unit:
+    pkgs.writeShellApplication {
+      inherit name;
+      runtimeInputs = [pkgs.coreutils pkgs.systemd];
+      text = ''
+        # shellcheck disable=SC2329 # The trap invokes this function indirectly.
+        cleanup() {
+          systemctl stop ${unit} || true
+        }
+        trap cleanup EXIT INT TERM
+
+        systemctl start ${unit}
+        while systemctl is-active --quiet ${unit}; do
+          sleep 1
+        done
+        exit 1
+      '';
+    };
+
+  qwen84kRunner = modelUnitRunner "run-qwen38-84k" "podman-qwen38.service";
+  qwen262kRunner = modelUnitRunner "run-qwen38-262k" "podman-qwen38-long.service";
+
+  commonModel = {
+    checkEndpoint = "/health";
+    concurrencyLimit = 1;
+    ttl = 0;
+    unloadTimeout = 60;
+    useModelName = "qwen3.8-27b";
+    filters.setParams = {
+      return_progress = true;
+      timings_per_token = true;
+    };
+    capabilities = {
+      "in" = ["text" "image"];
+      "out" = ["text"];
+      tools = true;
+    };
+  };
+
+  llamaSwapSettings = {
+    healthCheckTimeout = 300;
+    logLevel = "info";
+    models = {
+      "qwen3.8-27b-fast" =
+        commonModel
+        // {
+          name = "Qwen3.8 27B NVFP4 84K MTP3";
+          description = "Native NVFP4 weights and KV cache; 8K vision budget";
+          cmd = lib.getExe qwen84kRunner;
+          proxy = "http://127.0.0.1:8100";
+          metadata = {
+            model_type = "vlm";
+            context = 84000;
+          };
+          capabilities = commonModel.capabilities // {context = 84000;};
+        };
+      "qwen3.8-27b" =
+        commonModel
+        // {
+          name = "Qwen3.8 27B Groupwise INT 262K MTP3";
+          description = "Groupwise INT weights and NVFP4 KV cache; 4K vision budget";
+          cmd = lib.getExe qwen262kRunner;
+          proxy = "http://127.0.0.1:8101";
+          metadata = {
+            model_type = "vlm";
+            context = 262144;
+          };
+          capabilities = commonModel.capabilities // {context = 262144;};
+        };
+    };
+  };
+
+  llamaSwapConfig = (pkgs.formats.yaml {}).generate "llama-swap-qwen38.yaml" llamaSwapSettings;
+  llamaSwapProxy = (pkgs.callPackage inputs.llama-swap-proxy {}).overrideAttrs (old: {
+    patches = (old.patches or []) ++ [./llama-swap-proxy-backend-timings.patch];
+    vendorHash = "sha256-LS+PBnNbtSr3cibu8Nb6DEkko78EVO2l+1hxgsj5Iiw=";
+  });
+in {
   imports = [
     inputs.nixos-wsl.nixosModules.wsl
   ];
@@ -41,7 +123,7 @@
   # 24 GB tuning and the local image provenance: docs/incidents.md#wsl-ninfer-24g.
   virtualisation.oci-containers.containers.qwen38 = {
     image = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
-    autoStart = true;
+    autoStart = false;
 
     environment = {
       HTTP_PROXY = "http://127.0.0.1:7897";
@@ -66,9 +148,9 @@
       "--model-id"
       "qwen3.8-27b"
       "--host"
-      "100.64.0.14"
+      "127.0.0.1"
       "--port"
-      "8000"
+      "8100"
       "--max-context"
       "84000"
       "--kv-capacity"
@@ -107,10 +189,10 @@
     ];
   };
 
-  # Manual 262K profile; its measured trade-offs are in docs/incidents.md#wsl-ninfer-24g.
+  # Default 262K profile; routing details: docs/incidents.md#wsl-ninfer-model-gateway.
   virtualisation.oci-containers.containers.qwen38-long = {
     image = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
-    autoStart = false;
+    autoStart = true;
 
     environment = {
       HTTP_PROXY = "http://127.0.0.1:7897";
@@ -135,9 +217,9 @@
       "--model-id"
       "qwen3.8-27b"
       "--host"
-      "100.64.0.14"
+      "127.0.0.1"
       "--port"
-      "8000"
+      "8101"
       "--max-context"
       "262144"
       "--kv-capacity"
@@ -235,6 +317,7 @@
     "d /var/lib/qwen38/vllm 0755 root root -"
     "d /var/lib/qwen38/ninfer-models 0755 root root -"
     "d /var/lib/qwen38/ninfer-logs 0755 root root -"
+    "d /var/lib/qwen38/llama-swap-proxy 0750 llama-swap-proxy llama-swap-proxy -"
   ];
 
   systemd.services.podman-qwen38 = {
@@ -250,7 +333,76 @@
   systemd.services.podman-qwen38-vllm = {
     after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
     requires = ["nvidia-container-toolkit-cdi-generator.service"];
-    conflicts = ["podman-qwen38.service" "podman-qwen38-long.service"];
+    conflicts = [
+      "podman-qwen38.service"
+      "podman-qwen38-long.service"
+      "llama-swap.service"
+      "llama-swap-proxy.service"
+    ];
+  };
+
+  services.llama-swap = {
+    enable = true;
+    listenAddress = "127.0.0.1";
+    port = llamaSwapPort;
+    settings = llamaSwapSettings;
+  };
+
+  # llama-swap only starts/stops the declarative OCI units; NInfer remains
+  # owned by NixOS rather than by an ad-hoc container command.
+  systemd.services.llama-swap = {
+    conflicts = ["podman-qwen38-vllm.service"];
+    serviceConfig = {
+      DynamicUser = lib.mkForce false;
+      User = "root";
+      Group = "root";
+      PrivateUsers = lib.mkForce false;
+      ProtectProc = lib.mkForce "default";
+      ProcSubset = lib.mkForce "all";
+    };
+  };
+
+  users.groups.llama-swap-proxy = {};
+  users.users.llama-swap-proxy = {
+    isSystemUser = true;
+    group = "llama-swap-proxy";
+  };
+
+  systemd.services.llama-swap-proxy = {
+    description = "Tailnet OpenAI gateway for llama-swap";
+    wantedBy = ["multi-user.target"];
+    wants = ["network-online.target" "tailscaled.service"];
+    requires = ["llama-swap.service"];
+    after = ["network-online.target" "tailscaled.service" "llama-swap.service"];
+    conflicts = ["podman-qwen38-vllm.service"];
+
+    serviceConfig = {
+      Type = "simple";
+      User = "llama-swap-proxy";
+      Group = "llama-swap-proxy";
+      ExecStart = lib.escapeShellArgs [
+        (lib.getExe llamaSwapProxy)
+        "--listen"
+        "${tailnetAddress}:8000"
+        "--upstream"
+        "http://127.0.0.1:${toString llamaSwapPort}"
+        "--config"
+        llamaSwapConfig
+        "--sessions-dir"
+        "/var/lib/qwen38/llama-swap-proxy"
+        "--default-user"
+        "hank"
+        "--opencode-hostname"
+        "${tailnetAddress}:8000"
+      ];
+      Restart = "on-failure";
+      RestartSec = 3;
+      NoNewPrivileges = true;
+      PrivateTmp = true;
+      ProtectHome = true;
+      ProtectSystem = "strict";
+      ReadWritePaths = ["/var/lib/qwen38/llama-swap-proxy"];
+    };
   };
 
   networking.proxy.default = "http://127.0.0.1:7897";

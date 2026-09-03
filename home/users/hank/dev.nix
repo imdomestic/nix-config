@@ -5,6 +5,7 @@
   imports = [
     ../../profiles/dev.nix
     ../../modules/nixvim
+    ../../modules/opencode
   ];
 
   home.sessionVariables = {

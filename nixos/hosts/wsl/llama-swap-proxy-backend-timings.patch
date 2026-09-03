@@ -1,0 +1,178 @@
+diff --git a/main.go b/main.go
+index 02fbea2..4a7f406 100644
+--- a/main.go
++++ b/main.go
+@@ -384,6 +384,7 @@ func main() {
+ 		}
+ 		wsHub.Broadcast(PrefillWSPush{
+ 			SessionID: sessionID,
++			MessageID: rec.MessageID,
+ 			Total:     rec.Total,
+ 			Cache:     rec.Cache,
+ 			Processed: rec.Processed,
+@@ -392,6 +393,9 @@ func main() {
+ 			Done:      rec.Done,
+ 		})
+ 	})
++	prefillTracker.SetTimingNotifyFunc(func(sessionID, messageID string, timings map[string]interface{}) {
++		wsHub.BroadcastTimings(sessionID, messageID, timings)
++	})
+ 
+ 	llamaSwapProxy, err := newReverseProxy(*upstream)
+ 	if err != nil {
+diff --git a/prefill_progress.go b/prefill_progress.go
+index f5500c9..be46b6b 100644
+--- a/prefill_progress.go
++++ b/prefill_progress.go
+@@ -27,6 +27,7 @@ type prefillProgressKey struct {
+ }
+ 
+ type prefillProgressRecord struct {
++	MessageID string
+ 	Total     int64
+ 	Cache     int64
+ 	Processed int64
+@@ -62,6 +63,7 @@ type PrefillProgressTracker struct {
+ 
+ 	notifyMu sync.RWMutex
+ 	notifyFn func(sessionID string, rec prefillProgressRecord)
++	timingFn func(sessionID, messageID string, timings map[string]interface{})
+ }
+ 
+ // SetNotifyFunc registers a callback invoked (outside any lock) whenever
+@@ -72,6 +74,27 @@ func (t *PrefillProgressTracker) SetNotifyFunc(fn func(sessionID string, rec pre
+ 	t.notifyMu.Unlock()
+ }
+ 
++// SetTimingNotifyFunc registers a callback for backend timing objects found in
++// streamed responses. The payload is forwarded unchanged so consumers can use
++// the backend's own counters and rates instead of estimating them from text.
++func (t *PrefillProgressTracker) SetTimingNotifyFunc(fn func(sessionID, messageID string, timings map[string]interface{})) {
++	t.notifyMu.Lock()
++	t.timingFn = fn
++	t.notifyMu.Unlock()
++}
++
++func (t *PrefillProgressTracker) PublishTimings(key prefillProgressKey, timings map[string]interface{}) {
++	if key.SessionID == "" || key.MessageID == "" || len(timings) == 0 {
++		return
++	}
++	t.notifyMu.RLock()
++	fn := t.timingFn
++	t.notifyMu.RUnlock()
++	if fn != nil {
++		fn(key.SessionID, key.MessageID, timings)
++	}
++}
++
+ type prefillTrackingContext struct {
+ 	Key      prefillProgressKey
+ 	TrackSSE bool
+@@ -154,6 +177,7 @@ func (t *PrefillProgressTracker) Update(key prefillProgressKey, total, cache, pr
+ 
+ 	t.mu.Lock()
+ 	rec := t.records[key]
++	rec.MessageID = key.MessageID
+ 	if isStartSignal {
+ 		rec.Total = total
+ 		rec.Cache = cache
+@@ -210,6 +234,7 @@ func (t *PrefillProgressTracker) MarkDone(key prefillProgressKey) {
+ 	nowMS := time.Now().UnixMilli()
+ 	t.mu.Lock()
+ 	rec := t.records[key]
++	rec.MessageID = key.MessageID
+ 	if rec.Raw == nil {
+ 		rec.Raw = map[string]interface{}{}
+ 	}
+@@ -487,6 +512,9 @@ func (t *prefillTrackingReadCloser) finalizeEvent() {
+ 	if err := json.Unmarshal([]byte(raw), &obj); err != nil {
+ 		return
+ 	}
++	if timings, ok := obj["timings"].(map[string]interface{}); ok && t.tracker != nil {
++		t.tracker.PublishTimings(t.key, timings)
++	}
+ 	ppRaw, ok := obj["prompt_progress"]
+ 	if !ok {
+ 		return
+diff --git a/prefill_progress_test.go b/prefill_progress_test.go
+index 6821b5d..003490c 100644
+--- a/prefill_progress_test.go
++++ b/prefill_progress_test.go
+@@ -81,6 +81,39 @@ func TestPrefillTrackingReadCloser_UpdatesProgress(t *testing.T) {
+ 	}
+ }
+ 
++func TestPrefillTrackingReadCloser_PublishesBackendTimings(t *testing.T) {
++	tracker := NewPrefillProgressTracker(time.Minute, time.Minute, false)
++	defer tracker.Close()
++
++	type timingEvent struct {
++		sessionID string
++		messageID string
++		timings   map[string]interface{}
++	}
++	received := make(chan timingEvent, 1)
++	tracker.SetTimingNotifyFunc(func(sessionID, messageID string, timings map[string]interface{}) {
++		received <- timingEvent{sessionID: sessionID, messageID: messageID, timings: timings}
++	})
++
++	key := prefillProgressKey{SessionID: "timing-s", MessageID: "timing-m"}
++	payload := "data: {\"choices\":[],\"timings\":{\"predicted_n\":42,\"predicted_ms\":350,\"predicted_per_second\":117.1}}\n\n"
++	rc := newPrefillTrackingReadCloser(nopCloseReader{Reader: bytes.NewReader([]byte(payload))}, tracker, key)
++	_, _ = io.Copy(io.Discard, rc)
++	_ = rc.Close()
++
++	select {
++	case event := <-received:
++		if event.sessionID != key.SessionID || event.messageID != key.MessageID {
++			t.Fatalf("unexpected correlation: %+v", event)
++		}
++		if got, ok := event.timings["predicted_per_second"].(float64); !ok || got != 117.1 {
++			t.Fatalf("unexpected timings: %+v", event.timings)
++		}
++	case <-time.After(time.Second):
++		t.Fatal("timing callback was not invoked")
++	}
++}
++
+ func TestPrefillTrackingReadCloser_DoneWhenProcessedReachesTotal(t *testing.T) {
+ 	tracker := NewPrefillProgressTracker(time.Minute, time.Minute, false)
+ 	defer tracker.Close()
+diff --git a/prefill_ws.go b/prefill_ws.go
+index 8db63ac..ea67e72 100644
+--- a/prefill_ws.go
++++ b/prefill_ws.go
+@@ -12,6 +12,7 @@ import (
+ // PrefillWSPush is the JSON pushed to connected clients on every state change.
+ type PrefillWSPush struct {
+ 	SessionID string `json:"session_id"`
++	MessageID string `json:"message_id,omitempty"`
+ 	Total     int64  `json:"total"`
+ 	Cache     int64  `json:"cache"`
+ 	Processed int64  `json:"processed"`
+@@ -49,6 +50,12 @@ type prefillWSDonePush struct {
+ 	Done      bool   `json:"done"`
+ }
+ 
++type backendTimingsWSPush struct {
++	SessionID string                 `json:"session_id"`
++	MessageID string                 `json:"message_id"`
++	Timings   map[string]interface{} `json:"timings"`
++}
++
+ func (h *PrefillWSHub) broadcastJSON(v interface{}) {
+ 	data, err := json.Marshal(v)
+ 	if err != nil {
+@@ -78,6 +85,12 @@ func (h *PrefillWSHub) BroadcastDone(sessionID string) {
+ 	h.broadcastJSON(prefillWSDonePush{SessionID: sessionID, Done: true})
+ }
+ 
++// BroadcastTimings relays exact counters and rates reported by the inference
++// backend over the same websocket used for prefill progress.
++func (h *PrefillWSHub) BroadcastTimings(sessionID, messageID string, timings map[string]interface{}) {
++	h.broadcastJSON(backendTimingsWSPush{SessionID: sessionID, MessageID: messageID, Timings: timings})
++}
++
+ func (h *PrefillWSHub) register(c *prefillWSClient) {
+ 	h.mu.Lock()
+ 	h.clients[c] = struct{}{}

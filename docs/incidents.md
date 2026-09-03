@@ -9,6 +9,42 @@
 
 ---
 
+## 2026-09-03 · WSL NInfer 的模型名切换与精确 TPS {#wsl-ninfer-model-gateway}
+
+入口改为 `llama-swap-proxy -> llama-swap -> NInfer`:最外层只监听 Tailnet 的
+`100.64.0.14:8000`,llama-swap 只监听 `127.0.0.1:8001`,两个 NInfer OCI unit 分别
+监听 `127.0.0.1:8101`(262K)和 `127.0.0.1:8100`(84K)。所以 Tailnet 客户端一直用
+同一个 OpenAI base URL,请求体里的 `model` 决定加载哪一档。
+
+`qwen3.8-27b` 是 262K 默认档,`qwen3.8-27b-fast` 是 84K 档。llama-swap 启动模型时
+运行一个受 Nix 管理的小 wrapper,wrapper 只启停原有 systemd OCI unit;模型进程、
+日志和回滚仍归 NixOS 管,没有把 Podman 生命周期复制进网关配置。实测两次切换均成功:
+84K 冷切约 7.9 秒,切回 262K 约 6.8 秒,最后驻留的是 262K。
+
+Prefill 进度沿用 NInfer 的 `prompt_progress`。Decode TPS 不再从 OpenCode 收到的 UTF-8
+字节数猜 token 数:llama-swap 强制流式请求开启 `timings_per_token`,本地补丁让
+llama-swap-proxy 把 NInfer 的 `predicted_n`、`predicted_ms` 和
+`predicted_per_second` 原样发到 `/prefill-ws`;对应的 `opencode-model-stats` 补丁优先
+使用这些后端数据,没有 timing 的其他后端才回退到原估算。端到端测试收到连续 timing
+更新,最终值为 24 tokens、178.46 ms、128.88 tokens/s,与原始 SSE 完全一致。
+
+第一次 system switch 时入口连续报 `bind: address already in use`,但 `ss` 已没有
+listener。误导点是把它当成残留进程;实际 `/proc/net/tcp` 只有旧 NInfer 连接的
+`TIME_WAIT`,约一分钟后同一 Tailnet 地址和端口即可正常绑定。另一个噪声来自上游
+llama-swap service 默认的 `ProcSubset=pid`:它看不到 `/proc/meminfo`,每五秒报一次统计
+错误;这里只为读取系统统计恢复完整 `/proc`,其余 systemd hardening 保留。
+
+看日志:
+
+```sh
+journalctl -fu llama-swap-proxy
+journalctl -fu llama-swap
+journalctl -fu podman-qwen38-long  # 262K
+journalctl -fu podman-qwen38       # 84K fast
+```
+
+---
+
 ## 2026-09-03 · NInfer 从 32 GB RTX 5090 移植到 24 GB 5090 D v2 {#wsl-ninfer-24g}
 
 上游 NInfer 的 Qwen3.8-27B NVFP4 路径确实比通用框架更适合 Blackwell:它原生有
@@ -65,7 +101,7 @@ SM120a W4A4、NVFP4/K8V4 KV、Vision、MTP 和 OpenAI/Anthropic API。但作者�
 `planned_slack_bytes=59,422,976`;82,058-token 无缓存请求再生成 23 tokens,Prefill
 约 4,715 tokens/s、Decode 约 143 tokens/s,请求后 `nvidia-smi` 空闲约 898 MiB。
 
-### 262K groupwise-int 手动档
+### 262K groupwise-int 档
 
 另下载同一发布的 `qwen3_8_27b.ninfer`:18,210,531,328 bytes,SHA-256
 `eec39564993d6e9c7d5e383382a760f093465c9d163ec9a1bd6b80199514bf3e`。它把常驻权重
@@ -82,10 +118,10 @@ SM120a W4A4、NVFP4/K8V4 KV、Vision、MTP 和 OpenAI/Anthropic API。但作者�
 256×256 测试图验证 Vision,模型正确识别左上红色方块和右下蓝色圆形。原始
 3840×2160 图会按预期返回 HTTP 400 `media_budget_exceeded`;客户端缩到
 2048×1152 后通过,整条 prompt 是 2,369 tokens,文字与形状均能识别。4K 指视觉
-token 预算,不是 4K 分辨率;超预算图片需由客户端预缩放。这个档因此保留为不自动
-启动的 `podman-qwen38-long.service`;直接启动它会借助 systemd
-`Conflicts=` 停掉默认 `podman-qwen38.service`,反向切回亦然。原 vLLM 100K 回退档
-仍是 `podman-qwen38-vllm.service`,三者互斥。
+token 预算,不是 4K 分辨率;超预算图片需由客户端预缩放。这个档后来成为网关的默认
+模型,对应公开 ID `qwen3.8-27b`;84K 档改用 `qwen3.8-27b-fast`。两个 OCI unit 本身
+都不随 multi-user target 自动启动,由 llama-swap 按模型名启停,仍借助 systemd
+`Conflicts=` 保证互斥。原 vLLM 100K 回退档仍是 `podman-qwen38-vllm.service`,三者互斥。
 
 重建本地镜像时,在上述 commit 的干净 checkout 上应用补丁后运行仓库 Docker build。
 OCI module 使用 `--pull missing`,所以固定 tag 必须先存在于本机 image store;模型文件

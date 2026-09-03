@@ -172,6 +172,17 @@
     # 代价是多下一份 nixpkgs 求值用的源码(不参与构建,不进 system closure)。
     llm-agents.url = "github:numtide/llm-agents.nix";
 
+    # WSL 上的本地推理网关与 OpenCode 状态栏；以源码输入固定版本，再由对应
+    # Nix 模块施加很小的兼容补丁。
+    llama-swap-proxy = {
+      url = "github:emanspeaks/llama-swap-proxy/272260e56f4a47911dd46c5b2adf315df07c9938";
+      flake = false;
+    };
+    opencode-model-stats = {
+      url = "github:emanspeaks/opencode-model-stats/e461c45e70412ca491c24f0e0dde3e0a96eaeebf";
+      flake = false;
+    };
+
     sops-nix = {
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";

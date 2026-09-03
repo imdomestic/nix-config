@@ -11,18 +11,17 @@
 
 ---
 
-## 2026-09-03 · WSL 的 NInfer 默认 84K,另留手动 262K 档 {#wsl-ninfer-84k-mtp}
+## 2026-09-03 · WSL 的默认模型名给 262K,84K 作为 fast 档 {#wsl-ninfer-default-262k}
 
-100K NVFP4 KV 与 8K Vision 同时常驻时,MTP3 还差约 241 MiB 才能启动。最终按
-实际 decode 收益把 context 降到 84K:MTP3 在 82,058-token 长请求中达到约
-143 tokens/s;关闭 MTP 时约 54–59 tokens/s。84K 档的 NInfer planned slack 只有
-约 56.7 MiB,但请求内存全部在启动时固定,82,058-token 实际请求通过后宿主
-`nvidia-smi` 仍余约 898 MiB。80K 阶段的 77.6K 文本 + 图片 + MTP3 同请求也通过。
+公开 API 的 `qwen3.8-27b` 指向 groupwise-int 权重、NVFP4 KV、262K context、
+Vision4K 和 MTP3,也是 NixOS 自动启动的常驻档。原生 NVFP4 权重的 84K 配置保留为
+`qwen3.8-27b-fast`,它有更快的 Prefill 和更大的 Vision8K 预算。用户显式选择让最大
+上下文成为无后缀默认值;因此客户端只在更看重速度或图片预算时才需要换模型名。
 
-262K 不取代默认档:它改用体积更小但 Prefill 较慢的 groupwise-int 权重,并把 Vision
-预算从 8K 降到 4K。它适合偶尔处理超长材料;260K 实测耗时是 82K 的九倍以上,
-不值得让所有日常请求承担。两档都保留 NVFP4 KV、MTP3、单并发和多模态;完整内存账与
-切换方式见 `docs/incidents.md#wsl-ninfer-24g`。
+两档不能同时驻留显存,由 llama-swap 在收到请求时自动停止旧 OCI unit、启动目标
+unit。API 地址始终是 Tailnet 的 `100.64.0.14:8000`,切换不要求客户端改 base URL。
+完整内存账见 `docs/incidents.md#wsl-ninfer-24g`,网关链路见
+`docs/incidents.md#wsl-ninfer-model-gateway`。
 
 ---
 
