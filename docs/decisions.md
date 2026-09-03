@@ -11,14 +11,18 @@
 
 ---
 
-## 2026-09-03 · WSL 的 NInfer 用 80K 换取 MTP3 {#wsl-ninfer-80k-mtp}
+## 2026-09-03 · WSL 的 NInfer 默认 84K,另留手动 262K 档 {#wsl-ninfer-84k-mtp}
 
 100K NVFP4 KV 与 8K Vision 同时常驻时,MTP3 还差约 241 MiB 才能启动。最终按
-实际 decode 收益把 context 降到 80K:MTP3 在 78K 长请求中达到约 139 tokens/s、
-68% draft 接受率;关闭 MTP 时约 54–59 tokens/s。80K 档的 NInfer planned slack
-只有约 132 MiB,但请求内存全部在启动时固定,实测 77.6K 文本 + 图片 + MTP3 同请求
-通过,宿主 `nvidia-smi` 仍余约 856 MiB。完整内存账见
-`docs/incidents.md#wsl-ninfer-24g`。
+实际 decode 收益把 context 降到 84K:MTP3 在 82,058-token 长请求中达到约
+143 tokens/s;关闭 MTP 时约 54–59 tokens/s。84K 档的 NInfer planned slack 只有
+约 56.7 MiB,但请求内存全部在启动时固定,82,058-token 实际请求通过后宿主
+`nvidia-smi` 仍余约 898 MiB。80K 阶段的 77.6K 文本 + 图片 + MTP3 同请求也通过。
+
+262K 不取代默认档:它改用体积更小但 Prefill 较慢的 groupwise-int 权重,并把 Vision
+预算从 8K 降到 4K。它适合偶尔处理超长材料;260K 实测耗时是 82K 的九倍以上,
+不值得让所有日常请求承担。两档都保留 NVFP4 KV、MTP3、单并发和多模态;完整内存账与
+切换方式见 `docs/incidents.md#wsl-ninfer-24g`。
 
 ---
 

@@ -70,9 +70,9 @@
       "--port"
       "8000"
       "--max-context"
-      "80000"
+      "84000"
       "--kv-capacity"
-      "80000"
+      "84000"
       "--max-concurrency"
       "1"
       "--prefill-chunk"
@@ -104,6 +104,75 @@
       "--lm-head-draft"
       "--request-log-jsonl"
       "/logs/qwen38.jsonl"
+    ];
+  };
+
+  # Manual 262K profile; its measured trade-offs are in docs/incidents.md#wsl-ninfer-24g.
+  virtualisation.oci-containers.containers.qwen38-long = {
+    image = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
+    autoStart = false;
+
+    environment = {
+      HTTP_PROXY = "http://127.0.0.1:7897";
+      HTTPS_PROXY = "http://127.0.0.1:7897";
+      NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
+    };
+
+    volumes = [
+      "/var/lib/qwen38/ninfer-models:/models:ro"
+      "/var/lib/qwen38/ninfer-logs:/logs"
+    ];
+
+    extraOptions = [
+      "--device=nvidia.com/gpu=all"
+      "--network=host"
+      "--ipc=host"
+    ];
+
+    cmd = [
+      "ninfer-serve"
+      "/models/qwen3_8_27b.ninfer"
+      "--model-id"
+      "qwen3.8-27b"
+      "--host"
+      "100.64.0.14"
+      "--port"
+      "8000"
+      "--max-context"
+      "262144"
+      "--kv-capacity"
+      "262144"
+      "--max-concurrency"
+      "1"
+      "--prefill-chunk"
+      "1024"
+      "--kv-dtype"
+      "nvfp4"
+      "--device-state-slots"
+      "0"
+      "--host-state-slots"
+      "2"
+      "--host-kv-mib"
+      "1024"
+      "--max-private-continuations"
+      "1"
+      "--max-shared-prefixes"
+      "1"
+      "--max-long-anchors-per-continuation"
+      "1"
+      "--media-cache-mib"
+      "256"
+      "--media-live-mib"
+      "2048"
+      "--vision-max-tokens"
+      "4096"
+      "--spec"
+      "mtp"
+      "--draft-tokens"
+      "3"
+      "--lm-head-draft"
+      "--request-log-jsonl"
+      "/logs/qwen38-long.jsonl"
     ];
   };
 
@@ -171,10 +240,17 @@
   systemd.services.podman-qwen38 = {
     after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
     requires = ["nvidia-container-toolkit-cdi-generator.service"];
+    conflicts = ["podman-qwen38-long.service" "podman-qwen38-vllm.service"];
+  };
+  systemd.services.podman-qwen38-long = {
+    after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
+    requires = ["nvidia-container-toolkit-cdi-generator.service"];
+    conflicts = ["podman-qwen38.service" "podman-qwen38-vllm.service"];
   };
   systemd.services.podman-qwen38-vllm = {
     after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
     requires = ["nvidia-container-toolkit-cdi-generator.service"];
+    conflicts = ["podman-qwen38.service" "podman-qwen38-long.service"];
   };
 
   networking.proxy.default = "http://127.0.0.1:7897";
