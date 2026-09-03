@@ -42,8 +42,9 @@ SM120a W4A4、NVFP4/K8V4 KV、Vision、MTP 和 OpenAI/Anthropic API。但作者�
 | Text | NVFP4 auto | 通过 | 20,375,587,264 | 2,182,799,360 | 1,330,642,944 |
 | Text + MTP3 | NVFP4 explicit | 通过,但太紧 | 21,183,894,976 | 2,380,771,072 | 397,410,304 |
 | Text + 原版 Vision | NVFP4 explicit | 通过,但太紧 | 20,671,298,912 | 2,889,465,856 | 328,204,288 |
-| Text + 8K Vision | NVFP4 explicit | **正式配置** | 20,671,298,912 | 2,456,141,824 | 762,314,752 |
+| Text + 8K Vision | NVFP4 explicit | 首轮配置 | 20,671,298,912 | 2,456,141,824 | 762,314,752 |
 | Text + 8K Vision + MTP3 | NVFP4 explicit | 失败,差 252,443,904 bytes | — | 2,654,113,536 | — |
+| Text + 8K Vision + MTP3,80K context | NVFP4 explicit | **最终配置** | 21,479,606,624 | 2,261,804,288 | 221,249,536 |
 
 正式档随后完成了三项验收:
 
@@ -51,10 +52,13 @@ SM120a W4A4、NVFP4/K8V4 KV、Vision、MTP 和 OpenAI/Anthropic API。但作者�
 - 320×240 图片实际走 Vision,正确回答出「狗」,请求后 `nvidia-smi` 仍余约 1.37 GiB;
 - 从 tailnet 的 h610 访问 `100.64.0.14` 能取得 `/health` 和 `/v1/models`。
 
-因此默认取舍是 **100K + NVFP4 KV + 8K Vision + 单并发**,不常驻 MTP。MTP3
-本身已验证能工作并实际接受 draft token,但它只适合作为停掉多模态服务后手工启动的
-纯文本性能档;为了默认开启它而把上下文降到 80K,余量依然不够健康。原 vLLM 100K
-配置保留为 `podman-qwen38-vllm.service`,回退时先停 NInfer,再启动该服务。
+第一轮部署选择 **100K + NVFP4 KV + 8K Vision + 单并发**,不常驻 MTP。随后按
+实际 decode 收益接受更紧的余量,最终改为 **80K + NVFP4 KV + 8K Vision + MTP3**。
+78,012-token 纯文本请求完整生成 68 tokens,prefill 约 4,882 tokens/s、decode 约
+139 tokens/s,draft 接受率约 68%;77,603-token 文本 + 图片的同一请求也正确回答
+「狗」,证明 Vision 与 MTP 不是只能分开工作。该档 `planned_slack` 为
+138,386,176 bytes,`nvidia-smi` 空闲约 856 MiB。原 vLLM 100K 配置保留为
+`podman-qwen38-vllm.service`,回退时先停 NInfer,再启动该服务。
 
 重建本地镜像时,在上述 commit 的干净 checkout 上应用补丁后运行仓库 Docker build。
 OCI module 使用 `--pull missing`,所以固定 tag 必须先存在于本机 image store;模型文件
