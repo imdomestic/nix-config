@@ -25,10 +25,10 @@ StateImage 的 Device/Host 物理槽位。启用 `preserve-thinking` 后一条 c
 通常至少保留 `SessionEndpoint` 和 `ResponseReplay`;允许的 long anchor 还会各占
 一个完整 StateImage。
 
-两个 profile 因此都把 Host State 从 2 恢复到上游默认的 8,Device checkpoint 仍为
-0,不增加显存。按这个模型的 48 层 GDN state geometry 计算,每个 Host StateImage
-约 146.8 MiB,新增 6 槽约用 881 MiB pinned system RAM。切换后系统仍有约 9.0 GiB
-available RAM。
+首次修复把两个 profile 的 Host State 从 2 恢复到上游默认的 8,Device checkpoint
+仍为 0,不增加显存。按这个模型的 48 层 GDN state geometry 计算,每个 Host
+StateImage 约 146.8 MiB;8 槽合计约 1.15 GiB pinned system RAM。切换后系统仍有
+约 9.0 GiB available RAM。
 
 修复后的真实 API 验证:
 
@@ -37,6 +37,12 @@ available RAM。
 | 首次短请求 | 62 | 62 | 0 | `root` | 360 ms |
 | 完全相同请求 | 62 | 5 | 57 | `private_response_replay` | 40 ms |
 | 带 tool call 后追加 tool result | 386 | 68 | 318 | `private_response_replay` | 162 ms |
+
+随后为多应用共用 API 把 logical/private 容量扩为 4 continuations,Host State 扩为
+16 slots。四条不同 prompt 首次请求分别建立 continuation,再按原顺序回访时四条全部
+命中 `private_response_replay`;没有 private owner eviction 或 checkpoint drop。四条
+短会话占用 8/16 slots。Host State backing 约 2.29 GiB,显存仍为约
+23,200 MiB used / 836 MiB free,系统 available RAM 约 7.8 GiB。
 
 ### 被我带偏的地方
 
