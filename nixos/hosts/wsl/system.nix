@@ -170,7 +170,7 @@ in {
       "--host-kv-mib"
       "1024"
       "--max-private-continuations"
-      "1"
+      "2"
       "--max-shared-prefixes"
       "1"
       "--max-long-anchors-per-continuation"
@@ -186,6 +186,7 @@ in {
       "--draft-tokens"
       "3"
       "--lm-head-draft"
+      "--preserve-thinking"
       "--request-log-jsonl"
       "/logs/qwen38.jsonl"
     ];
@@ -241,7 +242,7 @@ in {
       "--host-kv-mib"
       "1024"
       "--max-private-continuations"
-      "1"
+      "2"
       "--max-shared-prefixes"
       "1"
       "--max-long-anchors-per-continuation"
@@ -257,6 +258,7 @@ in {
       "--draft-tokens"
       "3"
       "--lm-head-draft"
+      "--preserve-thinking"
       "--request-log-jsonl"
       "/logs/qwen38-long.jsonl"
     ];
