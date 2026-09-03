@@ -44,7 +44,8 @@ SM120a W4A4、NVFP4/K8V4 KV、Vision、MTP 和 OpenAI/Anthropic API。但作者�
 | Text + 原版 Vision | NVFP4 explicit | 通过,但太紧 | 20,671,298,912 | 2,889,465,856 | 328,204,288 |
 | Text + 8K Vision | NVFP4 explicit | 首轮配置 | 20,671,298,912 | 2,456,141,824 | 762,314,752 |
 | Text + 8K Vision + MTP3 | NVFP4 explicit | 失败,差 252,443,904 bytes | — | 2,654,113,536 | — |
-| Text + 8K Vision + MTP3,80K context | NVFP4 explicit | **最终配置** | 21,479,606,624 | 2,261,804,288 | 221,249,536 |
+| Text + 8K Vision + MTP3,80K context | NVFP4 explicit | 通过 | 21,479,606,624 | 2,261,804,288 | 221,249,536 |
+| Text + 8K Vision + MTP3,84K context | NVFP4 explicit | **最终配置** | 21,479,606,624 | 2,340,767,488 | 141,557,760 |
 
 正式档随后完成了三项验收:
 
@@ -53,12 +54,38 @@ SM120a W4A4、NVFP4/K8V4 KV、Vision、MTP 和 OpenAI/Anthropic API。但作者�
 - 从 tailnet 的 h610 访问 `100.64.0.14` 能取得 `/health` 和 `/v1/models`。
 
 第一轮部署选择 **100K + NVFP4 KV + 8K Vision + 单并发**,不常驻 MTP。随后按
-实际 decode 收益接受更紧的余量,最终改为 **80K + NVFP4 KV + 8K Vision + MTP3**。
+实际 decode 收益接受更紧的余量,先改为 **80K + NVFP4 KV + 8K Vision + MTP3**。
 78,012-token 纯文本请求完整生成 68 tokens,prefill 约 4,882 tokens/s、decode 约
 139 tokens/s,draft 接受率约 68%;77,603-token 文本 + 图片的同一请求也正确回答
 「狗」,证明 Vision 与 MTP 不是只能分开工作。该档 `planned_slack` 为
-138,386,176 bytes,`nvidia-smi` 空闲约 856 MiB。原 vLLM 100K 配置保留为
-`podman-qwen38-vllm.service`,回退时先停 NInfer,再启动该服务。
+138,386,176 bytes,`nvidia-smi` 空闲约 856 MiB。
+
+随后把上限微调到 84K,实际分配 84,032 KV tokens。启动账为
+`runtime_reservation_bytes=2,340,767,488`,`available_after_startup_bytes=141,557,760`,
+`planned_slack_bytes=59,422,976`;82,058-token 无缓存请求再生成 23 tokens,Prefill
+约 4,715 tokens/s、Decode 约 143 tokens/s,请求后 `nvidia-smi` 空闲约 898 MiB。
+
+### 262K groupwise-int 手动档
+
+另下载同一发布的 `qwen3_8_27b.ninfer`:18,210,531,328 bytes,SHA-256
+`eec39564993d6e9c7d5e383382a760f093465c9d163ec9a1bd6b80199514bf3e`。它把常驻权重
+降到 18,197,503,904 bytes,因此能把省下的约 3.06 GiB 交给 KV。
+
+**262,144 + NVFP4 KV + 8K Vision + MTP3** 仍无法启动:runtime 需要
+5,828,934,912 bytes,只有 5,683,800,576 bytes 可用,差 145,134,336 bytes
+(138.4 MiB)。把 Vision 上限降到 4K 后启动通过:
+`runtime_reservation_bytes=5,612,272,896`,`available_after_startup_bytes=149,946,368`,
+`planned_slack_bytes=69,960,448`。
+
+真实无缓存请求输入 260,057 tokens、生成 31 tokens,总耗时 162.44 秒;平均 Prefill
+1,604 tokens/s、Decode 115.5 tokens/s,MTP 草拟 33 tokens、接受 21 tokens。另用
+256×256 测试图验证 Vision,模型正确识别左上红色方块和右下蓝色圆形。原始
+3840×2160 图会按预期返回 HTTP 400 `media_budget_exceeded`;客户端缩到
+2048×1152 后通过,整条 prompt 是 2,369 tokens,文字与形状均能识别。4K 指视觉
+token 预算,不是 4K 分辨率;超预算图片需由客户端预缩放。这个档因此保留为不自动
+启动的 `podman-qwen38-long.service`;直接启动它会借助 systemd
+`Conflicts=` 停掉默认 `podman-qwen38.service`,反向切回亦然。原 vLLM 100K 回退档
+仍是 `podman-qwen38-vllm.service`,三者互斥。
 
 重建本地镜像时,在上述 commit 的干净 checkout 上应用补丁后运行仓库 Docker build。
 OCI module 使用 `--pull missing`,所以固定 tag 必须先存在于本机 image store;模型文件
