@@ -11,12 +11,14 @@
 
 ---
 
-## 2026-09-03 · WSL 的 NInfer 默认不常驻 MTP {#wsl-ninfer-no-default-mtp}
+## 2026-09-03 · WSL 的 NInfer 用 80K 换取 MTP3 {#wsl-ninfer-80k-mtp}
 
-MTP3 不是不能运行:100K NVFP4 KV 的纯文本服务已经验证会实际接受 draft token。
-它不在默认参数里,是因为 24 GB 上同时常驻 8K Vision 时还差约 241 MiB 才能启动;
-关闭 Vision 后也只剩 379 MiB 内部余量。默认优先保留 100K、多模态和约 727 MiB
-内部余量。完整内存账和替代档见 `docs/incidents.md#wsl-ninfer-24g`。
+100K NVFP4 KV 与 8K Vision 同时常驻时,MTP3 还差约 241 MiB 才能启动。最终按
+实际 decode 收益把 context 降到 80K:MTP3 在 78K 长请求中达到约 139 tokens/s、
+68% draft 接受率;关闭 MTP 时约 54–59 tokens/s。80K 档的 NInfer planned slack
+只有约 132 MiB,但请求内存全部在启动时固定,实测 77.6K 文本 + 图片 + MTP3 同请求
+通过,宿主 `nvidia-smi` 仍余约 856 MiB。完整内存账见
+`docs/incidents.md#wsl-ninfer-24g`。
 
 ---
 
