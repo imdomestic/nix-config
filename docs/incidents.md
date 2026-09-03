@@ -9,6 +9,45 @@
 
 ---
 
+## 2026-09-03 · NInfer 扩了 continuation 却没有物理 checkpoint {#wsl-ninfer-state-slot-starvation}
+
+OpenCode 的长会话在启用 `--preserve-thinking` 和
+`--max-private-continuations 2` 后仍然每轮完整 Prefill。服务参数确实已经生效,
+但重启后的连续主请求输入 80,403、84,404、85,513 tokens,三次都是
+`prefix_cache_hit_tokens=0`、`prefix_reuse_path=root`。所以问题不在 TUI 的 TPS
+显示,也不是 system switch 没有替换进程。
+
+JSONL 的资源记录给出了根因:启动后的短标题请求完成了 2 次 checkpoint capture,
+把 `host_state_slots=2` 全部占满;之后长会话没有任何新 capture。每次 admission
+都在约 5 ms 搜索预算耗尽后丢弃 1 个 checkpoint、驱逐 1 个 private owner,最终从
+root 开始。`max_private_continuations` 只是 logical owner/catalog 容量,不会增加
+StateImage 的 Device/Host 物理槽位。启用 `preserve-thinking` 后一条 continuation
+通常至少保留 `SessionEndpoint` 和 `ResponseReplay`;允许的 long anchor 还会各占
+一个完整 StateImage。
+
+两个 profile 因此都把 Host State 从 2 恢复到上游默认的 8,Device checkpoint 仍为
+0,不增加显存。按这个模型的 48 层 GDN state geometry 计算,每个 Host StateImage
+约 146.8 MiB,新增 6 槽约用 881 MiB pinned system RAM。切换后系统仍有约 9.0 GiB
+available RAM。
+
+修复后的真实 API 验证:
+
+| 场景 | prompt | 实算 Prefill | cache hit | 路径 | TTFT |
+|---|---:|---:|---:|---|---:|
+| 首次短请求 | 62 | 62 | 0 | `root` | 360 ms |
+| 完全相同请求 | 62 | 5 | 57 | `private_response_replay` | 40 ms |
+| 带 tool call 后追加 tool result | 386 | 68 | 318 | `private_response_replay` | 162 ms |
+
+### 被我带偏的地方
+
+最初把 zero hit 归因于 DCP/Supermemory 每轮动态改写 prompt。插件 transform 的确值得
+检查,但缓存计数已经显示后续请求根本没有完成 checkpoint capture;先看物理槽位占用
+和 `checkpoints_dropped` 比比较 prompt 内容更直接。另一个误区是把 continuation
+descriptor 数量当成 cache 容量;NInfer 明确把 logical catalog、StateImage slots 和
+KV bytes 作为三个独立的容量轴。
+
+---
+
 ## 2026-09-03 · WSL NInfer 的模型名切换与精确 TPS {#wsl-ninfer-model-gateway}
 
 入口改为 `llama-swap-proxy -> llama-swap -> NInfer`:最外层只监听 Tailnet 的

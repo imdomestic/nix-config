@@ -165,8 +165,9 @@ in {
       "nvfp4"
       "--device-state-slots"
       "0"
+      # Two private continuations need physical checkpoints; see docs/incidents.md#wsl-ninfer-state-slot-starvation.
       "--host-state-slots"
-      "2"
+      "8"
       "--host-kv-mib"
       "1024"
       "--max-private-continuations"
@@ -237,8 +238,9 @@ in {
       "nvfp4"
       "--device-state-slots"
       "0"
+      # Two private continuations need physical checkpoints; see docs/incidents.md#wsl-ninfer-state-slot-starvation.
       "--host-state-slots"
-      "2"
+      "8"
       "--host-kv-mib"
       "1024"
       "--max-private-continuations"
