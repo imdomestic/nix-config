@@ -50,9 +50,14 @@
         api_key_required = false;
         model = "qwen3.8-27b";
         timeout_seconds = 30;
-        thinking = "disabled";
+        thinking = "enabled";
         aliases = ["qwen" "qwen27b"];
-        fallback_profiles = ["deepseek"];
+        fallback_profiles = [
+          "deepseek"
+          "gpt-5.6-luna"
+          "gpt-5.6-terra"
+          "gpt-5.6-sol"
+        ];
         capabilities = {
           tools = true;
           streaming = true;
