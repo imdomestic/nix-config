@@ -165,13 +165,13 @@ in {
       "nvfp4"
       "--device-state-slots"
       "0"
-      # Two private continuations need physical checkpoints; see docs/incidents.md#wsl-ninfer-state-slot-starvation.
+      # Private continuations need physical checkpoints; see docs/incidents.md#wsl-ninfer-state-slot-starvation.
       "--host-state-slots"
-      "8"
+      "16"
       "--host-kv-mib"
       "1024"
       "--max-private-continuations"
-      "2"
+      "4"
       "--max-shared-prefixes"
       "1"
       "--max-long-anchors-per-continuation"
@@ -238,13 +238,13 @@ in {
       "nvfp4"
       "--device-state-slots"
       "0"
-      # Two private continuations need physical checkpoints; see docs/incidents.md#wsl-ninfer-state-slot-starvation.
+      # Private continuations need physical checkpoints; see docs/incidents.md#wsl-ninfer-state-slot-starvation.
       "--host-state-slots"
-      "8"
+      "16"
       "--host-kv-mib"
       "1024"
       "--max-private-continuations"
-      "2"
+      "4"
       "--max-shared-prefixes"
       "1"
       "--max-long-anchors-per-continuation"
