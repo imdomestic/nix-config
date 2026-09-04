@@ -60,6 +60,10 @@ in {
     mouse = true;
     clock24 = true;
     keyMode = "vi";
+    escapeTime = 0;
+    focusEvents = true;
+    historyLimit = 50000;
+    baseIndex = 1;
     plugins = with pkgs.tmuxPlugins; [
       {
         plugin = dotbar;
@@ -188,18 +192,14 @@ in {
       set -ga update-environment TERM_PROGRAM
 
       setw -g xterm-keys on
-      set -s escape-time 0
+      # escape-time / focus-events / history-limit / base-index 挪到 Nix 侧原生选项了;
+      # status-utf8 / utf8 两行删除的原因见 docs/decisions.md#tmux-dead-settings。
       set -sg repeat-time 300
-      set -s focus-events on
       set -sg exit-empty on
-
-      set -q -g status-utf8 on
-      setw -q -g utf8 on
 
       set -g visual-activity off
       setw -g monitor-activity off
       setw -g monitor-bell off
-      set -g history-limit 50000
 
       set -g set-clipboard on
       # tmux 只在外层终端的 terminfo 里有 `Ms` 时才肯发 OSC 52(man:
@@ -213,8 +213,6 @@ in {
       set -ga terminal-overrides ',*:Ms=\E]52;%p1%s;%p2%s\007'
 
       set-option -g renumber-windows on
-      set -g base-index 1
-      setw -g pane-base-index 1
 
       # 窗口自动命名取的是 pane_current_command,而 nix 的 wrapProgram 会把真二进制
       # 改名成 .foo-wrapped、在 foo 位置放一个 exec 它的壳脚本 —— 于是状态栏上一排
@@ -243,8 +241,6 @@ in {
       set -g status-interval 1
 
       bind r source-file ~/.config/tmux/tmux.conf \; display '~/.config/tmux/tmux.conf sourced'
-      set -g prefix C-b
-      bind C-b send-prefix
 
       # ---- 键位分工,照 hyprland 那套映射过来 ----
       #
@@ -257,20 +253,11 @@ in {
       # 大写本来就要按 Shift,所以 `prefix H` 天然对应 `$mod SHIFT + h` ——
       # 不加 Shift 移动焦点、加 Shift 搬东西,两边是同一套。
       #
-      # swap-pane **不要加 -d**。不加时焦点跟着自己的 pane 走,加了会留在原位
-      # 盯着换过来的那一个。独立 socket 实测:
-      #   初始              %0*@x=0   %1@x=41
-      #   -s '{right-of}'   %1@x=0    %0*@x=41    ← 焦点跟着 %0 到了右边
-      #   加 -d             %1*@x=0   %0@x=41     ← 焦点留在左边,不是想要的
+      # swap-pane 不加 -d(焦点跟着自己的 pane 走),swap-window 必须补
+      # select-window(否则窗口挪了人没跟过去);两处的实测过程和 `-t -` 与
+      # `-t -1` 的辨析见 docs/incidents.md#tmux-swap-focus。
       #
-      # swap-window 恰好相反,**必须补 select-window**:
-      #   0:a 1:b*  --swap-window -t +->  0:a 1:c* 2:b   ← b 挪走了,人没跟过去
-      #
-      # `-t -` / `-t +` 是文档里的 target-window 记号(前一个/后一个编号)。
-      # 到处流传的 `-t -1` 不是文档写法,解析结果不可预期。边界会环绕,实测正常。
-      #
-      # `<` / `>` 在 tmux 3.6 的默认是 display-menu(window 菜单 / pane 菜单),
-      # 这里覆盖掉了。那两个菜单鼠标右键还能出来,不算真丢。
+      # `<` / `>` 覆盖 tmux 3.6 默认的 display-menu,那两个菜单鼠标右键还能出来,不算真丢。
       bind -r h select-pane -L
       bind -r j select-pane -D
       bind -r k select-pane -U
@@ -298,7 +285,6 @@ in {
       # 无参 swap-pane = 跟 `select-pane -m` 标记的那个交换,和上面不冲突,留着。
       bind | swap-pane
 
-      setw -g mode-keys vi
       bind -T copy-mode-vi v send-keys -X begin-selection
       bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
 
