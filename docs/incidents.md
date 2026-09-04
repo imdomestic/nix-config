@@ -9,6 +9,48 @@
 
 ---
 
+## 2026-09-05 · host KV 池装不下一条 checkpoint {#b650-ninfer-host-kv-undersized}
+
+b650 转原生之后 OpenCode 仍然频繁整轮 Prefill。原生启用后 3.5 小时、146 个请求里,
+`prefix_reuse_path=root` 占 89 条(61%),TTFT p90 到 28.8 秒。表面看像
+`#wsl-ninfer-state-slot-starvation` 复发,但 host state slot 峰值只有 8/16,槽位没满。
+
+根因在另一根容量轴上。KV 密度是 `5,133,901,824 / 262,144 = 19,584 B/token`,
+而实测 prompt 中位数 61,609 tokens —— **一条中位长度的 checkpoint 要 1.21 GB,
+整个 host KV 池只有 1 GiB**,连一条都放不下。于是每次 capture 完就被挤掉:
+
+| 指标 | 3.5 小时实测 |
+|---|---:|
+| host KV 占用峰值 | 1,011 MiB / 1,024(98.7%) |
+| checkpoints_dropped | 158 |
+| private_owners_evicted | 74 |
+| spill_pages | 2,465(d2h 累计 2.29 GB,只读回 0.36 GB) |
+| admission 搜索预算耗尽 | 107 / 146(73%) |
+
+`ninfer-serve --help` 里上游默认就是 Host KV = 8192 MiB、Host state = 8 slots;
+这里两档都停在 1024。改成两档各 8192 MiB、16 槽(16 槽是
+`max-private-continuations 4 × (endpoint + replay + long anchor)` 的最坏情况)。
+两个 OCI unit 有 `Conflicts=`,永远只有一个在跑,所以两边都写 8192 不会叠加。
+
+切换后:`host_kv_capacity_bytes=8,589,934,592`,RSS 从 5.29 GB 涨到 12.47 GB
+(host KV 是常驻分配),MemAvailable 仍有 17.6 GiB。显存不受影响 ——
+`available_after_startup_bytes` 654,966,784 → 640,286,720,`nvidia-smi` 空闲约 609 MiB。
+
+顺带查出两个客户端侧的问题:模板不支持 `reasoning_effort: "high"`(low / medium /
+xhigh 都返回 200,high 一律 400),以及 h610 的 `qwen-local` 用 30 秒超时,而原生
+时代 38/149 的请求总耗时超过 30 秒。
+
+### 被我带偏的地方
+
+- 先怀疑 `--default-max-tokens` 给到满上下文会在 admission 上出事。实测不会:日志里
+  `requested_output_tokens=1,000,000` 的请求照样正常跑完(`stop_token`),服务端不按
+  `prompt + max_tokens` 预留 KV。那个默认只决定"客户端漏发 max_tokens 时能跑多久",
+  和缓存命中率无关。真正在截断输出的是客户端自己给的 16,384。
+- 第一版补丁把 8192 加在了 fast 档上,而饱和的是常驻的 262K 档。两档 KV 密度完全相同,
+  判断该给谁扩容要看 occupancy 峰值(fast 486 MiB / long 1,011 MiB),不是看哪档"更长"。
+
+---
+
 ## 2026-09-05 · tmux swap-pane / swap-window 的焦点行为实测 {#tmux-swap-focus}
 
 tmux 的键位分工照 hyprland 那套翻译过来:小写 h/j/k/l 移焦点,大写 H/J/K/L 搬
