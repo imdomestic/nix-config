@@ -105,13 +105,13 @@ in {
       instructions = ["${shellStrategy}/shell_strategy.md"];
       provider.ninfer = {
         npm = "@ai-sdk/openai-compatible";
-        name = "NInfer on 5090D v2";
+        name = "NInfer";
         options.baseURL = "http://b650.inner.imdomestic.com:8000/v1";
         models = {
           "qwen3.8-27b-fast" = {
-            name = "Qwen3.8 27B · NVFP4 · 84K · MTP3";
+            name = "Qwen3.8 27B · NVFP4 · 100K · Vision 8K · MTP3";
             limit = {
-              context = 84000;
+              context = 100000;
               output = 32768;
             };
             modalities = {
@@ -120,7 +120,7 @@ in {
             };
           };
           "qwen3.8-27b" = {
-            name = "Qwen3.8 27B · Groupwise INT · 262K · MTP3";
+            name = "Qwen3.8 27B · Groupwise INT · 262K · Vision 8K · MTP3";
             limit = {
               context = 262144;
               output = 32768;
