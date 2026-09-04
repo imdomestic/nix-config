@@ -68,7 +68,7 @@
         commonModel
         // {
           name = "Qwen3.8 27B Groupwise INT 262K MTP3";
-          description = "Groupwise INT weights and NVFP4 KV cache; 4K vision budget";
+          description = "Groupwise INT weights and NVFP4 KV cache; 8K vision budget";
           cmd = lib.getExe qwen262kRunner;
           proxy = "http://127.0.0.1:8101";
           metadata = {
@@ -194,7 +194,7 @@ in {
                 "--host-state-slots"
                 "16"
                 "--host-kv-mib"
-                "1024"
+                "8192"
                 "--max-private-continuations"
                 "4"
                 "--max-shared-prefixes"
@@ -232,7 +232,7 @@ in {
                 "--max-context"
                 "262144"
                 "--default-max-tokens"
-                "262144"
+                "131072"
                 "--kv-capacity"
                 "262144"
                 "--max-concurrency"
@@ -246,7 +246,7 @@ in {
                 "--host-state-slots"
                 "16"
                 "--host-kv-mib"
-                "1024"
+                "8192"
                 "--max-private-continuations"
                 "4"
                 "--max-shared-prefixes"
