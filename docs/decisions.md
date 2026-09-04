@@ -11,6 +11,22 @@
 
 ---
 
+## 2026-09-05 · 删掉 hank tmux extraConfig 里的死设置 {#tmux-dead-settings}
+
+`home/users/hank/default.nix` 的 tmux extraConfig 删了两类死行:
+
+- `set -q -g status-utf8 on` / `setw -q -g utf8 on`:这两个选项 tmux 2.2
+  (2018 年)就移除了。仓库里所有机器的 tmux 都来自 nixpkgs,是 3.x,这两行只会
+  报 unknown option(所以当初加了 `-q` 把报错按掉),留着没有任何收益。
+- `set -g prefix C-b` / `bind C-b send-prefix`:把默认值(
+  `programs.tmux` 的默认 prefix 就是 C-b)显式写了一遍,删掉行为不变。
+
+顺带,escape-time / focus-events / history-limit / base-index / mode-keys 五项
+改写成 home-manager 原生选项(`escapeTime` / `focusEvents` / `historyLimit` /
+`baseIndex` / `keyMode`),extraConfig 里只留没有原生选项对应的部分。
+
+---
+
 ## 2026-09-03 · WSL 的默认模型名给 262K,84K 作为 fast 档 {#wsl-ninfer-default-262k}
 
 公开 API 的 `qwen3.8-27b` 指向 groupwise-int 权重、NVFP4 KV、262K context、
