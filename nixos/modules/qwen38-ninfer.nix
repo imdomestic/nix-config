@@ -258,7 +258,7 @@ in {
                 "--media-live-mib"
                 "2048"
                 "--vision-max-tokens"
-                "4096"
+                "8192"
                 "--spec"
                 "mtp"
                 "--draft-tokens"
