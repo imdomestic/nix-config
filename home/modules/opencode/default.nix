@@ -15,7 +15,7 @@
   modelStatsPlugin = [
     "file://${modelStats}"
     {
-      prefillWsUrl = "ws://100.64.0.14:8000/prefill-ws";
+      prefillWsUrl = "ws://b650.inner.imdomestic.com:8000/prefill-ws";
     }
   ];
   notificator = pkgs.fetchFromGitHub {
@@ -106,7 +106,7 @@ in {
       provider.ninfer = {
         npm = "@ai-sdk/openai-compatible";
         name = "NInfer on 5090D v2";
-        options.baseURL = "http://100.64.0.14:8000/v1";
+        options.baseURL = "http://b650.inner.imdomestic.com:8000/v1";
         models = {
           "qwen3.8-27b-fast" = {
             name = "Qwen3.8 27B · NVFP4 · 84K · MTP3";

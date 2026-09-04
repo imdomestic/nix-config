@@ -9,6 +9,31 @@
 
 ---
 
+## 2026-09-04 · b650 原生 NixOS 安装的双 ESP 陷阱 {#b650-native-install}
+
+目标盘是 Fanxiang S500PRO 2TB(`eui.0000000000000001`):p3 是 Windows 的
+1 TiB NTFS E:,p4/p5 是 Bazzite 的 XBOOTLDR/root。首次安装严格只重建 p4/p5,
+把 p4 当成独立 ESP,避免触碰 Windows 或固件 NVRAM。系统闭包、内核和 fallback
+loader 都成功写入,但只读检查发现磁盘最前面的 p1 也是 ESP,里面只剩
+`EFI/fedora` 和 Fedora 的 `EFI/BOOT/BOOTX64.EFI`。固件按整盘 fallback
+启动时很可能先命中 p1,从而启动已经没有 root 的 Bazzite,而不是 p4 的 NixOS。
+
+最终在确认 p1 没有 `EFI/Microsoft` 或其他实际文件后,将 p1 格式化为
+`NIXEFI`,p4 改为 XBOOTLDR 类型并保留 `NIXBOOT`,p5 保持 `NIXROOT`。
+systemd-boot 的 fallback loader 位于 p1,内核、initrd 和 generations 位于 p4;
+`canTouchEfiVariables = false`,所以整个安装不修改主板 NVRAM。p3 的 GPT UUID
+`617afba4-670a-419b-a420-662786333b1f` 和 NTFS UUID
+`000F9DEF034EA61E` 在安装前后均未变化。原 GPT 备份留在目标 root 的
+`/root/fanxiang-gpt-before-nixos-2026-09-04.bin`。
+
+### 被我带偏的地方
+
+最初只把“不要碰 E:”翻译成“只用 p4/p5”,却没有在制定启动布局前检查同一块盘上
+已有 ESP 的内容和固件 fallback 搜索顺序。能把 loader 写进某个 ESP 不等于固件会
+选择那个 ESP;多 ESP 场景必须先检查排在前面的分区和现有 `BOOTX64.EFI`。
+
+---
+
 ## 2026-09-03 · NInfer 扩了 continuation 却没有物理 checkpoint {#wsl-ninfer-state-slot-starvation}
 
 OpenCode 的长会话在启用 `--preserve-thinking` 和

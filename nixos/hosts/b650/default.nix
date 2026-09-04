@@ -5,14 +5,11 @@
 in {
   system = "x86_64-linux";
   kind = "nixos";
-  roles = ["desktop" "gui"];
-  ip = "10.0.0.68";
-  sshUser = "root";
+  roles = ["server" "gpu-compute"];
 
   profiles = with nixosProfiles; [
     base
-    desktop
-    virtualisation
+    server
   ];
 
   modules = [
@@ -21,25 +18,17 @@ in {
   ];
 
   externalModules = [
-    inputs.catppuccin.nixosModules.catppuccin
-    inputs.vscode-server.nixosModules.default
-    inputs.noctalia.nixosModules.default
-    # inputs.niri.nixosModules.niri
+    inputs.nix-index-database.nixosModules.default
   ];
 
-  users = {
-    hank = {
-      home = {
-        profiles = with homeProfiles; [
-          core
-          base
-          gui.linux
-        ];
-        modules = [
-          userModules.hank.module
-          userModules.hank.dev
-        ];
-      };
-    };
+  users.hank.home = {
+    profiles = with homeProfiles; [
+      core
+      base
+    ];
+    modules = [
+      userModules.hank.module
+      userModules.hank.dev
+    ];
   };
 }
