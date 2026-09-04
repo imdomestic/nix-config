@@ -27,7 +27,7 @@
       '';
     };
 
-  qwen84kRunner = modelUnitRunner "run-qwen38-84k" "podman-qwen38.service";
+  qwen100kRunner = modelUnitRunner "run-qwen38-100k" "podman-qwen38.service";
   qwen262kRunner = modelUnitRunner "run-qwen38-262k" "podman-qwen38-long.service";
 
   commonModel = {
@@ -54,15 +54,15 @@
       "qwen3.8-27b-fast" =
         commonModel
         // {
-          name = "Qwen3.8 27B NVFP4 84K MTP3";
+          name = "Qwen3.8 27B NVFP4 100K MTP3";
           description = "Native NVFP4 weights and KV cache; 8K vision budget";
-          cmd = lib.getExe qwen84kRunner;
+          cmd = lib.getExe qwen100kRunner;
           proxy = "http://127.0.0.1:8100";
           metadata = {
             model_type = "vlm";
-            context = 84000;
+            context = 100000;
           };
-          capabilities = commonModel.capabilities // {context = 84000;};
+          capabilities = commonModel.capabilities // {context = 100000;};
         };
       "qwen3.8-27b" =
         commonModel
@@ -178,11 +178,11 @@ in {
                 "--port"
                 "8100"
                 "--max-context"
-                "84000"
+                "100000"
                 "--default-max-tokens"
                 "32768"
                 "--kv-capacity"
-                "84000"
+                "100000"
                 "--max-concurrency"
                 "1"
                 "--prefill-chunk"
