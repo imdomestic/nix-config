@@ -191,6 +191,7 @@ in {
                 "nvfp4"
                 "--device-state-slots"
                 "0"
+                # Host state and KV are sized for one full checkpoint: docs/incidents.md#b650-ninfer-host-kv-undersized
                 "--host-state-slots"
                 "16"
                 "--host-kv-mib"
@@ -243,6 +244,7 @@ in {
                 "nvfp4"
                 "--device-state-slots"
                 "0"
+                # Host state and KV are sized for one full checkpoint: docs/incidents.md#b650-ninfer-host-kv-undersized
                 "--host-state-slots"
                 "16"
                 "--host-kv-mib"
