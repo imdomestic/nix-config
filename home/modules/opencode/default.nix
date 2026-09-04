@@ -112,7 +112,7 @@ in {
             name = "Qwen3.8 27B · NVFP4 · 100K · Vision 8K · MTP3";
             limit = {
               context = 100000;
-              output = 32768;
+              output = 100000;
             };
             modalities = {
               input = ["text" "image"];
@@ -123,7 +123,7 @@ in {
             name = "Qwen3.8 27B · Groupwise INT · 262K · Vision 8K · MTP3";
             limit = {
               context = 262144;
-              output = 32768;
+              output = 262144;
             };
             modalities = {
               input = ["text" "image"];
