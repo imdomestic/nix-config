@@ -49,7 +49,7 @@
         base_url = "http://b650.inner.imdomestic.com:8000/v1";
         api_key_required = false;
         model = "qwen3.8-27b";
-        timeout_seconds = 30;
+        timeout_seconds = 300;
         thinking = "enabled";
         aliases = ["qwen" "qwen27b"];
         fallback_profiles = [
