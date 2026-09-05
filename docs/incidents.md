@@ -9,6 +9,26 @@
 
 ---
 
+## 2026-09-05 · maxops 首次实机验收暴露 Prometheus 标签与日志编码差异 {#maxops-pilot-acceptance}
+
+h610 首次启动 maxops 后,agent 能通过 D-Bus 返回七个服务和当前系统 closure,
+但 `fleet.overview` 把 exporter 标成 `unknown`。起初怀疑 `instance` 与 inventory
+名字不一致;实查两者都是 `h610`,Prometheus 的 `up` 也确实是 1。
+
+真正差异在 `__name__`:直接查询 `up` 保留这个标签,`timestamp(up)` 去掉它。
+hub 对完整标签对象做相等比较,导致采样时间匹配失败。之前的 mock 两边都没有
+`__name__`,所以测试没有覆盖真实响应。maxops `c484672` 只在匹配时移除该标签,
+保留其他系列标签;回归用例还加入相同 instance、不同 job 的干扰系列。
+
+日志验收另发现 daemon 默认的 ANSI 颜色使 journald 把 MESSAGE 编码为字节数组。
+原以为没有写出启动日志,实际内容存在、只是表示形式不同。hub 和 agent 现在输出
+无颜色文本。日志访问、条数/时间限制、双端白名单、身份注入拒绝和真实进程权限
+检查分别验证,不把健康接口返回 200 当作验收完成。
+
+root 直接以 Git flake 重建还会碰到 hank 工作树的所有权检查。此次由 hank 构建
+固定的系统 store closure,root 对该闭包执行 dry-activate,核对后设置 system profile
+并 switch;仓库权限保持原样。操作入口与后续验收见 [maxops-deployment.md](maxops-deployment.md)。
+
 ## 2026-09-05 · NInfer 满 catalog 时漏算逻辑准入,搜索超时清空缓存 {#b650-ninfer-catalog-admission}
 
 复查 b650 的同一次进程运行和镜像对应的 NInfer `550d0ac` 源码,确认 H2D 已实现且
