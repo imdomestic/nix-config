@@ -205,6 +205,11 @@
     # 25.11 GHC it was developed against.
     max.url = "github:HCHogan/max";
 
+    maxops = {
+      url = "github:HCHogan/maxops";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     qq-bot = {
       url = "github:zty20040403/chat-bot";
       inputs.nixpkgs.follows = "nixpkgs";

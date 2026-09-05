@@ -1007,6 +1007,26 @@
         "type": "github"
       }
     },
+    "maxops": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1788597059,
+        "narHash": "sha256-KyYb3q+Sv5H9H2MPqGGis5pDMhccRKCYWTyianQCrlE=",
+        "owner": "HCHogan",
+        "repo": "maxops",
+        "rev": "e438f8c2755962ad35f677c4bc95be737c7fa19f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "HCHogan",
+        "repo": "maxops",
+        "type": "github"
+      }
+    },
     "niri": {
       "inputs": {
         "niri-stable": "niri-stable",
@@ -2158,6 +2178,7 @@
         "llama-swap-proxy": "llama-swap-proxy",
         "llm-agents": "llm-agents",
         "max": "max",
+        "maxops": "maxops",
         "niri": "niri",
         "nix-darwin": "nix-darwin",
         "nix-index-database": "nix-index-database",

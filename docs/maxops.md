@@ -5,6 +5,10 @@
 
 配套的仓库是 `github.com/HCHogan/maxops`，作为 flake input 进 nix-config。
 
+当前落地范围是 h610 的只读 hub + agent，配置与验收见
+[maxops-deployment.md](maxops-deployment.md)。下文是完整设计目标；其中 tank hub、
+全 fleet agent、MCP、QQ 身份代理及变更操作尚未部署。
+
 ---
 
 ## 0. 边界：maxops 做什么，不做什么

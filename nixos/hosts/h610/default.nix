@@ -19,12 +19,14 @@ in {
 
   modules = [
     ./system.nix
+    ./maxops.nix
     ./hardware-configuration.nix
   ];
 
   externalModules = [
     # inputs.headplane.nixosModules.headplane
     inputs.max.nixosModules.max
+    inputs.maxops.nixosModules.default
     inputs.qq-bot.nixosModules.qq-deepseek-bot
   ];
 
