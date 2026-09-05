@@ -61,6 +61,7 @@
         ];
         capabilities = {
           tools = true;
+          forced_tool_choice = false;
           streaming = true;
           json_mode = true;
           model_listing = true;
