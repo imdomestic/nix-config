@@ -9,6 +9,53 @@
 
 ---
 
+## 2026-09-05 · 内存里的 KV 换不回来,能同时缓存几个对话由显存决定 {#b650-ninfer-host-kv-never-restored}
+
+扩完 continuation 容量(8 owners / 24 槽)之后做的压测:10 个互不共享前缀的会话,
+每个 38,130 tokens,合计 381,300 —— 是 device KV 容量 262,144 的 1.45 倍。两轮,
+第二轮发送与第一轮**逐字节相同**的请求。
+
+结果是第二轮一次都没命中:
+
+| | 第一轮 | 第二轮 |
+|---|---|---|
+| 10 个会话耗时 | 12.68 ~ 13.05 s | 13.05 ~ 13.15 s |
+| `prefix_reuse_path` | root ×10 | **root ×10** |
+| `prefix_cache_hit_tokens` | 0 | **0** |
+
+同期的缓存内部账:capture 完成 25 次,checkpoint 被丢弃 34 次,private owner 驱逐
+16 次;device KV 峰值 **4,096 / 4,096 页(满)**;而 host 池峰值只有
+**804 / 8,192 MiB**,host state 槽峰值 **15 / 24**。溢出确实发生了 ——
+`main_kv_transfers.d2h` 累计 0.888 GB —— 但 `h2d` 依然**严格为 0**。
+
+### 对照组:装得下的时候缓存完美工作
+
+同样的 payload、同样的 `max_tokens: 8`(结束原因同为 `output_limit`),只跑 2 个会话
+(合计 76K,远在 262K 之内):
+
+| | 第一轮 | 第二轮 |
+|---|---|---|
+| conv1 | 13.03 s,root,hit 0 | **0.096 s**,`private_response_replay`,hit 38,125 |
+| conv2 | 13.10 s,root,hit 0 | **0.113 s**,`private_response_replay`,hit 38,125 |
+
+TTFT 从 13.03 秒掉到 0.05 秒,**130 倍**。所以排除了"这种 turn 不可缓存"的解释:
+缓存机制本身是好的,10 会话那次失败纯粹是因为被挤出显存之后没有任何人把它换回来。
+
+### 结论:能同时缓存几个对话 = 显存 KV 容量 ÷ 单个对话长度
+
+`262,144 ÷ 38,130 ≈ 6.8`。按实际使用中 60~75K 的对话算,只有 3~4 个。
+**扩 `--max-private-continuations` 和 `--host-state-slots` 不会改变这个上限**
+(测试里峰值 15/24 槽、804/8192 MiB,两者都没打满),扩 `--host-kv-mib` 同样不会。
+在 h2d 通路能用起来之前,内存那层实质上是个只写不读的日志。
+
+唯一可疑的入口仍是 `server_start.engine.context_cost` 里的
+`transfer_source: "generic-default"` / `preset_path: ""`,对应
+`--context-cost-presets FILE`。实测 d2h 带宽 52 GB/s,换回一个 38K 对话的 KV 约
+14 毫秒,而重算要 13 秒 —— 差三个数量级,成本模型不该选重算。但也不排除这个版本
+根本没实现 h2d 恢复:我们这边能看到的只有计数器恒为 0。
+
+---
+
 ## 2026-09-05 · 429 不是 NInfer 发的,是网关不肯排队 {#b650-ninfer-429-not-queued}
 
 第二个客户端一发请求就吃 `429 Too many requests`。直觉是 `--max-concurrency 1`
@@ -46,7 +93,8 @@ long anchor) = 24 槽,约 3.44 GiB 常驻内存。
 约 23 毫秒,重新 prefill 同样内容要 24 秒 —— 差三个数量级。但同期
 `main_kv_transfers.h2d` **严格等于 0**:换出去 4.32 GB,一次都没换回来过。怀疑是
 通用传输成本模型把 PCIe 估贵了,规划器永远选择重算。入口是
-`--context-cost-presets FILE`,格式待查上游,没敢猜着写。
+`--context-cost-presets FILE`,格式待查上游,没敢猜着写。后续压测见
+#b650-ninfer-host-kv-never-restored。
 
 ### 被我带偏的地方
 
