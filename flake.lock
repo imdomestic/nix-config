@@ -994,11 +994,11 @@
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1788581304,
-        "narHash": "sha256-hTWUsSy4jd/wP95+DlZ/5AYBt58BPoywvv4+vQ0FksI=",
+        "lastModified": 1788597256,
+        "narHash": "sha256-LBPypMbR84nXLtSP+zxoWLXS8tP68efE2ZCUJPCM9GE=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "c53b95a265f05730f389049a40c606cf7bdd2201",
+        "rev": "98ac726fddf88fa2014e3dcde84b1c681c705798",
         "type": "github"
       },
       "original": {
@@ -2087,11 +2087,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1788586882,
-        "narHash": "sha256-eM2lTCr245FkkvT8bjLaiZMafwqpCT/983bP6h/sz7k=",
+        "lastModified": 1788596428,
+        "narHash": "sha256-CRbBfwqLgAZy/xuhqxcxDSO7d9bOVINcs4+nLQIE3SI=",
         "owner": "zty20040403",
         "repo": "chat-bot",
-        "rev": "e1be622f55ff47e904d65d165cde2f1fc9e52b08",
+        "rev": "ab94544b6591456acc133b2e746a01a8eec9177d",
         "type": "github"
       },
       "original": {
