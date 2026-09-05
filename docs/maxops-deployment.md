@@ -48,3 +48,25 @@ production smoke test does not establish the VM test passed.
 The first live run exposed and reproduced two integration differences; see
 [the dated incident record](incidents.md#maxops-pilot-acceptance). The pinned
 `c484672` revision fixes Prometheus metric-name matching and daemon ANSI output.
+
+## Verified on 2026-09-05
+
+The original acceptance script passed in full after deploying `c484672`.
+
+| Check | Result |
+| --- | --- |
+| All 17 NixOS host configurations | Evaluation passed |
+| h610 SOPS declarations | 49 keys across three files verified |
+| macOS devenv checks and Linux Nix package tests | 15 nextest tests passed on each platform |
+| Real hub, agent and packaged CLI | All six operations passed |
+| Live observations | Seven allowlisted units, zero failed; exporter `up` with a fresh sample time |
+| Authentication and scope | Missing/wrong/cross-purpose credentials, ungranted host/unit and injected identity rejected |
+| Journal and privileges | Plain startup message read, limits enforced; non-root processes, empty effective/bounding capabilities and NoNewPrivileges |
+| Tailnet access | Health 200, unauthenticated catalog 401; agent bound only to loopback |
+| Existing services | Max, nginx, Prometheus, Alertmanager and Tailscale remained active with unchanged PIDs |
+
+The verified running system and persistent system profile both point to
+`/nix/store/piz1jcqg1pnfh4k906kw1yzlqv5caskg-nixos-system-h610-26.05.20260622.3426825`.
+Both daemon executables resolve to the pinned package
+`/nix/store/lk0fq794k94pjmn9lpjgdv8aigr5bx83-maxops-0.1.0`, with zero automatic restarts.
+The VM test was not run: this host has no `/dev/kvm`.
