@@ -9,6 +9,56 @@
 
 ---
 
+## 2026-09-05 · 429 不是 NInfer 发的,是网关不肯排队 {#b650-ninfer-429-not-queued}
+
+第二个客户端一发请求就吃 `429 Too many requests`。直觉是 `--max-concurrency 1`
+把并发挡了,但同样三个并发请求打两个不同的口,结果完全不同:
+
+| → llama-swap `127.0.0.1:8001` | → NInfer 后端 `127.0.0.1:8101` |
+|---|---|
+| `200 t=0.775` | `200 t=0.767` |
+| `429 t=0.00029` | `200 t=1.232` |
+| `429 t=0.00027` | `200 t=2.282` |
+
+**0.3 毫秒**的 429 说明请求根本没碰到模型 —— 是 llama-swap 的
+`concurrencyLimit: 1` 直接拒的。而同样三个请求直接打后端全部 200,耗时呈阶梯状,
+正是 `max_concurrency: 1` 串行消费队列的样子:NInfer 本来就有 admission 队列。
+
+`server_start` 记录里有完整的解析后配置,队列的两个默认值是
+`max_pending_requests: 16`、`pending_timeout_ms: 30000`。30 秒在这台机器上偏短:
+TTFT p90 是 28.8 秒,总耗时超 60 秒的请求占 9%,排在长请求后面的必然超时 ——
+日志里那几条 `inference request expired while waiting for admission` 就是这么来的。
+
+于是三处一起改:llama-swap `concurrencyLimit` 1 → 16(和后端队列深度对齐),
+`--pending-timeout-ms` 30000 → 600000,`--max-pending-requests 16` 由默认值改成写死。
+
+同一次切换里还扩了 continuation 容量:`--max-private-continuations` 4 → 8、
+`--host-state-slots` 16 → 24。依据是 #b650-ninfer-host-kv-undersized 之后 252 个
+请求的实测 —— host KV 池峰值只有 2,926 MiB / 8,192(没满),而 private owner 被驱逐
+105 次,说明卡的是 logical owner 数量,不是内存。8 个 owner × (endpoint + replay +
+long anchor) = 24 槽,约 3.44 GiB 常驻内存。
+
+### 顺带记下,留给下一次
+
+同一条记录里 `context_cost` 是
+`{prefill_source: "generic-default", transfer_source: "generic-default", preset_path: ""}`。
+而实测 device→host 带宽是 4.321 GB / 0.083 s ≈ **52 GB/s**,换回一个 62K 对话的 KV
+约 23 毫秒,重新 prefill 同样内容要 24 秒 —— 差三个数量级。但同期
+`main_kv_transfers.h2d` **严格等于 0**:换出去 4.32 GB,一次都没换回来过。怀疑是
+通用传输成本模型把 PCIe 估贵了,规划器永远选择重算。入口是
+`--context-cost-presets FILE`,格式待查上游,没敢猜着写。
+
+### 被我带偏的地方
+
+- 先入为主认定 429 来自 NInfer,因为它确实配了 `--max-concurrency 1`。真正的判据是
+  响应时间:微秒级的拒绝不可能经过模型。journalctl 里那行
+  `429 29 "pi (darwin...)" 15.93µs` 早就写着答案。
+- 绕了一圈才想起 `server_start` 事件里记的是**解析后的完整 engine 配置**,
+  `max_pending_requests` / `pending_timeout_ms` / `context_cost` 全在里面。查这类
+  "默认值到底是多少" 的问题应该先读它,而不是翻 `--help` 猜。
+
+---
+
 ## 2026-09-05 · host KV 池装不下一条 checkpoint {#b650-ninfer-host-kv-undersized}
 
 b650 转原生之后 OpenCode 仍然频繁整轮 Prefill。原生启用后 3.5 小时、146 个请求里,
