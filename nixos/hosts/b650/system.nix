@@ -56,7 +56,11 @@
   services.xserver.videoDrivers = ["nvidia"];
   nixpkgs.config.allowUnfree = true;
 
-  services.qwen38Ninfer.enable = true;
+  services.qwen38Ninfer = {
+    enable = true;
+    image = "localhost/ninfer:qwen38-24g-550d0ac-36f8e80f047d";
+    imageArchive = "/var/lib/qwen38/ninfer-catalog-image-20260905.tar";
+  };
 
   # The native node receives its own Tailscale identity on first boot. The
   # inference gateway discovers that address at runtime and binds only to it.
