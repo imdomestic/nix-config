@@ -44,3 +44,7 @@ It does not restart services or send notifications.
 The package's nextest suite and NixOS configuration evaluation are separate
 checks. The upstream VM test still needs a Linux KVM builder; a successful
 production smoke test does not establish the VM test passed.
+
+The first live run exposed and reproduced two integration differences; see
+[the dated incident record](incidents.md#maxops-pilot-acceptance). The pinned
+`c484672` revision fixes Prometheus metric-name matching and daemon ANSI output.
