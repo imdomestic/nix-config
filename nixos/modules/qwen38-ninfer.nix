@@ -32,7 +32,10 @@
 
   commonModel = {
     checkEndpoint = "/health";
-    concurrencyLimit = 1;
+    # Matches NInfer's own pending queue. At 1 llama-swap answers every
+    # concurrent request with an instant 429 instead of letting the backend
+    # queue it: docs/incidents.md#b650-ninfer-429-not-queued
+    concurrencyLimit = 16;
     ttl = 0;
     unloadTimeout = 60;
     useModelName = "qwen3.8-27b";
@@ -185,6 +188,12 @@ in {
                 "100000"
                 "--max-concurrency"
                 "1"
+                # A queued request waits behind a full-length prefill, and the
+                # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
+                "--max-pending-requests"
+                "16"
+                "--pending-timeout-ms"
+                "600000"
                 "--prefill-chunk"
                 "1024"
                 "--kv-dtype"
@@ -193,11 +202,11 @@ in {
                 "0"
                 # Host state and KV are sized for one full checkpoint: docs/incidents.md#b650-ninfer-host-kv-undersized
                 "--host-state-slots"
-                "16"
+                "24"
                 "--host-kv-mib"
                 "8192"
                 "--max-private-continuations"
-                "4"
+                "8"
                 "--max-shared-prefixes"
                 "1"
                 "--max-long-anchors-per-continuation"
@@ -238,6 +247,12 @@ in {
                 "262144"
                 "--max-concurrency"
                 "1"
+                # A queued request waits behind a full-length prefill, and the
+                # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
+                "--max-pending-requests"
+                "16"
+                "--pending-timeout-ms"
+                "600000"
                 "--prefill-chunk"
                 "1024"
                 "--kv-dtype"
@@ -246,11 +261,11 @@ in {
                 "0"
                 # Host state and KV are sized for one full checkpoint: docs/incidents.md#b650-ninfer-host-kv-undersized
                 "--host-state-slots"
-                "16"
+                "24"
                 "--host-kv-mib"
                 "8192"
                 "--max-private-continuations"
-                "4"
+                "8"
                 "--max-shared-prefixes"
                 "1"
                 "--max-long-anchors-per-continuation"
