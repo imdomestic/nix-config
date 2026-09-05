@@ -19,6 +19,17 @@ in {
     mode = "0400";
     restartUnits = ["maxops-hub.service"];
   };
+  sops.secrets."maxops/max_token" = {
+    mode = "0400";
+    restartUnits = ["maxops-hub.service" "max.service"];
+  };
+
+  services.max.maxops = {
+    enable = true;
+    baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
+    tokenFile = config.sops.secrets."maxops/max_token".path;
+    allowedGroups = [611798505];
+  };
 
   services.maxops-agent = {
     enable = true;
@@ -42,6 +53,12 @@ in {
       }
     ];
     clients = [
+      {
+        name = "max";
+        tokenFile = config.sops.secrets."maxops/max_token".path;
+        hosts = [host.name];
+        capabilities = ["fleet:read" "host:read" "units:read" "logs:read" "alerts:read"];
+      }
       {
         name = "hank";
         tokenFile = config.sops.secrets."maxops/hank_token".path;
