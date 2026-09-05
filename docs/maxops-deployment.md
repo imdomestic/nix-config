@@ -15,8 +15,27 @@ uses the upstream native NixOS modules.
 - Logs are enabled for the allowlisted services. The agent's journal group is
   a broader process-level read permission; the HTTP allowlist restricts its API.
 
-There is no mutation API, MCP/QQ integration or notification receiver enabled.
+There is no mutation API, MCP adapter or notification receiver enabled.
 The rest of the fleet is not yet in this pilot's inventory.
+
+## Max integration configuration
+
+`nixos/hosts/h610/maxops.nix` configures a separate `max` client, restricted to
+h610 and the existing readable services, with its own SOPS `maxops/max_token`.
+`services.max.maxops` passes that token through `LoadCredential`, not an inline
+environment value or a sandbox mount. Only QQ conversation `611798505` is allowed;
+private chats and owners outside that conversation receive no maxops tools.
+Endpoints mirrored onto this QQ conversation share its results and permission.
+
+The allowlist is `services.max.maxops.allowedGroups`; it overrides YAML through
+`MAX_MAXOPS_ALLOWED_GROUPS`. To manage it with `maxctl reload` instead, set the
+native option to `null` and configure `maxops.allowed_groups` in the hand-managed
+`/var/lib/max-bot/max.yaml`. An empty list denies everyone. The native URL,
+enable flag and credential path still apply even with that hand-managed file.
+
+The Max input includes the group-scoped HTTP integration. Deployment requires
+both Max and the hub to load the dedicated client credential. The original pilot
+results below predate this integration; keep its acceptance evidence separate.
 
 ## Use
 
