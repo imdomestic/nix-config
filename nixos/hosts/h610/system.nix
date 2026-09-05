@@ -51,6 +51,7 @@
         model = "qwen3.8-27b";
         timeout_seconds = 300;
         thinking = "enabled";
+        circuit_breaker_enabled = false;
         aliases = ["qwen" "qwen27b"];
         fallback_profiles = [
           "deepseek"
