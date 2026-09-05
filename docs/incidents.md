@@ -9,7 +9,87 @@
 
 ---
 
+## 2026-09-05 · NInfer 满 catalog 时漏算逻辑准入,搜索超时清空缓存 {#b650-ninfer-catalog-admission}
+
+复查 b650 的同一次进程运行和镜像对应的 NInfer `550d0ac` 源码,确认 H2D 已实现且
+实际发生过。12:50:19(+08:00)的请求 #46 换回 Main KV 632,291,328 bytes / 536 页,
+耗时 11.378 ms,MTP KV 另换回 39,518,208 bytes;命中 70,546 tokens,只重算 5 tokens,
+TTFT 106 ms。`generic-default` 并没有禁止恢复。
+
+此前十会话压测里的 #11 / #19 才是关键:搜索分别用时 5.107 / 5.207 ms,
+`stop_reason=time_budget`,并且 `selected_maximal_fallback=true`。每次驱逐 8 个 private
+owner 和 1 个 shared owner,丢掉 17 个 checkpoint,Host KV 和 Host state 占用随即清零。
+这解释了为何发生 D2H 后,下一轮已经没有可恢复的缓存。
+
+根因是两种容量脱节。ResourceManager 要求新请求有 private publication slot,但 Program
+的 `guided_closure_target` 只补齐 physical deficits;将 KV/State 换到 Host 不会腾出 logical
+owner。8 个名额占满时,快速生成的保留方案仍被 logical_goal 拒绝,可选搜索至多 5 ms,
+来不及找到更好方案就使用预先验证的 root maximal(驱逐全部 eligible owners)。
+
+补丁 `nixos/modules/qwen38-ninfer-catalog-admission.patch` 让 ResourceManager 按 candidate
+传递是否必须腾出 private slot。Guided closure 先按现有 owner policy 选择一个 eligible
+private eviction,再处理剩余物理压力;shared owner 和受保护的 source 不会被当作可用名额。
+有空槽或可以 ConsumeToActive 复用 source slot 时不增加 eviction。5 ms 上限、精确资源
+验证和 correctness fallback 保留。
+
+回归测试覆盖 8 个 owner 占满、单次 assessment 超过搜索预算,分别测试无物理压力和
+需要三项物理释放的情况:旧版多删 owner,修复后仅淘汰一个,另外七个仍可命中;另测满
+catalog 下复用 source slot 不误删其他 owner。42 项 ResourceManager 测试在 macOS Clang 和
+Linux GCC 13.3/CUDA 13.1.2 容器内均通过;27B、35B 两个 Variant 和 Engine translation unit
+通过 GCC `-fsyntax-only`。补丁与原有 Vision patch 可在干净的固定 revision 上依次应用。
+新镜像已在 b650 完整构建,镜像内 ResourceManager 测试通过:
+`localhost/ninfer:qwen38-24g-550d0ac-36f8e80f047d`,image ID
+`4fabf4b0d7f8affa64ba3351b3e085b32055520ce55027e0ada7e7d41d25d7ea`,归档
+`/var/lib/qwen38/ninfer-catalog-image-20260905.tar`。构建使用 host 网络解决容器不能访问
+宿主 resolver 的问题,并以 `NINFER_BUILD_MEMORY=12g` 限制构建内存,编译并行度未改。
+
+14:08–14:11(+08:00)暂停入口,以相同生产参数在独立端口运行候选镜像,测试结束恢复旧
+生产服务。`scripts/test-qwen38-kv-cache.py` 的 17 个请求全部
+通过验收:七个无共享前缀的会话各 45,097 tokens,总计 315,679,超过 Device KV 的 262,144。
+
+| 指标 | 候选镜像实测 |
+|---|---:|
+| 冷请求耗时 | 15.50–15.83 s |
+| 七会话重放命中 | 7/7,每次 45,092 / 45,097 tokens |
+| 重放耗时 / TTFT | 0.132–0.242 s / 61.7–92.3 ms |
+| Main KV D2H | 4,317,511,680 bytes / 78.32 ms |
+| Main KV H2D | 1,821,376,512 bytes / 32.33 ms |
+| MTP KV D2H / H2D | 269,770,752 / 113,762,304 bytes |
+| 第九个 owner 加入后的累计 private eviction | 1 |
+| maximal fallback | 0 |
+| 第九会话之后再访问最近使用的会话 | 仍命中 45,092 tokens |
+| Host KV / state 峰值 | 4,584,775,680 bytes / 16 槽 |
+
+传输量按 `throughput` 区间 delta 求和,不将单条日志当作累计值。测试用固定生成的合成
+长文本和 `max_tokens=8`,验证缓存生命周期与物理恢复,不代表所有真实对话的命中率。
+
+14:19(+08:00)在 rebase 到 `3e8a2d6` 后完成 b650 的 NixOS switch,运行系统和 boot profile
+均指向 `/nix/store/xh4vbndi6hw1fdp8jykqv9y22pyvclfd-nixos-system-b650-26.05.20260622.3426825`。
+生产容器的 image ID 与上述压测产物一致,后端、llama-swap 和网关均正常,服务没有重启循环。
+正式入口两次请求通过:4,590-token 冷请求耗时 1.703 s,重放命中 4,585 tokens,耗时 0.187 s。
+rebase 后全部 17 个 NixOS 主机的 toplevel derivation 求值通过。原有未提交的 `flake.lock`
+更新单独保留,本次部署使用远端锁文件。
+
+在有 CUDA 构建条件的 Linux 主机上运行(新目录、新归档,不会启动或停止模型):
+
+```sh
+sudo scripts/build-qwen38-ninfer.sh /var/tmp/ninfer-catalog-build /var/tmp/ninfer-catalog-image.tar
+```
+
+脚本固定上游 revision,叠加现有 24 GB Vision 补丁和本次修复,构建产品二进制,运行
+ResourceManager 测试后产出带补丁指纹的镜像。部署时将 `services.qwen38Ninfer.image`
+及 `imageArchive` 指向新产物,按仓库 freshness check 验证后再切换。
+
+误导点是把“一段压测里 H2D 为零”推广成“恢复通路不可用”,又只关注 Host 池峰值,
+忽略了 `selected_maximal_fallback` 和成批 owner eviction。十会话也超过了八个 logical
+owner 的上限,不能当作只测试显存溢出的对照实验。下方旧记录的显存容量结论撤回。
+
+---
+
 ## 2026-09-05 · 内存里的 KV 换不回来,能同时缓存几个对话由显存决定 {#b650-ninfer-host-kv-never-restored}
+
+> 后续复核已撤回本节的原因判断和容量结论,原始测量保留。见
+> [满 catalog 的逻辑准入修复](#b650-ninfer-catalog-admission)。
 
 扩完 continuation 容量(8 owners / 24 槽)之后做的压测:10 个互不共享前缀的会话,
 每个 38,130 tokens,合计 381,300 —— 是 device KV 容量 262,144 的 1.45 倍。两轮,

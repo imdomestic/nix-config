@@ -1,0 +1,319 @@
+diff --git a/docs/maintainer/resource-scheduling-and-context-cache.md b/docs/maintainer/resource-scheduling-and-context-cache.md
+index b2da814..6a6b512 100644
+--- a/docs/maintainer/resource-scheduling-and-context-cache.md
++++ b/docs/maintainer/resource-scheduling-and-context-cache.md
+@@ -713,6 +713,14 @@ Materialization 与 shared capture 使用两个 typed entrypoint。Materializati
+ evaluator。不存在另一套 source/victim eligibility 规则，也不存在 synthetic capture
+ `AdmissionCandidate` 跨越 common planner 边界。
+ 
++ResourceManager 为每个 materialization candidate 显式传递 private publication 是否需要 eviction。
++Catalog 已满且 source 不能 ConsumeToActive 时，guided closure 先按 owner policy 顺序选择一个 eligible
++private victim 的完整 eviction，再补齐 physical deficits。Shared eviction 或只将 State/KV demote 到 Host
++不能释放 private catalog slot。已有空槽或能复用 consumed source slot 时不添加这项 eviction。
++这让 bounded search 的 seed 同时满足 logical admission 和 physical capacity，避免仅有物理可行的
++demotion target 被 logical_goal 拒绝后，超时回落到 root maximal；最终仍由同一 exact evaluator 和
++ResourceManager logical_goal 验证。
++
+ Search management 使用 ordinal-indexed `BoundedTargetLedger`。Program target choices 存放在
+ planning-session-owned flat arena；每个 target 只保存 offset/count，canonical lookup 使用 flat hash。Prepare
+ expansion 在 arena 尾部建立 scratch，commit 只保留新 canonical targets，discard 回卷到原 mark。Session
+diff --git a/src/runtime/engine/materialization_planner.h b/src/runtime/engine/materialization_planner.h
+index 74e10a2..8ec2cc9 100644
+--- a/src/runtime/engine/materialization_planner.h
++++ b/src/runtime/engine/materialization_planner.h
+@@ -55,6 +55,7 @@ public:
+         PlanningCandidateId id;
+         std::uint32_t stable_ordinal = 0;
+         bool current_session_binding = false;
++        bool requires_private_eviction = false;
+     };
+ 
+     struct LogicalGoal {
+@@ -446,7 +447,8 @@ public:
+             }
+             const Clock::time_point step_started              = Clock::now();
+             const std::optional<PressureTargetHandle> closure = session.guided_closure_target(
+-                candidates[root.candidate_index].id, preferred_owner_ids);
++                candidates[root.candidate_index].id, preferred_owner_ids,
++                candidates[root.candidate_index].requires_private_eviction);
+             maximum_step_ns = std::max(maximum_step_ns, elapsed_ns(step_started, Clock::now()));
+             if (!closure) { continue; }
+             const PressureTargetGuidance closure_guidance = session.guidance(*closure);
+diff --git a/src/runtime/engine/resource_manager.h b/src/runtime/engine/resource_manager.h
+index f14837e..7e47f20 100644
+--- a/src/runtime/engine/resource_manager.h
++++ b/src/runtime/engine/resource_manager.h
+@@ -1840,6 +1840,9 @@ private:
+         std::vector<MaterializationCheckpointPolicy> checkpoint_policies;
+         candidate_inputs.reserve(candidates.size());
+ 
++        const bool vacant_private_slot = std::any_of(
++            catalog_.begin(), catalog_.end(),
++            [](const CatalogEntry& entry) { return entry.state == CatalogState::Vacant; });
+         for (std::size_t index = 0; index < candidates.size(); ++index) {
+             if (!candidates[index].plan) {
+                 throw std::logic_error("materialization candidate is empty");
+@@ -1849,6 +1852,11 @@ private:
+                 .id             = PlanningCandidateId{.value = static_cast<std::uint32_t>(index)},
+                 .stable_ordinal = static_cast<std::uint32_t>(index),
+                 .current_session_binding = candidates[index].current_session_binding,
++                .requires_private_eviction =
++                    !vacant_private_slot &&
++                    !(candidates[index].private_source &&
++                      candidates[index].plan->identity_assessment().source_mode ==
++                          PrivateSourceMode::ConsumeToActive),
+             });
+         }
+ 
+diff --git a/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/runtime.h b/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/runtime.h
+index 40eebc3..3f5ec3a 100644
+--- a/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/runtime.h
++++ b/src/targets/qwen3_6/export/ninfer/targets/qwen3_6/runtime.h
+@@ -551,7 +551,8 @@ public:
+     root_maximal_target(runtime::PlanningCandidateId root_candidate);
+     [[nodiscard]] std::optional<PressureTargetHandle>
+     guided_closure_target(runtime::PlanningCandidateId candidate,
+-                          std::span<const runtime::PlanningOwnerId> preferred_owner_ids);
++                          std::span<const runtime::PlanningOwnerId> preferred_owner_ids,
++                          bool requires_private_eviction);
+     [[nodiscard]] runtime::PressureTargetGuidance guidance(PressureTargetHandle target);
+     [[nodiscard]] AssessedPressureTarget<Variant> assess(PressureTargetHandle target);
+     [[nodiscard]] PreparedPressureExpansion<Variant> prepare_expansion(PressureTargetHandle parent);
+diff --git a/src/targets/qwen3_6/impl/runtime/api_impl.h b/src/targets/qwen3_6/impl/runtime/api_impl.h
+index 417feff..a72eeb5 100644
+--- a/src/targets/qwen3_6/impl/runtime/api_impl.h
++++ b/src/targets/qwen3_6/impl/runtime/api_impl.h
+@@ -168,9 +168,10 @@ PressurePlanningSession<Variant>::root_maximal_target(runtime::PlanningCandidate
+ template <>
+ std::optional<PressureTargetHandle> PressurePlanningSession<Variant>::guided_closure_target(
+     runtime::PlanningCandidateId candidate,
+-    std::span<const runtime::PlanningOwnerId> preferred_owner_ids) {
++    std::span<const runtime::PlanningOwnerId> preferred_owner_ids,
++    bool requires_private_eviction) {
+     if (impl_ == nullptr) { throw std::logic_error("pressure planning session is empty"); }
+-    return impl_->guided_closure_target(candidate, preferred_owner_ids);
++    return impl_->guided_closure_target(candidate, preferred_owner_ids, requires_private_eviction);
+ }
+ 
+ template <>
+diff --git a/src/targets/qwen3_6/impl/runtime/pressure_planner.h b/src/targets/qwen3_6/impl/runtime/pressure_planner.h
+index 729c25a..729bad5 100644
+--- a/src/targets/qwen3_6/impl/runtime/pressure_planner.h
++++ b/src/targets/qwen3_6/impl/runtime/pressure_planner.h
+@@ -612,7 +612,8 @@ PressurePlanningSessionImpl<NINFER_QWEN36_VARIANT>::root_maximal_target(
+ inline std::optional<qwen3_6::PressureTargetHandle>
+ PressurePlanningSessionImpl<NINFER_QWEN36_VARIANT>::guided_closure_target(
+     runtime::PlanningCandidateId admission,
+-    std::span<const runtime::PlanningOwnerId> preferred_owner_ids) {
++    std::span<const runtime::PlanningOwnerId> preferred_owner_ids,
++    bool requires_private_eviction) {
+     if (scratch_live) {
+         throw std::logic_error("guided pressure closure conflicts with expansion scratch");
+     }
+@@ -711,6 +712,17 @@ PressurePlanningSessionImpl<NINFER_QWEN36_VARIANT>::guided_closure_target(
+ 
+     choice_scratch.assign(options.victims.size(), 0);
+ 
++    // Physical demotion cannot free a logical continuation slot. Seed its required eviction
++    // before closing physical deficits; shared owners and the protected source cannot fill it.
++    if (requires_private_eviction) {
++        const auto victim = std::find_if(victim_order.begin(), victim_order.end(),
++                                         [&](std::size_t index) {
++                                             return !owners[options.victims[index].owner_index].shared;
++                                         });
++        if (victim == victim_order.end()) { return std::nullopt; }
++        choice_scratch[*victim] = options.victims[*victim].eviction_choice;
++    }
++
+     struct Selection {
+         std::size_t victim_index = 0;
+         PressureDecision decision;
+diff --git a/src/targets/qwen3_6/impl/runtime/program.h b/src/targets/qwen3_6/impl/runtime/program.h
+index 3108109..9fac278 100644
+--- a/src/targets/qwen3_6/impl/runtime/program.h
++++ b/src/targets/qwen3_6/impl/runtime/program.h
+@@ -1313,7 +1313,8 @@ struct PressurePlanningSessionImpl<NINFER_QWEN36_VARIANT> {
+     root_maximal_target(runtime::PlanningCandidateId root_candidate);
+     [[nodiscard]] std::optional<qwen3_6::PressureTargetHandle>
+     guided_closure_target(runtime::PlanningCandidateId candidate,
+-                          std::span<const runtime::PlanningOwnerId> preferred_owner_ids);
++                          std::span<const runtime::PlanningOwnerId> preferred_owner_ids,
++                          bool requires_private_eviction);
+     [[nodiscard]] runtime::PressureTargetGuidance guidance(qwen3_6::PressureTargetHandle target);
+     [[nodiscard]] qwen3_6::AssessedPressureTarget<NINFER_QWEN36_VARIANT>
+     assess(qwen3_6::PressureTargetHandle target);
+diff --git a/tests/test_resource_manager.cpp b/tests/test_resource_manager.cpp
+index fb6bc8d..fdc66fe 100644
+--- a/tests/test_resource_manager.cpp
++++ b/tests/test_resource_manager.cpp
+@@ -558,7 +558,8 @@ public:
+     [[nodiscard]] FakePressureTargetHandle root_maximal_target(PlanningCandidateId candidate);
+     [[nodiscard]] std::optional<FakePressureTargetHandle>
+     guided_closure_target(PlanningCandidateId candidate,
+-                          std::span<const PlanningOwnerId> preferred_owner_ids);
++                          std::span<const PlanningOwnerId> preferred_owner_ids,
++                          bool requires_private_eviction);
+     [[nodiscard]] ninfer::runtime::PressureTargetGuidance guidance(FakePressureTargetHandle target);
+     [[nodiscard]] FakeAssessedPressureTarget assess(FakePressureTargetHandle target);
+     [[nodiscard]] FakePreparedPressureExpansion prepare_expansion(FakePressureTargetHandle parent);
+@@ -1334,7 +1335,8 @@ FakePressurePlanningSession::root_maximal_target(PlanningCandidateId candidate)
+ }
+ 
+ std::optional<FakePressureTargetHandle> FakePressurePlanningSession::guided_closure_target(
+-    PlanningCandidateId candidate, std::span<const PlanningOwnerId> preferred_owner_ids) {
++    PlanningCandidateId candidate, std::span<const PlanningOwnerId> preferred_owner_ids,
++    bool requires_private_eviction) {
+     require(!scratch_live_, "fake guided pressure closure conflicts with expansion scratch");
+     const std::uint32_t selected_candidate = candidate_index(candidate);
+     populate_options(selected_candidate);
+@@ -1354,6 +1356,16 @@ std::optional<FakePressureTargetHandle> FakePressurePlanningSession::guided_clos
+     }
+     for (std::size_t index = 0; index < owners_.size(); ++index) { append(index); }
+ 
++    if (requires_private_eviction) {
++        const auto victim = std::find_if(order.begin(), order.end(), [&](std::size_t index) {
++            return owners_[index].private_handle != nullptr &&
++                   !options_[selected_candidate][index].empty();
++        });
++        if (victim == order.end()) { return std::nullopt; }
++        target.choices[*victim] =
++            static_cast<std::uint16_t>(options_[selected_candidate][*victim].size());
++    }
++
+     const auto selected_decisions = [&] {
+         std::vector<FakeTargetDecision> decisions;
+         for (std::size_t index = 0; index < owners_.size(); ++index) {
+@@ -1364,6 +1376,26 @@ std::optional<FakePressureTargetHandle> FakePressurePlanningSession::guided_clos
+         }
+         return decisions;
+     };
++    const auto publish_if_feasible = [&]() -> std::optional<FakePressureTargetHandle> {
++        if (!program_->target_feasible(selected_decisions())) { return std::nullopt; }
++        auto existing = std::find_if(targets_.begin(), targets_.end(),
++                                    [&](const Target& prior) { return same_target(prior, target); });
++        if (existing != targets_.end()) {
++            return FakePressureTargetHandle{
++                .generation = generation_,
++                .index = static_cast<std::uint32_t>(existing - targets_.begin()),
++            };
++        }
++        target.stable_ordinal = static_cast<std::uint32_t>(targets_.size());
++        targets_.push_back(std::move(target));
++        program_->pressure_target_count_peak =
++            std::max(program_->pressure_target_count_peak, targets_.size());
++        return FakePressureTargetHandle{
++            .generation = generation_,
++            .index = static_cast<std::uint32_t>(targets_.size() - 1U),
++        };
++    };
++    if (auto ready = publish_if_feasible()) { return ready; }
+     for (int destructive = 0; destructive < 2; ++destructive) {
+         for (const std::size_t owner_index : order) {
+             const auto& alternatives = options_[selected_candidate][owner_index];
+@@ -1375,22 +1407,7 @@ std::optional<FakePressureTargetHandle> FakePressurePlanningSession::guided_clos
+             if (found == alternatives.end()) { continue; }
+             target.choices[owner_index] =
+                 static_cast<std::uint16_t>(1U + (found - alternatives.begin()));
+-            if (program_->target_feasible(selected_decisions())) {
+-                auto existing =
+-                    std::find_if(targets_.begin(), targets_.end(),
+-                                 [&](const Target& prior) { return same_target(prior, target); });
+-                std::uint32_t target_index = 0;
+-                if (existing != targets_.end()) {
+-                    target_index = static_cast<std::uint32_t>(existing - targets_.begin());
+-                } else {
+-                    target.stable_ordinal = static_cast<std::uint32_t>(targets_.size());
+-                    targets_.push_back(std::move(target));
+-                    target_index = static_cast<std::uint32_t>(targets_.size() - 1U);
+-                    program_->pressure_target_count_peak =
+-                        std::max(program_->pressure_target_count_peak, targets_.size());
+-                }
+-                return FakePressureTargetHandle{.generation = generation_, .index = target_index};
+-            }
++            if (auto ready = publish_if_feasible()) { return ready; }
+         }
+     }
+     return std::nullopt;
+@@ -2767,6 +2784,71 @@ void test_guided_pressure_reaches_deep_retention_before_maximal_fallback() {
+             "guided pressure search returned to eager breadth-first assessment");
+ }
+ 
++void test_full_catalog_preserves_other_owners_when_search_expires() {
++    for (const std::size_t physical_pressure : {0U, 3U}) {
++        constexpr std::uint32_t owner_count = 8;
++        FakeManager manager = make_manager(1, owner_count);
++        FakeProgram program;
++        for (std::uint32_t index = 0; index < owner_count; ++index) {
++            const std::uint32_t content = 100U + index;
++            const auto active = start_active(manager, program, content, make_base(content), index + 1U);
++            (void)finish_active(manager, program, active);
++        }
++
++        program.required_pressure_actions = physical_pressure;
++        program.private_pressure_alternatives = 4;
++        program.pressure_action_immediate_ns = 1;
++        // One exact assessment consumes the optional search budget. A complete seed must
++        // satisfy catalog admission as well as physical capacity before search can expire.
++        program.pressure_assessment_delay_us = 6'000;
++        const auto incoming = start_active(manager, program, 200, make_base(200), 20);
++        RuntimeStats stats;
++        manager.populate_runtime_stats(program, stats);
++        require(stats.pressure_private_owners_evicted == 1,
++                "full catalog admission discarded more than one parked owner");
++        (void)finish_active(manager, program, incoming);
++
++        program.required_pressure_actions = 0;
++        program.pressure_assessment_delay_us = 0;
++        std::uint32_t surviving_hits = 0;
++        for (std::uint32_t index = 0; index < owner_count; ++index) {
++            const std::uint32_t content = 100U + index;
++            const auto reuse = manager.inspect(program, FakePreparedPrompt{content},
++                                               make_base(content), 30U + index);
++            require(reuse.choice.has_value(), "survivor lookup did not produce a plan");
++            surviving_hits += reuse.choice->summary().reusable_prompt_tokens == 16 ? 1U : 0U;
++        }
++        require(surviving_hits == owner_count - 1,
++                "unrelated checkpoints stopped being reusable after catalog pressure");
++    }
++}
++
++void test_full_catalog_reuses_source_slot_without_eviction() {
++    constexpr std::uint32_t owner_count = 8;
++    FakeManager manager = make_manager(1, owner_count);
++    FakeProgram program;
++    std::uint32_t source_id = 0;
++    for (std::uint32_t index = 0; index < owner_count; ++index) {
++        const std::uint32_t content = 100U + index;
++        const auto active = start_active(manager, program, content, make_base(content), index + 1U);
++        source_id = active.sequence.id;
++        (void)finish_active(manager, program, active);
++    }
++    program.required_pressure_actions = 3;
++    program.private_pressure_alternatives = 4;
++    program.pressure_action_immediate_ns = 1;
++    program.pressure_assessment_delay_us = 6'000;
++    const auto resumed = start_active(manager, program, 107, make_base(107), 20);
++    RuntimeStats stats;
++    manager.populate_runtime_stats(program, stats);
++    require(stats.pressure_private_owners_evicted == 0,
++            "resuming a private owner needlessly evicted another owner for its slot");
++    require(program.started_source_id == source_id &&
++                program.started_source_mode == PrivateSourceMode::ConsumeToActive,
++            "full catalog prevented reuse of the consumed source checkpoint");
++    (void)finish_active(manager, program, resumed);
++}
++
+ void test_combined_target_reprices_cancelled_pressure_copy() {
+     FakeManager manager = make_manager(1, 3);
+     FakeProgram program;
+@@ -3289,6 +3371,10 @@ int main() {
+              test_materialization_result_is_adopted_by_owner_identity);
+     run_test("guided deep retention",
+              test_guided_pressure_reaches_deep_retention_before_maximal_fallback);
++    run_test("full catalog under search timeout",
++             test_full_catalog_preserves_other_owners_when_search_expires);
++    run_test("full catalog source slot reuse",
++             test_full_catalog_reuses_source_slot_without_eviction);
+     run_test("combined target exact repricing",
+              test_combined_target_reprices_cancelled_pressure_copy);
+     run_test("in-progress and capture", test_in_progress_adoption_and_private_capture);

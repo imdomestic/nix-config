@@ -128,6 +128,7 @@ in {
     enable = lib.mkEnableOption "Qwen3.8 27B NInfer inference gateway";
     image = lib.mkOption {
       type = lib.types.str;
+      # Patched image build and validation: docs/incidents.md#b650-ninfer-catalog-admission.
       default = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
       description = "Locally imported NInfer OCI image reference.";
     };
