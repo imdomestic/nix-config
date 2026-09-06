@@ -908,6 +908,17 @@ in {
         }
       ];
     }
+    {
+      job_name = "kennethbot-cluster-control";
+      metrics_path = "/metrics/";
+      scrape_interval = "15s";
+      static_configs = [
+        {
+          targets = ["127.0.0.1:8091"];
+          labels.instance = "h610";
+        }
+      ];
+    }
   ];
   my.monitoring.extraRules = [
     {
@@ -921,6 +932,16 @@ in {
           annotations = {
             summary = "Kennethbot metrics endpoint is unavailable";
             description = "Prometheus cannot scrape the Kennethbot process on h610.";
+          };
+        }
+        {
+          alert = "KennethbotClusterControlUnavailable";
+          expr = ''up{job="kennethbot-cluster-control"} == 0'';
+          "for" = "2m";
+          labels.severity = "warning";
+          annotations = {
+            summary = "Kennethbot cluster control is unavailable";
+            description = "The bot cannot perform trusted fleet queries while its local control service is unavailable.";
           };
         }
         {

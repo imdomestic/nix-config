@@ -10,6 +10,21 @@
   };
   managed = lib.filter (entry: entry.maxops.enable or false) inventory;
   hostNames = map (entry: entry.name) managed;
+  kennethbotInventory =
+    map (entry: {
+      host_id = entry.name;
+      label = entry.name;
+      architecture = entry.system;
+      site = "not-recorded";
+      maintainer = "shared-infrastructure";
+      permission_source = "nix-config MaxOps registry";
+      roles = entry.roles;
+      observe = true;
+      operate = false;
+      compute = false;
+      readable_units = entry.maxops.readableUnits;
+    })
+    managed;
 in {
   services.max.maxops = {
     enable = true;
@@ -36,6 +51,18 @@ in {
       "maxops/max_token" = {
         mode = "0400";
         restartUnits = ["maxops-hub.service" "max.service"];
+      };
+      "maxops/kennethbot_token" = {
+        sopsFile = ../../../secrets/maxops/kennethbot.yaml;
+        key = "maxops_token";
+        mode = "0400";
+        restartUnits = ["maxops-hub.service" "kennethbot-cluster-control.service"];
+      };
+      "kennethbot/cluster_control_token" = {
+        sopsFile = ../../../secrets/maxops/kennethbot.yaml;
+        key = "control_token";
+        mode = "0400";
+        restartUnits = ["kennethbot-cluster-control.service" "qq-deepseek-bot.service"];
       };
       "maxops/alert_sink" = {
         sopsFile = ../../../secrets/maxops/alert-sink.yaml;
@@ -82,6 +109,12 @@ in {
         hosts = hostNames;
         capabilities = ["fleet:read" "host:read" "metrics:read" "units:read" "logs:read" "alerts:read"];
       }
+      {
+        name = "kennethbot";
+        tokenFile = config.sops.secrets."maxops/kennethbot_token".path;
+        hosts = hostNames;
+        capabilities = ["fleet:read" "host:read" "units:read" "logs:read" "alerts:read"];
+      }
     ];
     prometheusUrl = "http://${host.tsIp}:${toString config.my.monitoring.port}";
     alertmanagerUrl = "http://${host.tsIp}:${toString config.my.monitoring.alertmanagerPort}";
@@ -91,6 +124,25 @@ in {
       sinkUrl = "http://127.0.0.1:${toString config.services.max.maxopsNotifications.port}/v1/alerts";
       sinkTokenFile = config.sops.secrets."maxops/alert_sink".path;
     };
+  };
+
+  services.kennethbot-cluster-control = {
+    enable = true;
+    environmentFile = config.sops.templates."qq-deepseek-bot-postgres.env".path;
+    apiTokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
+    inventory = kennethbotInventory;
+    maxops = {
+      enable = true;
+      baseUrl = "http://127.0.0.1:${toString config.services.maxops-hub.port}";
+      tokenFile = config.sops.secrets."maxops/kennethbot_token".path;
+    };
+  };
+
+  services.qq-deepseek-bot.cluster = {
+    enable = true;
+    tokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
+    allowedGroups = [611798505 650536599];
+    logAllowedGroups = [];
   };
 
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [config.services.maxops-hub.port];

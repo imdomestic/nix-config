@@ -11,7 +11,19 @@ in {
   tsIp = "100.64.0.3";
   maxops = {
     enable = true;
-    readableUnits = ["max.service" "maxops-agent.service" "maxops-hub.service" "nginx.service" "prometheus.service" "alertmanager.service" "tailscaled.service"];
+    readableUnits = [
+      "max.service"
+      "maxops-agent.service"
+      "maxops-hub.service"
+      "kennethbot-cluster-control.service"
+      "qq-deepseek-bot.service"
+      "qq-bot-postgres-node.service"
+      "docker-napcat.service"
+      "nginx.service"
+      "prometheus.service"
+      "alertmanager.service"
+      "tailscaled.service"
+    ];
   };
   ip = "10.0.0.5";
   sshUser = "root";
@@ -32,6 +44,7 @@ in {
     inputs.max.nixosModules.max
     inputs.maxops.nixosModules.hub
     inputs.qq-bot.nixosModules.qq-deepseek-bot
+    inputs.qq-bot.nixosModules.cluster-control
   ];
 
   users = {
