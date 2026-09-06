@@ -246,8 +246,9 @@ in {
                 "131072"
                 "--kv-capacity"
                 "262144"
+                # 24 GB C=2 startup and live batching: docs/incidents.md#b650-ninfer-c2.
                 "--max-concurrency"
-                "1"
+                "2"
                 # A queued request waits behind a full-length prefill, and the
                 # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
                 "--max-pending-requests"
