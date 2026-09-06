@@ -141,11 +141,14 @@ up to date:
    paths instead: `readlink /run/current-system` vs the evaluated toplevel
    `outPath` of the host's configuration (a `--dry-run` build also shows
    whether anything would change).
-3. If the remote has new commits, or the running generation does not match
-   the latest code, **stop and report to the user first**: summarize the
-   incoming commits (`git log`) and a diff overview (`git diff --stat`), and
-   let the user decide whether to pull/rebase before rebuilding. Never
-   silently rebuild over an out-of-date checkout.
+3. If the remote has new commits, **rebase onto `origin/main` automatically**,
+   preserving unrelated local changes. Summarize the incoming commits and
+   diff, verify the rebased configuration, then commit and push the requested
+   work without asking whether to synchronize first. This is the owner's
+   standing instruction as of 2026-09-06. If the running generation differs,
+   report that drift and continue the already-authorized deployment from the
+   updated checkout; do not rebuild stale code. Rebase itself does not grant
+   permission for a deployment that the user has not requested.
 
 ### After a rebuild: commit and push promptly
 
