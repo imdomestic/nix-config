@@ -51,6 +51,9 @@
     })
     managed;
 in {
+  # 当前锁定的 Kennethbot worker 模块仍引用已移除的旧包名。
+  nixpkgs.overlays = [(_: prev: {poppler_utils = prev.poppler-utils;})];
+
   services.max.maxops = {
     enable = true;
     baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
@@ -112,7 +115,7 @@ in {
   services.max.maxopsNotifications = {
     enable = true;
     tokenFile = config.sops.secrets."maxops/alert_sink".path;
-    groups = [650536599];
+    groups = [611798505];
     hosts = hostNames;
   };
 
