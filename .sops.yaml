@@ -51,6 +51,9 @@ creation_rules:
   - path_regex: secrets/maxops/kennethbot\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
+  - path_regex: secrets/maxops/kennethbot-worker\.yaml$
+    key_groups:
+      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/maxops/alert-ingress\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610, *host_tank]

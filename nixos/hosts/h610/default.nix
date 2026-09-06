@@ -17,6 +17,7 @@ in {
       "maxops-executor.service"
       "maxops-hub.service"
       "kennethbot-cluster-control.service"
+      "kennethbot-cluster-worker.service"
       "qq-deepseek-bot.service"
       "qq-bot-postgres-node.service"
       "docker-napcat.service"
@@ -47,6 +48,7 @@ in {
     inputs.maxops.nixosModules.hub
     inputs.qq-bot.nixosModules.qq-deepseek-bot
     inputs.qq-bot.nixosModules.cluster-control
+    inputs.qq-bot.nixosModules.cluster-worker
   ];
 
   users = {
