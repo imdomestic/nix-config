@@ -1,5 +1,31 @@
 # maxops deployment
 
+## Fleet execution rollout (2026-09-07)
+
+MaxOps 0.3 runs an Agent and Executor on all eight managed hosts. h610 remains
+the only Hub. Hank and Max retain separate credentials but receive the same 38
+operations and full capability set across the fleet; Kennethbot remains
+observation-only.
+
+- Every host has its own execution token in `secrets/maxops/<host>.yaml`, except
+  h610, whose token remains in its host secret. h610 receives a separately
+  encrypted copy of each remote token for Hub dispatch. Tokens stay in runtime
+  files and systemd credentials.
+- Manageable units are the explicit per-host `config.my.host.maxops.readableUnits`
+  inventory. An enabled Executor does not grant access to unlisted units.
+- Each host owns one logical repository and system deployment profile. The
+  logical repositories share the public nix-config remote, but each workspace,
+  check and build stays on its declared native-architecture Executor. Remote
+  branch CAS still prevents concurrent publishers from overwriting one another.
+- Commands use bounded diagnostic, root operator and root activation profiles.
+  Deployments freeze Git and runtime baselines, build an exact derivation,
+  activate its store path directly, run target-local checks and recover only
+  while the change still owns the observed runtime.
+- Human pushes, direct service actions and manual rebuilds remain supported.
+  MaxOps re-observes the Git ref, running closure and persistent profile before
+  mutation; stale or superseded work stops instead of overwriting another
+  writer.
+
 ## Fleet expansion configuration (2026-09-06)
 
 All eight agents were activated in the initial fleet rollout (`707f986`),

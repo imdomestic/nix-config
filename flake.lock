@@ -1014,11 +1014,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788706812,
-        "narHash": "sha256-AfT24oY33x0Q/OcLyiBPlv424vRJ0RS6t10DjYUOgho=",
+        "lastModified": 1788711195,
+        "narHash": "sha256-/PbxCHUhUZoXrKEtJDYuPMQspw1Y5PiL7ZfwMpRDonU=",
         "owner": "HCHogan",
         "repo": "maxops",
-        "rev": "659450806550c255169de8a039c94e4f370a63d7",
+        "rev": "57c97d45c8ca2496382dcfc6925686bc8fc764dd",
         "type": "github"
       },
       "original": {

@@ -44,7 +44,6 @@ in {
   externalModules = [
     # inputs.headplane.nixosModules.headplane
     inputs.max.nixosModules.max
-    inputs.maxops.nixosModules.executor
     inputs.maxops.nixosModules.hub
     inputs.qq-bot.nixosModules.qq-deepseek-bot
     inputs.qq-bot.nixosModules.cluster-control

@@ -11,6 +11,25 @@
 
 ---
 
+## 2026-09-07 · maxops 执行面扩到八台纳管主机 {#maxops-fleet-full-control}
+
+h610 继续作为唯一 Hub；八台纳管主机各自运行 Agent 与 Executor。Hank 和 Max
+使用独立 token，但都获得全部 host、job、unit、diagnostic、workspace 与 deployment
+权限。Kennethbot 保持只读。每台主机的 manageable unit 仍来自
+`config.my.host.maxops.readableUnits`，完整客户端权限不会绕过目标机清单。
+
+每台主机使用独立 execution token。远端主机的同一份 SOPS 文件同时加密给该主机、
+h610 和管理员：目标 Agent 读取本机副本，Hub 读取 h610 副本。token 只通过运行时
+文件和 systemd credential 传递。
+
+一个 repository executor 同时也是该 deployment 的 builder，workspace 不跨
+executor 隐式复制。因此各主机使用独立逻辑 repository ID 与本机 system deployment
+profile，虽然它们都指向同一个公开 Git 远端。这样 x86_64 与 aarch64 在本机原生构建，
+远端 ref 的 CAS 仍协调多个发布者；人工 push、直接 rebuild 和其他部署工具继续作为
+同等事实来源。
+
+---
+
 ## 2026-09-07 · maxops 完整执行面先落在 h610 {#maxops-h610-full-control}
 
 Hank 和 Max 使用独立 token，但在 Hub 上拥有相同的完整 capability、`nix-config`
