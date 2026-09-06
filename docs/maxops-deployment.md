@@ -16,7 +16,8 @@ second hand-maintained inventory or automatic enablement for every server.
   only to administrators, that host and h610. Existing h610 credentials are
   unchanged. The hub and agents consume copies through `LoadCredential`.
 - Query access is limited to QQ groups **611798505** and **650536599** and their
-  mirrored conversations. Alert notifications still target **611798505** only.
+  mirrored conversations. Alert notifications target **650536599** only;
+  **611798505** retains query access but no longer receives fleet alerts.
   Nine operations are available: the original six, plus
   `host.metrics`, `units.list`, and `deploy.status`. `units.status` adds PID,
   memory, restart and exit details. `fleet.overview` adds load/disk observations
