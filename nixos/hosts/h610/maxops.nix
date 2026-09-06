@@ -15,7 +15,7 @@ in {
     enable = true;
     baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
     tokenFile = config.sops.secrets."maxops/max_token".path;
-    allowedGroups = [611798505];
+    allowedGroups = [611798505 650536599];
   };
   sops.secrets =
     lib.listToAttrs (map (entry: {
