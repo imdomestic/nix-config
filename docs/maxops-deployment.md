@@ -2,8 +2,8 @@
 
 ## Fleet expansion configuration (2026-09-06)
 
-This expansion is code/configuration, not a claim that the seven new agents
-have been activated. The hub stays on h610. Registry entries explicitly enable
+All eight agents were activated in the initial fleet rollout (`707f986`),
+with Max `15648d3` and maxops `8c08ae4`. The hub stays on h610. Registry entries enable
 `maxops` for **h610, shanghai, r6s, r5s, rpi4, r5sjp, tank and h310**; all other
 hosts remain disabled. The same registry fields generate agent policy, hub
 inventory, the Max/hank client grants and notification host scope. There is no
@@ -15,8 +15,9 @@ second hand-maintained inventory or automatic enablement for every server.
 - `secrets/maxops/<host>.yaml` contains one distinct agent credential, encrypted
   only to administrators, that host and h610. Existing h610 credentials are
   unchanged. The hub and agents consume copies through `LoadCredential`.
-- Query access remains limited to QQ group **611798505** and its mirrored
-  conversation. Nine operations are available: the original six, plus
+- Query access is limited to QQ groups **611798505** and **650536599** and their
+  mirrored conversations. Alert notifications still target **611798505** only.
+  Nine operations are available: the original six, plus
   `host.metrics`, `units.list`, and `deploy.status`. `units.status` adds PID,
   memory, restart and exit details. `fleet.overview` adds load/disk observations
   and cautious combined reachability, not a claim to diagnose power failures.
@@ -46,8 +47,8 @@ read-only fleet acceptance. System and Home Manager remain separate.
 Max migration 090 requires a current database backup; the old binary's schema
 downgrade guard means a system-generation rollback alone is not a DB rollback.
 
-Until upstream publication, validate the working trees without recording local
-paths in the deployment lock:
+For unpublished development changes, validate the working trees without recording
+local paths in the deployment lock:
 
 ```sh
 nix eval --raw .#nixosConfigurations.h610.config.system.build.toplevel.drvPath \
@@ -72,7 +73,7 @@ real ARM builder (or separately provisioned emulation), not an assumed capabilit
 Notification concurrency, rollback, retry and HTTP acceptance are tested with a
 disposable PostgreSQL database, never by writing fixtures into the live ledger.
 
-### Expansion validation (working tree)
+### Pre-release validation
 
 - Max: `cabal build all`, 964 unit tests, 244 real PostgreSQL tests,
   `cabal check`, changed-area HLint and prompt-flow generation/check passed.
@@ -94,6 +95,38 @@ disposable PostgreSQL database, never by writing fixtures into the live ledger.
 - Upstream publication, formal lock updates and production activation are
   separate release steps; these results do not claim fleet deployment or QQ
   end-to-end notification delivery.
+
+### Production rollout observations
+
+- The approved rebase retains Kennethbot 0.11.3. All 17 NixOS configurations
+  evaluated with formal pins, and all eight target SOPS checks passed before
+  publication. System profiles were activated; no Home Manager profile was deployed.
+- Both x86_64 and aarch64 maxops packages built and ran their native tests.
+  The eight agent services, h610 hub, Max and both Alertmanagers were active
+  after the initial rollout, with zero automatic restarts for Max/maxops.
+- Before migration 090, a PostgreSQL custom-format backup was written to
+  `/var/lib/max-backups/pre-maxops-090-20260906T022710Z.dump` (730231910 bytes,
+  mode 0600 in a root-only directory). `pg_restore --list` passed. Do not assume
+  that rolling back the system generation also rolls back this migration.
+- Live Max reports `15648d3`; migration 090 is present. The live notification
+  probe verifies the eight-host scope, group 611798505, credential separation,
+  HTTP authentication failures and hub-to-sink acknowledgement. It uses an empty
+  alert payload, queues zero messages and sends no synthetic group notification.
+- Six real alerts were durably recorded during rollout. At the initial check,
+  QQ deliveries were `accepted_unconfirmed`; the six iMessage mirror deliveries
+  were `outcome_unknown`. These are not end-to-end delivery confirmations, and
+  uncertain deliveries were not manually resent. Historical parked-media and
+  unknown-delivery debt is outside this rollout's remediation scope.
+- Shanghai's approximately 4.1 GiB journal exposed a deadline mismatch: unchanged
+  `journalctl` queries took about 8–9 seconds on cold reads, exceeding the original
+  five-second limit. maxops 0.2.1 (`f7a2f73`) gives journals ten seconds and HTTP
+  requests twelve, below Max's fifteen-second budget. Journal scope, service-manager
+  entries, byte/line limits and concurrency limits are unchanged.
+- Cross-border direct SSH to Shanghai, tank and r5s intermittently timed out;
+  an h610 jump host worked. Prebuilt outputs were copied within the fleet over
+  strictly host-key-checked SSH, without changing persistent Nix trust settings.
+  Native builds from the published revision avoided slow remote derivation copies.
+  Activating a prebuilt closure uses `nixos-rebuild switch --no-reexec --store-path`.
 
 ## Historical single-host pilot
 
