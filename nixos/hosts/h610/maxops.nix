@@ -47,7 +47,7 @@ in {
   services.max.maxopsNotifications = {
     enable = true;
     tokenFile = config.sops.secrets."maxops/alert_sink".path;
-    groups = [611798505];
+    groups = [650536599];
     hosts = hostNames;
   };
 
