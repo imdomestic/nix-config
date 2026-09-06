@@ -18,6 +18,7 @@
       # 是 NixOS 的选项,nix-darwin 那边没有(darwin 走 darwin/profiles/base.nix,
       # 现在够不到这里,但这个文件里已经有 darwin 分支了,别留这个雷)。
       ../modules/tailscale
+      ../modules/maxops
     ]
     ++ lib.optionals (lib.hasInfix "darwin" system) [
       inputs.sops-nix.darwinModules.sops

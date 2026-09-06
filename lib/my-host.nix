@@ -16,6 +16,7 @@ let
         inherit system;
         roles = host.roles or [];
         tsIp = host.tsIp or null;
+        maxops = host.maxops or {};
         users = host.users or {};
         homeOverlays = host.homeOverlays or [];
       }

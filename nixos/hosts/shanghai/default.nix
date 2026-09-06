@@ -10,6 +10,10 @@ in {
   # 故障域就没有意义了。见 nixos/modules/monitoring/gateway.nix。
   roles = ["server" "monitor-gateway"];
   tsIp = "100.64.0.13";
+  maxops = {
+    enable = true;
+    readableUnits = ["maxops-agent.service" "tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "xray.service" "derper.service"];
+  };
   ip = "10.0.0.1";
   sshUser = "root";
 

@@ -50,6 +50,15 @@
       '';
     };
 
+    maxops = {
+      enable = lib.mkEnableOption "read-only fleet management for this inventory host";
+      readableUnits = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [];
+        description = "Explicit canonical service allowlist shared by the agent and hub.";
+      };
+    };
+
     users = lib.mkOption {
       type = lib.types.attrsOf lib.types.raw;
       default = {};

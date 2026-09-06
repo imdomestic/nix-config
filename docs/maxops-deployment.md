@@ -1,5 +1,102 @@
 # maxops deployment
 
+## Fleet expansion configuration (2026-09-06)
+
+This expansion is code/configuration, not a claim that the seven new agents
+have been activated. The hub stays on h610. Registry entries explicitly enable
+`maxops` for **h610, shanghai, r6s, r5s, rpi4, r5sjp, tank and h310**; all other
+hosts remain disabled. The same registry fields generate agent policy, hub
+inventory, the Max/hank client grants and notification host scope. There is no
+second hand-maintained inventory or automatic enablement for every server.
+
+- Each remote agent binds only its registry Tailscale address on 9720. h610's
+  colocated agent stays on loopback. Agents remain DynamicUser, read-only and
+  capability-free; no polkit/sudo mutation grant is introduced.
+- `secrets/maxops/<host>.yaml` contains one distinct agent credential, encrypted
+  only to administrators, that host and h610. Existing h610 credentials are
+  unchanged. The hub and agents consume copies through `LoadCredential`.
+- Query access remains limited to QQ group **611798505** and its mirrored
+  conversation. Nine operations are available: the original six, plus
+  `host.metrics`, `units.list`, and `deploy.status`. `units.status` adds PID,
+  memory, restart and exit details. `fleet.overview` adds load/disk observations
+  and cautious combined reachability, not a claim to diagnose power failures.
+- Metrics have a separate `metrics:read` grant, exact host selectors and source
+  timestamps. Arbitrary PromQL remains disabled. Deployment observations expose
+  the running closure, persistent profile and profile generation; activation
+  time remains null rather than inventing one from filesystem metadata.
+- Both monitoring replicas send managed-host warning/critical alerts to
+  `http://100.64.0.3:9721/v1/alerts`. Hub ingress and Max's loopback
+  `127.0.0.1:9722/v1/alerts` use different credentials. Only h610/tank decrypt the
+  ingress credential; only h610 decrypts the sink credential.
+- Existing independent `my.monitoring.webhookUrl` configuration is preserved
+  through a separate receiver. If it is still null, there is **no independent
+  push channel**: Alertmanager retains/retries notifications, but an h610 outage
+  interrupts the hub-to-Max notification path.
+- Max receives alerts without an LLM call and commits dedupe plus canonical
+  outbox publication atomically. HTTP 202 means queued, not delivered. Four-hour
+  reminders match Alertmanager; resolutions/new episodes are distinct. Platform
+  outcome-unknown delivery remains possible.
+
+### Release and acceptance
+
+Publish Max/maxops and pin both revisions before activation. Preserve incoming
+unrelated changes after the required freshness review. Build on each required
+architecture, activate remote agents before h610's new hub, then run the
+read-only fleet acceptance. System and Home Manager remain separate.
+Max migration 090 requires a current database backup; the old binary's schema
+downgrade guard means a system-generation rollback alone is not a DB rollback.
+
+Until upstream publication, validate the working trees without recording local
+paths in the deployment lock:
+
+```sh
+nix eval --raw .#nixosConfigurations.h610.config.system.build.toplevel.drvPath \
+  --override-input max git+file:///Users/hank/Development/hs/max \
+  --override-input maxops git+file:///Users/hank/Development/maxops \
+  --no-write-lock-file
+```
+
+```sh
+nix eval --json .#nixosConfigurations.h610.config.services.maxops-hub.hosts > /tmp/maxops-inventory.json
+python3 scripts/check-maxops-fleet.py \
+  --hub-url http://100.64.0.3:9721 \
+  --token-file /run/secrets/maxops/hank_token \
+  --inventory /tmp/maxops-inventory.json
+```
+
+The script never prints credentials/journal/alert bodies, changes services, or
+sends test group messages. A failed or stale source fails acceptance rather than
+becoming a healthy zero. Config evaluation is not a native build or a VM test;
+h610 currently has neither KVM nor registered aarch64 binfmt. ARM builds need a
+real ARM builder (or separately provisioned emulation), not an assumed capability.
+Notification concurrency, rollback, retry and HTTP acceptance are tested with a
+disposable PostgreSQL database, never by writing fixtures into the live ledger.
+
+### Expansion validation (working tree)
+
+- Max: `cabal build all`, 964 unit tests, 244 real PostgreSQL tests,
+  `cabal check`, changed-area HLint and prompt-flow generation/check passed.
+  An x86_64 Linux candidate also built on h610; its only source difference from
+  the final locally tested tree is the equivalent `maybe fallback id` to
+  `fromMaybe fallback` lint cleanup. No production Max process was replaced.
+- maxops 0.2: 23 nextest tests, clippy, formatting, doctests and real hub/CLI
+  smoke passed. Max's actual Haskell tool runners also passed against the new
+  Rust hub, including scope denial and revoked group access.
+- All 17 NixOS configurations evaluated with local Max/maxops input overrides;
+  the eight target hosts passed SOPS key checks. Nine new credentials were
+  verified distinct with exact recipient sets; existing host secrets unchanged.
+- The native x86_64 Linux maxops package built on h610. Temporary unprivileged
+  candidate services passed all nine operations against real D-Bus, journald,
+  Prometheus and Alertmanager, including all ten metric families. They were
+  stopped and their fixture credentials removed; production PIDs were unchanged.
+- The planned Alertmanager configuration passed its packaged `amtool check-config`.
+  Both VM-test derivations evaluated, but no VM test or ARM native build ran.
+- Upstream publication, formal lock updates and production activation are
+  separate release steps; these results do not claim fleet deployment or QQ
+  end-to-end notification delivery.
+
+## Historical single-host pilot
+
 The initial deployment runs the read-only hub and agent on h610. The input
 `github:HCHogan/maxops` follows this repository's nixpkgs; `flake.lock` pins the
 application revision. Configuration lives in `nixos/hosts/h610/maxops.nix` and
@@ -18,7 +115,7 @@ uses the upstream native NixOS modules.
 There is no mutation API, MCP adapter or notification receiver enabled.
 The rest of the fleet is not yet in this pilot's inventory.
 
-## Max integration configuration
+### Max integration configuration
 
 `nixos/hosts/h610/maxops.nix` configures a separate `max` client, restricted to
 h610 and the existing readable services, with its own SOPS `maxops/max_token`.
@@ -37,7 +134,7 @@ The Max input includes the group-scoped HTTP integration. Deployment requires
 both Max and the hub to load the dedicated client credential. The original pilot
 results below predate this integration; keep its acceptance evidence separate.
 
-## Use
+### Use
 
 On h610 as hank:
 
@@ -51,7 +148,7 @@ Replace `fleet.overview` with `operations`, `units.failed`, `alerts.active`,
 `host.facts --host h610`, `units.status --host h610 --unit max.service`, or
 `units.logs --host h610 --unit maxops-agent.service --lines 20`.
 
-## Acceptance
+### Acceptance
 
 Run `scripts/check-maxops.py` on h610 as root, passing `--host h610`,
 `--hub-url http://100.64.0.3:9721` and `--cli <package>/bin/maxopsctl`.
@@ -68,7 +165,7 @@ The first live run exposed and reproduced two integration differences; see
 [the dated incident record](incidents.md#maxops-pilot-acceptance). The pinned
 `c484672` revision fixes Prometheus metric-name matching and daemon ANSI output.
 
-## Verified on 2026-09-05
+### Verified on 2026-09-05
 
 The original acceptance script passed in full after deploying `c484672`.
 

@@ -7,6 +7,10 @@ in {
   kind = "nixos";
   roles = ["server"];
   tsIp = "100.64.0.6";
+  maxops = {
+    enable = true;
+    readableUnits = ["maxops-agent.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];
+  };
   ip = "10.0.0.9";
   sshUser = "root";
 
