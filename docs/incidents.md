@@ -9,6 +9,28 @@
 
 ---
 
+## 2026-09-06 · 24 GB 上的 NInfer Long 档可做双并发 {#b650-ninfer-c2}
+
+b650 的 Long/groupwise 档保持 262,144-token 共享 Device KV、NVFP4 KV、8K Vision 和
+MTP3,只把 `--max-concurrency` 从 1 改为 2。远端原生构建并切换后,启动日志确认
+`active_lanes=2`:权重 18,197,517,824 bytes,runtime reservation 6,079,718,656 bytes,
+启动后剩余 468,320,256 bytes,planner slack 327,736,064 bytes。两个 lane 共享原来的
+262K KV,不是各自拥有一份 262K。
+
+后端用两条相同、确定跑满上限的请求实测,各生成 2,048 tokens,耗时 12.35 / 12.42 s。
+调度日志连续出现 `running=2`,`decode_ready=2`,平均 batch 1.979 / 2.000,聚合 decode
+304.6 / 336.0 tok/s。经正式 Tailnet 网关再发两条 512-token 请求,均返回 HTTP 200,
+耗时 3.15 / 3.20 s,同一窗口平均 batch 1.955。测试后 Long、llama-swap 和网关均为
+active,没有 CUDA/OOM。
+
+误导点是第一轮用了不同提示词:其中一条只生成 492 tokens 就遇到 stop token,另一条
+虽跑满 2,048 tokens,但 queue wait 为 2.295 s,日志 batch 始终是 1。两个 HTTP 请求
+同时返回成功不能证明模型真并发;必须以 `running=2` 和 decode batch 大于 1 为准。
+部署也不能只看 recipe 名字猜构建位置:当前 deploy profile 默认在发起方构建,本次明确
+使用 b650 同时作为 `--build-host` 和 `--target-host`。
+
+---
+
 ## 2026-09-05 · maxops 首次实机验收暴露 Prometheus 标签与日志编码差异 {#maxops-pilot-acceptance}
 
 h610 首次启动 maxops 后,agent 能通过 D-Bus 返回七个服务和当前系统 closure,
