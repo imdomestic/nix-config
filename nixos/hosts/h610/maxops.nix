@@ -2,6 +2,7 @@
   config,
   inputs,
   lib,
+  pkgs,
   ...
 }: let
   host = config.my.host;
@@ -10,6 +11,29 @@
   };
   managed = lib.filter (entry: entry.maxops.enable or false) inventory;
   hostNames = map (entry: entry.name) managed;
+  # 完整执行面先只落在 h610，见 docs/decisions.md#maxops-h610-full-control。
+  fullCapabilities = [
+    "alerts:read"
+    "changes:read"
+    "deploy:manage"
+    "diagnostics:collect"
+    "events:read"
+    "exec:run"
+    "fleet:read"
+    "host:read"
+    "jobs:cancel"
+    "jobs:read"
+    "logs:read"
+    "metrics:read"
+    "remediations:manage"
+    "self:read"
+    "units:manage"
+    "units:read"
+    "workspace:publish"
+    "workspace:read"
+    "workspace:write"
+  ];
+  localManageableUnits = host.maxops.readableUnits;
   kennethbotInventory =
     map (entry: {
       host_id = entry.name;
@@ -52,6 +76,10 @@ in {
         mode = "0400";
         restartUnits = ["maxops-hub.service" "max.service"];
       };
+      "maxops/execution_token" = {
+        mode = "0400";
+        restartUnits = ["maxops-agent.service" "maxops-hub.service"];
+      };
       "maxops/kennethbot_token" = {
         sopsFile = ../../../secrets/maxops/kennethbot.yaml;
         key = "maxops_token";
@@ -93,7 +121,34 @@ in {
           if entry.name == host.name
           then config.sops.secrets."maxops/agent_token".path
           else config.sops.secrets."maxops/agents/${entry.name}".path;
+        executionTokenFile =
+          if entry.name == host.name
+          then config.sops.secrets."maxops/execution_token".path
+          else null;
         readableUnits = entry.maxops.readableUnits;
+        manageableUnits =
+          if entry.name == host.name
+          then localManageableUnits
+          else [];
+        diagnosticProfile =
+          if entry.name == host.name
+          then "diagnostic"
+          else null;
+        diagnosticProbes =
+          if entry.name == host.name
+          then {
+            failed-units = [
+              "${pkgs.systemd}/bin/systemctl"
+              "--failed"
+              "--no-legend"
+            ];
+            store-space = [
+              "${pkgs.coreutils}/bin/df"
+              "-h"
+              "/nix/store"
+            ];
+          }
+          else {};
       })
       managed;
     clients = [
@@ -102,36 +157,18 @@ in {
         tokenFile = config.sops.secrets."maxops/max_token".path;
         hosts = hostNames;
         access = "manage";
-        capabilities = [
-          "fleet:read"
-          "host:read"
-          "metrics:read"
-          "units:read"
-          "logs:read"
-          "alerts:read"
-          "events:read"
-          "self:read"
-          "diagnostics:collect"
-          "jobs:read"
-        ];
+        capabilities = fullCapabilities;
+        repositories = ["nix-config"];
+        deployments = ["h610-system"];
       }
       {
         name = "hank";
         tokenFile = config.sops.secrets."maxops/hank_token".path;
         hosts = hostNames;
         access = "manage";
-        capabilities = [
-          "fleet:read"
-          "host:read"
-          "metrics:read"
-          "units:read"
-          "logs:read"
-          "alerts:read"
-          "events:read"
-          "self:read"
-          "diagnostics:collect"
-          "jobs:read"
-        ];
+        capabilities = fullCapabilities;
+        repositories = ["nix-config"];
+        deployments = ["h610-system"];
       }
       {
         name = "kennethbot";
@@ -148,6 +185,21 @@ in {
         ];
       }
     ];
+    repositories = [
+      {
+        name = "nix-config";
+        executorHost = host.name;
+      }
+    ];
+    deployments = [
+      {
+        name = "h610-system";
+        repository = "nix-config";
+        builderHost = host.name;
+        targetHost = host.name;
+        flakeAttribute = "nixosConfigurations.h610.config.system.build.toplevel";
+      }
+    ];
     prometheusUrl = "http://${host.tsIp}:${toString config.my.monitoring.port}";
     alertmanagerUrl = "http://${host.tsIp}:${toString config.my.monitoring.alertmanagerPort}";
     alertIngress = {
@@ -155,6 +207,81 @@ in {
       tokenFile = config.sops.secrets."maxops/alert_ingress".path;
       sinkUrl = "http://127.0.0.1:${toString config.services.max.maxopsNotifications.port}/v1/alerts";
       sinkTokenFile = config.sops.secrets."maxops/alert_sink".path;
+    };
+  };
+
+  services.maxops-agent = {
+    manageableUnits = localManageableUnits;
+    execution = {
+      enable = true;
+      tokenFile = config.sops.secrets."maxops/execution_token".path;
+    };
+  };
+
+  services.maxops-executor = {
+    enable = true;
+    hostName = host.name;
+    manageableUnits = localManageableUnits;
+    profiles = {
+      diagnostic = {
+        timeoutSeconds = 7200;
+        tasksMax = 512;
+      };
+      operator = {
+        user = "root";
+        privileged = true;
+        timeoutSeconds = 3600;
+        workingRoots = ["/"];
+        environment = {
+          HOME = "/root";
+          PATH = "/run/current-system/sw/bin:/run/wrappers/bin";
+        };
+      };
+      activation = {
+        user = "root";
+        privileged = true;
+        timeoutSeconds = 1800;
+      };
+    };
+    repositories.nix-config = {
+      url = "https://github.com/imdomestic/nix-config.git";
+      publishRefs = ["refs/heads/main"];
+      checks = {
+        flake-check = [
+          "${pkgs.nix}/bin/nix"
+          "flake"
+          "check"
+          "--no-build"
+        ];
+        h610-eval = [
+          "${pkgs.nix}/bin/nix"
+          "eval"
+          "--raw"
+          ".#nixosConfigurations.h610.config.system.build.toplevel.drvPath"
+        ];
+      };
+      authorName = "maxops";
+      authorEmail = "maxops@h610";
+    };
+    deploymentProfiles.h610-system = {
+      repository = "nix-config";
+      targetHost = host.name;
+      flakeAttribute = "nixosConfigurations.h610.config.system.build.toplevel";
+      buildProfile = "diagnostic";
+      activateProfile = "activation";
+      verifyProfile = "diagnostic";
+      verifyCommands = [
+        ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-hub.service"]
+        ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-agent.service"]
+        ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-executor.service"]
+        ["${pkgs.systemd}/bin/systemctl" "is-active" "max.service"]
+        ["${pkgs.systemd}/bin/systemctl" "is-active" "kennethbot-cluster-control.service"]
+        ["${pkgs.systemd}/bin/systemctl" "is-active" "qq-deepseek-bot.service"]
+        ["${pkgs.systemd}/bin/systemctl" "is-active" "prometheus.service"]
+        ["${pkgs.systemd}/bin/systemctl" "is-active" "alertmanager.service"]
+        ["${pkgs.curl}/bin/curl" "--fail" "--silent" "http://${host.tsIp}:${toString config.services.maxops-hub.port}/readyz"]
+      ];
+      automaticRollback = true;
     };
   };
 

@@ -11,6 +11,25 @@
 
 ---
 
+## 2026-09-07 · maxops 完整执行面先落在 h610 {#maxops-h610-full-control}
+
+Hank 和 Max 使用独立 token，但在 Hub 上拥有相同的完整 capability、`nix-config`
+workspace 和 `h610-system` deployment 权限。h610 同时运行 agent 与 executor；executor
+提供有界诊断 profile 和显式 root operator/activation profile，能运行命令、操作已列入
+inventory 的服务、修改冻结的 Git workspace，并按 closure 与业务检查完成部署验收。
+
+其他 fleet 主机仍只部署观察 agent。Hub 会继续显示它们的真实远端状态，但不会因为
+h610 已启用 executor 就把其他主机宣称为可执行；需要逐机新增独立 execution token、
+executor 和 manageable unit 清单后才能开放写入。这也保留了人工 push、直接 rebuild
+和其他部署工具作为同等事实来源，maxops 每次变更前仍须重新观察 Git head、运行 closure
+与 system profile。
+
+`nix-config` 使用公开 HTTPS 地址进行 fetch，因此 workspace、check、commit 和未发布
+workspace 的构建部署不依赖人的 checkout。远端 publish 仍由 Git 远端自身鉴权决定；
+不会把个人 SSH key 或 token 写进 Nix store 来伪造“已有发布能力”。
+
+---
+
 ## 2026-09-05 · 删掉 hank tmux extraConfig 里的死设置 {#tmux-dead-settings}
 
 `home/users/hank/default.nix` 的 tmux extraConfig 删了两类死行:
