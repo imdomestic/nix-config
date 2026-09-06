@@ -9,6 +9,29 @@
 
 ---
 
+## 2026-09-07 · 24 GB 上的 NInfer Long 档三并发验收 {#b650-ninfer-c3}
+
+b650 的 Long/groupwise 档保持 262,144-token 共享 Device KV、NVFP4 KV、8K Vision 和
+MTP3,只把 `--max-concurrency` 从 2 改为 3。远端原生构建并切换后,启动日志确认
+`active_lanes=3`:权重 18,197,517,824 bytes,runtime reservation 6,330,502,400 bytes,
+启动后剩余 302,645,248 bytes,planner slack 76,952,320 bytes,CUDA Graph allowance
+257,949,696 bytes。配置能启动,但 planner 余量只有约 73.4 MiB,显著小于双并发。
+
+后端用三条不同且确定跑满上限的请求实测,各生成 2,048 tokens,耗时 25.04 / 25.14 /
+25.77 s。调度日志连续四个完整窗口出现 `running=3`,`decode_ready=3`,平均 batch
+3.000,最高聚合 decode 257.8 tok/s。经正式 Tailnet 网关再发三条 512-token 请求,
+均返回 HTTP 200,耗时 6.65 / 6.90 / 6.97 s,同一窗口平均 batch 2.993。测试后 Long、
+llama-swap 和网关均为 active,服务零重启,日志无 CUDA/OOM。
+
+### 被我带偏的地方
+
+第一轮三条请求使用了完全相同的 prompt,命中了 private response replay/cache-owner
+串行化,又恰逢真实客户端请求插入;虽然三条都以 HTTP 200 跑满 2,048 tokens,日志最高
+只有 `running=2`,不能拿来证明三并发。改用三个不同 prompt 并避开现有流量后,
+`running=3` 和 batch 3.000 才是有效验收证据。
+
+---
+
 ## 2026-09-06 · 24 GB 上的 NInfer Long 档可做双并发 {#b650-ninfer-c2}
 
 b650 的 Long/groupwise 档保持 262,144-token 共享 Device KV、NVFP4 KV、8K Vision 和
