@@ -45,8 +45,9 @@
       roles = entry.roles;
       observe = true;
       operate = false;
-      compute = false;
+      compute = entry.name == host.name;
       readable_units = entry.maxops.readableUnits;
+      operable_units = [];
     })
     managed;
 in {
@@ -91,6 +92,15 @@ in {
         key = "control_token";
         mode = "0400";
         restartUnits = ["kennethbot-cluster-control.service" "qq-deepseek-bot.service"];
+      };
+      "kennethbot/worker_token" = {
+        sopsFile = ../../../secrets/maxops/kennethbot-worker.yaml;
+        key = "worker_token";
+        mode = "0400";
+        restartUnits = [
+          "kennethbot-cluster-control.service"
+          "kennethbot-cluster-worker.service"
+        ];
       };
       "maxops/alert_sink" = {
         sopsFile = ../../../secrets/maxops/alert-sink.yaml;
@@ -305,6 +315,25 @@ in {
       baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
       tokenFile = config.sops.secrets."maxops/kennethbot_token".path;
     };
+    workers = [
+      {
+        workerId = "h610-worker";
+        hostId = host.name;
+        tokenFile = config.sops.secrets."kennethbot/worker_token".path;
+      }
+    ];
+  };
+
+  services.kennethbot-cluster-worker = {
+    enable = true;
+    workerId = "h610-worker";
+    controlUrl = "http://127.0.0.1:${toString config.services.kennethbot-cluster-control.port}";
+    tokenFile = config.sops.secrets."kennethbot/worker_token".path;
+    listenAddress = host.tsIp;
+    publicBaseUrl = "http://${host.tsIp}:${toString config.services.kennethbot-cluster-worker.port}";
+    cpuMillis = 2000;
+    memoryBytes = 2 * 1024 * 1024 * 1024;
+    concurrency = 2;
   };
 
   services.qq-deepseek-bot.cluster = {
@@ -314,5 +343,8 @@ in {
     logAllowedGroups = [];
   };
 
-  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [config.services.maxops-hub.port];
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [
+    config.services.maxops-hub.port
+    config.services.kennethbot-cluster-worker.port
+  ];
 }
