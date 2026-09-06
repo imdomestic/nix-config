@@ -101,19 +101,51 @@ in {
         name = "max";
         tokenFile = config.sops.secrets."maxops/max_token".path;
         hosts = hostNames;
-        capabilities = ["fleet:read" "host:read" "metrics:read" "units:read" "logs:read" "alerts:read"];
+        access = "manage";
+        capabilities = [
+          "fleet:read"
+          "host:read"
+          "metrics:read"
+          "units:read"
+          "logs:read"
+          "alerts:read"
+          "events:read"
+          "self:read"
+          "diagnostics:collect"
+          "jobs:read"
+        ];
       }
       {
         name = "hank";
         tokenFile = config.sops.secrets."maxops/hank_token".path;
         hosts = hostNames;
-        capabilities = ["fleet:read" "host:read" "metrics:read" "units:read" "logs:read" "alerts:read"];
+        access = "manage";
+        capabilities = [
+          "fleet:read"
+          "host:read"
+          "metrics:read"
+          "units:read"
+          "logs:read"
+          "alerts:read"
+          "events:read"
+          "self:read"
+          "diagnostics:collect"
+          "jobs:read"
+        ];
       }
       {
         name = "kennethbot";
         tokenFile = config.sops.secrets."maxops/kennethbot_token".path;
         hosts = hostNames;
-        capabilities = ["fleet:read" "host:read" "units:read" "logs:read" "alerts:read"];
+        capabilities = [
+          "fleet:read"
+          "host:read"
+          "units:read"
+          "logs:read"
+          "alerts:read"
+          "events:read"
+          "self:read"
+        ];
       }
     ];
     prometheusUrl = "http://${host.tsIp}:${toString config.my.monitoring.port}";
