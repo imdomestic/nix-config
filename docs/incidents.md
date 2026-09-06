@@ -9,6 +9,19 @@
 
 ---
 
+## 2026-09-07 · maxops workspace 检查需要独立可写缓存 {#maxops-check-cache}
+
+h610 完整权限部署后，workspace create、隔离编辑和 diff 都成功，但首个 `h610-eval`
+作业立即 exit 1。stderr 显示 Nix 试图创建 `/var/empty/.cache/nix`；默认 diagnostic
+用户的 home 是只读 `/var/empty`，所以检查尚未进入 flake 求值。
+
+起初看起来像 workspace 权限或 Nix sandbox 问题，实际工作区目录已经正确开放，失败
+只来自默认 cache 路径。diagnostic profile 现在显式使用 transient service 私有的
+`/tmp` 作为 HOME 与 XDG cache；仍保持非 root、`ProtectSystem=strict` 和 workspace
+路径边界，不需要放宽 executor 服务或读取人的 home。
+
+---
+
 ## 2026-09-07 · 24 GB 上的 NInfer Long 档三并发验收 {#b650-ninfer-c3}
 
 b650 的 Long/groupwise 档保持 262,144-token 共享 Device KV、NVFP4 KV、8K Vision 和

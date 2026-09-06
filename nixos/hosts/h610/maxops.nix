@@ -226,6 +226,16 @@ in {
       diagnostic = {
         timeoutSeconds = 7200;
         tasksMax = 512;
+        # Nix checks need a writable cache; see docs/incidents.md#maxops-check-cache.
+        environment = {
+          HOME = "/tmp";
+          PATH = lib.makeBinPath [
+            pkgs.coreutils
+            pkgs.git
+            pkgs.nix
+          ];
+          XDG_CACHE_HOME = "/tmp/.cache";
+        };
       };
       operator = {
         user = "root";
