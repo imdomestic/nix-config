@@ -133,7 +133,7 @@ in {
     inventory = kennethbotInventory;
     maxops = {
       enable = true;
-      baseUrl = "http://127.0.0.1:${toString config.services.maxops-hub.port}";
+      baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
       tokenFile = config.sops.secrets."maxops/kennethbot_token".path;
     };
   };
