@@ -7,6 +7,10 @@ in {
   kind = "nixos";
   roles = ["server"];
   tsIp = "100.64.0.30";
+  maxops = {
+    enable = true;
+    readableUnits = ["maxops-agent.service" "tailscaled.service" "prometheus-node-exporter.service"];
+  };
 
   profiles = with nixosProfiles; [
     base

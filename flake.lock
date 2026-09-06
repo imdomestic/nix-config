@@ -994,11 +994,11 @@
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1788618687,
-        "narHash": "sha256-Ecw2s0lTUE20o4AfPUheawNqnCPYL1qoMFs07wYOX3E=",
+        "lastModified": 1788628031,
+        "narHash": "sha256-8iJ1zd1iQrocQfNhp8Ps+ANQ+tPtB0LcPblKeDbE/Sc=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "4e9f934357c000335c74e164cbfa0930a2507704",
+        "rev": "15648d3e3f62d513f20699e96283b89bed6336e9",
         "type": "github"
       },
       "original": {
@@ -1014,11 +1014,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1788612741,
-        "narHash": "sha256-Mt5DmYmV5F1q8jCl/35hX1P5IcFkis7p5SRZdAwziN8=",
+        "lastModified": 1788627931,
+        "narHash": "sha256-h1g1V85zoOGaZ/1tDSK2XNjOM3EKkTH8hT0ca5rQGEU=",
         "owner": "HCHogan",
         "repo": "maxops",
-        "rev": "c4846723dfba5453dcbec3625b5d145c84035c28",
+        "rev": "8c08ae4a8a95950bdfa6b02397624b043a598474",
         "type": "github"
       },
       "original": {

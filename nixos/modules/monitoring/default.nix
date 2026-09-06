@@ -44,6 +44,8 @@
   inventory =
     (import ../../../lib/mkInventory.nix {inherit inputs;})
     {hosts = import ../../hosts {inherit inputs;};};
+  maxopsHosts = lib.filter (entry: entry.maxops.enable or false) inventory;
+  maxopsHub = lib.findFirst (entry: entry.name == "h610") null maxopsHosts;
 
   # 自己这台的地址。Prometheus 和 Grafana 都只绑它。
   selfIp = config.my.host.tsIp;
@@ -160,6 +162,12 @@ in {
       '';
     };
 
+    maxopsNotifications = lib.mkOption {
+      type = lib.types.bool;
+      default = maxopsHub != null;
+      description = "Send warning/critical managed-host alerts to maxops in addition to the independent webhook receiver.";
+    };
+
     retention = lib.mkOption {
       type = lib.types.str;
       default = "90d";
@@ -172,6 +180,14 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    sops.secrets = lib.optionalAttrs cfg.maxopsNotifications {
+      "maxops/alert_ingress" = {
+        sopsFile = ../../../secrets/maxops/alert-ingress.yaml;
+        key = "token";
+        mode = "0400";
+        restartUnits = ["alertmanager.service"] ++ lib.optional (config.my.host.name == "h610") "maxops-hub.service";
+      };
+    };
     assertions = [
       {
         assertion = selfIp != null;
@@ -397,26 +413,54 @@ in {
           repeat_interval = "4h";
 
           receiver = "default";
+          routes = lib.optionals cfg.maxopsNotifications [
+            {
+              receiver = "maxops";
+              matchers = [
+                ''instance =~ "${lib.concatStringsSep "|" (map (entry: entry.name) maxopsHosts)}"''
+                ''severity =~ "warning|critical"''
+              ];
+              continue = true;
+            }
+            {receiver = "default";}
+          ];
         };
 
         # info 级的(比如 HostRebooted)不该和 critical 走同一条路,
         # 但现在只有一个 receiver,先靠 group_by 隔开。接了真出口之后
         # 这里要拆成 routes(critical 立刻发、warning 攒一攒、info 只留档)。
-        receivers = [
-          (
-            {name = "default";}
-            // lib.optionalAttrs (cfg.webhookUrl != null) {
+        receivers =
+          [
+            (
+              {name = "default";}
+              // lib.optionalAttrs (cfg.webhookUrl != null) {
+                webhook_configs = [
+                  {
+                    url = cfg.webhookUrl;
+                    # 告警恢复也要发。只发"炸了"不发"好了"的系统,用两周之后
+                    # 就没人相信它了 —— 你永远不知道手上这条是不是还成立。
+                    send_resolved = true;
+                  }
+                ];
+              }
+            )
+          ]
+          ++ lib.optionals cfg.maxopsNotifications [
+            {
+              name = "maxops";
               webhook_configs = [
                 {
-                  url = cfg.webhookUrl;
-                  # 告警恢复也要发。只发"炸了"不发"好了"的系统,用两周之后
-                  # 就没人相信它了 —— 你永远不知道手上这条是不是还成立。
+                  url = "http://${maxopsHub.tsIp}:9721/v1/alerts";
                   send_resolved = true;
+                  max_alerts = 100;
+                  http_config = {
+                    follow_redirects = false;
+                    authorization.credentials_file = "/run/credentials/alertmanager.service/maxops-alert-ingress";
+                  };
                 }
               ];
             }
-          )
-        ];
+          ];
 
         # 机器整个不可达时,它上面的 unit failed / 磁盘 / 温度告警全都会
         # 跟着触发(或者说,全都会因为抓不到而变成陈旧数据)。这条让
@@ -436,6 +480,7 @@ in {
       after = ["network-online.target" "tailscaled.service"];
       wants = ["network-online.target" "tailscaled.service"];
       serviceConfig.RestartSec = "10s";
+      serviceConfig.LoadCredential = lib.optional cfg.maxopsNotifications "maxops-alert-ingress:${config.sops.secrets."maxops/alert_ingress".path}";
     };
 
     services.grafana = {

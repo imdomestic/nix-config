@@ -9,6 +9,10 @@ in {
   # 停电一整天,h610 全程在线。放同一个屋子里等于还是一份。
   roles = ["server" "monitor"];
   tsIp = "100.64.0.3";
+  maxops = {
+    enable = true;
+    readableUnits = ["max.service" "maxops-agent.service" "maxops-hub.service" "nginx.service" "prometheus.service" "alertmanager.service" "tailscaled.service"];
+  };
   ip = "10.0.0.5";
   sshUser = "root";
 
@@ -26,7 +30,7 @@ in {
   externalModules = [
     # inputs.headplane.nixosModules.headplane
     inputs.max.nixosModules.max
-    inputs.maxops.nixosModules.default
+    inputs.maxops.nixosModules.hub
     inputs.qq-bot.nixosModules.qq-deepseek-bot
   ];
 

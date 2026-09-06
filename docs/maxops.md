@@ -9,6 +9,23 @@
 [maxops-deployment.md](maxops-deployment.md)。下文是完整设计目标；其中 tank hub、
 全 fleet agent、MCP、QQ 身份代理及变更操作尚未部署。
 
+### 2026-09-06 路线落实与修正
+
+本轮代码/配置扩展到 h610 加 shanghai、r6s、r5s、rpi4、r5sjp、tank、h310；
+**配置完成不等于已部署**，验收边界见部署文档。按 registry 的 `maxops.enable`
+显式纳管，服务白名单同源派生，不把其他服务器自动纳入。hub 保留 h610。
+
+- P1 扩展：补 `host.metrics`、`units.list`、`deploy.status` 和服务详细属性，
+  overview 增加负载/磁盘与保守的可达性判断。
+- P2 接线：两份 Alertmanager → hub → Max 持久 outbox → 固定群及镜像，
+  独立凭据、并发去重和恢复通知，不经过 LLM。保留独立 webhook 出口的配置。
+- P3 的群查询已通过 Max 原生 HTTP 工具实现，不为换协议重复写 dispatch；
+  MCP 前端仍是后续可选工作。
+- P4 仍未实现：不开放重启、start/stop、reboot、部署、QQ 身份代理。
+  需要先完成不可由 LLM 自证的确认入口、持久 intent、幂等执行记录和受限 polkit。
+- generation 只报告持久 profile 的编号，不能冒充不同 running closure 的编号；
+  不用 ctime 推断激活时间。任意 PromQL 也不能绕过 per-host 数据权限。
+
 ---
 
 ## 0. 边界：maxops 做什么，不做什么
@@ -204,13 +221,13 @@ operation! {
 | `alerts.active` | Alertmanager 当前告警 |
 | `promql` | **只读逃生口** |
 
-关于 `host.facts` 里的 generation：`/run/current-system` 的指向和它的 ctime。
-这让 bot 能回答"tank 上次部署是什么时候"、"这两台是不是同一个 closure" ——
-Prometheus 永远答不了，但这是真实运维里天天问的问题。
+关于 `host.facts`：读取 running closure、持久 profile 和 `system-N-link` 编号，
+明确报告二者是否一致。激活时间需要可信的成功激活记录，不能用符号链接的
+ctime 代替；当前返回未知，不能回答“上次成功部署是什么时候”。
 
-关于 `promql`：直接开放 PromQL 查询看着危险，其实不是 —— 它是纯查询语言，
-没有副作用。而它让 bot 能回答你没预先设计过的问题，收益极大。**只读操作里
-唯一需要防的是资源耗尽**，用 Prometheus 自己的 query timeout 和 max-samples 挡。
+关于 `promql`：只读也会泄露未授权主机及标签数据，不只有资源耗尽风险。
+当前实现用固定的 `host.metrics` 表达式与精确 instance 选择器。任意 PromQL
+要等 AST 级 scope 限制或独立数据源隔离，以及资源预算落实后再开放。
 
 **变更**（白名单身份 + 审计）：
 

@@ -23,6 +23,11 @@ in
     system = h.system;
     kind = h.kind or "nixos";
     roles = h.roles or [];
+    maxops =
+      h.maxops or {
+        enable = false;
+        readableUnits = [];
+      };
     # wireguard 那张网上的地址,可能没有(r5sjp 就没有)。这里带出来只是为了
     # 让 maxops 之后能在 tailscale 不通时有个回退目标可试,监控本身不用它。
     wgIp = h.ip or null;
