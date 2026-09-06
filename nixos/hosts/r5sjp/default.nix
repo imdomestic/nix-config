@@ -9,7 +9,7 @@ in {
   tsIp = "100.64.0.16";
   maxops = {
     enable = true;
-    readableUnits = ["maxops-agent.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "nginx.service" "ddns-go.service" "systemd-resolved.service"];
+    readableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "nginx.service" "ddns-go.service" "systemd-resolved.service"];
   };
 
   profiles = with nixosProfiles; [

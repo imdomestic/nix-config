@@ -51,7 +51,7 @@
     };
 
     maxops = {
-      enable = lib.mkEnableOption "read-only fleet management for this inventory host";
+      enable = lib.mkEnableOption "fleet management for this inventory host";
       readableUnits = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [];
