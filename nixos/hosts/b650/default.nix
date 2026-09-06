@@ -6,6 +6,7 @@ in {
   system = "x86_64-linux";
   kind = "nixos";
   roles = ["server" "gpu-compute"];
+  tsIp = "100.64.0.33";
 
   profiles = with nixosProfiles; [
     base
