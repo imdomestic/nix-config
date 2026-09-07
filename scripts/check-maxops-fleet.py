@@ -36,7 +36,8 @@ def main():
                 status, body = response.status, response.read(2 * 1024 * 1024 + 1)
         except HTTPError as error:
             status, body = error.code, error.read(4096)
-        assert status == expected, f"expected HTTP {expected}, got {status}"
+        context = path if payload is None else payload["op"] + " " + str(payload.get("params", {}).get("host", "fleet"))
+        assert status == expected, f"{context}: expected HTTP {expected}, got {status}"
         assert len(body) <= 2 * 1024 * 1024
         return json.loads(body) if expected == 200 else None
 
@@ -102,7 +103,8 @@ def main():
     for operation in ["units.status", "units.logs"]:
         query(operation, {"host": inventory[0]["name"], "unit": "maxops-ungranted-fixture.service"}, expected=403)
     query("units.restart", {"host": inventory[0]["name"], "unit": "maxops-agent.service"}, expected=400)
-    query("host.metrics", {"host": inventory[0]["name"], "query": "up"}, expected=400)
+    # Unknown JSON fields are rejected by the typed HTTP extractor before dispatch.
+    query("host.metrics", {"host": inventory[0]["name"], "query": "up"}, expected=422)
     print(f"PASS {len(expected_hosts)}-host fleet: protocol-2 discovery, read-only operations, executor discovery and authorization boundaries; no test notifications sent")
 
 
