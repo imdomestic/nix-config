@@ -32,6 +32,10 @@
   ...
 }: let
   cfg = config.my.dae;
+  renderInterface = interface:
+    if lib.any (token: lib.hasInfix token interface) ["*" "?" "["]
+    then builtins.toJSON interface
+    else interface;
 in {
   options.my.dae.lanInterfaces = lib.mkOption {
     type = lib.types.listOf lib.types.str;
@@ -69,7 +73,7 @@ in {
       restartUnits = ["dae.service"];
       content = ''
         global {
-            lan_interface: ${lib.concatStringsSep ", " cfg.lanInterfaces}
+            lan_interface: ${lib.concatStringsSep ", " (map renderInterface cfg.lanInterfaces)}
             wan_interface: auto
             log_level: info
             allow_insecure: false
