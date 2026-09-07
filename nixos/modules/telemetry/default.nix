@@ -79,14 +79,14 @@ in {
       listenAddress = config.my.host.tsIp;
       port = cfg.port;
 
-      # 显式 false,不是省略。上面那几台没有防火墙可开,而有防火墙的那几台
-      # 也不需要 —— 走 tailscale0 进来的流量不经 allowedTCPPorts 判定。
-      # 写 true 会给人"已经拦过一道"的错觉,那是 r6s 和 rpi4 之前的状态:
-      # 两台都 firewall.enable = false,openFirewall = true 一直是摆设。
+      # 只在下面的 tailscale0 放行,不让 openFirewall 把端口开到其他网卡。
+      # 见 docs/incidents.md#maxops-b650-exporter-firewall。
       openFirewall = false;
 
       enabledCollectors = cfg.collectors;
     };
+
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts = [cfg.port];
 
     systemd.services.prometheus-node-exporter = {
       # 绑的是 tailscale 地址,tailscaled 没起来的话这个地址还不存在,
