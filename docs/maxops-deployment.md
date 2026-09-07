@@ -2,7 +2,7 @@
 
 ## Fleet execution rollout (2026-09-07)
 
-MaxOps 0.3 runs an Agent and Executor on all eight managed hosts. h610 remains
+MaxOps 0.3 runs an Agent and Executor on all nine managed hosts. h610 remains
 the only Hub. Hank and Max retain separate credentials but receive the same 38
 operations and full capability set across the fleet; Kennethbot remains
 observation-only.
@@ -25,6 +25,10 @@ observation-only.
   MaxOps re-observes the Git ref, running closure and persistent profile before
   mutation; stale or superseded work stops instead of overwriting another
   writer.
+- b650 joined the managed inventory on 2026-09-07. Its explicit unit inventory
+  covers MaxOps, Tailscale, node exporter, both Qwen service variants,
+  llama-swap and its proxy, and NVIDIA persistence. Its repository and
+  deployment remain native to b650 like every other host.
 
 ## Fleet expansion configuration (2026-09-06)
 
