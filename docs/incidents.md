@@ -9,6 +9,23 @@
 
 ---
 
+## 2026-09-07 · Max 状态目录、账号与声明式配置迁移 {#max-unified-state}
+
+Max 的持久目录统一到 `/var/lib/max`，主进程、PostgreSQL role/database 均改名为
+`max`。应用、broker、NapCat、浏览器仍分别拥有自己的目录，父目录由 root 管理。
+DynamicUser 的 `/var/lib/private/max` 由树内的 `private` 提供 bind mount，保留实例隔离。
+
+h610 的实际配置原先分散在手管 YAML、环境文件和 Nix 环境覆盖项中。现在统一写为
+`max.nix` 的属性，密钥保存在 host-scoped SOPS 文件里，运行时渲染成 JSON。
+保留实际生效的本机 embedding、模型 profile、桥接目标和 maxops 权限；NapCat 的
+OneBot token 使用 `LoadCredential`，与主进程的同一项 SOPS 密钥对应。
+
+迁移脚本先验证数据库/QQ 备份，再移动原目录，保留 UID/GID、数据库对象和工作文件，
+归档旧配置及可重建的实例根目录，并重新注册移动过的间接 GC root。b650 的 KVM 演练
+验证了账号/数据库改名、文件校验、配置读取、QQ 凭据和权限；原生浏览器/沙盒与 reload
+测试也通过。演练暴露的误导点是把 bind 失败只归因于目标目录，实际还必须显式声明
+应用 `var` 父目录的属主，避免 tmpfiles 创建 root 父目录后拒绝跨属主路径。
+
 ## 2026-09-07 · Max 原生运行时的 DNS 与命名空间挂载 {#max-native-runtime-dns}
 
 Max 从 Docker 迁往 systemd/nspawn 时，10 个工作卷完成离线复制与校验，旧卷和
