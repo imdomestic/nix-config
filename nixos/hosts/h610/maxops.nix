@@ -39,7 +39,7 @@
     "workspace:read"
     "workspace:write"
   ];
-  kennethbotInventory =
+  gaojiInventory =
     map (entry: {
       host_id = entry.name;
       label = entry.name;
@@ -97,21 +97,21 @@ in {
         sopsFile = ../../../secrets/maxops/kennethbot.yaml;
         key = "maxops_token";
         mode = "0400";
-        restartUnits = ["maxops-hub.service" "kennethbot-cluster-control.service"];
+        restartUnits = ["maxops-hub.service" "gaoji-cluster-control.service"];
       };
       "kennethbot/cluster_control_token" = {
         sopsFile = ../../../secrets/maxops/kennethbot.yaml;
         key = "control_token";
         mode = "0400";
-        restartUnits = ["kennethbot-cluster-control.service" "qq-deepseek-bot.service"];
+        restartUnits = ["gaoji-cluster-control.service" "gaoji.service"];
       };
       "kennethbot/worker_token" = {
         sopsFile = ../../../secrets/maxops/kennethbot-worker.yaml;
         key = "worker_token";
         mode = "0400";
         restartUnits = [
-          "kennethbot-cluster-control.service"
-          "kennethbot-cluster-worker.service"
+          "gaoji-cluster-control.service"
+          "gaoji-cluster-worker.service"
         ];
       };
       "maxops/alert_sink" = {
@@ -226,19 +226,20 @@ in {
   services.maxops-executor.deploymentProfiles.h610-system.verifyCommands = lib.mkAfter [
     ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-hub.service"]
     ["${pkgs.systemd}/bin/systemctl" "is-active" "max.service"]
-    ["${pkgs.systemd}/bin/systemctl" "is-active" "kennethbot-cluster-control.service"]
-    ["${pkgs.systemd}/bin/systemctl" "is-active" "qq-deepseek-bot.service"]
+    ["${pkgs.systemd}/bin/systemctl" "is-active" "gaoji-cluster-control.service"]
+    ["${pkgs.systemd}/bin/systemctl" "is-active" "gaoji.service"]
     ["${pkgs.systemd}/bin/systemctl" "is-active" "prometheus.service"]
     ["${pkgs.systemd}/bin/systemctl" "is-active" "alertmanager.service"]
     ["${pkgs.curl}/bin/curl" "--fail" "--silent" "http://${host.tsIp}:${toString config.services.maxops-hub.port}/readyz"]
   ];
 
-  services.kennethbot-cluster-control = {
+  services.gaoji-cluster-control = {
     enable = true;
+    stateDirectory = "kennethbot-cluster-control";
     environmentFile = config.sops.templates."qq-deepseek-bot-postgres.env".path;
     apiTokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
-    inventory = kennethbotInventory;
-    maxops = {
+    inventory = gaojiInventory;
+    ops = {
       enable = true;
       baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
       tokenFile = config.sops.secrets."maxops/kennethbot_token".path;
@@ -252,19 +253,20 @@ in {
     ];
   };
 
-  services.kennethbot-cluster-worker = {
+  services.gaoji-cluster-worker = {
     enable = true;
+    stateDirectory = "kennethbot-cluster-worker";
     workerId = "h610-worker";
-    controlUrl = "http://127.0.0.1:${toString config.services.kennethbot-cluster-control.port}";
+    controlUrl = "http://127.0.0.1:${toString config.services.gaoji-cluster-control.port}";
     tokenFile = config.sops.secrets."kennethbot/worker_token".path;
     listenAddress = host.tsIp;
-    publicBaseUrl = "http://${host.tsIp}:${toString config.services.kennethbot-cluster-worker.port}";
+    publicBaseUrl = "http://${host.tsIp}:${toString config.services.gaoji-cluster-worker.port}";
     cpuMillis = 2000;
     memoryBytes = 2 * 1024 * 1024 * 1024;
     concurrency = 2;
   };
 
-  services.qq-deepseek-bot.cluster = {
+  services.gaoji.cluster = {
     enable = true;
     tokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
     allowedGroups = [611798505 650536599];
@@ -273,6 +275,6 @@ in {
 
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [
     config.services.maxops-hub.port
-    config.services.kennethbot-cluster-worker.port
+    config.services.gaoji-cluster-worker.port
   ];
 }
