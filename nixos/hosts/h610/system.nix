@@ -847,6 +847,11 @@ in {
     MAX_WS_HOST = "172.17.0.1";
     MAX_LOG_COLOR = "always";
     MAX_IMESSAGE_MIRROR_QQ_GROUP = "611798505";
+    # Override the manually managed cloud embedding profile without forwarding its key.
+    MAX_EMBEDDING_BASE_URL = "http://${config.my.host.tsIp}:11434/v1";
+    MAX_EMBEDDING_API_KEY = "ollama";
+    MAX_EMBEDDING_MODEL = "bge-m3";
+    MAX_EMBEDDING_TIMEOUT_SECONDS = "60";
     # max 的 GET /api/quota 拿这个问 cliproxy:池子里哪把凭据还在服务、烧完的
     # 什么时候回来。地址不是秘密,写这里;口令在下面的 sops 模板里。
     #
@@ -854,6 +859,9 @@ in {
     # 的说明),所以本机也得走 100.64.0.3,不能写 127.0.0.1。
     MAX_CLIPROXY_BASE_URL = "http://100.64.0.3:8317";
   };
+
+  systemd.services.max.after = lib.mkAfter ["tailscaled.service" "ollama.service"];
+  systemd.services.max.wants = lib.mkAfter ["tailscaled.service" "ollama.service"];
 
   # 管理口令:和 cliproxy 服务用同一把 sops 密钥,各自渲染一份 env 文件 ——
   # 两边都不进 world-readable 的 nix store,也都不用手改 /var/lib/max-bot。
