@@ -8,6 +8,21 @@ in {
   roles = ["server" "gpu-compute"];
   tsIp = "100.64.0.33";
 
+  maxops = {
+    enable = true;
+    readableUnits = [
+      "maxops-agent.service"
+      "maxops-executor.service"
+      "tailscaled.service"
+      "prometheus-node-exporter.service"
+      "llama-swap.service"
+      "llama-swap-proxy.service"
+      "podman-qwen38.service"
+      "podman-qwen38-long.service"
+      "nvidia-persistenced.service"
+    ];
+  };
+
   profiles = with nixosProfiles; [
     base
     server

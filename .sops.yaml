@@ -25,8 +25,12 @@ keys:
   - &host_r5sjp age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq
   - &host_rpi4 age1lghdzjwhlwssu44ptp5853e48fy0pcxrxlpf4r7ruphplxna4vzqq6e2kh
   - &host_r2s age1gf9jpsr9zr2myn780m8emtk5qzfz87jqdlrju744cvmj3v02nqpsdkkueh
+  - &host_b650 age1qpgrpyp6swk2a2hystwaryaulrvyrtjecmzzjlnjawsn50ckg3fqj8rsaf
 
 creation_rules:
+  - path_regex: secrets/maxops/b650\.yaml$
+    key_groups:
+      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610, *host_b650]
   - path_regex: secrets/maxops/shanghai\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610, *host_shanghai]
@@ -108,3 +112,4 @@ creation_rules:
           - *host_r5sjp
           - *host_rpi4
           - *host_r2s
+          - *host_b650
