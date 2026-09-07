@@ -121,6 +121,12 @@ in {
     # ../../modules/minecraft/wuxi.nix
   ];
 
+  # Docker 的默认 bridge、Compose bridge 和 Max sandbox bridge 都是转发
+  # 流量的入口。dae 1.0.0 的 lan_interface 支持 path.Match 模式并会
+  # 自动绑定后续新建的网卡;12 个 ? 只匹配 Docker 生成的 br-<id>,
+  # 不会与现有 br-lan 重复挂载 eBPF。
+  my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????" "max-sb-*"];
+
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
