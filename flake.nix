@@ -211,7 +211,7 @@
     };
 
     qq-bot = {
-      url = "github:zty20040403/chat-bot";
+      url = "github:zty20040403/gaojibot";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

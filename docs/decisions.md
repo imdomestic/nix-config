@@ -11,6 +11,18 @@
 
 ---
 
+## 2026-09-07 · gaoji 改名保留数据 {#gaoji-rename}
+
+机器人项目改为 gaoji，input 指向 `zty20040403/gaojibot`。主程序、控制面、Worker、
+Prometheus 指标和新控制台域名随之改名；旧域名保留为别名。
+
+保留已有 PostgreSQL schema、状态和缓存目录、NapCat 容器及数据、沙盒 Nix 缓存卷、
+归档挂载和加密凭据路径。它们不是展示品牌，自动搬迁会让任务或 QQ 登录状态丢失，
+另建缓存卷也会重复占用磁盘。控制面与 Worker 通过显式 stateDirectory 读取既有数据。
+
+外部运维客户端身份和 API 继续保留，只同步获准读取的服务名称。不修改其他机器或
+其他人的机器人，不因仓库改名执行系统切换。应用配置中的自定义人格和 QQ 名片需另行同步。
+
 ## 2026-09-07 · maxops 执行面扩到八台纳管主机 {#maxops-fleet-full-control}
 
 h610 继续作为唯一 Hub；八台纳管主机各自运行 Agent 与 Executor。Hank 和 Max

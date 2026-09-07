@@ -862,8 +862,11 @@ in {
     config.sops.templates."max-cliproxy.env".path
   ];
 
-  services.qq-deepseek-bot = {
+  services.gaoji = {
     enable = true;
+    # Keep existing data during the service rename; see docs/decisions.md#gaoji-rename.
+    stateDirectory = "qq-deepseek-bot";
+    cacheDirectory = "qq-deepseek-bot";
     environmentFile = "/home/kenneth/services/chat-bot/.env";
     user = "kenneth";
     group = "users";
@@ -883,10 +886,11 @@ in {
       AI_EMBEDDING_MODEL = "bge-m3";
       AI_EMBEDDING_DIMENSIONS = "1024";
       AI_EMBEDDING_TIMEOUT_SECONDS = "60";
-      OTEL_SERVICE_NAME = "kennethbot";
+      OTEL_SERVICE_NAME = "gaoji";
     };
     runtimePackages = [pkgs.ffmpeg-headless];
     sandbox.enable = true;
+    sandbox.nixCacheVolume = "kennethbot-nix-v2";
     browser.enable = true;
     videoDeep = {
       enable = true;
@@ -897,6 +901,8 @@ in {
     };
     napcat = {
       enable = true;
+      containerName = "napcat-chat-bot";
+      dataDirectory = "/var/lib/napcat-chat-bot";
       account = "3580515978";
       webuiPort = 6100;
     };
@@ -904,7 +910,7 @@ in {
 
   my.monitoring.extraScrapeConfigs = [
     {
-      job_name = "kennethbot";
+      job_name = "gaoji";
       metrics_path = "/metrics";
       scrape_interval = "15s";
       static_configs = [
@@ -915,7 +921,7 @@ in {
       ];
     }
     {
-      job_name = "kennethbot-cluster-control";
+      job_name = "gaoji-cluster-control";
       metrics_path = "/metrics/";
       scrape_interval = "15s";
       static_configs = [
@@ -928,50 +934,50 @@ in {
   ];
   my.monitoring.extraRules = [
     {
-      name = "kennethbot";
+      name = "gaoji";
       rules = [
         {
-          alert = "KennethbotMetricsUnavailable";
-          expr = ''up{job="kennethbot"} == 0'';
+          alert = "GaojiMetricsUnavailable";
+          expr = ''up{job="gaoji"} == 0'';
           "for" = "2m";
           labels.severity = "critical";
           annotations = {
-            summary = "Kennethbot metrics endpoint is unavailable";
-            description = "Prometheus cannot scrape the Kennethbot process on h610.";
+            summary = "Gaoji metrics endpoint is unavailable";
+            description = "Prometheus cannot scrape the Gaoji process on h610.";
           };
         }
         {
-          alert = "KennethbotClusterControlUnavailable";
-          expr = ''up{job="kennethbot-cluster-control"} == 0'';
+          alert = "GaojiClusterControlUnavailable";
+          expr = ''up{job="gaoji-cluster-control"} == 0'';
           "for" = "2m";
           labels.severity = "warning";
           annotations = {
-            summary = "Kennethbot cluster control is unavailable";
+            summary = "Gaoji cluster control is unavailable";
             description = "The bot cannot perform trusted fleet queries while its local control service is unavailable.";
           };
         }
         {
-          alert = "KennethbotModelFailureRateHigh";
+          alert = "GaojiModelFailureRateHigh";
           expr = ''
-            sum(increase(kennethbot_model_requests_total[15m])) >= 5
+            sum(increase(gaoji_model_requests_total[15m])) >= 5
             and
-            sum(increase(kennethbot_model_requests_total{status!="succeeded",status!="circuit_open"}[15m]))
-              / sum(increase(kennethbot_model_requests_total[15m])) > 0.5
+            sum(increase(gaoji_model_requests_total{status!="succeeded",status!="circuit_open"}[15m]))
+              / sum(increase(gaoji_model_requests_total[15m])) > 0.5
           '';
           "for" = "5m";
           labels.severity = "warning";
           annotations = {
-            summary = "Kennethbot model failure rate is above 50%";
+            summary = "Gaoji model failure rate is above 50%";
             description = "At least five model attempts occurred in 15 minutes and more than half failed.";
           };
         }
         {
-          alert = "KennethbotOutboxAmbiguous";
-          expr = ''kennethbot_outbox_deliveries{status="ambiguous"} > 0'';
+          alert = "GaojiOutboxAmbiguous";
+          expr = ''gaoji_outbox_deliveries{status="ambiguous"} > 0'';
           "for" = "10m";
           labels.severity = "warning";
           annotations = {
-            summary = "Kennethbot has ambiguous outbound deliveries";
+            summary = "Gaoji has ambiguous outbound deliveries";
             description = "A platform timeout may have sent a message without a confirmed receipt; inspect before retrying.";
           };
         }
@@ -1014,8 +1020,8 @@ in {
     owner = "kenneth";
     group = "users";
     mode = "0400";
-    restartUnits = lib.optionals config.systemd.services.qq-deepseek-bot.enable [
-      "qq-deepseek-bot.service"
+    restartUnits = lib.optionals config.systemd.services.gaoji.enable [
+      "gaoji.service"
     ];
     content = ''
       AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@100.64.0.3:55432,100.64.0.4:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
@@ -1087,18 +1093,18 @@ in {
       AI_GROUP_MODEL_PROFILES_JSON='{"201644592":"gpt-5.6-sol"}'
     '';
   };
-  systemd.services.qq-deepseek-bot.serviceConfig.EnvironmentFile = lib.mkAfter [
+  systemd.services.gaoji.serviceConfig.EnvironmentFile = lib.mkAfter [
     config.sops.templates."qq-deepseek-bot-postgres.env".path
   ];
-  systemd.services.qq-deepseek-bot.serviceConfig.ReadWritePaths = [
+  systemd.services.gaoji.serviceConfig.ReadWritePaths = [
     "/mnt/kennethbot-archive"
   ];
-  systemd.services.qq-deepseek-bot.after = lib.mkAfter [
+  systemd.services.gaoji.after = lib.mkAfter [
     "tailscaled.service"
     "ollama.service"
     "qq-bot-postgres-bootstrap.service"
   ];
-  systemd.services.qq-deepseek-bot.wants = lib.mkAfter [
+  systemd.services.gaoji.wants = lib.mkAfter [
     "tailscaled.service"
     "ollama.service"
     "qq-bot-postgres-node.service"
@@ -1239,6 +1245,11 @@ in {
         nameservers = {};
         override_local_dns = false;
         extra_records = [
+          {
+            name = "gaoji.inner.imdomestic.com";
+            type = "A";
+            value = "100.64.0.3";
+          }
           {
             name = "kennethbot.inner.imdomestic.com";
             type = "A";
@@ -1395,10 +1406,11 @@ in {
   # 0 = 取消时间窗,不再有"失败太快"的判定,按 RestartSec 一直重试下去。
   systemd.services.nginx.startLimitIntervalSec = lib.mkForce 0;
 
-  # Kennethbot 管理台只在 tailnet 地址上提供服务。Headscale 的 MagicDNS
+  # Gaoji 管理台只在 tailnet 地址上提供服务。Headscale 的 MagicDNS
   # 把 kennethbot.inner.imdomestic.com 解析到 100.64.0.3，公网接口不监听。
-  services.nginx.virtualHosts."kennethbot.inner.imdomestic.com" = {
-    serverName = "kennethbot.inner.imdomestic.com";
+  services.nginx.virtualHosts."gaoji.inner.imdomestic.com" = {
+    serverName = "gaoji.inner.imdomestic.com";
+    serverAliases = ["kennethbot.inner.imdomestic.com"];
     listen = [
       {
         addr = "100.64.0.3";

@@ -16,9 +16,9 @@ in {
       "maxops-agent.service"
       "maxops-executor.service"
       "maxops-hub.service"
-      "kennethbot-cluster-control.service"
-      "kennethbot-cluster-worker.service"
-      "qq-deepseek-bot.service"
+      "gaoji-cluster-control.service"
+      "gaoji-cluster-worker.service"
+      "gaoji.service"
       "qq-bot-postgres-node.service"
       "docker-napcat.service"
       "nginx.service"
@@ -45,7 +45,7 @@ in {
     # inputs.headplane.nixosModules.headplane
     inputs.max.nixosModules.max
     inputs.maxops.nixosModules.hub
-    inputs.qq-bot.nixosModules.qq-deepseek-bot
+    inputs.qq-bot.nixosModules.gaoji
     inputs.qq-bot.nixosModules.cluster-control
     inputs.qq-bot.nixosModules.cluster-worker
   ];

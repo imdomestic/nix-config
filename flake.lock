@@ -2107,16 +2107,16 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1788716636,
-        "narHash": "sha256-3SYSqeXb7G51ggYg75oSx+vZJyb8CkxeYrQg1nfxOUk=",
+        "lastModified": 1788754929,
+        "narHash": "sha256-1v9QpNMtlK1a3uLkGdVBaWhgn3UMSYTD9WLkazKisqw=",
         "owner": "zty20040403",
-        "repo": "chat-bot",
-        "rev": "39f1a5e7245fe8868728764f1eaeb74d6a9ecc7b",
+        "repo": "gaojibot",
+        "rev": "dfc74949840734bd3f698e947fd96e802783d327",
         "type": "github"
       },
       "original": {
         "owner": "zty20040403",
-        "repo": "chat-bot",
+        "repo": "gaojibot",
         "type": "github"
       }
     },
