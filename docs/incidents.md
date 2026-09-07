@@ -9,6 +9,22 @@
 
 ---
 
+## 2026-09-07 · gaoji 三节点 Worker 与统一 Ops 部署 {#gaoji-three-host-ops}
+
+h310、h610、tank 的计算任务使用独立 Worker 凭据和 Tailscale 接口；QQ 管理员身份
+只作为服务端配置的所有者别名，其他用户仍须限时授权。两份新增 SOPS 加密凭据的
+共享仓库发布已获 Kenneth 明确同意，不发布明文。三节点均纳入控制面资产和健康目标。
+
+P6 受限修复和 P7 两阶段部署共用 Ops 操作账本。部署目标固定各自的 repository/profile，
+系统切换前需审阅完整预检，切换后核对运行与持久 profile，并检查 Worker 服务。
+未配置第二套 SSH 部署器。Ops 精确源码兼容补丁只用于这三台 executor 与 h610 hub。
+
+最初以为工作区必须再做一次 commit 才能部署；实际上这会改变指定提交的身份。
+补丁允许初始干净工作区使用已有 base commit，旧版本必须是已检查远端分支的祖先；
+脏工作区、错误源码、远端或运行状态漂移仍会被拒绝。补丁在 gaojibot 仓库内独立保存，
+上游原生支持后应移除。实际配置使用的 Linux 包通过全部 74 项 Nextest 测试；
+共享 17 台 NixOS 主机均已评估通过。这些是构建证据，不替代逐台生产切换与功能验收。
+
 ## 2026-09-07 · Max 状态目录、账号与声明式配置迁移 {#max-unified-state}
 
 Max 的持久目录统一到 `/var/lib/max`，主进程、PostgreSQL role/database 均改名为
