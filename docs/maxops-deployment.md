@@ -10,8 +10,9 @@ The release pins maxops `dae8335` (0.3.0, protocol 2, 43 operations) and Max
 `277f61b` (0.18.0). All 17 NixOS configurations evaluated successfully after
 rebasing onto the current nix-config remote. The managed inventory remains
 **b650, h310, h610, r5s, r5sjp, r6s, rpi4, shanghai and tank**, with the Hub and
-Max on h610. This section records the release plan; live activation evidence
-will be added after rollout.
+Max on h610. All nine systems were activated from nix-config `0cec340`;
+final running closures and persistent system profiles matched their evaluated
+outputs. Standalone Home Manager profiles were not switched.
 
 Max now loads complete fixed skill tool bundles on `use_skill`, including all
 permitted maxops tools and instructions. The old three generic RPC tools are
@@ -30,6 +31,69 @@ The conversation allowlist remains **611798505 and 650536599**; fleet alerts go
 to **611798505** only. Final process environment must confirm both separately.
 Old durable management grants fail closed after the Max effect fingerprint
 change; do not rewrite grants or replay historical work to conceal this.
+
+### Runtime acceptance
+
+Remote Agents/Executors were upgraded first. h610 then activated an intermediate
+closure with the old Max input explicitly overridden to `b24cddc`, allowing Hub
+acceptance while Max PID `544279` stayed up. The final switch only needed to restart Max:
+PID `1726528`, package `m4q81yqlg7q4y7bvv4iqmg05xgnhcdbb-max-0.18.0`.
+Hub PID `1707468` stayed unchanged during that final switch. Max's authenticated
+QQ websocket reconnected at **14:07:00 HKT** (2026-09-07).
+
+All Agent/Executor processes used `8ri0v4qil9q7pr1mbhz53prwdkrag77v-maxops-0.3.0`
+on x86_64 or `2ykaaflyg88nn2h92l5nyls51qfwj8dr-maxops-0.3.0` on aarch64,
+with active state and `NRestarts=0`. Hub and all nine Executor SQLite databases
+applied migration 4 and passed `quick_check`. Consistent pre-migration backups
+passed `integrity_check` under `/var/backups/max-fleet-20260907-0cec340/` on each
+host. h610 also holds the 787,082,041-byte custom-format Max PostgreSQL backup;
+`pg_restore --list` read its table of contents successfully.
+
+| Host | Final system store hash |
+| --- | --- |
+| b650 | `h1b341ybfzh9qwgyg86fgfg919i64w9v` |
+| h310 | `6in8fjyjykbcv3f71ygk31vhahb7cwzc` |
+| h610 | `ygb567vvbl9c24b0qk7dc8w179vxfxmh` |
+| r5s | `jid2i04jqlzb9s20ifb368g5qnmnypg8` |
+| r5sjp | `p0bzhbswaxfgrqsk0s5wv91vccp7c5aa` |
+| r6s | `y8j13a3smr97yx00xvlpiybdah1gwy27` |
+| rpi4 | `w2ld05vv1r1vmajvhmfdrxxds6amk5aw` |
+| shanghai | `hj8k6cqimv8rl48bk5kf713msakfwpxj` |
+| tank | `fbln6baajdiij5wmqgqyv20gz5y98h0f` |
+
+`scripts/check-maxops-fleet.py` passed the nine-host runtime check: complete
+protocol-2 tools catalog, summary pagination, resource/profile discovery through
+each Executor, current agent service details, bounded journals, fresh metrics,
+running/profile agreement, authentication and resource-scope rejection. One
+initial request returned 502; the complete rerun passed. Invalid JSON fields
+are rejected by the HTTP extractor with 422, while a valid mutation request
+missing its submission key is rejected with 400; the acceptance script records
+those separate boundaries and identifies failing operation/host pairs.
+
+Nine diagnostic `true` jobs succeeded, one on each host. Repeating each submission
+with `release-0cec340-probe-<host>` returned the same job ID. Each job's durable
+wait, four persisted events, complete result (exit 0) and text log view passed.
+These probes exercised execution without changing target services or sending
+chat messages; they do not claim a production `deploy.run` failure/recovery drill.
+Max's own credential returned all **43** operations: summary 9,691 bytes, tools
+25,296 bytes, no response schemas or next page. Final process routing remained
+`MAX_MAXOPS_ALLOWED_GROUPS=611798505,650536599` and
+`MAX_MAXOPS_NOTIFY_GROUPS=611798505`.
+
+Local gates: Max build, 1,044 unit examples, 321 real PostgreSQL integration
+examples, HLint, Cabal check, prompt-flow generation/check and real Rust Hub/Max
+HTTP integration passed. Both Linux architecture builds ran all 70 maxops tests
+with zero failures or skips; all 17 NixOS configurations evaluated successfully.
+
+Production Max operational health remains **not green**: 1,965 delivery outcomes
+unknown, 11 dispatch outcomes unknown, 385 parked media records and 28 failed
+requests. The delivery count was 1,964 in the preflight; the extra record
+`163353` reported `HTTP connection timed out` and became unknown at
+**13:56:43 HKT**, while the old Max was still running,
+before the Max switch at **14:06:56 HKT**. Expired delivery/dispatch/frontend/task
+leases, overdue task deadlines and unresolved active journal outcomes were all
+zero after the switch. Historical records and grants were not rewritten, deleted
+or replayed to improve these measurements.
 
 ## Fleet execution rollout (2026-09-07)
 
