@@ -206,8 +206,7 @@ in {
   config = lib.mkIf cfg.mesh {
     services.prometheus.exporters.ping = {
       enable = true;
-      # 同 node_exporter:只绑 tailscale 地址。这个 fleet 8 台全是
-      # firewall.enable = false,绑定地址是唯一真正起作用的边界。
+      # 同 node_exporter:只绑 tailscale 地址,防火墙则只对 tailscale0 放行。
       listenAddress = config.my.host.tsIp;
       port = cfg.pingPort;
 
@@ -227,6 +226,8 @@ in {
         };
       };
     };
+
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts = [cfg.pingPort];
 
     systemd.services.prometheus-ping-exporter = {
       after = ["network-online.target" "tailscaled.service"];
