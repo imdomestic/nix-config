@@ -323,10 +323,10 @@ in {
       enable = false;
       trustedInterfaces = ["br-lan"];
       interfaces."ppp0".allowedUDPPorts = [546];
-      # nginx 的 80 和 headplane 的 3001,只对 tailscale 放行。
+      # nginx 的 80、headplane 的 3001 和 Ollama 的 11434,只对 tailscale 放行。
       # (enable = false,这条现在不生效;写着是为了哪天把 firewall 打开时
-      # 这两个不用重新考古。)
-      interfaces.tailscale0.allowedTCPPorts = [80 3001];
+      # 这些端口不用重新考古。)
+      interfaces.tailscale0.allowedTCPPorts = [80 3001 11434];
       checkReversePath = false;
     };
   };
@@ -771,10 +771,16 @@ in {
   services.ollama = {
     enable = true;
     package = pkgs-unstable.ollama-vulkan;
+    host = config.my.host.tsIp;
     loadModels = [
       "bge-m3"
       "qwen3.5:2b-q4_K_M"
     ];
+  };
+
+  systemd.services.ollama = {
+    after = ["network-online.target" "tailscaled.service"];
+    wants = ["network-online.target" "tailscaled.service"];
   };
 
   users.users.turnserver.extraGroups = ["nginx"];
@@ -884,7 +890,7 @@ in {
       AI_ALERT_NOTIFY_GROUP_ID = "611798505";
       AI_ALERT_NOTIFY_CHECK_SECONDS = "30";
       AI_SEMANTIC_ENABLED = "true";
-      AI_EMBEDDING_BASE_URL = "http://127.0.0.1:11434/v1";
+      AI_EMBEDDING_BASE_URL = "http://${config.my.host.tsIp}:11434/v1";
       AI_EMBEDDING_API_KEY = "ollama-local";
       AI_EMBEDDING_MODEL = "bge-m3";
       AI_EMBEDDING_DIMENSIONS = "1024";
