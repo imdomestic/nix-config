@@ -125,7 +125,12 @@ in {
   # 流量的入口。dae 1.0.0 的 lan_interface 支持 path.Match 模式并会
   # 自动绑定后续新建的网卡;12 个 ? 只匹配 Docker 生成的 br-<id>,
   # 不会与现有 br-lan 重复挂载 eBPF。
-  my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????" "max-sb-*"];
+  my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????" "max-sb-egress" "max-sb-native"];
+  # See docs/incidents.md#max-native-runtime-dns.
+  my.dae.foreignDnsOverTcp = true;
+  # Prepare the shared mount before DAE binds its namespace.
+  systemd.services.dae.after = ["max-sandbox-network.service"];
+  systemd.services.dae.wants = ["max-sandbox-network.service"];
 
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
@@ -807,9 +812,8 @@ in {
   # max-bot membership lets hank edit the config/env files under /var/lib/max-bot
   users.users.hank.extraGroups = ["video" "render" "docker" "max-bot"];
 
-  # max bot: the Haskell code shells out to the real docker CLI and the
-  # napcat compose file relies on host-gateway, so use Docker here rather
-  # than the podman/dockerCompat setup other hosts use.
+  # Other QQ bot workloads still use Docker. Max has its own native systemd
+  # stack and no longer needs access to the Docker daemon.
   virtualisation.docker.enable = true;
   # The host resolv.conf points at the systemd-resolved stub, so docker
   # falls back to 8.8.8.8 — which resolves CN sites to overseas CDNs that
@@ -838,13 +842,14 @@ in {
     napcat = {
       enable = true;
       qq = "2107570581";
+      websocketPort = 18080;
       environmentFiles = ["/var/lib/max-bot/napcat.env"]; # NAPCAT_ACCESS_TOKEN
     };
   };
-  # headscale owns 127.0.0.1:8080, so bind the OneBot WS on the docker
-  # bridge only; napcat reaches it via host.docker.internal (host-gateway).
+  # headscale owns 127.0.0.1:8080; native NapCat connects to Max on 18080.
   systemd.services.max.environment = {
-    MAX_WS_HOST = "172.17.0.1";
+    MAX_WS_HOST = "127.0.0.1";
+    MAX_WS_PORT = "18080";
     MAX_LOG_COLOR = "always";
     MAX_IMESSAGE_MIRROR_QQ_GROUP = "611798505";
     # Override the manually managed cloud embedding profile without forwarding its key.
