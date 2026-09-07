@@ -1,5 +1,36 @@
 # maxops deployment
 
+The current design and Max/maxops ownership boundary are in
+[maxops.md](maxops.md). Sections below retain dated rollout evidence; a historical
+pilot's permissions or operation count must not be read as the current contract.
+
+## Skill bundles and public client API release (2026-09-07)
+
+The release pins maxops `dae8335` (0.3.0, protocol 2, 43 operations) and Max
+`277f61b` (0.18.0). All 17 NixOS configurations evaluated successfully after
+rebasing onto the current nix-config remote. The managed inventory remains
+**b650, h310, h610, r5s, r5sjp, r6s, rpi4, shanghai and tank**, with the Hub and
+Max on h610. This section records the release plan; live activation evidence
+will be added after rollout.
+
+Max now loads complete fixed skill tool bundles on `use_skill`, including all
+permitted maxops tools and instructions. The old three generic RPC tools are
+replaced by typed definitions from the public catalog. Host-owned submission
+identities and durable Operations tasks observe remote jobs through `jobs.wait`;
+the frontend model interprets their results. The release also fixes durable
+`kill --all` settlement so cancellation releases frontend ownership.
+
+The public API adds compact/paginated discovery, resource discovery, job waits,
+events/results, bounded text logs, structured errors and durable `deploy.run`.
+Roll out Agent/Executor first, then Hub, then Max. Back up every maxops SQLite
+store consistently before the migration; keep Max PostgreSQL backup and live
+read-only health evidence separate from disposable-DB tests.
+
+The conversation allowlist remains **611798505 and 650536599**; fleet alerts go
+to **611798505** only. Final process environment must confirm both separately.
+Old durable management grants fail closed after the Max effect fingerprint
+change; do not rewrite grants or replay historical work to conceal this.
+
 ## Fleet execution rollout (2026-09-07)
 
 MaxOps 0.3 runs an Agent and Executor on all nine managed hosts. h610 remains
@@ -31,6 +62,9 @@ observation-only.
   deployment remain native to b650 like every other host.
 
 ## Fleet expansion configuration (2026-09-06)
+
+This section records the initial eight-host read-only rollout. The execution and
+b650 additions above supersede its host count and operation/permission scope.
 
 All eight agents were activated in the initial fleet rollout (`707f986`),
 with Max `15648d3` and maxops `8c08ae4`. The hub stays on h610. Registry entries enable
@@ -161,7 +195,10 @@ disposable PostgreSQL database, never by writing fixtures into the live ledger.
 
 ## Historical single-host pilot
 
-The initial deployment runs the read-only hub and agent on h610. The input
+Everything in this section, including its Max integration configuration, records
+the original pilot. Use the configuration review above for current permissions.
+
+The initial deployment ran the read-only hub and agent on h610. The input
 `github:HCHogan/maxops` follows this repository's nixpkgs; `flake.lock` pins the
 application revision. Configuration lives in `nixos/hosts/h610/maxops.nix` and
 uses the upstream native NixOS modules.

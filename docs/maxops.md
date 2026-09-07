@@ -1,435 +1,319 @@
 # maxops —— fleet 控制平面
 
-23 台机器、4 个人、跨物理站点。这份文档定义 `maxops` 是什么、边界在哪、
-以及为什么每个决定是这么定的。
+本页记录 maxops 的定位、与 Max 的边界，以及本 fleet 的配置选择。
+2026-09-07 按当前源码和 Nix 求值结果修订；已实现能力与后续建议分开描述。
 
-配套的仓库是 `github.com/HCHogan/maxops`，作为 flake input 进 nix-config。
+通用协议、实现和原生 NixOS 模块属于独立仓库
+[HCHogan/maxops](https://github.com/HCHogan/maxops)。本仓库只拥有 fleet inventory、
+客户端授权、执行/部署 profile、凭据引用和部署策略。通用实现细节以其
+[architecture.md](https://github.com/HCHogan/maxops/blob/main/docs/architecture.md)
+为准；历次实机验收见 [maxops-deployment.md](maxops-deployment.md)。
 
-当前落地范围是 h610 的只读 hub + agent，配置与验收见
-[maxops-deployment.md](maxops-deployment.md)。下文是完整设计目标；其中 tank hub、
-全 fleet agent、MCP、QQ 身份代理及变更操作尚未部署。
+本次核对基线：`flake.lock` 的 maxops `dae8335`（0.3.0，协议版本 2）和
+Max `277f61b`（0.18.0）。Nix 求值确认 Hub 位于 h610，纳管九台主机：
+**b650、h310、h610、r5s、r5sjp、r6s、rpi4、shanghai、tank**。
+这是源码与配置核对，不是一次新的九机部署或运行验收。
 
-### 2026-09-06 路线落实与修正
+## 0. 边界：通用 fleet 管理服务
 
-本轮代码/配置扩展到 h610 加 shanghai、r6s、r5s、rpi4、r5sjp、tank、h310；
-**配置完成不等于已部署**，验收边界见部署文档。按 registry 的 `maxops.enable`
-显式纳管，服务白名单同源派生，不把其他服务器自动纳入。hub 保留 h610。
+maxops 提供三类能力：
 
-- P1 扩展：补 `host.metrics`、`units.list`、`deploy.status` 和服务详细属性，
-  overview 增加负载/磁盘与保守的可达性判断。
-- P2 接线：两份 Alertmanager → hub → Max 持久 outbox → 固定群及镜像，
-  独立凭据、并发去重和恢复通知，不经过 LLM。保留独立 webhook 出口的配置。
-- P3 的群查询已通过 Max 原生 HTTP 工具实现，不为换协议重复写 dispatch；
-  MCP 前端仍是后续可选工作。
-- P4 仍未实现：不开放重启、start/stop、reboot、部署、QQ 身份代理。
-  需要先完成不可由 LLM 自证的确认入口、持久 intent、幂等执行记录和受限 polkit。
-- generation 只报告持久 profile 的编号，不能冒充不同 running closure 的编号；
-  不用 ctime 推断激活时间。任意 PromQL 也不能绕过 per-host 数据权限。
+1. 聚合主机、systemd、Nix 运行状态及既有监控数据，保留来源和不确定性。
+2. 执行可追踪、可恢复的命令、服务变更、Git workspace 和 Nix 部署操作。
+3. 保存 fleet 事件，通过通用查询和 webhook 向任意客户端交付。
 
----
+Max、CLI、MCP 客户端和脚本使用同一套操作与权限。maxops 不依赖 Max 的
+数据库、任务系统、QQ 身份、提示词或消息 IR，也不内置模型推理。
+告警交付是通用事件能力；向哪个群发、是否经模型转述，由消费方负责。
 
-## 0. 边界：maxops 做什么，不做什么
+Prometheus 继续拥有指标和时序存储，Grafana 提供监控视图。
+部署已属于 maxops 的能力范围；deploy-rs、人工 rebuild、直接 Git push 和
+其他运维工具继续存在，maxops 的记录不代表整个 fleet 的全部变更历史。
 
-**做三件事：**
+管理范围由 host registry 的 `maxops.enable` 显式选择，不由 `roles = server`
+自动推导。b650 已纳管，桌面角色不构成排除条件。当前目标端依赖 Linux/systemd；
+Darwin agent、reboot、QQ 身份代理和任意 PromQL 均未实现，不列为默认承诺。
 
-1. **聚合** —— 把 Prometheus 的指标、systemd 的 unit 状态、NixOS 的 generation
-   信息合成一个"这台机器现在怎么样"的答案。
-2. **受控变更** —— 重启服务这类操作，带身份、带白名单、带审计。
-3. **主动触达** —— 告警不等人问，自己发到群里。
+## 1. 消费者与身份
 
-**明确不做：**
-
-| 不做 | 归谁 | 为什么 |
+| 消费者 | 当前接入 | 授权主体 |
 | --- | --- | --- |
-| 时序存储、PromQL 引擎 | Prometheus | 没有任何理由重造 |
-| 部署（`nixos-rebuild switch`） | deploy-rs | 风险等级完全不同，见 §9 |
-| ~~单机 Web 面板~~ | ~~cockpit~~ | **cockpit 已于 2026-08-12 从全 fleet 删除**（理由见 `nixos/profiles/server.nix` 里那段注释：NixOS 上它 15 个页面里大部分没有后端）。原本「给 cockpit 加一个 fleet 标签页」的定位随之作废 —— 浏览器里的 fleet 视图归 Grafana |
-| QQ 协议、消息收发 | max | max 只是 maxops 的一个 notify sink |
+| Max | 原生 Haskell HTTP 工具 | 独立 `max` bearer credential |
+| Hank / maxopsctl | HTTP API | 独立 `hank` bearer credential |
+| Kennethbot | HTTP API | 独立 `kennethbot` 观察 credential |
+| 任意 MCP 客户端 | `maxops-mcp` stdio → HTTP | 启动适配器时配置的 credential |
+| 普通程序或脚本 | 同一 HTTP API | 各自配置的客户端 credential |
 
-最后一条要强调：**名字叫 maxops，但代码里 max 不特殊。** 它和 matrix、
-邮件、webhook 平级，都是 `notify::Sink` 的一个实现。这台 fleet 以后换个
-聊天平台，maxops 不用动。
+协议类型不决定信任级别。Hub 根据认证主体及服务端配置决定 host、capability、
+repository、deployment 范围；请求体不能填写身份，也没有 QQ uid 委托协议。
+凭据目录只用于发现，实际执行仍需重新授权。
 
-### 管理范围
-
-```nix
-managed = kind == "nixos" && lib.elem "server" roles;
-```
-
-10 台：`h610 r2s r5s r5sjp r6s rpi4 shanghai tank x470 aarch64-wsl`。
-
-判据用 `roles` 而不是 `kind`，因为**真正的分界是"服务器"还是"漫游设备"**，
-不是操作系统。b650、m16、gpd 这些是 NixOS，但它们和 MacBook 一样会合盖
-离线，一样没有要运维的服务。
-
-**不支持 darwin，三个理由**（这三条对 NixOS 桌面同样成立）：
-
-1. **控制侧价值接近零。** 三台 darwin 的 `roles` 全是 `["desktop" "gui"]`。
-   没有要在群里重启的服务。
-2. **安全模型塌一层。** §3 的地基是 polkit —— agent 非特权 + 内核级白名单。
-   darwin 上没有 polkit，只能 launchd + sudoers，darwin agent 会是全体系里
-   唯一的宽权限节点。而 hub 是统一的，**最弱的 agent 决定了 hub 被攻破时的
-   实际爆炸半径**。为三台笔记本拉低整体模型，不划算。
-3. **漫游设备污染告警。** 合盖即离线，在 Prometheus 里永远是 down。最后一定
-   要把它们排除出告警，那剩下的只是一张 CPU 曲线图 —— 有点意思，不是运维。
-
-一个边界情况：`aarch64-wsl` 虽然声明了 `server`，但它跑在别人的 Windows 上，
-宿主休眠它就没了 —— 纳入管理没问题，但**告警规则里要按漫游设备对待**，
-否则它会是噪声的主要来源。
-
-**唯一的例外**是 `x86_64-headless` / `aarch64-headless`：`kind = "home"` 但
-`roles = ["server"]`。如果它们是真的非 NixOS Linux 服务器，那么有 systemd、
-大概率有 polkit，§5 的三层模型能原样搬过去。**这才是扩展的第一优先级，
-远在 darwin 之前。**
-
----
-
-## 1. 为什么值得单独一个项目
-
-不是因为代码量，是因为**它有三个互不信任的消费者，而它们必须共享同一套
-操作定义和同一套权限判定**：
-
-| 消费者 | 协议 | 身份来源 | 信任等级 |
-| --- | --- | --- | --- |
-| max（QQ 群） | MCP over HTTP | QQ uid，由 max 代为断言 | **最低** |
-| Claude Code（你的笔记本） | MCP over HTTP | bearer token | 中 |
-| `maxopsctl`（终端） | REST | bearer token | 高 |
-
-"最低"那一行是整个设计的约束条件：**群消息是不可信输入，而它最终会变成
-对 fleet 的操作请求。** 群里任何人转发一段带指令的文本，都会进 LLM 的
-上下文。这不是假想威胁，是这类 bot 的默认状态。
-
-如果不单独做：
-
-- 塞进 nix-config → 变成一堆 `writeShellScript`，权限判定散在各处，没法测试。
-- 塞进 max → 绑死在 QQ 上，cockpit 和 CLI 用不了，而且把"聊天机器人"和
-  "有 root 能力的控制平面"编译进同一个进程，是错误的信任边界。
-
----
+本 fleet 当前给 Hank 和 Max 相同的完整管理范围，但使用独立凭据；Kennethbot
+保持观察权限。群消息与日志等外部内容仍是不可信输入。Max 自己限制聊天入口，
+不能把模型填写的身份当成 Hub 的权限证明。
 
 ## 2. 架构
 
+```text
+Max / maxopsctl / HTTP 程序 / maxops-mcp
+                    │
+                    ▼
+              Hub（h610）
+              ├─ 客户端认证、范围检查、操作派发
+              ├─ 持久 job、change、事件与恢复协调
+              ├─ Prometheus / Alertmanager
+              └─ 各主机 Agent
+                   ├─ 非特权观察：systemd、日志、主机事实
+                   └─ 独立执行凭据 → 本机 Unix socket → Executor
+                                                     ├─ 持久接收与执行去重
+                                                     ├─ systemd job runner
+                                                     └─ workspace / deployment
+
+Alertmanager → Hub → 通用通知接收端 → Max 等客户端
 ```
-                          ┌──────────────────────────────┐
-   QQ 群 ──► max ────────►│                              │
-                          │                              │──► maxops-agent ×N
-   Claude Code ──────────►│         maxops-hub           │    (每台机器，tailnet)
-        (MCP/HTTP)        │      (跑在 tank 上)          │
-                          │                              │──► Prometheus (PromQL)
-                          │  · inventory（nix 生成）     │
-                          │  · policy（nix 生成）        │◄── Alertmanager (webhook)
-                          │  · operation registry        │
-   maxopsctl ────────────►│  · audit log                 │──► notify sinks
-        (REST)            │                              │      └─► max ─► QQ 群
-                          └──────────────────────────────┘      └─► matrix
-```
 
-hub 一个实例，跑 tank。agent 每台机器一个，只监听 tailscale 地址。
+Hub 当前单实例，位于 h610。同机 Agent 监听回环地址，远端 Agent 监听各自
+registry 中的 Tailscale 地址。Executor 使用本机 Unix socket，不新增公网 RPC。
 
----
+Hub 和目标 Executor 分别保存协调记录与执行事实。Hub 的一次 HTTP 失败、
+客户端断开或 Max 重启，都不能作为远端操作没有发生的证据。
 
-## 3. 核心决定：per-host agent，不是 SSH
+## 3. 执行与恢复边界
 
-这是地基，先论证它。
+受控执行通过结构化 API 和独立 Executor 实现。服务操作使用 systemd D-Bus；
+`exec.run` 明确支持 argv 或显式解释器脚本，由服务端 profile 限制运行身份、
+工作目录、期限、资源及凭据引用。因此“API 没有 shell”已不符合当前能力。
 
-**朴素做法**是 hub 拿一把 SSH key，需要干活时 `ssh root@tank systemctl restart nginx`。
-用 `authorized_keys` 里的 `command=` 做 forced-command 限制。
+- 提交持久作业需要稳定幂等键，同一逻辑提交重试复用原键；参数变化不能冒充重试。
+- 返回 job handle 表示已受理，最终结果通过作业状态和执行凭证确认。
+- 服务变更在执行前观察 unit 状态，支持预期 InvocationID 检查，并记录前后状态。
+  已可能发生的操作通过观察恢复，不能因丢失应答就再次执行。
+- Workspace 使用隔离目录与不可变 revision，读取、修改和发布遵守相应版本前置条件。
+  人的 checkout 不作为临时工作目录。
+- 部署冻结源码、构建产物与运行基线。激活前重新观察；旧任务遇到外部变更应成为
+  `stale` 或 `superseded`，恢复不能覆盖其他工具后来激活的系统。
+- 取消等待不等于取消作业。服务变更和激活一旦开始，取消不能被解释为“副作用没发生”。
 
-**不采用，因为 forced-command 是在给一个通用信道打补丁。** 你会写一个 shell
-wrapper 去解析 `$SSH_ORIGINAL_COMMAND`，然后开始和引号、分号、glob 搏斗 ——
-而信道另一端是一个读群消息的 LLM。任何一个解析疏漏都是 fleet root。这个方向
-的每一步都在做减法，而减法很难做完。
-
-**agent 的做法是做加法**：线上只存在你显式实现的那几个 RPC。没有 shell，
-没有字符串拼接，没有"如果参数里有分号会怎样"。攻击面等于 API surface，
-而 API surface 是你写出来的、可枚举的、可测试的。
-
-三个通常反对 agent 的理由，在你这里都不成立：
-
-- *"要部署到 23 台机器"* —— 你有 deploy-rs 和统一的 `base.nix`，加一个模块
-  是一行。这个成本对别人是真的，对你接近零。
-- *"多一个常驻进程"* —— agent 是个几百行的东西：systemd D-Bus 查询、journald
-  读取、几个 `/proc` 文件。（原文拿 cockpit 作类比说「你已经全装了」——
-  cockpit 现在删了，但结论不变：agent 比它轻一个量级。）
-- *"要管一套新的认证"* —— 你已经在用 sops-nix 下发密钥，多一个 per-host token
-  是复制现有模式。
-
-**而 agent 换来一个 SSH 给不了的东西：agent 可以不是 root。**
-
-在 NixOS 上，agent 以专用非特权用户运行，配一条**从 Nix 白名单生成的 polkit
-规则**，只允许它对特定 unit 调用 `org.freedesktop.systemd1.manage-units`。
-读日志靠 `systemd-journal` 组。
-
-结果是：**即使 agent 二进制被完全攻破，它能做的也只有重启白名单里那几个
-服务。** 不是"我们尽量限制它"，是内核层面它没有别的能力。
-
-这条路只有在 NixOS 上才顺畅（polkit 规则和白名单从同一份 Nix 配置生成，
-不可能漂移），而你整个 fleet 就是 NixOS。这是这套设计贴着你的环境长出来的
-部分，换个环境我不会这么建议。
-
----
+maxops 的主机锁只协调自己的作业，不能排除人工或外部工具。
+`outcome_unknown` 必须保留为独立结果，不能压成普通失败后盲目重试。
 
 ## 4. 单一事实来源：operation registry
 
-如果 maxops 只有一个设计原则值得记住，是这条。
+操作注册表位于 `maxops-proto/src/lib.rs`，统一提供操作名、请求类型、capability、
+kind、只读标记、幂等要求、最低协议版本及输入/输出 JSON Schema。
+CLI 从中生成参数入口，MCP 从 Hub 的凭据范围目录生成工具，OpenAPI 复用请求类型。
+前端不得再手写一份完整操作/权限表；动态授权与参数约束仍由服务端检查。
 
-**每个操作只定义一次**，MCP tool schema、REST 路由、CLI 子命令、权限
-capability 名、审计事件类型，**全部从这一份定义派生**。
+当前 HTTP 入口是 `GET /v1/operations` 和 `POST /v1/execute`。
+后者使用 `{op, params}`，读取返回 200，持久作业提交返回 202 和 handle。
+MCP 已实现为 stdio 适配器，Max 当前使用 HTTP，不经过 MCP。
 
-```rust
-// maxops-proto/src/ops.rs
-operation! {
-    name: "units.restart",
-    summary: "重启指定机器上的一个 systemd unit",
-    kind: Mutating,                      // → 决定要不要审计、要不要二次确认
-    capability: "units:restart",         // → policy 里用这个名字
-    params: {
-        host: HostRef,                   // → 类型即校验：必须在 inventory 里
-        unit: UnitRef,                   // → 必须在该 host 的白名单里
-    },
-    returns: UnitStatus,
-}
-```
+当前注册表有 43 个操作，以下只列能力分组，不复制完整 Schema：
 
-没有这层，加一个操作要改五个地方，然后 MCP 的 schema 和 REST 的行为
-慢慢对不上 —— 而 LLM 是照着 schema 调用的，schema 一旦说谎，故障模式极难
-排查。
-
-派生关系：
-
-```
-                    ┌─► MCP tools/list 的 JSON Schema
-                    ├─► REST 路由 + OpenAPI
-   operation! ──────┼─► maxopsctl 子命令 + --help
-                    ├─► policy 里合法的 capability 名（拼错编译不过）
-                    └─► 审计日志的事件类型
-```
-
-### 操作清单（v1）
-
-**只读**（全群可用）：
-
-| op | 说明 |
+| 范围 | 已实现操作 |
 | --- | --- |
-| `fleet.overview` | 每台机一行：在线/失联、failed unit 数、负载、磁盘水位 |
-| `units.failed` | 全 fleet 或单机的 failed unit —— 预计最高频的一个 |
-| `host.facts` | uptime、内核、**当前 NixOS generation 及激活时间** |
-| `host.metrics` | CPU/内存/磁盘/网络，来自 Prometheus |
-| `units.list` | 白名单内的 unit 及状态 |
-| `units.status` | 单个 unit 详情：状态、PID、内存、重启次数、上次退出码 |
-| `units.logs` | journald，限行数和时间窗 |
-| `alerts.active` | Alertmanager 当前告警 |
-| `promql` | **只读逃生口** |
+| 观察 | `resources.list`、`fleet.overview`、`units.failed/list/status/logs`、`host.facts/metrics`、`deploy.status`、`alerts.active`、`self.status` |
+| 执行 | `exec.run`、`units.start/stop/restart/reload` |
+| 作业 | `jobs.list/status/logs/cancel/wait/events/result` |
+| 工作区 | `workspace.create/status/read/apply/diff/commit/check/publish` |
+| 部署与变更 | `deploy.prepare/build/activate/verify/rollback/run`、`changes.status/history` |
+| 事件与诊断 | `events.list`、`diagnostics.collect`、`remediations.begin/finish` |
 
-关于 `host.facts`：读取 running closure、持久 profile 和 `system-N-link` 编号，
-明确报告二者是否一致。激活时间需要可信的成功激活记录，不能用符号链接的
-ctime 代替；当前返回未知，不能回答“上次成功部署是什么时候”。
+HTTP RPC 仍是传输；目录分层、资源发现、结果投影及作业等待属于公共协议，见 §11。
+Max 消费这些能力，不再让模型手动安排 HTTP 发现和作业轮询。
 
-关于 `promql`：只读也会泄露未授权主机及标签数据，不只有资源耗尽风险。
-当前实现用固定的 `host.metrics` 表达式与精确 instance 选择器。任意 PromQL
-要等 AST 级 scope 限制或独立数据源隔离，以及资源预算落实后再开放。
+## 5. 授权与进程权限
 
-**变更**（白名单身份 + 审计）：
+Hub 检查认证主体及资源范围；Agent 区分观察和执行凭据；Executor 执行本机配置
+规定的 profile、unit、repository 和 deployment 约束。三者不是原设计的 polkit 链路。
 
-| op | 危险等级 |
+Agent 保持非特权运行，不获得 polkit/sudo 管理授权；Executor 是独立的特权协调器。
+普通诊断作业使用受限身份，root operator/activation profile 需要显式配置。
+有界输出、资源限制和持久审计不等于能够隔离恶意管理员命令。
+
+本 fleet 已启用 root operator profile。`manageableUnits` 约束的是专用服务操作，
+不能宣称它限制了已获 root 命令权限的客户端只能修改这些 unit。
+
+当前采用预授权管理客户端，不要求每次命令额外走 QQ 二次确认。
+幂等键、revision、InvocationID 是执行正确性的前置条件，不是用户授权证明。
+聊天入口与交互约束由 Max 等客户端实施，maxops 不新增群播报或确认消息的硬依赖。
+
+## 6. 仓库与技术选择
+
+maxops 当前为七个 Rust crate：
+
+| crate | 职责 |
 | --- | --- |
-| `units.restart` / `start` / `stop` | 中 —— 限白名单 unit |
-| `host.reboot` | 高 —— 单独一档权限，默认只有 hank |
+| `maxops-proto` | 线协议、操作注册表、共享类型与传输辅助 |
+| `maxops-store` | SQLite 持久化、迁移、幂等和事件记录 |
+| `maxops-hub` | 认证、范围、聚合和持久协调 |
+| `maxops-agent` | 目标机观察和经认证的执行转发 |
+| `maxops-executor` | 本机执行、完成凭证、workspace 和部署 |
+| `maxopsctl` | 通用 CLI |
+| `maxops-mcp` | stdio MCP 适配器 |
 
----
+当前使用 Tokio、zbus、reqwest、Serde/Schemars、Utoipa、SQLx/SQLite、color-eyre
+和 jiff；工具环境是 devenv，正确性测试用 nextest，基准用 Criterion。
+MCP 适配器当前直接实现协议，并未使用原设想中的 rmcp。
+发布的是 Nix package/closure，不把“单静态二进制”作为已验证的交付保证。
 
-## 5. 权限：三层，互相不信任
+数据库保留必须跨重启存在的作业身份、幂等、版本、执行结果和事件。
+目录缓存、展示裁剪等瞬态逻辑不需要增加持久业务表；Max 也无需复制远端 job 状态机。
 
-```
-第一层  hub：身份 → capability
-        "linwhite 能不能在 tank 上做 units:restart"
-        策略从 nix-config 生成
+## 7. 观测与失联判定
 
-第二层  agent：unit 白名单
-        "nginx 是不是这台机器允许被操作的 unit"
-        白名单从该 host 的 Nix 配置生成
+观测必须区分事实、缺失和推断。Agent、exporter 与 Hub 位于不同观测路径：
 
-第三层  polkit：内核级
-        "maxops 这个用户有没有权限 manage 这个 unit"
-        规则从同一份白名单生成
-```
+| 观测 | 能得出的结论 |
+| --- | --- |
+| Agent 和 exporter 均可达且数据新鲜 | 两条观察路径可用，仍需查看具体服务状态 |
+| 只有 Agent 可达 | exporter 或其采集路径不可用，不能断言主机故障 |
+| 只有 exporter 可达 | Agent 或其访问路径不可用，不能断言控制进程一定崩溃 |
+| 两者均不可达 | 当前无法观察；断电、网络分区、ACL 等原因仍待核实 |
+| 缺失、陈旧或有歧义的样本 | 明确返回 unavailable/unknown/stale，不填健康零值 |
 
-第一层被绕过（hub 被攻破、LLM 被注入），第二三层还在。第二层被绕过
-（agent 有 bug），第三层还在。**第三层没有绕过的办法，除非拿到 root
-—— 而 agent 本身没有 root。**
+同站点多机失联只能作为诊断线索，不能直接证明网络分区。
+`fleet.overview` 保留各来源及局部错误；`diagnostics.collect` 提供有界证据和配置探测。
 
-### 身份怎么来
-
-max 认证到 hub 用一个 bearer token，同时在请求里带上 QQ uid。
-**hub 信任 max 如实转述 uid** —— 这是必要的信任边界，max 已经通过 token
-证明了自己是 max。uid → 身份 → capability 的映射在 hub 侧，max 无法影响。
-
-四个人的映射直接写在 nix-config 里，和 headscale ACL 那个
-`group:imdomestic` 用同一份人员定义。
-
-### 变更操作的两个额外闸门
-
-1. **二次确认** —— 变更类操作先返回一个待确认的 intent，需要发起人再确认
-   一次。这挡住了绝大部分提示注入：注入能让 LLM *提议* 重启，但确认必须
-   来自真实用户的第二条消息。
-2. **群内播报** —— 每次变更 bot 主动在群里说一句"应 hank 要求重启了 tank
-   的 nginx"。四个人的群，这个审计成本是零，但任何异常操作立刻被四双眼睛看到。
-
----
-
-## 6. 仓库结构
-
-```
-maxops/
-├── flake.nix                 # packages.{hub,agent,ctl} + nixosModules.{hub,agent}
-├── crates/
-│   ├── maxops-proto/         # 操作注册表、线协议类型、错误
-│   ├── maxops-agent/         # 每台机器，非特权
-│   ├── maxops-hub/           # 单实例：inventory / policy / 前端 / 通知
-│   └── maxopsctl/            # CLI，REST 客户端
-```
-
-### 语言：Rust
-
-- agent 要上 rpi4 / r2s / r5s / r6s 这些 ARM 小机器，单静态二进制、小 closure
-  是实打实的好处。
-- `zbus` 操作 systemd D-Bus，`rmcp` 是官方 MCP SDK，两个都省掉手写协议。
-- 长期常驻、碰特权边界的进程，内存安全不是加分项是必需项。
-
-**Haskell 也完全可行**（你写 max 就是 Haskell，MCP 本质是 JSON-RPC 2.0，
-自己搓不难）。如果你更愿意整个基础设施保持一门语言，这个理由足够压过上面
-三条 —— 除了 agent 那部分，ARM 上的 closure 大小差别是真的。可以 hub 用
-Haskell、agent 用 Rust，但两门语言的成本通常大于收益，我倾向统一 Rust。
-
----
-
-## 7. 一个容易漏的设计点：失联判定
-
-"机器挂了"有三种情况，必须区分，否则群里全是无用告警：
-
-| 现象 | Prometheus `up{}` | agent 可达 | 结论 |
-| --- | --- | --- | --- |
-| 机器真的下线 | 0 | 否 | 主机故障 |
-| node_exporter 挂了 | 0 | 是 | 服务故障，机器好着 |
-| agent 挂了 | 1 | 否 | 控制面故障，机器好着 |
-| 网络分区 | 0 | 否 | 和主机故障难分 —— 看其他 host 的可达性 |
-
-**这个合并判断是 hub 存在的价值之一** —— Prometheus 单独看不出来，agent
-单独也看不出来。`fleet.overview` 返回的状态应该是合并后的结论，不是原始信号。
-
-网络分区那一行的区分办法：hub 检查同一站点的其他 host 是否同时失联。
-shanghai / r5sjp / 家里这三个站点各自成组，整组同时消失是分区，单台消失是故障。
-
----
+运行 closure、持久 system profile 和 generation 分开报告。没有可信激活凭证就不能
+报告“上次成功部署时间”，也不用符号链接 ctime 推断。`host.metrics` 使用固定表达式
+和主机范围选择器；任意 PromQL 尚未开放。
 
 ## 8. 与 nix-config 的接口
 
-两份文件由 nix-config 生成，hub 只读：
+本仓库通过原生模块选项配置 maxops，不复制上游原始配置文件或维护第二套协议：
 
-```
-/etc/maxops/inventory.json   ← nixos/hosts/default.nix 的 23 台机器
-/etc/maxops/policy.json      ← 人员 → capability 映射
-```
+- `nixos/hosts/<host>/default.nix`：显式 `maxops.enable` 和 `readableUnits`。
+- `lib/mkInventory.nix`：从 host registry 派生 fleet 数据。
+- `nixos/modules/maxops/default.nix`：调用上游 Agent/Executor 模块，配置本机
+  凭据、执行 profile、repository、检查和部署 profile。
+- `nixos/hosts/h610/maxops.nix`：Hub inventory、客户端授权、Max 工具和告警接线。
+- `nixos/modules/monitoring/default.nix`：监控目标、Alertmanager 和告警接入。
 
-**inventory 绝不手维护。** 你的 host registry 已经有 `name` / `system` /
-`roles` / `ip` / `kind`，直接 `builtins.toJSON` 出来。加一台机器，监控和
-控制自动跟上，这是你这套配置最大的结构优势，要吃满。
+监控覆盖与 maxops 管理范围是不同开关：监控目标利用 registry 的 Tailscale 等元数据，
+运维操作只覆盖 `maxops.enable` 的主机。添加 registry 条目不自动授予管理能力。
 
-nix-config 侧新增：
+目前九台主机各有本机 repository executor 和 system deployment profile。
+h610 使用 `nix-config`，其他主机使用 `nix-config-<host>`；部署名为 `<host>-system`。
+它们指向相同远端，但 workspace/check/build 留在声明的 Executor 上，按本机架构构建。
+公开远端可读不等于已经拥有 Git publish 凭据，发布仍受远端鉴权约束。
 
-```
-nixos/modules/maxops/
-├── agent.nix      # services.maxops-agent，在 base.nix 里默认开
-└── hub.nix        # services.maxops-hub，只有 tank 开
-lib/mkInventory.nix    # host registry → inventory.json
-```
+System 与 standalone Home Manager 是不同 closure；当前 fleet 配置的是 system profile。
+上游支持 home 类型不代表本 fleet 已配置或部署 home profile。
 
-agent 模块里最关键的一个选项：
+凭据由 SOPS 与 systemd `LoadCredential` 提供，不进入请求体、日志或 Nix store。
+服务单元、执行 profile 和 deployment policy 由各端声明，Hub 的发现结果不能替代目标检查。
 
-```nix
-services.maxops-agent.manageableUnits = [ "nginx" "xray" ... ];
-```
+## 9. Max 与 maxops 的 API 边界
 
-它同时生成 agent 的白名单**和** polkit 规则。一处定义，第二三层防线同源。
+边界原则：换成 CLI、脚本或其他机器人仍然需要的运维能力，应由 maxops 的
+公共 API 或客户端提供；对话和模型运行时能力属于 Max。
 
----
+下表是当前职责分配；公共协议细节见 §11。
 
-## 9. 为什么 v1 不做部署
-
-`nixos-rebuild switch` 和 `systemctl restart` 看着像同一类操作，其实差三个
-数量级：
-
-- 重启服务：影响一个服务，失败了再重启一次，**可逆**。
-- 部署：换掉整个系统 closure，可能改防火墙、改 SSH 配置、改网络 —— **可以
-  把机器从网上摘掉，然后你再也连不上去修**。r5sjp 在日本，shanghai 在机房。
-- 而且部署需要**求值整个 flake**，那是几分钟的重活，还需要 git 状态，
-  和"回答一个查询"完全不是一种东西。
-
-deploy-rs 已经解决了这个问题，还带自动回滚。让 bot 碰它，收益小、风险大。
-
-**v1 的折中**：`deploy.status` 只读操作 —— 告诉你每台机器当前 generation
-和激活时间，能看出"哪几台还没跟上"。要真部署，你自己在终端跑 `just`。
-
----
-
-## 10. 端口
-
-~~现状给所有 server 开了 cockpit 在 9090，和 Prometheus 默认端口撞，所以移
-Prometheus。~~
-
-**2026-08-12：cockpit 删了**，9090 空出来了（r6s 上现在归 mihomo 的 metacubexd
-面板）。Prometheus 保持 9009 不动 —— 让路的理由虽然没了，但那个端口已经写进
-两份监控配置和看板，再挪回去是净损失。
-
-| 服务 | 端口 | 位置 |
+| 能力 | maxops | Max |
 | --- | --- | --- |
-| node_exporter | 9100 | 所有 host |
-| maxops-agent | 9720 | 所有 host，**只绑 tailscale 地址** |
-| Prometheus | 9009 | tank |
-| Alertmanager | 9093 | tank |
-| Grafana | 3000 | tank |
-| maxops-hub | 9721 | tank，只绑 tailscale 地址 |
+| 操作和资源 | 定义协议、Schema、权限和执行约束 | 映射模型工具，限制聊天入口 |
+| 服务与部署 | 完成领域执行、验证和恢复 | 判断目标、参数及需要采取的行动 |
+| 作业 | 持久状态、幂等、取消、事件和远端结果 | 保存引用与逻辑提交键，关联本地任务 |
+| 观察和等待 | 提供查询、revision 和有界等待协议 | 接入自己的任务挂起、恢复与唤醒 |
+| 结果和证据 | 提供结构化事实、有界日志及可追溯引用 | 控制模型上下文，解释与转述 |
+| 通知 | 通用事件交付与重放 | 群路由、消息 IR、用户交互 |
 
-3000 现在只被注释掉的 headplane 占着，实际是空的。
-9009 / 9093 / 9720 / 9721 全 fleet 无冲突（已核对）。
+Max 从 registry 的 tools view 派生参数明确的模型工具，加载 `maxops` skill 时一次
+提供当前授权范围内的整套工具与说明；不再暴露三个通用 RPC 工具。调用前仍检查
+当前权限，不用缓存目录替代授权。
 
-绑定地址一律照 `nixos/modules/cliproxy` 的做法：**只绑 tailscale 地址，
-不绑 0.0.0.0**。headscale 的 ACL 已经把这四个人圈成 `group:imdomestic`，
-公网上压根不存在这个监听，比"开在公网再靠 token 拦"强一个量级。
+所有作业提交都由宿主持久化逻辑身份和幂等键，创建 Operations task 并用 `jobs.wait`
+程序化观察，不按预估耗时分支，也不让模型反复轮询。maxops 独立拥有去重和远端
+作业状态；Max 保存引用、等待状态并交给前台模型解释。停止本地等待与取消远端
+作业分别表达，不把失联当作未执行。
 
----
+### 固定 skill 工具包（已实现）
 
-## 11. 分期
+Max 的日常上下文只包含基础工具和 skill 的一行索引。调用 `use_skill` 后，
+下一次模型请求一次性获得该 skill 的完整说明及整套工具输入 Schema。
+包内容由显式配置确定，不按关键词检索结果、相关性评分或当前问题临时增减。
+“完整”指当前授权与平台能力范围内的整包；不可用工具及原因应明确报告。
 
-排序原则：**价值靠前，风险靠后。**
+| skill | 随包加载的工具范围 |
+| --- | --- |
+| `web` | 搜索、浏览器、知乎和 B 站工具 |
+| `sandbox` | 沙箱生命周期、执行、Nix 包查询、文件读写及文件进出 |
+| `office` | 文档操作说明及固定依赖的完整 `sandbox` 包 |
+| `self-knowledge` | 自知说明与 `inspect_source` |
+| `maxops` | 当前凭据和任务权限范围内的完整 Max 运维工具包 |
 
-| 期 | 内容 | 产出 | 风险 |
-| --- | --- | --- | --- |
-| **P0** | node_exporter 铺 11 台 + Prometheus/Grafana on tank | 全 fleet 可视化 | 无。纯 nix-config，不依赖 maxops |
-| **P1** | agent + hub 骨架，只读操作，`maxopsctl` | 终端里能查全 fleet | 无。全只读 |
-| **P2** | Alertmanager → hub → max → 群 | **挂了主动说** | 无。只出不进 |
-| **P3** | MCP 前端，只读工具 | 群里能问状态 | 低。注入最多骗出信息 |
-| **P4** | 变更操作 + 三层权限 + 审计 + 二次确认 | 群里能运维 | 高 —— 前面三期是它的地基 |
-| ~~**P5**~~ | ~~cockpit 插件~~ | **作废** —— cockpit 已删，浏览器里的 fleet 视图由 Grafana 承担（入口 `http://100.64.0.13:3000`） | — |
+共享工具和依赖说明只加载一次，重复调用同一 skill 幂等；依赖关系必须显式声明，
+不能从 skill 正文中的工具名自动推断。日常回复、上下文、记忆及任务完成/控制等
+基础能力保持可用，避免必须先加载 skill 才能完成回合。
 
-**P2 排在 P3 前面是有意的。** "服务挂了群里自动报警"的实际价值，大于
-"能在群里问服务状态" —— 前者不需要有人恰好想起来去问。而且它零风险，
-是纯出站。
+加载集合属于当前逻辑请求或持久任务，在其内部保持稳定；新的独立请求从基础集合
+开始，避免群里使用过一次运维工具就永久携带。恢复时重建已加载集合和版本信息，
+重新应用当前授权。并发请求分别维护集合，不修改群级全局工具表。
 
-P0 完全不依赖 maxops，可以现在就动。
+授权上限与模型可见集合分开：task profile 只能收窄父任务的权限上限，不应因父模型
+尚未加载某个包而意外丢失可继承能力。子任务仍需加载相应 skill 才向模型展示工具。
+加载不能提高 effect/authority 上限，不能绕过撤权或改变工具的重试、deadline 语义。
 
----
+maxops 公共目录仍可分页、筛选和返回单操作详情，供任意客户端发现与缓存；Max 的
+工具启用采用固定整包规则。加载包时只带必要的说明和输入 Schema，不再额外复制
+整份 response Schema 或完整 RPC catalog。包大小应通过显式设计和检查控制，不能
+为满足预算静默截断说明或随机隐藏工具。`use_skill` 返回类型化加载效果；恢复只接受
+宿主持久化的可信回执，同批尚未加载的工具调用会被拒绝。设计见 Max 的
+`docs/adr/010-skill-tool-bundles.md`。
 
-## 12. 待定
+当前 Max 的工具入口允许群 `611798505`、`650536599` 及相应镜像对话。
+告警只发往 `611798505`。现有 fleet 告警走 Hub → Max 去重/outbox，不经过 LLM；
+这与 Max 自身根任务进度经前台模型转述是不同路径。
 
-1. **hub 放 tank 还是 h610？** 倾向 tank：h610 已经背了 headscale + max +
-   napcat + cliproxy + nginx + docker，而 tank 是存储机、Prometheus 的 TSDB
-   要吃盘。反对意见：hub 和 max 在同一台机上通信走回环，少一跳、少一份
-   token。但 tailnet 内部这一跳可以忽略。
-2. **变更操作谁能用？** 只有 hank，还是四个人都能重启服务、只有 hank 能
-   reboot？这个直接决定 policy 的形状。
-3. **告警发群里还是发 matrix？** 你已经跑着 matrix-synapse。QQ 群是四个人
-   都在的地方，matrix 更适合放详细信息。可以两个 sink 都要：群里发一行摘要，
-   matrix 发完整上下文。
-4. **`*-headless` 那两台是什么？** 见 §0"管理范围" —— 如果是真的 Linux
-   服务器，它们是第一优先的扩展目标，远排在 darwin 前面。
+## 10. 监听与通知拓扑
+
+| 服务 | 当前配置 |
+| --- | --- |
+| maxops Hub | h610，Tailscale `100.64.0.3:9721` |
+| h610 Agent | 回环 `127.0.0.1:9720` |
+| 其他纳管 Agent | 各自主机的 Tailscale 地址，9720 |
+| Executor | 各主机本地 Unix socket |
+| Max fleet 告警接收端 | h610 回环 `127.0.0.1:9722` |
+| Prometheus / Alertmanager / Grafana | h610 与 tank 两份，默认端口 9009 / 9093 / 3000 |
+
+两份监控并不使单实例 Hub 和 Max 的通知路径高可用。保留独立 webhook 配置；
+未配置独立接收端时，不能宣称已具备绕过 h610 的独立推送通道。
+事件按至少一次交付理解，消费端按事件 ID 去重；HTTP 202 不能等同于群消息送达。
+当前 Alertmanager 转发和通用持久事件订阅并存，不把历史接收路径写成已切换为 job watch。
+
+## 11. 公共客户端协议（已实现）
+
+协议版本仍为 2；本次是增量扩展。正式契约在 maxops 仓库
+`docs/api-client-contract.md`，本页只记录 fleet 与 Max 的消费边界。
+
+| 能力 | 当前接口与边界 |
+| --- | --- |
+| 错误 | 稳定错误码、受控详情及重试条件；避免把底层敏感输出拼进公共错误 |
+| 等待 | `jobs.wait` 有界等待 revision，`jobs.events` 提供可恢复 cursor；等待超时不结束远端作业 |
+| 结果 | 状态、详情、`jobs.result` 和有界文本日志分离；列表分页，明确截断和局部错误 |
+| 发现 | catalog 的 summary/tools/full view 与单操作详情；`resources.list` 按权限发现主机、执行 profile、repository 和 deployment profile |
+| 部署 | `deploy.run` 持久推进冻结计划至 built 或 verified；原有阶段原语保留，基线冲突停止，未知结果只观察恢复 |
+
+这些能力服务于所有客户端。Max 把公共等待映射到既有任务运行时，不复制部署状态机。
+Max 的工具按 §9 的固定 skill 包整体启用，目录筛选不是动态选择工具的依据。
+一次领域操作可以包含多个确定性阶段，内部仍保持查询、提交、等待和结果投影的职责
+清楚；不接受任意工作流 DSL，也不内置自然语言自动修复引擎。
+
+## 12. 更新与验收规则
+
+- 本页维护当前源码与配置边界；具体操作和 Schema 以 maxops registry 为准。
+- [部署文档](maxops-deployment.md) 保存版本、配置范围与带日期的实机证据；
+  后续扩容不能改写旧试点的验收结论。
+- Nix 求值、原生构建、单元/DB 测试、VM 测试及实机操作是不同证据。
+  只读 health 成功不能证明写入、恢复或部署验收通过。
+- 更新协议时同步 maxops 的设计和测试，再更新消费方 pin、适配与部署文档。
+  实机状态以部署文档中的完成记录为准，更新 pin 不等于完成激活。
+
+### 2026-09-07 发布约束
+
+本次同时更新 Max 和 maxops pin。先升级所有 Agent/Executor，再升级 h610 Hub，
+最后切换 Max；执行 profile 发现需要新的 Executor 协议。maxops 的 SQLite 迁移前
+对 Hub 和各 Executor 做一致性备份；Max 的真实数据库验收与生产只读健康检查分别记录。
+Max 的旧持久管理授权因 effect 指纹收紧会安全失效，不修改历史授权或重放旧任务。
