@@ -9,12 +9,14 @@
 
 ---
 
-## 2026-09-07 · b650 的 node_exporter 被 tailscale0 端口规则拦截 {#maxops-b650-exporter-firewall}
+## 2026-09-07 · b650 的 telemetry exporter 被 tailscale0 端口规则拦截 {#maxops-b650-exporter-firewall}
 
 b650 加入 MaxOps 后,agent 和服务查询都通过,但 `fleet.overview` 把它标为
 `exporter_unavailable`。node_exporter 已在 `100.64.0.33:9100` 监听,本机请求成功,
 h610 经 Tailnet 请求却超时。实际 nftables 规则只放行了 b650 的 8000 和 9720,
 证明 firewall 启用时,tailscale0 的入站流量仍会受每接口端口列表约束。
+放行 9100 后,node target 恢复,同一验收又发现 ping exporter 的 9427 仍被拦截;
+两个 exporter 都需要遵循同一条边界规则。
 
 误导点是 telemetry 模块原先声称 tailscale0 不经 `allowedTCPPorts` 判定。现在模块
 保持 exporter 只绑定 Tailnet 地址且 `openFirewall = false`,并显式只向 tailscale0
