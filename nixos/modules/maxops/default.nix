@@ -13,6 +13,7 @@
     then "nix-config"
     else "nix-config-${host.name}";
   deploymentName = "${host.name}-system";
+  gaojiDeploymentHost = builtins.elem host.name ["h310" "h610" "tank"];
 in {
   imports = [
     inputs.maxops.nixosModules.agent
@@ -74,6 +75,7 @@ in {
 
       services.maxops-executor = {
         enable = true;
+        package = lib.mkIf gaojiDeploymentHost (import ../../../lib/gaoji-ops-package.nix {inherit inputs pkgs;});
         hostName = host.name;
         manageableUnits = cfg.readableUnits;
         profiles = {
@@ -131,7 +133,7 @@ in {
             ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-executor.service"]
             ["${pkgs.systemd}/bin/systemctl" "is-active" "tailscaled.service"]
             ["${pkgs.systemd}/bin/systemctl" "is-active" "prometheus-node-exporter.service"]
-          ];
+          ] ++ lib.optional gaojiDeploymentHost ["${pkgs.systemd}/bin/systemctl" "is-active" "gaoji-cluster-worker.service"];
           automaticRollback = true;
         };
       };

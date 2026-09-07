@@ -155,6 +155,7 @@ in {
 
   services.maxops-hub = {
     enable = true;
+    package = import ../../../lib/gaoji-ops-package.nix {inherit inputs pkgs;};
     listenAddress = host.tsIp;
     hosts =
       map (entry: {
@@ -295,6 +296,20 @@ in {
         then config.sops.secrets."kennethbot/worker_token".path
         else config.sops.secrets."gaoji/workers/${name}".path;
     }) (builtins.attrNames gaojiWorkers);
+    deployments.repositories = [{
+      repositoryId = "nix-config";
+      backend = "ops";
+      url = "https://github.com/imdomestic/nix-config.git";
+      allowedChanges = ["system"];
+      targets = map (entry: {
+        hostId = entry.name;
+        flakeHost = entry.name;
+        opsRepository = repositoryName entry;
+        opsProfile = "${entry.name}-system";
+        verificationUnits = ["maxops-agent.service" "maxops-executor.service" "gaoji-cluster-worker.service"]
+          ++ lib.optionals (entry.name == "h610") ["gaoji.service" "gaoji-cluster-control.service" "maxops-hub.service"];
+      }) gaojiManaged;
+    }];
     diagnostics.targets = map (entry: {
       target_id = "${entry.name}-worker";
       label = "${entry.name} gaoji Worker";
