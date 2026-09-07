@@ -884,7 +884,7 @@ in {
       scrape_interval = "15s";
       static_configs = [
         {
-          targets = ["127.0.0.1:8091"];
+          targets = ["${config.my.host.tsIp}:8091"];
           labels.instance = "h610";
         }
       ];

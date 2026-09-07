@@ -20,6 +20,7 @@
   deploymentNames = map (entry: "${entry.name}-system") managed;
   gaojiManagementHosts = ["h310" "h610" "tank"];
   gaojiManaged = lib.filter (entry: builtins.elem entry.name gaojiManagementHosts) managed;
+  gaojiWorkers = import ../../../lib/gaoji-workers.nix;
   fullCapabilities = [
     "alerts:read"
     "changes:read"
@@ -52,7 +53,7 @@
       roles = entry.roles;
       observe = true;
       operate = builtins.elem entry.name gaojiManagementHosts;
-      compute = entry.name == host.name;
+      compute = builtins.hasAttr entry.name gaojiWorkers;
       readable_units = entry.maxops.readableUnits;
       operable_units = lib.optionals (builtins.elem entry.name gaojiManagementHosts) entry.maxops.readableUnits;
     })
@@ -65,6 +66,16 @@ in {
     allowedGroups = [611798505 650536599];
   };
   sops.secrets =
+    lib.listToAttrs (map (name: {
+      name = "gaoji/workers/${name}";
+      value = {
+        sopsFile = ../../../secrets/gaoji + "/worker-${name}.yaml";
+        key = "worker_token";
+        mode = "0400";
+        restartUnits = ["gaoji-cluster-control.service"];
+      };
+    }) ["h310" "tank"])
+    //
     lib.listToAttrs (map (entry: {
         name = "maxops/agents/${entry.name}";
         value = {
@@ -261,6 +272,9 @@ in {
     stateDirectory = "kennethbot-cluster-control";
     environmentFile = config.sops.templates."qq-deepseek-bot-postgres.env".path;
     apiTokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
+    listenAddress = host.tsIp;
+    openFirewall = true;
+    firewallInterfaces = ["tailscale0"];
     inventory = gaojiInventory;
     ops = {
       enable = true;
@@ -273,20 +287,30 @@ in {
         actors = ["qq:3526452465" "admin:kenneth"];
       };
     };
-    workers = [
-      {
-        workerId = "h610-worker";
-        hostId = host.name;
-        tokenFile = config.sops.secrets."kennethbot/worker_token".path;
-      }
-    ];
+    workers = map (name: {
+      workerId = "${name}-worker";
+      hostId = name;
+      ownerAliases = ["qq:3526452465"];
+      tokenFile = if name == "h610"
+        then config.sops.secrets."kennethbot/worker_token".path
+        else config.sops.secrets."gaoji/workers/${name}".path;
+    }) (builtins.attrNames gaojiWorkers);
+    diagnostics.targets = map (entry: {
+      target_id = "${entry.name}-worker";
+      label = "${entry.name} gaoji Worker";
+      kind = "service";
+      url = "http://${entry.tsIp}:8092/health";
+      observer_host = "h610";
+      host_id = entry.name;
+      service_ref = "gaoji-cluster-worker.service";
+    }) gaojiManaged;
   };
 
   services.gaoji-cluster-worker = {
     enable = true;
     stateDirectory = "kennethbot-cluster-worker";
     workerId = "h610-worker";
-    controlUrl = "http://127.0.0.1:${toString config.services.gaoji-cluster-control.port}";
+    controlUrl = "http://${host.tsIp}:${toString config.services.gaoji-cluster-control.port}";
     tokenFile = config.sops.secrets."kennethbot/worker_token".path;
     listenAddress = host.tsIp;
     publicBaseUrl = "http://${host.tsIp}:${toString config.services.gaoji-cluster-worker.port}";
@@ -297,6 +321,7 @@ in {
 
   services.gaoji.cluster = {
     enable = true;
+    controlUrl = "http://${host.tsIp}:${toString config.services.gaoji-cluster-control.port}";
     tokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
     allowedGroups = [611798505 650536599];
     logAllowedGroups = [];
