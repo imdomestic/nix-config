@@ -18,6 +18,8 @@
     else "nix-config-${entry.name}";
   repositoryNames = map repositoryName managed;
   deploymentNames = map (entry: "${entry.name}-system") managed;
+  gaojiManagementHosts = ["h310" "h610" "tank"];
+  gaojiManaged = lib.filter (entry: builtins.elem entry.name gaojiManagementHosts) managed;
   fullCapabilities = [
     "alerts:read"
     "changes:read"
@@ -49,10 +51,10 @@
       permission_source = "nix-config MaxOps registry";
       roles = entry.roles;
       observe = true;
-      operate = false;
+      operate = builtins.elem entry.name gaojiManagementHosts;
       compute = entry.name == host.name;
       readable_units = entry.maxops.readableUnits;
-      operable_units = [];
+      operable_units = lib.optionals (builtins.elem entry.name gaojiManagementHosts) entry.maxops.readableUnits;
     })
     managed;
 in {
@@ -104,6 +106,18 @@ in {
         key = "control_token";
         mode = "0400";
         restartUnits = ["gaoji-cluster-control.service" "gaoji.service"];
+      };
+      "gaoji/ops_management_token" = {
+        sopsFile = ../../../secrets/maxops/kennethbot.yaml;
+        key = "management_token";
+        mode = "0400";
+        restartUnits = ["maxops-hub.service" "gaoji-cluster-control.service"];
+      };
+      "gaoji/admin_token" = {
+        sopsFile = ../../../secrets/maxops/kennethbot.yaml;
+        key = "admin_token";
+        mode = "0400";
+        restartUnits = ["gaoji.service"];
       };
       "kennethbot/worker_token" = {
         sopsFile = ../../../secrets/maxops/kennethbot-worker.yaml;
@@ -197,6 +211,15 @@ in {
           "self:read"
         ];
       }
+      {
+        name = "gaoji-admin";
+        tokenFile = config.sops.secrets."gaoji/ops_management_token".path;
+        hosts = gaojiManagementHosts;
+        access = "manage";
+        capabilities = fullCapabilities;
+        repositories = map repositoryName gaojiManaged;
+        deployments = map (entry: "${entry.name}-system") gaojiManaged;
+      }
     ];
     repositories =
       map (entry: {
@@ -243,6 +266,12 @@ in {
       enable = true;
       baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
       tokenFile = config.sops.secrets."maxops/kennethbot_token".path;
+      management = {
+        enable = true;
+        tokenFile = config.sops.secrets."gaoji/ops_management_token".path;
+        hosts = gaojiManagementHosts;
+        actors = ["qq:3526452465" "admin:kenneth"];
+      };
     };
     workers = [
       {

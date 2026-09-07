@@ -1067,6 +1067,7 @@ in {
       AI_SUBAGENT_TIMEOUT_SECONDS=1800
       AI_SUBAGENT_PROFILES_JSON={}
       AI_ADMIN_ENABLED=true
+      AI_ADMIN_TOKEN=${config.sops.placeholder."gaoji/admin_token"}
       AI_ADMIN_USER_IDS=3526452465
       AI_SANDBOX_ENABLED=true
       AI_SANDBOX_ALLOWED_USERS=
