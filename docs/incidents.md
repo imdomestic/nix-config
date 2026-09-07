@@ -9,6 +9,31 @@
 
 ---
 
+## 2026-09-07 · Max 原生运行时的 DNS 与命名空间挂载 {#max-native-runtime-dns}
+
+Max 从 Docker 迁往 systemd/nspawn 时，10 个工作卷完成离线复制与校验，旧卷和
+PostgreSQL、QQ 数据备份保留。现场验收发现三处 VM 最初没有覆盖的宿主机差异：
+
+- nspawn 自动复制了宿主机的 `127.0.0.53`，独立网络的沙盒无法使用这个 stub。
+  Max 模板改用 `--resolv-conf=off`，保留 broker 写入的公网 DNS。
+- 国内 DNS 返回过 Google 的保留 IPv6 地址与错误的 DuckDuckGo IPv4 地址。
+  国外域名改用代理 TCP DNS，同时给代理组设置对应的 DNS 连通性探测，并让
+  `imdomestic.com` 经国内 DNS 解析，避免代理节点的解析依赖尚未建立的代理。
+- DAE 先挂载了 `/run/netns/daens`，第一次 `ip netns add` 又给父目录增加 bind
+  mount，遮住原挂载。DAE 重启因此无法清理并重新创建命名空间。Max 的网络单元
+  现在先准备共享的 `/run/netns`，h610 上 DAE 排在它之后；接口匹配也只包括 bridge，
+  不再把同名前缀的每个 veth 再挂一次 eBPF。
+
+误导点是单独覆盖 resolver 的浏览器测试已经成功，但这不能证明切换后的 DAE 上游
+和探测配置可用；最初的 VM 仅用公网 IP 验证出站，也没有覆盖 DNS 或先存在的 namespace
+mount。补充后的 b650 KVM 测试覆盖这两个场景，以及迁移期间跨 NixOS 激活的启动门禁。
+运行时 mask 会被 `/etc/systemd/system` 的 NixOS 单元覆盖，门禁改用 runtime drop-in
+的 `ConditionPathExists` 并检查实际 inactive 状态。
+
+h610 的真实沙盒通过了域名 HTTPS、只读 store、非 root 和内网阻断检查；原生 browser
+模板连续两轮访问 Example、Google、DuckDuckGo 均返回 200。QQ 重新扫码后 OneBot
+恢复连接。此验收不代表原有持久投递积压已清零；未删除或重发 outcome-unknown 记录。
+
 ## 2026-09-07 · b650 的 telemetry exporter 被 tailscale0 端口规则拦截 {#maxops-b650-exporter-firewall}
 
 b650 加入 MaxOps 后,agent 和服务查询都通过,但 `fleet.overview` 把它标为

@@ -37,6 +37,11 @@
     then builtins.toJSON interface
     else interface;
 in {
+  options.my.dae.foreignDnsOverTcp = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "Resolve non-domestic domains through proxied Google TCP DNS instead of accepting potentially poisoned domestic UDP answers.";
+  };
   options.my.dae.lanInterfaces = lib.mkOption {
     type = lib.types.listOf lib.types.str;
     default = ["br-lan"];
@@ -104,7 +109,7 @@ in {
 
         dns {
             upstream {
-                googledns: 'tcp+udp://dns.google.com:53'
+                googledns: '${if cfg.foreignDnsOverTcp then "tcp://8.8.8.8:53" else "tcp+udp://dns.google.com:53"}'
                 alidns: 'udp://dns.alidns.com:53'
                 txdns: 'udp://119.29.29.29:53'
                 # txdns: 'https://doh.pub/dns-query:443'
@@ -119,6 +124,8 @@ in {
                     # 可用的方法 qname, qtype
                     # 广告拒绝
                     qname(geosite:category-ads-all) -> reject
+                    # Proxy endpoints must resolve before a proxy is available.
+                    qname(suffix: imdomestic.com) -> alidns
                     # 这里的意思是google中是cn的域名使用alidns
                     qname(geosite:google@cn, geosite:cn, geosite:private, geosite: apple@cn) -> alidns
                     # 匹配后缀，匹配关键字
@@ -131,7 +138,7 @@ in {
                     # cname请求googledns
                     # qtype(cname) -> googledns
                     # 默认DNS服务器
-                    fallback: alidns
+                    fallback: ${if cfg.foreignDnsOverTcp then "googledns" else "alidns"}
                 }
 
                 # 根据DNS查询的响应，决定接受或者使用另外一个DNS服务器重新查询记录
@@ -156,6 +163,7 @@ in {
             im {
                 filter: name(keyword: 'imdomestic')
                 policy: min_moving_avg
+                ${lib.optionalString cfg.foreignDnsOverTcp "udp_check_dns: 'dns.google:53,8.8.8.8'"}
             }
 
             # 悉尼出口。**节点名故意不含 "imdomestic"** —— 上面 im 组是按关键字
@@ -169,6 +177,7 @@ in {
             au {
                 filter: name(keyword: 'au-')
                 policy: min_moving_avg
+                ${lib.optionalString cfg.foreignDnsOverTcp "udp_check_dns: 'dns.google:53,8.8.8.8'"}
             }
         }
 
