@@ -771,7 +771,10 @@ in {
   services.ollama = {
     enable = true;
     package = pkgs-unstable.ollama-vulkan;
-    loadModels = ["bge-m3"];
+    loadModels = [
+      "bge-m3"
+      "qwen3.5:2b-q4_K_M"
+    ];
   };
 
   users.users.turnserver.extraGroups = ["nginx"];
