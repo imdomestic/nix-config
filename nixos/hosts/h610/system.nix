@@ -102,6 +102,7 @@
   };
 in {
   imports = [
+    ./max.nix
     ../../modules/airport
     ../../modules/imsub
     ../../modules/cliproxy
@@ -809,8 +810,7 @@ in {
     ];
     enable32Bit = true;
   };
-  # max-bot membership lets hank edit the config/env files under /var/lib/max-bot
-  users.users.hank.extraGroups = ["video" "render" "docker" "max-bot"];
+  users.users.hank.extraGroups = ["video" "render" "docker" "max"];
 
   # Other QQ bot workloads still use Docker. Max has its own native systemd
   # stack and no longer needs access to the Docker daemon.
@@ -819,70 +819,6 @@ in {
   # falls back to 8.8.8.8 — which resolves CN sites to overseas CDNs that
   # don't load from here. Pin domestic resolvers for containers instead.
   virtualisation.docker.daemon.settings.dns = ["223.5.5.5" "119.29.29.29"];
-
-  # max QQ bot (module from the max flake). The yaml is full of LLM API
-  # keys, so it lives on disk under /var/lib/max-bot rather than in
-  # `settings` (world-readable store).
-  # 管理面板的开关走环境变量而不是 services.max.settings:这台机器用的是
-  # 手工管理的 configFile,settings 会被整个忽略(module 自己会 warn)。
-  # env 在 opt-env-conf 里压过文件,所以这两行无论 max.yaml 怎么写都生效。
-  #
-  # 只绑回环:公网入口是 nginx 那个 max.imdomestic.com vhost,面板自己
-  # 不该直接对外。MAX_ADMIN_TOKEN 放在 max-bot.env 里(不要写进 nix,
-  # 会进 world-readable 的 nix store)。
-  systemd.services.max.environment = {
-    MAX_ADMIN_HOST = "127.0.0.1";
-    MAX_ADMIN_PORT = "7700";
-  };
-
-  services.max = {
-    enable = true;
-    configFile = "/var/lib/max-bot/max.yaml";
-    environmentFile = "/var/lib/max-bot/max-bot.env"; # MAX_ACCESS_TOKEN, MAX_ADMIN_TOKEN
-    napcat = {
-      enable = true;
-      qq = "2107570581";
-      websocketPort = 18080;
-      environmentFiles = ["/var/lib/max-bot/napcat.env"]; # NAPCAT_ACCESS_TOKEN
-    };
-  };
-  # headscale owns 127.0.0.1:8080; native NapCat connects to Max on 18080.
-  systemd.services.max.environment = {
-    MAX_WS_HOST = "127.0.0.1";
-    MAX_WS_PORT = "18080";
-    MAX_LOG_COLOR = "always";
-    MAX_IMESSAGE_MIRROR_QQ_GROUP = "611798505";
-    # Override the manually managed cloud embedding profile without forwarding its key.
-    MAX_EMBEDDING_BASE_URL = "http://${config.my.host.tsIp}:11434/v1";
-    MAX_EMBEDDING_API_KEY = "ollama";
-    MAX_EMBEDDING_MODEL = "bge-m3";
-    MAX_EMBEDDING_TIMEOUT_SECONDS = "60";
-    # max 的 GET /api/quota 拿这个问 cliproxy:池子里哪把凭据还在服务、烧完的
-    # 什么时候回来。地址不是秘密,写这里;口令在下面的 sops 模板里。
-    #
-    # 注意 cliproxy 只监听 tailscale 地址(见 modules/cliproxy 里 bindAddress
-    # 的说明),所以本机也得走 100.64.0.3,不能写 127.0.0.1。
-    MAX_CLIPROXY_BASE_URL = "http://100.64.0.3:8317";
-  };
-
-  systemd.services.max.after = lib.mkAfter ["tailscaled.service" "ollama.service"];
-  systemd.services.max.wants = lib.mkAfter ["tailscaled.service" "ollama.service"];
-
-  # 管理口令:和 cliproxy 服务用同一把 sops 密钥,各自渲染一份 env 文件 ——
-  # 两边都不进 world-readable 的 nix store,也都不用手改 /var/lib/max-bot。
-  sops.templates."max-cliproxy.env" = {
-    owner = "max-bot";
-    restartUnits = ["max.service"];
-    content = ''
-      MAX_CLIPROXY_MANAGEMENT_KEY=${config.sops.placeholder."cliproxy/management_key"}
-    '';
-  };
-  # 追加,不是替换:max 模块自己已经设了一个 EnvironmentFile
-  # (services.max.environmentFile → /var/lib/max-bot/max-bot.env),而 systemd
-  # 的 unitOption 在两边都是列表时按拼接合并。
-  systemd.services.max.serviceConfig.EnvironmentFile = [
-    config.sops.templates."max-cliproxy.env".path
-  ];
 
   services.gaoji = {
     enable = true;
@@ -1497,8 +1433,7 @@ in {
   #
   # 面板本身跑在 bot 进程里,只绑 127.0.0.1,所以进出这台机器的唯一
   # 通道就是这个 vhost。它自己不做 TLS、没有用户体系,认证只有一个
-  # bearer token —— token 在 /var/lib/max-bot/max-bot.env 里设
-  # MAX_ADMIN_TOKEN,别写进 max.yaml。
+  # bearer token 由 max.nix 的 SOPS 模板提供。
   #
   # 静态资源(HTML/JS/CSS)是不需要 token 的:<script> 标签带不了
   # Authorization 头。它们不含任何数据,所有状态都要过 /api/,而
