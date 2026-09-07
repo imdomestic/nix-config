@@ -43,13 +43,20 @@ def main():
     def query(operation, params=None, expected=200):
         return request("/v1/execute", {"op": operation, "params": params or {}}, expected=expected)
 
-    catalog = request("/v1/operations")
-    assert catalog["version"] == 1
-    assert {operation["name"] for operation in catalog["operations"]} == {
-        "fleet.overview", "host.facts", "host.metrics", "deploy.status", "units.list",
-        "units.failed", "units.status", "units.logs", "alerts.active",
-    }
-    assert all(operation["read_only"] for operation in catalog["operations"])
+    catalog = request("/v1/operations?view=tools")
+    assert catalog["version"] == 2
+    assert catalog["next_cursor"] is None
+    operations = {operation["name"]: operation for operation in catalog["operations"]}
+    assert {"fleet.overview", "host.facts", "host.metrics", "deploy.status", "units.list",
+            "units.failed", "units.status", "units.logs", "alerts.active", "resources.list",
+            "jobs.wait", "jobs.events", "jobs.result", "deploy.run"} <= set(operations)
+    assert all("params_schema" in operation and "response_schema" not in operation for operation in operations.values())
+    summary = request("/v1/operations?view=summary&limit=2")
+    assert len(summary["operations"]) == 2 and summary["next_cursor"]
+    assert all("params_schema" not in entry and "response_schema" not in entry for entry in summary["operations"])
+    discovered = query("resources.list", {"kind": "hosts", "limit": 200})
+    assert {entry["host"] for entry in discovered["resources"]} == expected_hosts
+    assert discovered["next_cursor"] is None
     overview = query("fleet.overview")
     assert {host["host"] for host in overview["hosts"]} == expected_hosts
     deployments = query("deploy.status")
@@ -79,7 +86,10 @@ def main():
         assert metrics["state"] == "available", f"{name}: metrics source unavailable"
         for key in ["load1", "memory_total_bytes", "memory_available_bytes"]:
             assert metrics["metrics"][key]["state"] == "available", f"{name}: {key} not fresh"
-        print(f"PASS {name}: live agent, service details, bounded logs, metrics and deployment profile")
+        profiles = query("resources.list", {"kind": "execution_profiles", "host": name})
+        assert {entry["profile"]["name"] for entry in profiles["resources"]} == {"diagnostic", "operator", "activation"}
+        assert all(set(entry["profile"]) == {"name", "max_timeout_seconds", "output_limit_bytes"} for entry in profiles["resources"])
+        print(f"PASS {name}: live agent/executor, profiles, service details, bounded logs, metrics and deployment profile", flush=True)
     failed = query("units.failed")
     assert {entry["host"] for entry in failed["hosts"]} == expected_hosts
     assert all(entry["state"] == "available" for entry in failed["hosts"])
@@ -91,9 +101,9 @@ def main():
         query(operation, {"host": "maxops-ungranted-fixture"}, expected=403)
     for operation in ["units.status", "units.logs"]:
         query(operation, {"host": inventory[0]["name"], "unit": "maxops-ungranted-fixture.service"}, expected=403)
-    query("units.restart", {"host": inventory[0]["name"], "unit": "maxops-agent.service"}, expected=422)
-    query("host.metrics", {"host": inventory[0]["name"], "query": "up"}, expected=422)
-    print(f"PASS {len(expected_hosts)}-host fleet: nine read-only operations and authorization boundaries; no test notifications sent")
+    query("units.restart", {"host": inventory[0]["name"], "unit": "maxops-agent.service"}, expected=400)
+    query("host.metrics", {"host": inventory[0]["name"], "query": "up"}, expected=400)
+    print(f"PASS {len(expected_hosts)}-host fleet: protocol-2 discovery, read-only operations, executor discovery and authorization boundaries; no test notifications sent")
 
 
 if __name__ == "__main__":
