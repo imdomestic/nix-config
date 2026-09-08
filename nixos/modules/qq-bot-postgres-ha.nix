@@ -1389,6 +1389,8 @@ in {
     systemd.services.qq-bot-postgres-bootstrap = mkIf cfg.node.enable {
       description = "Create the QQ bot PostgreSQL role, database, schema, and extensions";
       wantedBy = ["multi-user.target"];
+      # Apply role/secret changes only after the staged database restart.
+      restartIfChanged = false;
       after = ["qq-bot-postgres-node.service" "sops-install-secrets.service"];
       requires = ["qq-bot-postgres-node.service"];
       serviceConfig = {

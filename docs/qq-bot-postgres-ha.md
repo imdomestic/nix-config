@@ -27,6 +27,8 @@ Matrix、Minecraft 的 5432 集群。
 更新。应用的 TCP DSN 不变。monitor 和数据节点均设置 `restartIfChanged=false`，
 一次普通 rebuild 不会自动完成目录迁移；需要维护窗口逐台重启并验证，不能直接
 宣布已生效。
+初始化角色的 `qq-bot-postgres-bootstrap` 同样不随 rebuild 自动重跑；节点维护完成后
+显式重启该 oneshot，再运行健康检查，避免新脚本提前连接尚未迁移的 socket。
 
 迁移前确认当前主库、复制追平情况和备份可用；先恢复 monitor 管理连接，再维护
 备库，最后受控维护主库。每一步都检查节点状态收敛及 SQL 可用性，失败就停止后续
