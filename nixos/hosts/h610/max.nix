@@ -17,7 +17,7 @@
       "timeout_seconds" = 30;
     };
     "intent" = {
-      "profile" = "qwen3.8-27b";
+      "profile" = "qwen3.5-4b-q4_k_m";
     };
     "owners" = [2678068576];
     "llm" = {
@@ -30,6 +30,14 @@
           "model" = "claude-opus-4-6";
           "temperature" = 1;
           "timeout_seconds" = 300;
+        };
+        "qwen3.5-4b-q4_k_m" = {
+          "protocol" = "openai";
+          "api_key" = "sk-xxx";
+          "base_url" = "http://h610.inner.imdomestic.com:11435/v1";
+          "multimodal" = false;
+          "model" = "qwen3.5-4b-q4_k_m";
+          "effort" = "xhigh";
         };
         "qwen3.8-27b" = {
           "protocol" = "openai";
