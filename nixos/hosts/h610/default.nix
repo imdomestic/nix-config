@@ -16,6 +16,8 @@ in {
       "maxops-agent.service"
       "maxops-executor.service"
       "maxops-hub.service"
+      "docker-qwen35-sycl.service"
+      "qwen35-sycl-warmup.service"
       "gaoji-cluster-control.service"
       "gaoji-cluster-worker.service"
       "gaoji.service"
@@ -38,6 +40,7 @@ in {
   modules = [
     ./system.nix
     ./maxops.nix
+    ./qwen35-sycl.nix
     ./hardware-configuration.nix
   ];
 

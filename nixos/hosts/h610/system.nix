@@ -329,10 +329,10 @@ in {
       enable = false;
       trustedInterfaces = ["br-lan"];
       interfaces."ppp0".allowedUDPPorts = [546];
-      # nginx 的 80、headplane 的 3001 和 Ollama 的 11434,只对 tailscale 放行。
+      # nginx 的 80、headplane 的 3001 和本地模型 API,只对 tailscale 放行。
       # (enable = false,这条现在不生效;写着是为了哪天把 firewall 打开时
       # 这些端口不用重新考古。)
-      interfaces.tailscale0.allowedTCPPorts = [80 3001 11434];
+      interfaces.tailscale0.allowedTCPPorts = [80 3001 11434 11435];
       checkReversePath = false;
     };
   };
