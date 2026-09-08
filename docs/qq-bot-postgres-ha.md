@@ -36,8 +36,24 @@ PGDATA 仅包含指向该固定路径的 include；rewind 和基础备份不会�
 显式重启该 oneshot，再运行健康检查，避免新脚本提前连接尚未迁移的 socket。
 
 迁移前确认当前主库、复制追平情况和备份可用；先恢复 monitor 管理连接，再维护
-备库，最后受控维护主库。每一步都检查节点状态收敛及 SQL 可用性，失败就停止后续
-操作。不执行重新 enroll、删数据目录、强制提升或自动重建副本。
+备库，最后受控维护主库。所有节点的 runtime 配置必须在任何可能复制 PGDATA 的
+动作前就位，不能等接收节点进入 rewind 后才安装 include 指向的文件。
+配置路径迁移也不等同于普通 switchover：旧主应通过 monitor 进入维护，待角色切换后
+完成 keeper 与 PostgreSQL 的本机配置，再退出维护，避免旧 keeper 按旧 socket
+反复恢复数据库。每一步检查状态收敛及 SQL 可用性，不执行重新 enroll、删数据目录
+或强制提升。上游可能自行退回基础备份，必须如实记录，不能称为未发生重同步。
+
+维护停机前先暂停该节点的 `qq-bot-postgres-health.timer` 和仍在执行的 health
+oneshot，验收成功后恢复 timer。新版 health 单元只保留对节点的 `After` 排序，
+不再 `Wants` 数据节点；检查停止的数据库应报告失败，不能把它重新启动。
+旧版该依赖会在定时器触发时排入启动任务，导致管理员的 stop 请求被取消。
+若 stop 返回 cancelled，先检查实际单元和排队任务；不能假定数据库仍在线或停机已完成。
+
+切换命令超时或等待通知失败，也不能等同于没有切换。先查 monitor 的实际角色和
+应用连接串选中的可写节点，不重放切换命令。`demoted -> catchingup` 的故障节点
+可能不接受维护请求；此时不能手改 monitor 状态，应先确认另一节点确实可写，停止
+故障节点自身的 keeper 并处理本机配置/进程冲突。不要删除仍由活进程占用的 socket
+或 PID 文件，也不要停止其他 PostgreSQL 实例。
 
 不能把短暂 `systemctl restart qq-bot-postgres-node` 当成无角色变化的维护。
 它可能立即触发切换和耗时的 rewind。集群稳定后，应先通过

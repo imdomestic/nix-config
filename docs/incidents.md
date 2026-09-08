@@ -48,6 +48,19 @@ tank 提升，h610 进入 `demote_timeout -> demoted -> catchingup`，并运行 
 路径的 include；证书改成相对 PGDATA 路径。临时数据库回归覆盖旧 PGDATA 路径消失后
 证书仍可加载，以及复制不会替换目标机器的 WAL 配额。
 
+晚间获准切回 h610 前，新备份在隔离实例恢复成功，验证 82 张表和 22293 条消息。
+23:27 的原生 switchover 已让 h610 提供写入，但命令等不到完整主备恢复通知而退出
+非零；应用 DSN 的实际 SQL 查询证明主库已经改变，不能据此重放 switchover。
+迁移顺序还有遗漏：tank 的 runtime include 目标在角色转换后才补齐，旧 keeper
+仍按旧 socket 处理恢复。日志显示其自动完成一次约 496 MB 基础备份，随后遇到旧
+进程占用 TCP/socket 的冲突。旧主应先受控进入维护，再协调两侧本机配置，而不是
+把普通 switchover 当作路径迁移工具。
+
+恢复停机又暴露 health 单元的反向副作用：它 `Wants` 数据节点，每 30 秒的 timer
+会再次请求启动正在维护的节点，导致 stop job 被取消。先暂停该检查再等待真实停机；
+永久修复去掉 health 的节点启动依赖，只保留排序关系和实际健康验证。维护后须恢复
+timer，并用连续检查成功及告警源的实际状态验收，不能只清除 systemd failed 标记。
+
 ## 2026-09-07 · gaoji 三节点 Worker 与统一 Ops 部署 {#gaoji-three-host-ops}
 
 h310、h610、tank 的计算任务使用独立 Worker 凭据和 Tailscale 接口；QQ 管理员身份

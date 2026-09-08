@@ -1348,7 +1348,8 @@ in {
     systemd.services.qq-bot-postgres-health = mkIf cfg.node.enable {
       description = "Verify the QQ bot PostgreSQL keeper and database agree";
       after = ["qq-bot-postgres-node.service" "network-online.target"];
-      wants = ["qq-bot-postgres-node.service" "network-online.target"];
+      # Observe stopped nodes; a timer must not cancel a maintenance stop by starting them.
+      wants = ["network-online.target"];
       unitConfig.ConditionPathExists = "!${nodeFenceMarker}";
       path = [bootstrapPython pkgs.coreutils];
       environment.PGPASSFILE = "${cfg.node.stateDir}/.pgpass";
