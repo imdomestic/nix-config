@@ -21,6 +21,11 @@ Matrix、Minecraft 的 5432 集群。
 不能复用普通 PostgreSQL 服务拥有的 `/run/postgresql`，否则其他实例重启清理目录
 会让 Bot 的 keeper、备份和健康检查同时失去本地连接。
 
+节点专属配置位于 `/run/qq-bot-postgres-node/postgresql.conf`，在启动前由 Nix 生成。
+PGDATA 仅包含指向该固定路径的 include；rewind 和基础备份不会覆盖接收节点的 WAL
+配额。证书采用相对于 PGDATA 的 `server.crt`、`server.key`，不能复制另一节点的
+绝对证书路径。切换配置时要先安装各节点的本地文件，再添加 include 并受控恢复。
+
 旧部署迁移时不要仅修改检查脚本：须同时应用 PostgreSQL 的
 `unix_socket_directories` 和 keeper 的 `postgresql.host`，后者通过
 [pg_autoctl config set](https://pg-auto-failover.readthedocs.io/en/main/ref/pg_autoctl_config_set.html)
@@ -33,6 +38,15 @@ Matrix、Minecraft 的 5432 集群。
 迁移前确认当前主库、复制追平情况和备份可用；先恢复 monitor 管理连接，再维护
 备库，最后受控维护主库。每一步都检查节点状态收敛及 SQL 可用性，失败就停止后续
 操作。不执行重新 enroll、删数据目录、强制提升或自动重建副本。
+
+不能把短暂 `systemctl restart qq-bot-postgres-node` 当成无角色变化的维护。
+它可能立即触发切换和耗时的 rewind。集群稳定后，应先通过
+`pg_autoctl enable maintenance` 将待维护备库明确置于维护状态，再协调 keeper 与
+PostgreSQL 停启，完成配置迁移后使用 `pg_autoctl disable maintenance` 恢复管理。
+主库进入维护必须预先接受受控切换；`--allow-failover` 不能作为修复失败时随手加的参数。
+实际使用的 PGDATA、XDG 路径和 monitor 凭据必须来自对应 unit，不能直接在默认 shell
+环境下照抄命令。参见 [上游维护说明](https://pg-auto-failover.readthedocs.io/en/main/how-to.html#implementing-maintenance-operations)
+及 [本次事故记录](incidents.md#qq-bot-postgres-socket-lifetime)。
 
 轻量目录生命周期回归测试（普通用户运行，三个临时数据库仅监听私有 Unix socket，
 测试结束清理，不重启生产服务）：

@@ -28,6 +28,26 @@ systemd 单元管理；keeper 的 `postgresql.host`、认证初始化、备份�
 已停止。数据目录、口令、TCP 地址和主备注册不变。上线仍须受控重启及复制验证，
 本地配置修改或临时数据库测试均不代表生产故障已经修复。
 
+恢复过程中又遇到一个错误预期：12:25 单独重启 monitor 成功恢复了 55431 socket，
+但 12:27 直接重启 h610 keeper 并不是一次不会改变角色的短重启。monitor 立即安排
+tank 提升，h610 进入 `demote_timeout -> demoted -> catchingup`，并运行 `pg_rewind`。
+日志确认需要复制约 2136 MB；这是 rewind，不是已经完成的重建，也不能将启动成功
+等同于 SQL 已可用。Bot 的正常 DSN 随后能连接 tank 可写主库；h610 健康检查在回同步
+期间继续失败是实际状态，不能通过清除 failed 或伪造健康结果掩盖。
+
+后续维护必须先确认稳定主备与复制状态，显式进入维护流程；主库维护需要预先安排
+受控切换。不要假定 `systemctl restart` 足够快就不会触发 HA，也不要在 rewind 中
+重复重启、重新注册或人工覆盖 PGDATA。以同步完成后的 SQL、角色、复制与连续健康
+检查结果为验收依据，而不是 systemd 的 active。
+
+12:53 rewind 完成后 PostgreSQL 又因 tank 的绝对证书路径
+`/data/lib/qq-bot-postgres-ha/17/server.crt` 不存在而启动失败，keeper 自动退回基础备份。
+12:55 基础备份完成，h610 恢复为副本，接收与回放 WAL 位置一致。还发现复制回来的
+`qq-bot-ha-local.conf` 带着 tank 的较大 WAL 配额，说明把机器专属配置放进 PGDATA
+本身就是问题。修复把节点配置移到 unit 自己的 runtime 目录，PGDATA 使用共同固定
+路径的 include；证书改成相对 PGDATA 路径。临时数据库回归覆盖旧 PGDATA 路径消失后
+证书仍可加载，以及复制不会替换目标机器的 WAL 配额。
+
 ## 2026-09-07 · gaoji 三节点 Worker 与统一 Ops 部署 {#gaoji-three-host-ops}
 
 h310、h610、tank 的计算任务使用独立 Worker 凭据和 Tailscale 接口；QQ 管理员身份

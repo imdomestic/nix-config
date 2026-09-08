@@ -37,6 +37,7 @@
   # Each unit owns its sockets; see docs/incidents.md#qq-bot-postgres-socket-lifetime.
   monitorSocketDir = "/run/qq-bot-postgres-monitor";
   nodeSocketDir = "/run/qq-bot-postgres-node";
+  nodeRuntimeConfig = "${nodeSocketDir}/postgresql.conf";
 
   waitForAddress = address: ''
     found=0
@@ -110,6 +111,9 @@
   nodePostgresConfig = pkgs.writeText "qq-bot-postgres-node-local.conf" ''
     password_encryption = 'scram-sha-256'
     ssl_min_protocol_version = 'TLSv1.2'
+    # Rewind copies config across different PGDATA roots; certificate paths must travel with it.
+    ssl_cert_file = 'server.crt'
+    ssl_key_file = 'server.key'
     unix_socket_directories = '${nodeSocketDir}'
 
     # A long-offline peer must require a fresh base backup instead of filling
@@ -264,7 +268,8 @@
       # for every formation member and can deadlock recovery when a peer is down.
 
       install -m 0600 ${nodeHba} ${lib.escapeShellArg "${cfg.node.dataDir}/qq-bot-ha-access.conf"}
-      install -m 0600 ${nodePostgresConfig} ${lib.escapeShellArg "${cfg.node.dataDir}/qq-bot-ha-local.conf"}
+      # Host limits and socket paths must not be replaced by rewind/base backup.
+      install -m 0600 ${nodePostgresConfig} ${lib.escapeShellArg nodeRuntimeConfig}
 
       hba=${lib.escapeShellArg "${cfg.node.dataDir}/pg_hba.conf"}
       hba_include="include qq-bot-ha-access.conf"
@@ -279,7 +284,7 @@
         mv "$temporary" "$hba"
       fi
 
-      postgres_include="include_if_exists = 'qq-bot-ha-local.conf'"
+      postgres_include="include '${nodeRuntimeConfig}'"
       if ! grep -Fqx "$postgres_include" ${lib.escapeShellArg "${cfg.node.dataDir}/postgresql.conf"}; then
         printf '\n%s\n' "$postgres_include" >> ${lib.escapeShellArg "${cfg.node.dataDir}/postgresql.conf"}
       fi

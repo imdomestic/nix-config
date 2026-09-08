@@ -13,6 +13,7 @@ import tempfile
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--postgres-bin", type=Path, required=True)
+    parser.add_argument("--openssl", default="openssl")
     args = parser.parse_args()
     if os.geteuid() == 0:
         raise SystemExit("Run as an unprivileged user, never postgres or root.")
@@ -74,6 +75,34 @@ def main() -> None:
                 if query(name, "SHOW unix_socket_directories") != str(instances[name][1]):
                     raise AssertionError(f"{name} is not using its own socket directory")
             print("PASS: unrelated PostgreSQL restart/directory cleanup leaves both HA sockets usable")
+
+            data, socket, options = instances["node"]
+            subprocess.run([
+                args.openssl, "req", "-new", "-x509", "-nodes", "-newkey", "rsa:2048",
+                "-days", "1", "-subj", "/CN=isolated-test",
+                "-keyout", str(data / "server.key"), "-out", str(data / "server.crt"),
+            ], check=True, capture_output=True, timeout=15)
+            (data / "server.key").chmod(0o600)
+            runtime_config = root / "local-postgresql.conf"
+            tls = "ssl = on\nssl_cert_file = 'server.crt'\nssl_key_file = 'server.key'\nmax_wal_size = '4GB'\n"
+            runtime_config.write_text(tls + "min_wal_size = '2GB'\n")
+            with (data / "postgresql.conf").open("a") as stream:
+                stream.write(f"\ninclude '{runtime_config}'\n")
+            run("pg_ctl", "-D", str(data), "-m", "fast", "-w", "stop")
+            running.remove("node")
+            relocated = root / "relocated-data"
+            shutil.copytree(data, relocated)
+            data.rename(root / "original-data-offline")
+            runtime_config.write_text(tls + "min_wal_size = '1GB'\n")
+            instances["node"] = (relocated, socket, options)
+            running.append("node")
+            run("pg_ctl", "-D", str(relocated), "-l", str(root / "relocated.log"), "-o", options, "-w", "start")
+            if query("node", "SHOW ssl") != "on" or query("node", "SELECT value FROM socket_check") != "preserved":
+                raise AssertionError("Relocated PostgreSQL failed to load TLS or retained data")
+            if query("node", "SHOW min_wal_size") != "1GB":
+                raise AssertionError("Copied PGDATA replaced the destination host's WAL limit")
+            print("PASS: copied PostgreSQL loads its own certificate after the original PGDATA path disappears")
+            print("PASS: copied PGDATA keeps the destination host's external configuration and WAL limit")
         finally:
             failures = []
             for name in reversed(running):
