@@ -34,6 +34,9 @@
   nodeDataStateDir = "${cfg.node.stateDir}/share/pg_autoctl${cfg.node.dataDir}";
   nodeFenceMarker = "${cfg.node.stateDir}/FENCED";
   nodeHealthPath = "/run/qq-bot-postgres-health/health.json";
+  # Each unit owns its sockets; see docs/incidents.md#qq-bot-postgres-socket-lifetime.
+  monitorSocketDir = "/run/qq-bot-postgres-monitor";
+  nodeSocketDir = "/run/qq-bot-postgres-node";
 
   waitForAddress = address: ''
     found=0
@@ -76,7 +79,7 @@
     ident_file = '${cfg.monitor.dataDir}/qq-bot-ha-pg_ident.conf'
     password_encryption = 'scram-sha-256'
     ssl_min_protocol_version = 'TLSv1.2'
-    unix_socket_directories = '/run/postgresql'
+    unix_socket_directories = '${monitorSocketDir}'
   '';
   nodeHba = pkgs.writeText "qq-bot-postgres-node-access.conf" ''
     # These rules are loaded before initdb's permissive local bootstrap rules.
@@ -107,7 +110,7 @@
   nodePostgresConfig = pkgs.writeText "qq-bot-postgres-node-local.conf" ''
     password_encryption = 'scram-sha-256'
     ssl_min_protocol_version = 'TLSv1.2'
-    unix_socket_directories = '/run/postgresql'
+    unix_socket_directories = '${nodeSocketDir}'
 
     # A long-offline peer must require a fresh base backup instead of filling
     # the smaller h610 disk with unbounded replication-slot WAL.
@@ -154,6 +157,10 @@
         --pgdata=${lib.escapeShellArg cfg.monitor.dataDir} \
         postgresql.listen_addresses \
         ${lib.escapeShellArg cfg.monitor.hostname}
+      pg_autoctl config set \
+        --pgdata=${lib.escapeShellArg cfg.monitor.dataDir} \
+        postgresql.host \
+        ${lib.escapeShellArg monitorSocketDir}
 
       install -m 0600 ${monitorHba} ${lib.escapeShellArg "${cfg.monitor.dataDir}/qq-bot-ha-pg_hba.conf"}
       install -m 0600 ${monitorIdent} ${lib.escapeShellArg "${cfg.monitor.dataDir}/qq-bot-ha-pg_ident.conf"}
@@ -225,7 +232,7 @@
           --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
           --pgport=${toString cfg.node.port} \
           --pgctl=${postgres}/bin/pg_ctl \
-          --pghost=/run/postgresql \
+          --pghost=${lib.escapeShellArg nodeSocketDir} \
           --listen=${lib.escapeShellArg cfg.node.hostname} \
           --hostname=${lib.escapeShellArg cfg.node.hostname} \
           --name=${lib.escapeShellArg cfg.node.name} \
@@ -237,6 +244,11 @@
           --maximum-backup-rate=${lib.escapeShellArg cfg.node.maximumBackupRate}
       fi
 
+      pg_autoctl config set \
+        --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
+        postgresql.host \
+        ${lib.escapeShellArg nodeSocketDir} \
+        >/dev/null
       pg_autoctl config set \
         --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
         postgresql.auth_method \
@@ -300,7 +312,7 @@
             connection = psycopg.connect(
                 dbname="pg_auto_failover",
                 user="postgres",
-                host="/run/postgresql",
+                host="${monitorSocketDir}",
                 port=port,
                 autocommit=True,
                 connect_timeout=2,
@@ -354,7 +366,7 @@
             connection = psycopg.connect(
                 dbname="postgres",
                 user="postgres",
-                host="/run/postgresql",
+                host="${nodeSocketDir}",
                 port=port,
                 autocommit=True,
                 connect_timeout=2,
@@ -432,7 +444,7 @@
     with psycopg.connect(
         dbname="qq_bot",
         user="postgres",
-        host="/run/postgresql",
+        host="${nodeSocketDir}",
         port=port,
         autocommit=True,
     ) as application_connection:
@@ -477,7 +489,7 @@
       }
       prune_backup_count
 
-      database_size="$(psql --host=/run/postgresql --port=${toString cfg.node.port} --username=postgres --dbname=postgres --tuples-only --no-align --command="SELECT pg_database_size('qq_bot')")"
+      database_size="$(psql --host=${lib.escapeShellArg nodeSocketDir} --port=${toString cfg.node.port} --username=postgres --dbname=postgres --tuples-only --no-align --command="SELECT pg_database_size('qq_bot')")"
       available="$(df --output=avail --block-size=1 "$backup_dir" | tail -n 1 | tr -d ' ')"
       required=$((database_size * 2 + ${toString cfg.backup.minimumFreeBytes}))
       if [ "$available" -lt "$required" ]; then
@@ -491,7 +503,7 @@
       trap 'rm -f "$temporary"' EXIT
 
       pg_dump \
-        --host=/run/postgresql \
+        --host=${lib.escapeShellArg nodeSocketDir} \
         --port=${toString cfg.node.port} \
         --username=postgres \
         --dbname=qq_bot \
@@ -583,13 +595,15 @@
     HOME = cfg.monitor.stateDir;
     XDG_CONFIG_HOME = "${cfg.monitor.stateDir}/config";
     XDG_DATA_HOME = "${cfg.monitor.stateDir}/share";
-    XDG_RUNTIME_DIR = "/run/qq-bot-postgres-monitor";
+    XDG_RUNTIME_DIR = monitorSocketDir;
+    PGHOST = monitorSocketDir;
   };
   nodeEnvironment = {
     HOME = cfg.node.stateDir;
     XDG_CONFIG_HOME = "${cfg.node.stateDir}/config";
     XDG_DATA_HOME = "${cfg.node.stateDir}/share";
-    XDG_RUNTIME_DIR = "/run/qq-bot-postgres-node";
+    XDG_RUNTIME_DIR = nodeSocketDir;
+    PGHOST = nodeSocketDir;
   };
 
   statusTool = pkgs.writeShellApplication {
@@ -630,13 +644,13 @@
           "$@"
       }
 
-      primary="$(run_as_postgres psql --host=/run/postgresql --port=${toString cfg.monitor.port} --username=postgres --dbname=pg_auto_failover --tuples-only --no-align --command="SELECT nodename FROM pgautofailover.node WHERE formationid = 'default' AND groupid = 0 AND reportedstate IN ('single', 'wait_primary', 'primary') AND goalstate IN ('single', 'wait_primary', 'primary') LIMIT 1")"
+      primary="$(run_as_postgres psql --host=${lib.escapeShellArg monitorSocketDir} --port=${toString cfg.monitor.port} --username=postgres --dbname=pg_auto_failover --tuples-only --no-align --command="SELECT nodename FROM pgautofailover.node WHERE formationid = 'default' AND groupid = 0 AND reportedstate IN ('single', 'wait_primary', 'primary') AND goalstate IN ('single', 'wait_primary', 'primary') LIMIT 1")"
       if [ "$primary" = ${lib.escapeShellArg cfg.preferredNodeName} ]; then
         echo "${cfg.preferredNodeName} is already the writable primary."
         exit 0
       fi
 
-      ready="$(run_as_postgres psql --host=/run/postgresql --port=${toString cfg.monitor.port} --username=postgres --dbname=pg_auto_failover --tuples-only --no-align --command="SELECT count(*) FROM pgautofailover.node WHERE formationid = 'default' AND groupid = 0 AND nodename = '${cfg.preferredNodeName}' AND reportedstate = 'secondary' AND goalstate = 'secondary' AND reportedpgisrunning AND health = 1 AND reporttime > now() - interval '30 seconds'")"
+      ready="$(run_as_postgres psql --host=${lib.escapeShellArg monitorSocketDir} --port=${toString cfg.monitor.port} --username=postgres --dbname=pg_auto_failover --tuples-only --no-align --command="SELECT count(*) FROM pgautofailover.node WHERE formationid = 'default' AND groupid = 0 AND nodename = '${cfg.preferredNodeName}' AND reportedstate = 'secondary' AND goalstate = 'secondary' AND reportedpgisrunning AND health = 1 AND reporttime > now() - interval '30 seconds'")"
       if [ "$ready" != "1" ]; then
         echo "${cfg.preferredNodeName} is not a healthy synchronized secondary; refusing switchover." >&2
         exit 1
@@ -694,7 +708,7 @@
             with psycopg.connect(
                 dbname="postgres",
                 user="postgres",
-                host="/run/postgresql",
+                host="${nodeSocketDir}",
                 port=local_port,
                 connect_timeout=2,
             ) as local:
@@ -711,6 +725,8 @@
         result["reason"] = (
             f"local PostgreSQL is unavailable: {type(local_error).__name__}"
         )
+        result["local_socket"] = "${nodeSocketDir}/.s.PGSQL." + str(local_port)
+        result["local_socket_exists"] = pathlib.Path(result["local_socket"]).exists()
         finish(1)
 
     result["in_recovery"] = bool(in_recovery)
@@ -865,11 +881,13 @@
   '';
 
   runNodePrepareAsPostgres = mode: ''
+    install -d -m 0700 -o postgres -g postgres ${lib.escapeShellArg nodeSocketDir}
     runuser -u postgres -- env \
       HOME=${lib.escapeShellArg cfg.node.stateDir} \
       XDG_CONFIG_HOME=${lib.escapeShellArg "${cfg.node.stateDir}/config"} \
       XDG_DATA_HOME=${lib.escapeShellArg "${cfg.node.stateDir}/share"} \
-      XDG_RUNTIME_DIR=/run/qq-bot-postgres-node \
+      XDG_RUNTIME_DIR=${lib.escapeShellArg nodeSocketDir} \
+      PGHOST=${lib.escapeShellArg nodeSocketDir} \
       PATH=${lib.makeBinPath [pgAutoFailover postgres openssl pkgs.coreutils pkgs.gnugrep pkgs.iproute2]} \
       ${lib.getExe nodePrepare} ${mode}
   '';
@@ -914,7 +932,9 @@
       systemctl stop qq-bot-postgres-node.service
 
       for _ in $(seq 1 30); do
-        if ! pg_isready --host=/run/postgresql --port=${toString cfg.node.port} --quiet; then
+        probe_status=0
+        pg_isready --host=${lib.escapeShellArg cfg.node.hostname} --port=${toString cfg.node.port} --timeout=2 --quiet || probe_status=$?
+        if [ "$probe_status" -eq 2 ]; then
           echo "Node ${cfg.node.name} is fenced; PostgreSQL port ${toString cfg.node.port} is closed."
           exit 0
         fi
@@ -1216,10 +1236,7 @@ in {
     };
 
     systemd.tmpfiles.rules =
-      [
-        "d /run/postgresql 0755 postgres postgres -"
-      ]
-      ++ lib.optionals cfg.monitor.enable [
+      lib.optionals cfg.monitor.enable [
         "d ${cfg.monitor.stateDir} 0700 postgres postgres -"
         "d ${cfg.monitor.stateDir}/config 0700 postgres postgres -"
         "d ${cfg.monitor.stateDir}/share 0700 postgres postgres -"
@@ -1238,6 +1255,8 @@ in {
     systemd.services.qq-bot-postgres-monitor = mkIf cfg.monitor.enable {
       description = "QQ bot PostgreSQL HA monitor";
       wantedBy = ["multi-user.target"];
+      # Socket and package migrations need the same maintenance gate as data nodes.
+      restartIfChanged = false;
       after = ["network-online.target" "tailscaled.service" "sops-install-secrets.service"];
       wants = ["network-online.target" "tailscaled.service"];
       startLimitIntervalSec = 0;
@@ -1267,7 +1286,7 @@ in {
         ProtectKernelModules = true;
         ProtectKernelTunables = true;
         ProtectSystem = "strict";
-        ReadWritePaths = [cfg.monitor.stateDir "/run/postgresql"];
+        ReadWritePaths = [cfg.monitor.stateDir monitorSocketDir];
         RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6" "AF_NETLINK"];
         LockPersonality = true;
       };
@@ -1315,7 +1334,7 @@ in {
         ProtectKernelModules = true;
         ProtectKernelTunables = true;
         ProtectSystem = "strict";
-        ReadWritePaths = [cfg.node.stateDir (builtins.dirOf cfg.node.dataDir) "/run/postgresql"];
+        ReadWritePaths = [cfg.node.stateDir (builtins.dirOf cfg.node.dataDir) nodeSocketDir];
         RestrictAddressFamilies = ["AF_UNIX" "AF_INET" "AF_INET6" "AF_NETLINK"];
         LockPersonality = true;
       };

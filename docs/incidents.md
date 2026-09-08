@@ -9,6 +9,25 @@
 
 ---
 
+## 2026-09-08 · Bot 数据库的共享 socket 被其他实例重启清除 {#qq-bot-postgres-socket-lifetime}
+
+11:20 实测 h610 的 55431、55432 仍在监听，h610 主库和 tank 备库都能通过
+TLS 执行只读 SQL，但 `/run/postgresql` 只剩 5432 的 socket 文件。keeper 连续报告
+`.s.PGSQL.55432: No such file or directory`，健康检查返回 `OperationalError`。
+前一天 19:21 普通 `postgresql.service` 重启，它拥有的 `RuntimeDirectory=postgresql`
+默认不保留；目录时间与重启一致。Bot monitor 和 data node 不应把 socket 放在别的
+服务负责清理的目录中。
+
+误导点：看到 `postgresql.service` 或 keeper 为 active，并不能证明该实例的本地
+连接可用；反过来，健康检查失败也不能直接推出数据库停机。需要同时查 SQL、监听
+端口、socket 文件和 keeper 的原始错误。不能只 reset-failed 或关闭健康检查掩盖故障。
+
+修复分别使用 `/run/qq-bot-postgres-monitor` 和 `/run/qq-bot-postgres-node`，由各自
+systemd 单元管理；keeper 的 `postgresql.host`、认证初始化、备份、健康检查和维护
+命令同步迁移。防误操作的 fencing 验证改查实际 TCP 监听，不把缺少 socket 当成进程
+已停止。数据目录、口令、TCP 地址和主备注册不变。上线仍须受控重启及复制验证，
+本地配置修改或临时数据库测试均不代表生产故障已经修复。
+
 ## 2026-09-07 · gaoji 三节点 Worker 与统一 Ops 部署 {#gaoji-three-host-ops}
 
 h310、h610、tank 的计算任务使用独立 Worker 凭据和 Tailscale 接口；QQ 管理员身份

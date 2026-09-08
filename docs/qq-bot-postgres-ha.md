@@ -17,6 +17,28 @@ Matrix、Minecraft 的 5432 集群。
 
 ## 访问安全
 
+本地管理入口分别是 `/run/qq-bot-postgres-monitor` 和 `/run/qq-bot-postgres-node`。
+不能复用普通 PostgreSQL 服务拥有的 `/run/postgresql`，否则其他实例重启清理目录
+会让 Bot 的 keeper、备份和健康检查同时失去本地连接。
+
+旧部署迁移时不要仅修改检查脚本：须同时应用 PostgreSQL 的
+`unix_socket_directories` 和 keeper 的 `postgresql.host`，后者通过
+[pg_autoctl config set](https://pg-auto-failover.readthedocs.io/en/main/ref/pg_autoctl_config_set.html)
+更新。应用的 TCP DSN 不变。monitor 和数据节点均设置 `restartIfChanged=false`，
+一次普通 rebuild 不会自动完成目录迁移；需要维护窗口逐台重启并验证，不能直接
+宣布已生效。
+
+迁移前确认当前主库、复制追平情况和备份可用；先恢复 monitor 管理连接，再维护
+备库，最后受控维护主库。每一步都检查节点状态收敛及 SQL 可用性，失败就停止后续
+操作。不执行重新 enroll、删数据目录、强制提升或自动重建副本。
+
+轻量目录生命周期回归测试（普通用户运行，三个临时数据库仅监听私有 Unix socket，
+测试结束清理，不重启生产服务）：
+
+```sh
+python3 scripts/test-qq-bot-postgres-sockets.py --postgres-bin /run/current-system/sw/bin
+```
+
 - monitor、复制和 `pg_rewind` 使用独立的 64 位十六进制 HA 口令，保存在 SOPS 中，
   不与机器人应用账号共用。
 - monitor 与两个数据节点都只监听各自的 Tailscale 地址，跨机器连接同时要求 TLS
