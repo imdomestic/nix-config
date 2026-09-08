@@ -6,7 +6,8 @@ pilot's permissions or operation count must not be read as the current contract.
 
 ## Broad observations and diagnostic tool fixes (2026-09-08)
 
-The release pins maxops `c368fae` (45 operations) and Max `8ac010e`.
+The release pins maxops `ebfd2fd` (45 operations, including the `c368fae`
+permission/API changes) and Max `8ac010e`.
 All nine managed hosts enable `readAllUnits` at both Agent and Hub; the old
 curated lists remain independent `manageableUnits`. Observation covers loaded
 systemd units and explicitly configured names, including timers and targets.
@@ -19,11 +20,99 @@ event detail, paginated unit discovery with coverage metadata, and a conditional
 host requirement for execution-profile discovery. Reporter instructions keep
 subsequent diagnosis in the owning Operations task.
 
-Local release gates passed: 1,095 Max unit examples, 331 disposable-PostgreSQL
+Fleet acceptance found that b650's expanded 74,415-byte snapshot could exceed
+the 12-second transport deadline over the cross-region link. Five identical
+queries succeeded four times, averaging 8.834 seconds including the timeout.
+The follow-up `ebfd2fd` adds negotiated gzip between Agent and the shared client;
+decoded response limits remain enforced. Its local gate passed 78 tests, including
+wire compression, transparent decoding and rejection of oversized decoded bodies.
+The same five queries after activation all returned HTTP 200, averaging 1.625
+seconds (including the first 5.093-second request). An independent Agent wire
+check transferred 6,868 bytes for 74,262 decoded bytes in 0.848 seconds. These are
+bounded release samples, not a fleet-wide latency guarantee.
+
+Initial local release gates passed: 1,095 Max unit examples, 331 disposable-PostgreSQL
 integration examples, 37 refreshed Max maxops-contract examples, 76 Rust nextest
 tests, full builds, lint, architecture checks, prompt-flow generation/check,
 lock-pin checks and the real Hub/Max integration harness. Native Linux builds
 and live fleet acceptance are recorded below after activation.
+
+### Runtime evidence
+
+The initial release used nix-config `c3080af`; `eeea4cc` pins the compression
+follow-up. All 17 NixOS configurations evaluated again after synchronizing the
+upstream PostgreSQL configuration fix `32522e3`. Independent GitHub fetches
+reproduced both pinned source hashes. Final native x86_64 and aarch64 maxops
+builds each passed 78 tests; the consumer's compatibility package passed all
+82 tests. Its first parallel build hit an existing short-polling fixture timeout;
+a complete build with a single build slot passed without changing or skipping
+tests. The final real NixOS VM test passed (139 seconds), and Max's Linux package
+built successfully.
+
+All nine running system closures and persistent system profiles match the
+release outputs below. Live Agent configuration enables `read_all_units` on
+every host; Agent/Executor manageable-unit lists exactly match the preserved
+inventory policy. Agents/Executors are active and execute the new store paths.
+Standalone Home Manager profiles were not switched.
+
+h610 first activated an intermediate system retaining Max `8badc05`: Max PID
+2807571 stayed running while new Hub PID 3312112 served the permission regression
+checks. The final system runs Max PID 3336435 from
+`p1j21sf6h0iaiq8wafqqany8kz9n23cq-max-0.18.0`; QQ reconnected at **12:51:29 HKT**.
+Hub PID 3312112 stayed unchanged during the Max switch. The compression follow-up
+then replaced it with Hub PID 3551533 from
+`qfv26rs3i1aqjr1rlxfbsq98qvvqiha3-maxops-0.3.0`, keeping Max PID 3336435 unchanged.
+An existing maxops job on h310 independently built the same pinned release; its build was allowed
+to complete before activation. The final Max environment confirms query groups
+611798505 and 650536599, alert group 611798505, and all nine notification hosts.
+
+Using Max's actual credential, status and bounded logs returned HTTP 200 for
+h610's PostgreSQL health/backup/restore-check services, stack target, Docker
+service and health timer, plus r5s's nix-gc service. Missing execution-profile
+host now returns `execution_profile_host_required`; an ungranted host returns
+`host_not_permitted`. Recent event summaries remained bounded (15 events,
+7,351 bytes in the first check) and contain no full payload.
+
+The complete nine-host acceptance passed again after all nine compression
+versions were activated, using Max's credential: protocol-2
+catalog, unit coverage and discovery, Executor profiles, current service details,
+bounded journals, fresh metrics, running/profile agreement and authorization
+rejections. The first compression-era sweep hit a 10-second Shanghai journal
+timeout; the same local journal query took 6.966 seconds, and three subsequent API
+queries succeeded in 6.450, 3.541 and 0.555 seconds. The full rerun passed without
+loosening limits or skipping checks. This suggests cold journal I/O contributed
+to that isolated failure; gzip does not remove the existing journal timeout.
+
+The initial h610 stage and Max switches returned exit 4 while a separate
+PostgreSQL socket migration (`02d57d9`/`5943685`) still had bootstrap and health
+checks targeting an unavailable socket. Later upstream maintenance landed
+`32522e3`; the final compression switch returned 0. A fresh check then found
+bootstrap successful and the PostgreSQL health service's last result successful.
+The database node and monitor were not force-restarted by this release workflow.
+Tank's last PostgreSQL health check still reported failure in the final fleet
+failure view; this remains separate from Max/maxops activation acceptance.
+
+Max's existing iMessage bridge remains unreachable. Its old process reported
+one in-flight dispatch when shutdown draining timed out. Read-only health moved
+from 2,361 to 2,385 delivery outcome-unknown records after the Max switch and 2,419
+at the final read-only snapshot. Unresolved journal outcome-unknown briefly rose
+from zero to one, then returned to zero. Dispatch unknowns (11),
+parked media (385), failed requests (32) and sandbox unknowns (1) remain. These
+records were neither deleted nor replayed to make the health gate pass; Max's
+strict operational-health gate still fails.
+
+
+| Host | Running system store hash |
+| --- | --- |
+| b650 | `shcy31n83qrf3m34bnygcb1ymav0w0hw` |
+| h310 | `nc9v9fjscjaikklh02cai4pzzvq9ckka` |
+| h610 | `kxc2j1rg61yk67862l7bbbs13azsyp37` |
+| r5s | `pwv475qann7b4vf42m429h66vaxk9wpi` |
+| r5sjp | `66cv5hrs58ck41rzfba939lhwxsgy1jz` |
+| r6s | `72cdxyq54ll3hd2q4ydccv1v89w80yhn` |
+| rpi4 | `dm22ljhmawgiaabayzhzpl6h1c4425g0` |
+| shanghai | `2mnp1vbqqw3vqhyhnr4hmx7q0smrwhpg` |
+| tank | `iqz1qssza2z438yahi57y5n07w6b6v8d` |
 
 ## Skill bundles and public client API release (2026-09-07)
 

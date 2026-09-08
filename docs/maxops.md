@@ -9,7 +9,7 @@
 [architecture.md](https://github.com/HCHogan/maxops/blob/main/docs/architecture.md)
 为准；历次实机验收见 [maxops-deployment.md](maxops-deployment.md)。
 
-本次核对基线：`flake.lock` 的 maxops `c368fae`（0.3.0，协议版本 2）和
+本次核对基线：`flake.lock` 的 maxops `ebfd2fd`（0.3.0，协议版本 2）和
 Max `8ac010e`（0.18.0）。Nix 求值确认 Hub 位于 h610，纳管九台主机：
 **b650、h310、h610、r5s、r5sjp、r6s、rpi4、shanghai、tank**。
 本页描述源码与声明式配置；九机切换和运行验收记录见部署文档。
