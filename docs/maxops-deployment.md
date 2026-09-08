@@ -4,6 +4,27 @@ The current design and Max/maxops ownership boundary are in
 [maxops.md](maxops.md). Sections below retain dated rollout evidence; a historical
 pilot's permissions or operation count must not be read as the current contract.
 
+## Broad observations and diagnostic tool fixes (2026-09-08)
+
+The release pins maxops `c368fae` (45 operations) and Max `8ac010e`.
+All nine managed hosts enable `readAllUnits` at both Agent and Hub; the old
+curated lists remain independent `manageableUnits`. Observation covers loaded
+systemd units and explicitly configured names, including timers and targets.
+The existing operator execution profile and conversation scopes are preserved.
+
+Max retains safe structured permission reasons, completes already admitted
+sibling calls before yielding to the durable job observer, and attaches bounded
+job output to its report. The public API adds recent event summaries and bounded
+event detail, paginated unit discovery with coverage metadata, and a conditional
+host requirement for execution-profile discovery. Reporter instructions keep
+subsequent diagnosis in the owning Operations task.
+
+Local release gates passed: 1,095 Max unit examples, 331 disposable-PostgreSQL
+integration examples, 37 refreshed Max maxops-contract examples, 76 Rust nextest
+tests, full builds, lint, architecture checks, prompt-flow generation/check,
+lock-pin checks and the real Hub/Max integration harness. Native Linux builds
+and live fleet acceptance are recorded below after activation.
+
 ## Skill bundles and public client API release (2026-09-07)
 
 The release pins maxops `dae8335` (0.3.0, protocol 2, 43 operations) and Max

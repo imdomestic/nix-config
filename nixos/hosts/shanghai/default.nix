@@ -12,7 +12,7 @@ in {
   tsIp = "100.64.0.13";
   maxops = {
     enable = true;
-    readableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "xray.service" "derper.service"];
+    manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "xray.service" "derper.service"];
   };
   ip = "10.0.0.1";
   sshUser = "root";

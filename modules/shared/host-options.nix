@@ -52,10 +52,20 @@
 
     maxops = {
       enable = lib.mkEnableOption "fleet management for this inventory host";
+      readAllUnits = lib.mkOption {
+        type = lib.types.bool;
+        default = true;
+        description = "Observe all loaded systemd units on enabled maxops hosts; does not grant mutations.";
+      };
+      manageableUnits = lib.mkOption {
+        type = lib.types.listOf lib.types.str;
+        default = [];
+        description = "Exact services permitted for typed start/stop/restart/reload jobs.";
+      };
       readableUnits = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [];
-        description = "Explicit canonical service allowlist shared by the agent and hub.";
+        description = "Additional exact units to observe, including when they are not loaded.";
       };
     };
 

@@ -28,8 +28,8 @@ in {
           message = "maxops requires an inventory Tailscale address";
         }
         {
-          assertion = cfg.readableUnits != [];
-          message = "maxops requires an explicit service allowlist";
+          assertion = cfg.readAllUnits || cfg.readableUnits != [] || cfg.manageableUnits != [];
+          message = "maxops requires an explicit observation policy";
         }
       ];
 
@@ -64,8 +64,9 @@ in {
           then "127.0.0.1"
           else host.tsIp;
         tokenFile = config.sops.secrets."maxops/agent_token".path;
-        readableUnits = cfg.readableUnits;
-        manageableUnits = cfg.readableUnits;
+        readAllUnits = cfg.readAllUnits;
+        readableUnits = cfg.readableUnits ++ cfg.manageableUnits;
+        manageableUnits = cfg.manageableUnits;
         allowLogs = true;
         execution = {
           enable = true;
@@ -77,7 +78,7 @@ in {
         enable = true;
         package = lib.mkIf gaojiDeploymentHost (import ../../../lib/gaoji-ops-package.nix {inherit inputs pkgs;});
         hostName = host.name;
-        manageableUnits = cfg.readableUnits;
+        manageableUnits = cfg.manageableUnits;
         profiles = {
           diagnostic = {
             timeoutSeconds = 7200;
@@ -128,12 +129,14 @@ in {
           buildProfile = "diagnostic";
           activateProfile = "activation";
           verifyProfile = "diagnostic";
-          verifyCommands = [
-            ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-agent.service"]
-            ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-executor.service"]
-            ["${pkgs.systemd}/bin/systemctl" "is-active" "tailscaled.service"]
-            ["${pkgs.systemd}/bin/systemctl" "is-active" "prometheus-node-exporter.service"]
-          ] ++ lib.optional gaojiDeploymentHost ["${pkgs.systemd}/bin/systemctl" "is-active" "gaoji-cluster-worker.service"];
+          verifyCommands =
+            [
+              ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-agent.service"]
+              ["${pkgs.systemd}/bin/systemctl" "is-active" "maxops-executor.service"]
+              ["${pkgs.systemd}/bin/systemctl" "is-active" "tailscaled.service"]
+              ["${pkgs.systemd}/bin/systemctl" "is-active" "prometheus-node-exporter.service"]
+            ]
+            ++ lib.optional gaojiDeploymentHost ["${pkgs.systemd}/bin/systemctl" "is-active" "gaoji-cluster-worker.service"];
           automaticRollback = true;
         };
       };

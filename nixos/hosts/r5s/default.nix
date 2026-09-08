@@ -9,7 +9,7 @@ in {
   tsIp = "100.64.0.6";
   maxops = {
     enable = true;
-    readableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];
+    manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];
   };
   ip = "10.0.0.9";
   sshUser = "root";

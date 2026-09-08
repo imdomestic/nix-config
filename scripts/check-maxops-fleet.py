@@ -50,7 +50,7 @@ def main():
     operations = {operation["name"]: operation for operation in catalog["operations"]}
     assert {"fleet.overview", "host.facts", "host.metrics", "deploy.status", "units.list",
             "units.failed", "units.status", "units.logs", "alerts.active", "resources.list",
-            "jobs.wait", "jobs.events", "jobs.result", "deploy.run"} <= set(operations)
+            "jobs.wait", "jobs.events", "jobs.result", "deploy.run", "events.recent", "events.get"} <= set(operations)
     assert all("params_schema" in operation and "response_schema" not in operation for operation in operations.values())
     summary = request("/v1/operations?view=summary&limit=2")
     assert len(summary["operations"]) == 2 and summary["next_cursor"]
@@ -74,8 +74,22 @@ def main():
         assert deployment["state"] == "available" and deployment["activated_at"] is None
         assert deployment["running_closure"] == facts["facts"]["system_closure"]
         assert deployment["profile_matches_running"] is True, f"{name}: running/profile mismatch"
-        units = query("units.list", params)
-        assert {unit["unit"] for unit in units["units"]} == set(host["readableUnits"])
+        units = query("units.list", dict(params, limit=200))
+        coverage = "all_loaded" if host.get("readAllUnits", False) else "allowlist"
+        assert units["unit_scope"]["coverage"] == coverage
+        names = {unit["unit"] for unit in units["units"]}
+        # Name-filtered pages avoid a busy host's unrelated transient unit churn.
+        for unit in host["readableUnits"]:
+            page = query("units.list", dict(params, prefix=unit))
+            assert unit in {entry["unit"] for entry in page["units"]}
+        if host.get("readAllUnits", False):
+            assert units["total"] >= len(host["readableUnits"])
+            query("units.status", dict(params, unit="multi-user.target"))
+            unknown = query("units.status", dict(params, unit="maxops-unloaded-fixture.service"))
+            assert unknown["unit"]["load_state"] == "not-loaded"
+            assert unknown["unit"]["active_state"] == "unknown"
+        else:
+            assert names == set(host["readableUnits"])
         status = query("units.status", {"host": name, "unit": "maxops-agent.service"})
         assert status["unit"]["active_state"] == "active"
         assert status["unit"]["details"]["main_pid"] > 0
@@ -90,7 +104,7 @@ def main():
         profiles = query("resources.list", {"kind": "execution_profiles", "host": name})
         assert {entry["profile"]["name"] for entry in profiles["resources"]} == {"diagnostic", "operator", "activation"}
         assert all(set(entry["profile"]) == {"name", "max_timeout_seconds", "output_limit_bytes"} for entry in profiles["resources"])
-        print(f"PASS {name}: live agent/executor, profiles, service details, bounded logs, metrics and deployment profile", flush=True)
+        print(f"PASS {name}: {units['total']} observed units ({coverage}), agent/executor, profiles, service details, bounded logs, metrics and deployment profile", flush=True)
     failed = query("units.failed")
     assert {entry["host"] for entry in failed["hosts"]} == expected_hosts
     assert all(entry["state"] == "available" for entry in failed["hosts"])
@@ -101,7 +115,14 @@ def main():
     for operation in ["host.facts", "host.metrics", "units.list", "deploy.status"]:
         query(operation, {"host": "maxops-ungranted-fixture"}, expected=403)
     for operation in ["units.status", "units.logs"]:
-        query(operation, {"host": inventory[0]["name"], "unit": "maxops-ungranted-fixture.service"}, expected=403)
+        query(operation, {"host": inventory[0]["name"], "unit": "../invalid.service"}, expected=400)
+    query("resources.list", {"kind":"execution_profiles"}, expected=400)
+    recent = request("/v1/execute?view=summary", {"op":"events.recent", "params":{"limit":5}})
+    assert len(recent["events"]) <= 5
+    assert all("payload" not in event for event in recent["events"])
+    if recent["events"]:
+        detail = query("events.get", {"event_id":recent["events"][0]["event_id"], "limit":1024})
+        assert len(detail["text"].encode()) <= 1024
     query("units.restart", {"host": inventory[0]["name"], "unit": "maxops-agent.service"}, expected=400)
     # Unknown JSON fields are rejected by the typed HTTP extractor before dispatch.
     query("host.metrics", {"host": inventory[0]["name"], "query": "up"}, expected=422)

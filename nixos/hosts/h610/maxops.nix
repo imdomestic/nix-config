@@ -54,8 +54,8 @@
       observe = true;
       operate = builtins.elem entry.name gaojiManagementHosts;
       compute = builtins.hasAttr entry.name gaojiWorkers;
-      readable_units = entry.maxops.readableUnits;
-      operable_units = lib.optionals (builtins.elem entry.name gaojiManagementHosts) entry.maxops.readableUnits;
+      readable_units = entry.maxops.readableUnits ++ entry.maxops.manageableUnits;
+      operable_units = lib.optionals (builtins.elem entry.name gaojiManagementHosts) entry.maxops.manageableUnits;
     })
     managed;
 in {
@@ -75,8 +75,7 @@ in {
         restartUnits = ["gaoji-cluster-control.service"];
       };
     }) ["h310" "tank"])
-    //
-    lib.listToAttrs (map (entry: {
+    // lib.listToAttrs (map (entry: {
         name = "maxops/agents/${entry.name}";
         value = {
           sopsFile = ../../../secrets/maxops + "/${entry.name}.yaml";
@@ -173,8 +172,9 @@ in {
           if entry.name == host.name
           then config.sops.secrets."maxops/execution_token".path
           else config.sops.secrets."maxops/executors/${entry.name}".path;
-        readableUnits = entry.maxops.readableUnits;
-        manageableUnits = entry.maxops.readableUnits;
+        readAllUnits = entry.maxops.readAllUnits;
+        readableUnits = entry.maxops.readableUnits ++ entry.maxops.manageableUnits;
+        manageableUnits = entry.maxops.manageableUnits;
         diagnosticProfile = "diagnostic";
         diagnosticProbes = {
           failed-units = [
@@ -292,33 +292,41 @@ in {
       workerId = "${name}-worker";
       hostId = name;
       ownerAliases = ["qq:3526452465"];
-      tokenFile = if name == "h610"
+      tokenFile =
+        if name == "h610"
         then config.sops.secrets."kennethbot/worker_token".path
         else config.sops.secrets."gaoji/workers/${name}".path;
     }) (builtins.attrNames gaojiWorkers);
-    deployments.repositories = [{
-      repositoryId = "nix-config";
-      backend = "ops";
-      url = "https://github.com/imdomestic/nix-config.git";
-      allowedChanges = ["system"];
-      targets = map (entry: {
-        hostId = entry.name;
-        flakeHost = entry.name;
-        opsRepository = repositoryName entry;
-        opsProfile = "${entry.name}-system";
-        verificationUnits = ["maxops-agent.service" "maxops-executor.service" "gaoji-cluster-worker.service"]
-          ++ lib.optionals (entry.name == "h610") ["gaoji.service" "gaoji-cluster-control.service" "maxops-hub.service"];
-      }) gaojiManaged;
-    }];
-    diagnostics.targets = map (entry: {
-      target_id = "${entry.name}-worker";
-      label = "${entry.name} gaoji Worker";
-      kind = "service";
-      url = "http://${entry.tsIp}:8092/health";
-      observer_host = "h610";
-      host_id = entry.name;
-      service_ref = "gaoji-cluster-worker.service";
-    }) gaojiManaged;
+    deployments.repositories = [
+      {
+        repositoryId = "nix-config";
+        backend = "ops";
+        url = "https://github.com/imdomestic/nix-config.git";
+        allowedChanges = ["system"];
+        targets =
+          map (entry: {
+            hostId = entry.name;
+            flakeHost = entry.name;
+            opsRepository = repositoryName entry;
+            opsProfile = "${entry.name}-system";
+            verificationUnits =
+              ["maxops-agent.service" "maxops-executor.service" "gaoji-cluster-worker.service"]
+              ++ lib.optionals (entry.name == "h610") ["gaoji.service" "gaoji-cluster-control.service" "maxops-hub.service"];
+          })
+          gaojiManaged;
+      }
+    ];
+    diagnostics.targets =
+      map (entry: {
+        target_id = "${entry.name}-worker";
+        label = "${entry.name} gaoji Worker";
+        kind = "service";
+        url = "http://${entry.tsIp}:8092/health";
+        observer_host = "h610";
+        host_id = entry.name;
+        service_ref = "gaoji-cluster-worker.service";
+      })
+      gaojiManaged;
   };
 
   services.gaoji-cluster-worker = {

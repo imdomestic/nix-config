@@ -10,7 +10,7 @@ in {
 
   maxops = {
     enable = true;
-    readableUnits = [
+    manageableUnits = [
       "maxops-agent.service"
       "maxops-executor.service"
       "tailscaled.service"
