@@ -1,7 +1,7 @@
 # maxops —— fleet 控制平面
 
 本页记录 maxops 的定位、与 Max 的边界，以及本 fleet 的配置选择。
-2026-09-07 按当前源码和 Nix 求值结果修订；已实现能力与后续建议分开描述。
+2026-09-08 按当前源码和 Nix 求值结果修订；已实现能力与后续建议分开描述。
 
 通用协议、实现和原生 NixOS 模块属于独立仓库
 [HCHogan/maxops](https://github.com/HCHogan/maxops)。本仓库只拥有 fleet inventory、
@@ -9,8 +9,8 @@
 [architecture.md](https://github.com/HCHogan/maxops/blob/main/docs/architecture.md)
 为准；历次实机验收见 [maxops-deployment.md](maxops-deployment.md)。
 
-本次核对基线：`flake.lock` 的 maxops `dae8335`（0.3.0，协议版本 2）和
-Max `277f61b`（0.18.0）。Nix 求值确认 Hub 位于 h610，纳管九台主机：
+本次核对基线：`flake.lock` 的 maxops `c368fae`（0.3.0，协议版本 2）和
+Max `8ac010e`（0.18.0）。Nix 求值确认 Hub 位于 h610，纳管九台主机：
 **b650、h310、h610、r5s、r5sjp、r6s、rpi4、shanghai、tank**。
 本页描述源码与声明式配置；九机切换和运行验收记录见部署文档。
 
@@ -108,7 +108,7 @@ CLI 从中生成参数入口，MCP 从 Hub 的凭据范围目录生成工具，O
 后者使用 `{op, params}`，读取返回 200，持久作业提交返回 202 和 handle。
 MCP 已实现为 stdio 适配器，Max 当前使用 HTTP，不经过 MCP。
 
-当前注册表有 43 个操作，以下只列能力分组，不复制完整 Schema：
+当前注册表有 45 个操作，以下只列能力分组，不复制完整 Schema：
 
 | 范围 | 已实现操作 |
 | --- | --- |
@@ -117,7 +117,7 @@ MCP 已实现为 stdio 适配器，Max 当前使用 HTTP，不经过 MCP。
 | 作业 | `jobs.list/status/logs/cancel/wait/events/result` |
 | 工作区 | `workspace.create/status/read/apply/diff/commit/check/publish` |
 | 部署与变更 | `deploy.prepare/build/activate/verify/rollback/run`、`changes.status/history` |
-| 事件与诊断 | `events.list`、`diagnostics.collect`、`remediations.begin/finish` |
+| 事件与诊断 | `events.recent/get/list`、`diagnostics.collect`、`remediations.begin/finish` |
 
 HTTP RPC 仍是传输；目录分层、资源发现、结果投影及作业等待属于公共协议，见 §11。
 Max 消费这些能力，不再让模型手动安排 HTTP 发现和作业轮询。
@@ -130,6 +130,10 @@ Hub 检查认证主体及资源范围；Agent 区分观察和执行凭据；Exec
 Agent 保持非特权运行，不获得 polkit/sudo 管理授权；Executor 是独立的特权协调器。
 普通诊断作业使用受限身份，root operator/activation profile 需要显式配置。
 有界输出、资源限制和持久审计不等于能够隔离恶意管理员命令。
+
+九台纳管机器均启用 `readAllUnits`，可读取所有已加载的 systemd 单元状态和日志，包括 service、timer、target、socket 等。Hub 与 Agent 都执行该策略，`units.list` 提供分页、状态和名称前缀筛选，`units.failed` 明确返回覆盖范围；这不代表列出了所有已安装但未加载的单元。`manageableUnits` 独立保留原有专用服务操作名单。
+
+日常诊断使用 `events.recent`（默认最近一小时、最新优先、20 条，上限 50）及摘要，再用 `events.get` 读取有界详情；`events.list` 保留从旧到新的事件回放语义。
 
 本 fleet 已启用 root operator profile。`manageableUnits` 约束的是专用服务操作，
 不能宣称它限制了已获 root 命令权限的客户端只能修改这些 unit。
@@ -183,7 +187,7 @@ MCP 适配器当前直接实现协议，并未使用原设想中的 rmcp。
 
 本仓库通过原生模块选项配置 maxops，不复制上游原始配置文件或维护第二套协议：
 
-- `nixos/hosts/<host>/default.nix`：显式 `maxops.enable` 和 `readableUnits`。
+- `nixos/hosts/<host>/default.nix`：显式 `maxops.enable` 和独立 `manageableUnits`；`readAllUnits` 默认开启，`readableUnits` 可补充尚未加载的精确单元名。
 - `lib/mkInventory.nix`：从 host registry 派生 fleet 数据。
 - `nixos/modules/maxops/default.nix`：调用上游 Agent/Executor 模块，配置本机
   凭据、执行 profile、repository、检查和部署 profile。

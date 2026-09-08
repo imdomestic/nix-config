@@ -9,7 +9,7 @@ in {
   tsIp = "100.64.0.30";
   maxops = {
     enable = true;
-    readableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "gaoji-cluster-worker.service"];
+    manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "gaoji-cluster-worker.service"];
   };
 
   profiles = with nixosProfiles; [

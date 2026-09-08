@@ -11,7 +11,7 @@ in {
   tsIp = "100.64.0.3";
   maxops = {
     enable = true;
-    readableUnits = [
+    manageableUnits = [
       "max.service"
       "maxops-agent.service"
       "maxops-executor.service"
