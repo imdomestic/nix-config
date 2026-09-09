@@ -9,6 +9,16 @@
 
 ---
 
+## 2026-09-09 · h610 rebuild 预检发现 Max 锁定落后于现网 {#h610-max-pin-drift}
+
+发布 gaoji 账户授权时，dry-activate 意外列出了 Max 和 runtime 重启。仓库中的
+Max input 仍是 `8ac010e6`，现网却已经包含 frontend steering 和迁移 101。
+误导点是两份包都标为 `0.18.0`；只看版本号会漏掉功能回退。
+
+逐项比较包来源后，确认 `070d43d1` 生成的 Max 包与现网完全一致：
+`/nix/store/3mgrgw90c066r20pgdhnail0ipx3q7wp-max-0.18.0`。
+将锁定推进到这一已运行提交，避免本次机器人 rebuild 回退其他服务。
+
 ## 2026-09-08 · Bot 数据库的共享 socket 被其他实例重启清除 {#qq-bot-postgres-socket-lifetime}
 
 11:20 实测 h610 的 55431、55432 仍在监听，h610 主库和 tank 备库都能通过
