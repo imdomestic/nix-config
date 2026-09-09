@@ -845,6 +845,7 @@ in {
       botId = "3580515978";
     };
     environment = {
+      FORWARDED_ALLOW_IPS = "127.0.0.1,172.17.0.1";
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
       AI_PROMETHEUS_URL = "http://100.64.0.3:9009";
