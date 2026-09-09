@@ -845,7 +845,7 @@ in {
       botId = "3580515978";
     };
     environment = {
-      FORWARDED_ALLOW_IPS = "127.0.0.1,172.17.0.1";
+      FORWARDED_ALLOW_IPS = "127.0.0.1";
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
       AI_PROMETHEUS_URL = "http://100.64.0.3:9009";
@@ -1403,6 +1403,7 @@ in {
       proxyPass = "http://172.17.0.1:18080";
       proxyWebsockets = true;
       extraConfig = ''
+        proxy_bind 127.0.0.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

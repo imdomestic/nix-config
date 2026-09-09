@@ -18,9 +18,11 @@ lego 在查找 Cloudflare zone 时向系统解析器查询 `gaoji.inner.imdomest
 及父域 authority。仅为该证书设置原生 `dnsResolver`，不修改 Tailnet 的日常解析，
 并保留现有的 120 秒传播等待；验收须使用正常证书校验访问 HTTPS。
 
-页面验收还发现尾斜杠规范化跳转降到了 HTTP。nginx 连接后端时来自本机 Docker
-桥地址，应用默认只信任 loopback 的转发头；显式设置 `FORWARDED_ALLOW_IPS` 为
-`127.0.0.1,172.17.0.1`，使协议跳转和登录限流识别实际代理信息，不信任任意来源。
+页面验收还发现尾斜杠规范化跳转降到了 HTTP。按路由源地址增加 Docker 桥地址的
+信任仍未解决：`getsockname` 显示 `172.17.0.1`，但后端 socket 看到的 peer 被本机
+NAT 改成 `10.0.1.1`。绑定 loopback 的同一请求则保留 `127.0.0.1`，并正确返回
+HTTPS 跳转。因此 nginx 上游显式 `proxy_bind 127.0.0.1`，应用也只信任 loopback，
+不扩大到可能聚合其他来源的 NAT 地址。协议跳转和登录限流据此识别真实代理信息。
 
 ## 2026-09-09 · h610 rebuild 预检发现 Max 锁定落后于现网 {#h610-max-pin-drift}
 
