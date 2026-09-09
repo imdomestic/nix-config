@@ -509,6 +509,13 @@ in {
     group = "nginx";
   };
 
+  security.acme.certs."gaoji.inner.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
+    extraDomainNames = ["kennethbot.inner.imdomestic.com"];
+  };
+
   # ddns-go cloudflare token + web password rendered from sops.
   sops.secrets."ddns/cloudflare_token" = {};
   sops.secrets."ddns/web_password" = {};
@@ -830,6 +837,11 @@ in {
     group = "users";
     host = "172.17.0.1";
     port = 18080;
+    admin = {
+      secretFile = config.sops.secrets."gaoji/authorization_key".path;
+      origin = "https://gaoji.inner.imdomestic.com";
+      botId = "3580515978";
+    };
     environment = {
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
@@ -862,6 +874,7 @@ in {
       containerName = "napcat-chat-bot";
       dataDirectory = "/var/lib/napcat-chat-bot";
       account = "3580515978";
+      reverseWebsocketTokenFile = config.sops.secrets."gaoji/onebot_access_token".path;
       webuiPort = 6100;
     };
   };
@@ -1016,7 +1029,8 @@ in {
       AI_SUBAGENT_TIMEOUT_SECONDS=1800
       AI_SUBAGENT_PROFILES_JSON={}
       AI_ADMIN_ENABLED=true
-      AI_ADMIN_TOKEN=${config.sops.placeholder."gaoji/admin_token"}
+      ONEBOT_ACCESS_TOKEN=${config.sops.placeholder."gaoji/onebot_access_token"}
+      ONEBOT_SECRET=${config.sops.placeholder."gaoji/onebot_secret"}
       AI_ADMIN_USER_IDS=3526452465
       AI_SANDBOX_ENABLED=true
       AI_SANDBOX_ALLOWED_USERS=
@@ -1369,11 +1383,17 @@ in {
   # 把 kennethbot.inner.imdomestic.com 解析到 100.64.0.3，公网接口不监听。
   services.nginx.virtualHosts."gaoji.inner.imdomestic.com" = {
     serverName = "gaoji.inner.imdomestic.com";
-    serverAliases = ["kennethbot.inner.imdomestic.com"];
+    useACMEHost = "gaoji.inner.imdomestic.com";
+    forceSSL = true;
     listen = [
       {
         addr = "100.64.0.3";
         port = 80;
+      }
+      {
+        addr = "100.64.0.3";
+        port = 443;
+        ssl = true;
       }
     ];
     locations."/" = {
@@ -1386,6 +1406,15 @@ in {
         proxy_set_header X-Forwarded-Proto $scheme;
       '';
     };
+  };
+
+  services.nginx.virtualHosts."kennethbot.inner.imdomestic.com" = {
+    useACMEHost = "gaoji.inner.imdomestic.com";
+    listen = [
+      { addr = "100.64.0.3"; port = 80; }
+      { addr = "100.64.0.3"; port = 443; ssl = true; }
+    ];
+    locations."/".return = "308 https://gaoji.inner.imdomestic.com$request_uri";
   };
 
   # 订阅端点。和 headscale 共用 8443,靠 SNI 分流。

@@ -28,6 +28,9 @@ keys:
   - &host_b650 age1qpgrpyp6swk2a2hystwaryaulrvyrtjecmzzjlnjawsn50ckg3fqj8rsaf
 
 creation_rules:
+  - path_regex: secrets/gaoji/account-auth\.yaml$
+    key_groups:
+      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/hosts/h610-max\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
