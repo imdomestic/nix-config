@@ -123,9 +123,21 @@ in {
         mode = "0400";
         restartUnits = ["maxops-hub.service" "gaoji-cluster-control.service"];
       };
-      "gaoji/admin_token" = {
-        sopsFile = ../../../secrets/maxops/kennethbot.yaml;
-        key = "admin_token";
+      "gaoji/authorization_key" = {
+        sopsFile = ../../../secrets/gaoji/account-auth.yaml;
+        key = "authorization_key";
+        mode = "0400";
+        restartUnits = ["gaoji.service"];
+      };
+      "gaoji/onebot_access_token" = {
+        sopsFile = ../../../secrets/gaoji/account-auth.yaml;
+        key = "onebot_access_token";
+        mode = "0400";
+        restartUnits = ["gaoji.service" "docker-napcat-chat-bot.service"];
+      };
+      "gaoji/onebot_secret" = {
+        sopsFile = ../../../secrets/gaoji/account-auth.yaml;
+        key = "onebot_secret";
         mode = "0400";
         restartUnits = ["gaoji.service"];
       };

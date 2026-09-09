@@ -11,6 +11,22 @@
 
 ---
 
+## 2026-09-09 · gaoji 账户登录与逐次手机授权 {#gaoji-account-mobile-approval}
+
+h610 的 gaoji 控制台使用账户密码登录；管理员可查看管理信息，成员仅可查看机器人状态。
+管理操作冻结目标及参数后，向该管理员绑定的 QQ 私聊发送 6 位一次性口令。
+口令绑定本人、机器人、操作及网页会话，确认后立即消耗；自动守护也只提出修复，
+每次执行仍需本人私聊确认。网页不再使用共享管理员 Token 或电脑上的批准按钮。
+
+账户及批准记录保存在现有 PostgreSQL，授权密钥与 OneBot 凭据由 SOPS 管理，
+通过运行时环境文件或 systemd credential 传递。NapCat 启动前只更新现有反向
+WebSocket 连接的访问凭据，不替换账号配置及登录数据。首次管理员通过单独初始化
+命令创建，随机初始密码写入服务器的私有文件，不进入 Git、Nix store 或服务日志。
+
+控制台使用 `https://gaoji.inner.imdomestic.com`，仅在 h610 的 Tailnet 地址监听，
+通过 Cloudflare DNS 验证签发证书；旧域名重定向到该地址。HTTPS 用于保护密码及
+Secure Cookie。保留 Fleet、Worker 与 OneBot 的机器凭据，它们不用于人的网页登录。
+
 ## 2026-09-07 · gaoji 改名保留数据 {#gaoji-rename}
 
 机器人项目改为 gaoji，input 指向 `zty20040403/gaojibot`。主程序、控制面、Worker、
