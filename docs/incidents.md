@@ -9,6 +9,15 @@
 
 ---
 
+## 2026-09-09 · gaoji 内网域名证书遇到 SOA NOTIMP {#gaoji-acme-inner-soa}
+
+新增控制台 HTTPS 后，证书 ensure 单元成功但 order-renew 失败，nginx 暂用自签证书。
+误导点是 `acme-gaoji` 的 success 只证明占位证书就绪，不能证明正式签发成功。
+lego 在查找 Cloudflare zone 时向系统解析器查询 `gaoji.inner.imdomestic.com` 的 SOA，
+内部 DNS 返回 NOTIMP；同机向 `1.1.1.1` 与 `8.8.8.8` 查询则得到正常的 NXDOMAIN
+及父域 authority。仅为该证书设置原生 `dnsResolver`，不修改 Tailnet 的日常解析，
+并保留现有的 120 秒传播等待；验收须使用正常证书校验访问 HTTPS。
+
 ## 2026-09-09 · h610 rebuild 预检发现 Max 锁定落后于现网 {#h610-max-pin-drift}
 
 发布 gaoji 账户授权时，dry-activate 意外列出了 Max 和 runtime 重启。仓库中的

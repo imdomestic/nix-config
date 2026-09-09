@@ -511,6 +511,8 @@ in {
 
   security.acme.certs."gaoji.inner.imdomestic.com" = {
     dnsProvider = "cloudflare";
+    # Tailnet DNS does not answer SOA; see docs/incidents.md#gaoji-acme-inner-soa.
+    dnsResolver = "1.1.1.1:53";
     environmentFile = config.sops.secrets."acme/cloudflare_env".path;
     group = "nginx";
     extraDomainNames = ["kennethbot.inner.imdomestic.com"];
