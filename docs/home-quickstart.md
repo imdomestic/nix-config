@@ -135,6 +135,7 @@ home-manager switch -b backup --flake .#a123456@macbook-pro-3
 ### 开发项目自动进入环境
 
 安装了共享 dev 工具链的 zsh 会同时启用 direnv 和原生 devenv hook。
+CLI 和 hook 都来自独立锁定的 devenv 2.3 上游包，可单独升级，不牵动其余 nixpkgs 工具。
 原生 devenv 项目第一次在根目录运行 `devenv allow`；之后 `cd` 进入项目会
 自动打开开发子 shell，在项目的子目录内移动会保留它，离开项目则自动退出
 并回到外层 shell 的目标目录。配置修改在后台重建，下一个提示符应用环境。
