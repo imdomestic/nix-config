@@ -132,6 +132,16 @@ home-manager switch -b backup --flake .#a123456@macbook-pro-3
 
 跑完 **重开一个终端**(或 `exec zsh`),改动才会体现在你的 shell 里。
 
+### 开发项目自动进入环境
+
+安装了共享 dev 工具链的 zsh 会同时启用 direnv 和原生 devenv hook。
+原生 devenv 项目第一次在根目录运行 `devenv allow`；之后 `cd` 进入项目会
+自动打开开发子 shell，在项目的子目录内移动会保留它，离开项目则自动退出
+并回到外层 shell 的目标目录。配置修改在后台重建，下一个提示符应用环境。
+
+项目选用原生 devenv 时，`.envrc` 应保持不加载环境，避免 `use flake` 或
+`use devenv` 再激活一份。其他项目仍由原有 direnv hook 管理。
+
 ---
 
 ## 4. 最常干的三件事
