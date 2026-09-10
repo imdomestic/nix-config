@@ -134,14 +134,14 @@ home-manager switch -b backup --flake .#a123456@macbook-pro-3
 
 ### 开发项目自动进入环境
 
-安装了共享 dev 工具链的 zsh 会同时启用 direnv 和原生 devenv hook。
-CLI 和 hook 都来自独立锁定的 devenv 2.3 上游包，可单独升级，不牵动其余 nixpkgs 工具。
-原生 devenv 项目第一次在根目录运行 `devenv allow`；之后 `cd` 进入项目会
-自动打开开发子 shell，在项目的子目录内移动会保留它，离开项目则自动退出
-并回到外层 shell 的目标目录。配置修改在后台重建，下一个提示符应用环境。
+共享 dev 工具链默认启用 direnv 和 nix-direnv。项目的 `.envrc` 使用
+`use flake . --impure` 时，会把与 `nix develop` 相同的开发环境加载到
+当前 shell；第一次运行 `direnv allow`，之后 `cd` 进入自动加载，离开自动恢复。
+需要 `.env` 的项目可在 `use flake` 后使用 `dotenv_if_exists .env`。
 
-项目选用原生 devenv 时，`.envrc` 应保持不加载环境，避免 `use flake` 或
-`use devenv` 再激活一份。其他项目仍由原有 direnv hook 管理。
+devenv CLI 保持独立锁定的 2.3 上游版本，原生自动激活 hook 默认关闭。
+从此前的原生自动激活切换时，在项目根目录运行 `devenv revoke` 并重开终端，
+避免旧 shell 中残留的 hook 再次启动子 shell。
 
 ---
 
