@@ -280,6 +280,10 @@ in {
     ["${pkgs.curl}/bin/curl" "--fail" "--silent" "http://${host.tsIp}:${toString config.services.maxops-hub.port}/readyz"]
   ];
 
+  services.gaoji-host-control = {
+    enable = true;
+    hostId = host.name;
+  };
   services.gaoji-cluster-control = {
     enable = true;
     stateDirectory = "kennethbot-cluster-control";
@@ -289,6 +293,7 @@ in {
     openFirewall = true;
     firewallInterfaces = ["tailscale0"];
     inventory = gaojiInventory;
+    hostControlHelpers = lib.genAttrs gaojiManagementHosts (_: "/run/current-system/sw/bin/gaoji-host-control");
     ops = {
       enable = true;
       baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";

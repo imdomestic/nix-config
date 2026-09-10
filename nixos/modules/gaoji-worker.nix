@@ -4,7 +4,11 @@
   resources = (import ../../lib/gaoji-workers.nix).${host.name};
   tokenName = "gaoji/worker_token";
 in {
-  imports = [inputs.qq-bot.nixosModules.cluster-worker];
+  imports = [inputs.qq-bot.nixosModules.cluster-worker inputs.qq-bot.nixosModules.host-control];
+  services.gaoji-host-control = {
+    enable = true;
+    hostId = host.name;
+  };
   sops.secrets.${tokenName} = {
     sopsFile = ../../secrets/gaoji + "/worker-${host.name}.yaml";
     key = "worker_token";

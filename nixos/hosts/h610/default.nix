@@ -51,6 +51,7 @@ in {
     inputs.qq-bot.nixosModules.gaoji
     inputs.qq-bot.nixosModules.cluster-control
     inputs.qq-bot.nixosModules.cluster-worker
+    inputs.qq-bot.nixosModules.host-control
   ];
 
   users = {
