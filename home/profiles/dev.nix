@@ -137,11 +137,6 @@ in {
     enableNushellIntegration = true;
   };
 
-  # Native devenv owns its subshell and background reload; direnv handles other projects.
-  programs.zsh.initContent = lib.mkAfter ''
-    eval "$(${devenv}/bin/devenv hook zsh)"
-  '';
-
   # TODO: update to 26.05
   # programs.claude-code = {
   #   enable = true;
