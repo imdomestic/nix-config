@@ -266,7 +266,8 @@ in {
     (panel 26 "性能状态 P0–P15（越小越高）" "short" (metric "nvidia_smi_pstate"))
     (panel 27 "全部降频原因（1 = 活跃）" "bool" (detail "clocks_event_reasons/.*"))
     (panel 28 "各降频原因累计时间" "s" (detail "clocks_event_reasons_counters/.*"))
-    (panel 29 "过去 5 分钟热 / 功耗降频占比" "percentunit" ''rate({__name__=~"nvidia_smi_clocks_event_reasons_counters_.*_seconds",${select}}[5m])'')
+    # rate drops metric names; the XML field label keeps each throttle reason distinct.
+    (panel 29 "过去 5 分钟热 / 功耗降频占比" "percentunit" ''rate(${detail "clocks_event_reasons_counters/.*"}[5m])'')
     (row 30 "PCIe / 可靠性 / 驱动错误")
     (panel 31 "PCIe TX / RX 吞吐" "Bps" (detail "pci/(tx_util|rx_util)"))
     (panel 32 "PCIe 当前 / 最大代数" "short" (detail "pci/pci_gpu_link_info/pcie_gen/.*"))
