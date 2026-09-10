@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import urllib.request
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -149,9 +150,22 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--rules")
     parser.add_argument("--promtool-tests")
+    parser.add_argument("--prometheus-url")
     args = parser.parse_args()
+    if (args.prometheus_url or args.promtool_tests) and not args.rules:
+        parser.error("--rules is required for Prometheus validation")
     result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(CollectorTests))
     if not result.wasSuccessful():
         raise SystemExit(1)
-    if args.rules:
+    if args.rules and args.promtool_tests:
         write_alert_tests(args.rules, args.promtool_tests)
+    if args.prometheus_url:
+        expected = {r["alert"] for g in json.loads(Path(args.rules).read_text())["groups"]
+                    for r in g["rules"] if "alert" in r}
+        with urllib.request.urlopen(args.prometheus_url.rstrip("/") + "/api/v1/rules", timeout=15) as response:
+            data = json.load(response)
+        loaded = {r["name"]: r for g in data["data"]["groups"] for r in g["rules"]}
+        assert expected <= loaded.keys(), f"GPU rules not loaded: {expected - loaded.keys()}"
+        assert all(loaded[name]["health"] == "ok" and not loaded[name].get("lastError")
+                   for name in expected), "GPU rule evaluation is unhealthy"
+        print(f"LIVE: {len(expected)} GPU alerts loaded and healthy at {args.prometheus_url}")

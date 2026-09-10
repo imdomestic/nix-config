@@ -15,9 +15,13 @@ gpuMonitoring = {
 UUID 用 `nvidia-smi -L` 获取。空列表自动纳入该机全部 NVIDIA GPU；显式列表只保留选中卡，
 并额外检查这些卡是否消失。换卡要更新 UUID；加卡向列表追加。主机必须运行原生 NVIDIA
 驱动且启用 telemetry。目前后端支持 NVIDIA；AMD/Intel 需要新增对应采集后端，不能只填 UUID。
+`server` profile 已导入 telemetry；其他 profile 的主机需在 `modules` 中追加
+`../../modules/telemetry`，然后同样只通过上述登记选择 GPU。
 
 修改后求值并部署 GPU 主机以及 `roles` 含 `monitor` 的主机，目前为 h610、tank。
-使用 `just deploy-system <host>`；从 macOS 调用 deploy-rs 须加 `--remote-build`。
+优先 SSH 到目标机器，使用独立干净 worktree 拉取当前 `origin/main`，以 checkout 所有者
+构建系统闭包，再执行本机 `just switch <host>`。普通用户没有免密激活权限时，用既有 root SSH
+执行 `nixos-rebuild --no-reexec switch --store-path <已验证的系统闭包>`，避免 root 重新取私有 inputs。
 Home Manager 与此无关。Grafana 看板、选择器和告警目标自动跟随登记，无须手动导入。
 
 GPU 主机可在 `system.nix` 通过原生自定义模块选项覆盖阈值：
@@ -82,6 +86,7 @@ nix eval --raw .#nixosConfigurations.tank.config.system.build.toplevel.drvPath
 
 可将 `gpu-alerts.nix` 求值结果传给 `check-gpu-monitoring.py --rules <rules.json>
 --promtool-tests <tests.json>`，再执行 `promtool check rules` 和 `promtool test rules`。
+上线后用 `--rules <rules.json> --prometheus-url http://<monitor>:9009` 逐条核对规则实际加载。
 上线后检查两份 Prometheus 的 targets/rules API、所有采集 success、最新时间戳、
 GPU UUID 和 `nvidia-smi` 的一致性，以及 Grafana provisioning 与 Alertmanager 配置。
 

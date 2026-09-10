@@ -248,12 +248,16 @@ in {
             inherit lib;
             monitorCount = builtins.length monitors;
           })
-          (builtins.toJSON (import ./gpu-alerts.nix {
-            inherit lib gpuHosts;
-            dashboardUrl = "http://${(lib.head (gateways ++ monitors)).tsIp}:${toString cfg.grafanaPort}";
-          }))
         ]
         ++ map builtins.toJSON cfg.extraRules;
+
+      # Independent JSON documents need separate files; docs/incidents.md#gpu-rule-files.
+      ruleFiles = [
+        (pkgs.writeText "gpu.rules" (builtins.toJSON (import ./gpu-alerts.nix {
+          inherit lib gpuHosts;
+          dashboardUrl = "http://${(lib.head (gateways ++ monitors)).tsIp}:${toString cfg.grafanaPort}";
+        })))
+      ];
 
       # **推给所有 Alertmanager,不是只推自己那个。**
       #

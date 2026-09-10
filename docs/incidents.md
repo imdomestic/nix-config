@@ -9,6 +9,17 @@
 
 ---
 
+## 2026-09-11 · GPU 告警 JSON 拼接后未被加载 {#gpu-rule-files}
+
+GPU 监控首次上线验收时，采集目标和 Grafana 看板正常，运行中的 Prometheus 却没有
+GPU 规则组。原因是 NixOS 把 `services.prometheus.rules` 的字符串列表直接按换行拼接：
+两个独立 JSON 对象成为同一文件，而读取规则时只使用第一份文档。
+
+误导点是 GPU 文件单独运行 `promtool check/test rules` 都通过，完整配置检查也没有
+拒绝尾部文档；这些检查没有证明运行中加载了预期数量的规则。改用原生 `ruleFiles`
+给 GPU 单独生成文件，并在 `check-gpu-monitoring.py --rules <gpu.rules> --prometheus-url <url>`
+中逐条核对线上告警名称和求值健康状态。部署验收必须同时覆盖 h610、tank。
+
 ## 2026-09-09 · gaoji 内网域名证书遇到 SOA NOTIMP {#gaoji-acme-inner-soa}
 
 新增控制台 HTTPS 后，证书 ensure 单元成功但 order-renew 失败，nginx 暂用自签证书。
