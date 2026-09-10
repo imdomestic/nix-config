@@ -7,6 +7,10 @@ in {
   kind = "nixos";
   roles = ["server" "gpu-compute"];
   tsIp = "100.64.0.33";
+  gpuMonitoring = {
+    enable = true;
+    uuids = ["GPU-d8ec4dea-3771-68e6-9f8b-11811e47ac9d"];
+  };
 
   maxops = {
     enable = true;

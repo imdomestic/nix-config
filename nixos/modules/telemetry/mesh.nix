@@ -237,14 +237,6 @@ in {
 
     # --- 路径类型:textfile 采集器 ---
 
-    systemd.tmpfiles.rules = [
-      "d ${cfg.textfileDir} 0755 root root -"
-    ];
-
-    services.prometheus.exporters.node.extraFlags = [
-      "--collector.textfile.directory=${cfg.textfileDir}"
-    ];
-
     systemd.services.tailscale-path-metrics = {
       description = "把 tailscale 的链路状态写成 node_exporter textfile 指标";
       after = ["tailscaled.service"];

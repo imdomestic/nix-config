@@ -50,6 +50,16 @@
       '';
     };
 
+    gpuMonitoring = {
+      enable = lib.mkEnableOption "NVIDIA GPU telemetry, dashboards and alerts";
+      uuids = lib.mkOption {
+        type = lib.types.listOf (lib.types.strMatching "GPU-[0-9a-fA-F-]+");
+        default = [];
+        example = ["GPU-d8ec4dea-3771-68e6-9f8b-11811e47ac9d"];
+        description = "GPU UUID allowlist; empty discovers all GPUs. Explicit UUIDs also detect a missing card.";
+      };
+    };
+
     maxops = {
       enable = lib.mkEnableOption "fleet management for this inventory host";
       readAllUnits = lib.mkOption {

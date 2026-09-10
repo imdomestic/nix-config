@@ -23,6 +23,12 @@ in
     system = h.system;
     kind = h.kind or "nixos";
     roles = h.roles or [];
+    gpuMonitoring =
+      {
+        enable = false;
+        uuids = [];
+      }
+      // (h.gpuMonitoring or {});
     maxops =
       {
         enable = false;
