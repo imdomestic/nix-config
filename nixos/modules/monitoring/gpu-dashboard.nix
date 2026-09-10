@@ -20,7 +20,7 @@ let
       w = 12;
       h = 8;
     };
-    targets = [(target expr "{{instance}} {{__name__}} {{field}} {{engine}} {{pid}} {{fan}}")];
+    targets = [(target expr "{{instance}} {{uuid}} {{__name__}} {{field}} {{engine}} {{pid}} {{fan}}")];
     fieldConfig = {
       defaults = {
         inherit unit;
