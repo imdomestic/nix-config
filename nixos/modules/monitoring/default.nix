@@ -45,6 +45,7 @@
     (import ../../../lib/mkInventory.nix {inherit inputs;})
     {hosts = import ../../hosts {inherit inputs;};};
   maxopsHosts = lib.filter (entry: entry.maxops.enable or false) inventory;
+  gpuHosts = lib.filter (entry: entry.gpuMonitoring.enable) inventory;
   maxopsHub = lib.findFirst (entry: entry.name == "h610") null maxopsHosts;
 
   # 自己这台的地址。Prometheus 和 Grafana 都只绑它。
@@ -247,6 +248,10 @@ in {
             inherit lib;
             monitorCount = builtins.length monitors;
           })
+          (builtins.toJSON (import ./gpu-alerts.nix {
+            inherit lib gpuHosts;
+            dashboardUrl = "http://${(lib.head (gateways ++ monitors)).tsIp}:${toString cfg.grafanaPort}";
+          }))
         ]
         ++ map builtins.toJSON cfg.extraRules;
 
@@ -278,6 +283,12 @@ in {
         [
           {
             job_name = "node";
+            relabel_configs = lib.optional (gpuHosts != []) {
+              source_labels = ["instance"];
+              regex = lib.concatStringsSep "|" (map (h: h.name) gpuHosts);
+              target_label = "__scrape_interval__";
+              replacement = "15s";
+            };
             # 一台机器一个 static_config,这样 labels 能逐台给。
             static_configs =
               map (h: {
@@ -292,6 +303,48 @@ in {
                 };
               })
               inventory;
+          }
+          {
+            job_name = "nvidia-gpu";
+            scrape_interval = "15s";
+            scrape_timeout = "10s";
+            static_configs =
+              map (h: {
+                targets = ["${h.tsIp}:9835"];
+                labels = {
+                  instance = h.name;
+                  vendor = "nvidia";
+                };
+              })
+              gpuHosts;
+            metric_relabel_configs =
+              lib.concatMap (h:
+                lib.optional (h.gpuMonitoring.uuids != []) {
+                  source_labels = ["instance" "uuid"];
+                  regex = "${h.name};.+";
+                  target_label = "__tmp_gpu_selected";
+                  replacement = "no";
+                }
+                ++ lib.optionals (h.gpuMonitoring.uuids != []) [
+                  {
+                    source_labels = ["instance" "uuid"];
+                    regex = "${h.name};(${lib.concatStringsSep "|" (map (u: lib.toLower (lib.removePrefix "GPU-" u)) h.gpuMonitoring.uuids)})";
+                    target_label = "__tmp_gpu_selected";
+                    replacement = "yes";
+                  }
+                ])
+              gpuHosts
+              ++ [
+                {
+                  source_labels = ["__tmp_gpu_selected"];
+                  regex = "no";
+                  action = "drop";
+                }
+                {
+                  regex = "__tmp_gpu_selected";
+                  action = "labeldrop";
+                }
+              ];
           }
           {
             job_name = "ping";
@@ -468,6 +521,11 @@ in {
         # "tank 抓不到了"一条,而不是二十条。
         inhibit_rules = [
           {
+            source_matchers = ["alertname = GPUTemperatureCritical"];
+            target_matchers = ["alertname = GPUTemperatureHigh"];
+            equal = ["instance" "uuid"];
+          }
+          {
             source_matchers = ["alertname = HostUnreachable"];
             target_matchers = ["severity =~ warning|info"];
             equal = ["instance"];
@@ -545,6 +603,15 @@ in {
       provision.dashboards.settings = {
         apiVersion = 1;
         providers = [
+          {
+            name = "gpu";
+            orgId = 1;
+            type = "file";
+            disableDeletion = true;
+            allowUiUpdates = false;
+            updateIntervalSeconds = 30;
+            options.path = pkgs.writeTextDir "gpu.json" (builtins.toJSON (import ./gpu-dashboard.nix));
+          }
           {
             name = "nix";
             orgId = 1;

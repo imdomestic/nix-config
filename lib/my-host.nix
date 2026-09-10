@@ -16,6 +16,7 @@ let
         inherit system;
         roles = host.roles or [];
         tsIp = host.tsIp or null;
+        gpuMonitoring = host.gpuMonitoring or {};
         maxops = host.maxops or {};
         users = host.users or {};
         homeOverlays = host.homeOverlays or [];

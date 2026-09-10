@@ -11,7 +11,7 @@
 }: let
   cfg = config.my.telemetry;
 in {
-  imports = [./mesh.nix ./nix-builds.nix];
+  imports = [./mesh.nix ./nix-builds.nix ./gpu.nix];
 
   options.my.telemetry = {
     enable = lib.mkOption {
@@ -84,7 +84,10 @@ in {
       openFirewall = false;
 
       enabledCollectors = cfg.collectors;
+      extraFlags = ["--collector.textfile.directory=${cfg.textfileDir}"];
     };
+
+    systemd.tmpfiles.rules = ["d ${cfg.textfileDir} 0755 root root -"];
 
     networking.firewall.interfaces.tailscale0.allowedTCPPorts = [cfg.port];
 
