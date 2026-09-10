@@ -228,6 +228,7 @@ in {
         capabilities = [
           "fleet:read"
           "host:read"
+          "metrics:read"
           "units:read"
           "logs:read"
           "alerts:read"
