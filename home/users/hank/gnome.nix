@@ -18,7 +18,12 @@ in {
     ../../modules/forge
     ../../modules/ghostty
     ../../modules/vicinae
+    ../../modules/zen-browser
   ];
+
+  programs.zen-browser.env = lib.mkIf (config.my.host.name == "b650") {
+    MOZ_DRM_DEVICE = "/dev/dri/by-path/pci-0000:14:00.0-render";
+  };
 
   programs.gnome-shell.extensions = [
     {package = pkgs.gnomeExtensions.blur-my-shell;}
