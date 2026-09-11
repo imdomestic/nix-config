@@ -16,11 +16,15 @@
 in {
   imports = [
     ../../modules/forge
+    ../../modules/ghostty
     ../../modules/vicinae
   ];
 
   programs.gnome-shell.extensions = [{package = pkgs.gnomeExtensions.blur-my-shell;}];
-  programs.kitty.enable = true;
+  xdg.terminal-exec = {
+    enable = true;
+    settings.default = ["com.mitchellh.ghostty.desktop"];
+  };
 
   dconf.settings = {
     "org/gnome/mutter" = {
@@ -49,7 +53,7 @@ in {
     };
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/terminal" = {
       name = "Terminal";
-      command = lib.getExe config.programs.kitty.package;
+      command = lib.getExe config.programs.ghostty.package;
       binding = "<Alt>Return";
     };
     "org/gnome/shell/extensions/forge" = {
