@@ -28,6 +28,13 @@
 不重启主机。此改动修复恢复路径，不代表原始 VLESS 越界根因已被修复。验收需
 核实 DAE ready、DNS、GitHub HTTPS 及内网控制台，而不是只看 systemd active。
 
+14:13:53 HKT，修复配置在 h610 激活，DAE 成功加载 BPF 且进入 running，
+`nixos-rebuild switch` 正常退出。随后系统解析 `github.com` 成功，GitHub HTTPS
+返回 200（0.805 秒、TLS 校验通过），gaoji 内网控制台 HTTPS 返回 200，h610
+直接 `git fetch origin` 成功。Bot、集群控制器、Max、Max NapCat 和 PostgreSQL
+node 的 PID 与启动时间均未改变；没有重启主机、删除网络规则或改动其他服务。
+本次只验证恢复与正常请求，没有在共享网关上人为制造第二次 panic。
+
 ## 2026-09-11 · GPU 告警 JSON 拼接后未被加载 {#gpu-rule-files}
 
 GPU 监控首次上线验收时，采集目标和 Grafana 看板正常，运行中的 Prometheus 却没有
