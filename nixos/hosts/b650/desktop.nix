@@ -1,5 +1,8 @@
 {...}: {
-  imports = [../../modules/nerdfonts];
+  imports = [
+    ../../modules/keyd
+    ../../modules/nerdfonts
+  ];
 
   services = {
     displayManager.gdm = {
