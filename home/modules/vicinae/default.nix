@@ -1,4 +1,9 @@
-{pkgs, ...}: {
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: {
   programs.vicinae = {
     enable = true;
     systemd.enable = true;
@@ -9,5 +14,16 @@
   programs.gnome-shell = {
     enable = true;
     extensions = [{package = pkgs.gnomeExtensions.vicinae;}];
+  };
+
+  dconf.settings = {
+    "org/gnome/settings-daemon/plugins/media-keys".custom-keybindings = [
+      "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/"
+    ];
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae" = {
+      name = "Vicinae";
+      command = "${lib.getExe config.programs.vicinae.package} toggle";
+      binding = "<Alt>a";
+    };
   };
 }

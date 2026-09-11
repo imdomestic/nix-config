@@ -65,8 +65,6 @@ in {
     settings.Resolve.FallbackDNS = ["223.5.5.5"];
   };
 
-  xdg.portal.wlr.enable = true;
-
   environment = {
     variables = {
       EDITOR = "nvim";
@@ -106,10 +104,6 @@ in {
   ];
 
   programs = {
-    niri = {
-      package = pkgs.niri;
-      enable = true;
-    };
     gamescope = {
       enable = true;
       capSysNice = true;

@@ -20,7 +20,7 @@ in {
     # ../../modules/singbox
     # tuigreet 摘掉了。它是个图形登录管理器(services.greetd),而 NixOS 26.05 里
     # greetd 算 displayManager —— 一开就把 graphical-desktop.nix 整个拉进来。
-    # **这才是这台上 nautilus 和 speech-dispatcher 的真正来源**,不是 niri:
+    # 这才是这台上 nautilus 和 speech-dispatcher 的真正来源:
     # why-depends 的链路是 `etc → dbus-1 → nautilus` 和 `etc →
     # speech-dispatcher → mbrola → mbrola-voices(645 MiB)`,两条都从
     # graphical-desktop 的 dbus/portal 包集出来。
@@ -376,7 +376,7 @@ in {
     };
   };
 
-  # 原本开着 niri + firefox,2026-08-12 清掉 —— 这台是网关、没接显示器,那套
+  # 原有的桌面和浏览器于 2026-08-12 清掉 —— 这台是网关、没接显示器,那套
   # 桌面栈从来没人用过,却往 closure 里拖了 2 GiB(明细见
   # docs/decisions.md#rpi4-drop-desktop)。
   #
@@ -404,7 +404,7 @@ in {
   programs.zsh.enable = true;
 
   # pipewire 跟着上面那套桌面一起删了 —— 这台没有声卡也没有人在上面放音频,
-  # 它存在的唯一原因是 niri 那套需要。
+  # 它存在的唯一原因是旧桌面需要。
 
   # services.openssh.enable 删了:profiles/server.nix → modules/ssh 已经开了,
   # 而且那边还配了 AuthorizedKeysFile 指向 /etc/ssh/authorized_keys.d/master。

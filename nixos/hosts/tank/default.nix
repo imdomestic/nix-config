@@ -31,7 +31,6 @@ in {
   ];
 
   externalModules = [
-    # inputs.vscode-server.nixosModules.default
     inputs.nix-minecraft.nixosModules.minecraft-servers
     inputs.nix-index-database.nixosModules.default
   ];
