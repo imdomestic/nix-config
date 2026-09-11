@@ -9,6 +9,25 @@
 
 ---
 
+## 2026-09-11 · h610 DAE 崩溃后的启动死锁 {#h610-dae-crash-recovery}
+
+13:40:30 HKT，DAE 1.0.0 的 VLESS `reqHeaderFromPool` 发生越界 panic，进程以
+退出码 2 结束。上游 systemd 单元使用 `Restart=on-abnormal`，不覆盖这种普通非零
+退出，因此没有自行恢复。13:55 的系统激活尝试重新拉起它，却每两分钟卡在
+`Waiting for network...` 后超时重试。
+
+误导点是 SSH 和 QQ 的内网连接仍正常，容易把 GitHub 拉取失败当成单独的 DNS
+问题。实测默认 PPP 路由仍在、`223.5.5.5` ping 正常，但公网 DNS 和 IP HTTP
+连接超时，`ppp0` 上仍有旧 `dae_wan_egress` BPF 挂钩。源码显示启动探测先于
+控制平面重建，而且探测可无限等待；这使“先恢复代理才能联网”和“先联网才能
+启动代理”互相等待。
+
+仅在 h610 使用原生 `disable_waiting_network` 配置跳过这个启动前探测，并设
+`Restart=on-failure`、`RestartSec=5s`。保留 network-online 依赖、节点健康检查、
+分流规则、Tailscale 直连和密钥的 sops/LoadCredential 管理；不清空共享防火墙、
+不重启主机。此改动修复恢复路径，不代表原始 VLESS 越界根因已被修复。验收需
+核实 DAE ready、DNS、GitHub HTTPS 及内网控制台，而不是只看 systemd active。
+
 ## 2026-09-11 · GPU 告警 JSON 拼接后未被加载 {#gpu-rule-files}
 
 GPU 监控首次上线验收时，采集目标和 Grafana 看板正常，运行中的 Prometheus 却没有
