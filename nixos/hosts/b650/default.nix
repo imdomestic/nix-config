@@ -5,7 +5,7 @@
 in {
   system = "x86_64-linux";
   kind = "nixos";
-  roles = ["server" "gpu-compute"];
+  roles = ["server" "gpu-compute" "desktop" "gui"];
   tsIp = "100.64.0.33";
   gpuMonitoring = {
     enable = true;
@@ -35,6 +35,7 @@ in {
   modules = [
     ./system.nix
     ./hardware-configuration.nix
+    ./desktop.nix
   ];
 
   externalModules = [
@@ -49,6 +50,7 @@ in {
     modules = [
       userModules.hank.module
       userModules.hank.dev
+      ../../../home/users/hank/gnome.nix
     ];
   };
 }
