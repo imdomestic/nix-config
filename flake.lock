@@ -2189,6 +2189,7 @@
         "system-manager": "system-manager",
         "thymis": "thymis",
         "wg-config": "wg-config",
+        "zen-browser": "zen-browser",
         "zjstatus": "zjstatus",
         "zsh-hank": "zsh-hank",
         "zsh-linwhite": "zsh-linwhite"
@@ -2864,6 +2865,30 @@
       "original": {
         "type": "git",
         "url": "ssh://git@github.com/imdomestic/wgconfigs"
+      }
+    },
+    "zen-browser": {
+      "inputs": {
+        "home-manager": [
+          "home-manager"
+        ],
+        "nixpkgs": [
+          "nixpkgs-unstable"
+        ]
+      },
+      "locked": {
+        "lastModified": 1788631059,
+        "narHash": "sha256-dTXXfL/ebqRvOLV/cFiTh/TKN6FNVGg+IMgk1lKtxMs=",
+        "owner": "0xc000022070",
+        "repo": "zen-browser-flake",
+        "rev": "7e8bf446cd9cfa86d30dafb9694f548afc7b2df0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "0xc000022070",
+        "ref": "beta",
+        "repo": "zen-browser-flake",
+        "type": "github"
       }
     },
     "zjstatus": {
