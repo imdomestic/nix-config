@@ -88,6 +88,17 @@ in {
               HOME = "/tmp";
               PATH = lib.makeBinPath [
                 pkgs.coreutils
+                pkgs.systemd
+                pkgs.iproute2
+                pkgs.procps
+                pkgs.gnugrep
+                pkgs.gnused
+                pkgs.gawk
+                pkgs.findutils
+                pkgs.jq
+                pkgs.curl
+                pkgs.iputils
+                pkgs.tailscale
                 pkgs.git
                 pkgs.nix
               ];
