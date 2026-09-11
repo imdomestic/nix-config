@@ -43,14 +43,8 @@ in {
       sleep-inactive-battery-type = "nothing";
     };
     "org/gnome/settings-daemon/plugins/media-keys".custom-keybindings = [
-      "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae/"
       "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/terminal/"
     ];
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/vicinae" = {
-      name = "Vicinae";
-      command = "${lib.getExe config.programs.vicinae.package} toggle";
-      binding = "<Alt>a";
-    };
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/terminal" = {
       name = "Terminal";
       command = lib.getExe config.programs.ghostty.package;

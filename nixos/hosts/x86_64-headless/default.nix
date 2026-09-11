@@ -14,10 +14,6 @@ in {
     ];
   };
 
-  externalModules = [
-    # inputs.niri.nixosModules.niri
-  ];
-
   users = {
     hank = {
       home = {

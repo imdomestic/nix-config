@@ -59,27 +59,27 @@
         "window_swap_first" = "alt + shift - n";
         "window_swap_last" = "alt + shift - m";
 
-        # ---- Sizing (matches niri Mod+R / Mod+Shift+R / Mod+F / Mod+C) ----
+        # ---- Sizing ----
         "window_resize" = "alt - r";
         "window_shrink" = "alt + shift - r";
         "window_fullwidth" = "alt - f";
         "window_center" = "alt - c";
         "window_snap" = "alt - s";
 
-        # ---- Stacking (matches niri Mod+[ / Mod+] consume-or-expel) ----
+        # ---- Stacking ----
         "window_stack" = "alt - leftbracket";
         "window_unstack" = "alt - rightbracket";
         "window_equalize" = "alt - e";
 
-        # ---- Floating toggle (matches niri & aerospace alt+shift+space) ----
+        # ---- Floating toggle (matches aerospace alt+shift+space) ----
         "window_manage" = "alt + shift - space";
 
-        # ---- Cross-display (matches niri Mod+Ctrl+L direction-ish) ----
+        # ---- Cross-display ----
         "window_nextdisplay" = "alt + ctrl - l";
         "window_nextdisplaysend" = "alt + shift + ctrl - l";
         "mouse_nextdisplay" = "alt + ctrl - m";
 
-        # ---- Virtual workspaces (matches niri Mod+U / Mod+I) ----
+        # ---- Virtual workspaces ----
         "window_virtual_south" = "alt - i";
         "window_virtual_north" = "alt - u";
         "window_virtualmove_south" = "alt + shift - i";

@@ -81,8 +81,6 @@ in {
     settings.Resolve.FallbackDNS = ["223.5.5.5"];
   };
 
-  xdg.portal.wlr.enable = true;
-
   environment = {
     variables = {
       EDITOR = "nvim";
@@ -114,10 +112,6 @@ in {
   ];
 
   programs = {
-    niri = {
-      package = pkgs.niri;
-      enable = true;
-    };
     gamescope = {
       enable = true;
       capSysNice = true;
@@ -133,8 +127,6 @@ in {
   };
 
   services.openssh.enable = true;
-
-  catppuccin.autoEnable = false;
 
   system.stateVersion = "26.05"; # Did you read the comment?
 }

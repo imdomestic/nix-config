@@ -232,24 +232,12 @@
       flake = false;
     };
 
-    catppuccin.url = "github:catppuccin/nix";
-
     zjstatus = {
       url = "github:dj95/zjstatus";
     };
 
     nur = {
       url = "github:nix-community/NUR";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    quickshell = {
-      url = "github:outfoxxed/quickshell";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    noctalia = {
-      url = "github:noctalia-dev/noctalia-shell";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -264,11 +252,7 @@
     #   inputs.nixpkgs.follows = "nixpkgs";
     # };
 
-    walker.url = "github:abenz1267/walker";
-
-    vscode-server.url = "github:nix-community/nixos-vscode-server";
     thymis.url = "github:Thymis-io/thymis/v0.3";
     steam-servers.url = "github:scottbot95/nix-steam-servers";
-    niri.url = "github:sodiboo/niri-flake";
   };
 }

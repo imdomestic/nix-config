@@ -1,0 +1,11 @@
+diff --git a/lib/shared/theme.js b/lib/shared/theme.js
+--- a/lib/shared/theme.js
++++ b/lib/shared/theme.js
+@@ -199,3 +199,4 @@
+-      let copyConfigCss = Gio.File.new_for_path(this.configMgr.stylesheetFileName + ".bak");
+-      let backupFine = configCss.copy(copyConfigCss, Gio.FileCopyFlags.OVERWRITE, null, null);
+-      let copyFine = originalCss.copy(configCss, Gio.FileCopyFlags.OVERWRITE, null, null);
++      let copyConfigCss = configCss.get_parent().get_child(configCss.get_basename() + ".bak");
++      configCss.set_attribute_uint32("unix::mode", 0o644, Gio.FileQueryInfoFlags.NONE, null);
++      let [backupFine] = copyConfigCss.replace_contents(configCss.load_contents(null)[1], null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
++      let [copyFine] = configCss.replace_contents(originalCss.load_contents(null)[1], null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);

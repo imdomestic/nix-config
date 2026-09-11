@@ -478,14 +478,6 @@ in {
   # 引入,按 my.host.tsIp 自动开)。这台是 2026-08-08 那次 Tailscale SSH 的试点,
   # 实测结论记在模块的文件头注释里。
 
-  # programs = {
-  #   niri = {
-  #     package = pkgs.niri;
-  #     enable = true;
-  #   };
-  #   firefox.enable = true;
-  # };
-
   # Set your time zone.
   time.timeZone = "Asia/Hong_Kong";
 

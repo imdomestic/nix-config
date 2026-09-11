@@ -41,7 +41,5 @@ in {
       radeontop
       corectrl
       btop-rocm
-      # noctalia 不在这儿:它由 modules/noctalia 的 programs.noctalia-shell
-      # 装,那边同时会写配置、起 user service。
     ];
 }

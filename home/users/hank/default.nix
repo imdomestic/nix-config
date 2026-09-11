@@ -242,16 +242,7 @@ in {
 
       bind r source-file ~/.config/tmux/tmux.conf \; display '~/.config/tmux/tmux.conf sourced'
 
-      # ---- 键位分工,照 hyprland 那套映射过来 ----
-      #
-      #   hyprland                              tmux
-      #   $mod + ←→↑↓          resizeactive     prefix + ←→↑↓        resize-pane
-      #   $mod + h/j/k/l       movefocus        prefix + h/j/k/l     select-pane
-      #   $mod SHIFT + h/j/k/l movewindow       prefix + H/J/K/L     swap-pane
-      #   $mod + 1..9          workspace        prefix + 1..9        select-window(默认)
-      #
-      # 大写本来就要按 Shift,所以 `prefix H` 天然对应 `$mod SHIFT + h` ——
-      # 不加 Shift 移动焦点、加 Shift 搬东西,两边是同一套。
+      # 小写 h/j/k/l 移动焦点,大写 H/J/K/L 搬动 pane。
       #
       # swap-pane 不加 -d(焦点跟着自己的 pane 走),swap-window 必须补
       # select-window(否则窗口挪了人没跟过去);两处的实测过程和 `-t -` 与
@@ -985,16 +976,11 @@ in {
   # m1elite 的 system 那份纯属重复。
   ++ lib.optionals (config.my.host.name == "aarch64-wsl") [pkgs.distrobox]
   ++ lib.optionals (config.my.host.name == "r5sjp") [pkgs.wakeonlan]
-  # tank 的图形界面是 host 级开的 hyprland,而 tank 的 hank 没引 gui.linux
-  # (那行是注释掉的),所以 modules/gui 到不了这台 —— 它的桌面包只能挂这儿。
+  # tank 的 hank 没引 gui.linux,所以这台的桌面工具单独列出。
   ++ lib.optionals (config.my.host.name == "tank") [
-    pkgs.waybar
-    pkgs.nwg-dock-hyprland
     pkgs.brightnessctl
     pkgs.radeontop
     pkgs.clapper
-    # waybar 的脚本要用。原注释写着 "make waybar happy",waybar 搬到哪它就跟到哪。
-    (pkgs.python3.withPackages (ps: with ps; [pandas requests]))
   ]
   ++ lib.optionals (config.my.host.name == "m1elite") [
     # 用来推别的机器,不是这台 Mac 自己要的。

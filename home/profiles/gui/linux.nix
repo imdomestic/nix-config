@@ -1,24 +1,10 @@
-{
-  pkgs,
-  pkgs-unstable,
-  inputs,
-  ...
-}: {
+{pkgs, ...}: {
   imports = [
-    # ../../modules/hyprland
-    ../../modules/walker
-    ../../modules/tofi
-    inputs.walker.homeManagerModules.default
-    # inputs.catppuccin.homeModules.catppuccin
-    inputs.noctalia.homeModules.default
-    inputs.niri.homeModules.niri
+    ../../modules/vicinae
     ../../modules/ghostty
     ../../modules/gui
-    ../../modules/noctalia
   ];
   # ++ pkgs.lib.optional (hostname == "b660") [../../modules/gui];
-
-  programs.fuzzel.enable = true;
 
   # use qemu system session
   # dconf.settings = {
@@ -64,13 +50,4 @@
     sioyek
   ];
 
-  # catppuccin.gtk = {
-  #   enable = true;
-  #   accent = "lavender";
-  #   icon.enable = true;
-  #   icon.accent = "lavender";
-  # };
-  # catppuccin.yazi.enable = true;
-  # catppuccin.zellij.enable = true;
-  # catppuccin.btop.enable = true;
 }

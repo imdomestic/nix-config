@@ -125,15 +125,9 @@
     corectrl
     ddns-go
     btop-rocm
-
-    inputs.noctalia.packages.${system}.default
   ];
 
   programs = {
-    niri = {
-      package = pkgs.niri;
-      enable = true;
-    };
     gamescope = {
       enable = true;
       capSysNice = true;
