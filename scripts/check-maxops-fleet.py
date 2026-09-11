@@ -65,6 +65,7 @@ def main():
     for entry in overview["hosts"]:
         assert entry["agent"]["state"] == "reachable", f"{entry['host']}: agent unavailable"
         assert entry["exporter"]["state"] == "up", f"{entry['host']}: exporter is not freshly up"
+    restart_history = []
     for host in inventory:
         name = host["name"]
         params = {"host": name}
@@ -93,7 +94,9 @@ def main():
         status = query("units.status", {"host": name, "unit": "maxops-agent.service"})
         assert status["unit"]["active_state"] == "active"
         assert status["unit"]["details"]["main_pid"] > 0
-        assert status["unit"]["details"]["restarts"] == 0
+        restarts = status["unit"]["details"]["restarts"]
+        if restarts != 0:
+            restart_history.append(f"{name}: {restarts} agent restarts")
         logs = query("units.logs", {"host": name, "unit": "maxops-agent.service", "lines": 10, "since_seconds": 3600})
         assert len(logs["entries"]) <= 10
         assert all(set(entry) == {"timestamp_us", "priority", "message"} for entry in logs["entries"])
@@ -132,6 +135,7 @@ def main():
     # Unknown JSON fields are rejected by the typed HTTP extractor before dispatch.
     query("host.metrics", {"host": inventory[0]["name"], "query": "up"}, expected=422)
     print(f"PASS {len(expected_hosts)}-host fleet: protocol-2 discovery, read-only operations, executor discovery and authorization boundaries; no test notifications sent")
+    assert not restart_history, "agent restart history: " + "; ".join(restart_history)
 
 
 if __name__ == "__main__":
