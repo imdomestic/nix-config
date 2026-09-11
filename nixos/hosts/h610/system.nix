@@ -129,6 +129,12 @@ in {
   my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????" "max-sb-egress" "max-sb-native"];
   # See docs/incidents.md#max-native-runtime-dns.
   my.dae.foreignDnsOverTcp = true;
+  # See docs/incidents.md#h610-dae-crash-recovery.
+  my.dae.disableWaitingNetwork = true;
+  systemd.services.dae.serviceConfig = {
+    Restart = "on-failure";
+    RestartSec = "5s";
+  };
   # Prepare the shared mount before DAE binds its namespace.
   systemd.services.dae.after = ["max-sandbox-network.service"];
   systemd.services.dae.wants = ["max-sandbox-network.service"];

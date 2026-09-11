@@ -37,6 +37,11 @@
     then builtins.toJSON interface
     else interface;
 in {
+  options.my.dae.disableWaitingNetwork = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "Skip the pre-start connectivity probe so DAE can reclaim its BPF hooks after a crash.";
+  };
   options.my.dae.foreignDnsOverTcp = lib.mkOption {
     type = lib.types.bool;
     default = false;
@@ -83,6 +88,7 @@ in {
             log_level: info
             allow_insecure: false
             auto_config_kernel_parameter: true
+            ${lib.optionalString cfg.disableWaitingNetwork "disable_waiting_network: true"}
 
             # --- 存活检查 ---
             # 检查目标都带上兜底 IP，避免“检查目标的 DNS 解析又绕回 im 组”造成死锁，
