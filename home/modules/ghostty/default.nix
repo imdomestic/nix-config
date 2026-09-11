@@ -70,7 +70,11 @@ in {
       window-decoration = true;
       font-family =
         if isLinux
-        then "Recursive"
+        then [
+          "RecMonoSmCasual Nerd Font Mono"
+          "DejaVu Sans Mono"
+          "Noto Sans CJK SC"
+        ]
         # Recursive/Nerd Font has no CJK glyphs; without an explicit fallback
         # Ghostty's own font matching lands on a Song/Kai-style face instead
         # of the system cascade (PingFang SC). Order matters: first hit wins.
@@ -121,4 +125,3 @@ in {
 # inspector               S-C-i
 # toggle fullscreen       C-Enter
 # goto tab [1-9]          C-[1-9]
-
