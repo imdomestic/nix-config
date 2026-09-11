@@ -9,6 +9,54 @@
 
 ---
 
+## 2026-09-11 · b650 Windows 原盘启动成功，核显直通仍不稳定 {#b650-windows-igpu-probe}
+
+在 Ryzen 7 9800X3D / MSI B650M GAMING WIFI 上，用 QEMU 10.2.2、KVM 和 OVMF
+启动 WD SN740 上已有的 Windows 11，成功进入原来的用户桌面。测试使用 qcow2
+差分层，WD 整盘仅作为只读 backing file；写入位于 Linux 的
+`/var/lib/windows-vm-probe/`。Fanxiang 盘含正在运行的 Linux 分区，未向虚拟机
+暴露整盘，原 Windows 的 E: 数据分区也未接入。差分层依赖原盘内容不变，不能在
+原生 Windows 改写原盘后继续复用，也不能当作独立备份。
+
+AMD 核显 `14:00.0`（1002:13c0）及 HDMI 音频 `14:00.1` 分属独立 IOMMU group，
+物理显示器确实显示过 Windows。显卡使用本机导出的 VBIOS，音频功能使用
+`isc30/ryzen-gpu-passthrough-proxmox` 中 9800X3D 的 GOP ROM；仅供客体使用，
+未刷写硬件。NVIDIA 5090 始终保留在宿主机，未做直通，但宿主机恢复重启会中断推理。
+
+首先踩到宿主驱动卸载顺序问题：只 unbind amdgpu、随即绑定 VFIO，之后解除 VFIO
+时触发 `vfio_pci_core_sriov_configure` 的 NULL pointer dereference。改为停止
+GDM、解除 framebuffer console、完整卸载 amdgpu，再绑定 VFIO 后，不启动客体的
+驱动往返测试通过。这个结果没有证明运行 Windows 后仍能正常复位。
+
+实际客体测试仍反复闪屏、黑屏。最后一轮给客体 8 GiB / 8 核，移除模拟 VGA，
+使用 `host,kvm=off,hypervisor=off,svm=off` 和 `x-vga=on`，曾短暂恢复正常。
+Windows 报告 AMD 驱动 `32.0.21045.5002`、设备错误码 0，且 Direct3D 11 的
+HARDWARE device 创建曾连续成功（feature level 11.0），随后用户再次确认闪屏。
+宿主机同步记录 `AMD-Vi: IO_PAGE_FAULT`，地址集中在 `0x84f341xxx`。首次 D3D
+探测返回 `0x887A0005`（DXGI_ERROR_DEVICE_REMOVED）；由于此前刚切换 4K120 至
+4K60，不能单凭这一轮把触发原因归到刷新率或 D3D 调用本身。
+
+误导点有三个：设备管理器正常不等于加速稳定；几次 D3D 创建成功不等于持续可用；
+GDM 显示 active 不等于宿主核显已恢复。前几轮退出后出现 `kiq ring test failed`、
+`KCQ enable failed`，或 `Unable to set WC memtype` / `gmc_v10_0 failed -22`。
+恢复脚本即使启动了 GDM，AMD 设备仍可能没有驱动或 DRM 节点。需要检查真实设备
+绑定、DRM 节点、初始化日志以及物理画面，不能只检查服务状态。
+
+21:25 HKT，最后一轮在 ACPI 及客体关机命令后仍未退出，结束 QEMU 后宿主再次
+初始化失败；VRAM 起始地址从启动时的 `0xF400000000` 变成异常的
+`0xFFFFFF000000`。保存日志后通过宿主重启恢复，不再继续追加直通试验。
+恢复过程中用户短暂进入了原生 Windows，之后于 21:27 回到 Linux；核显重新
+绑定 amdgpu，card/render 节点和 GDM 均恢复。两份旧差分盘合计约 5 GiB，已重命名
+为 `*-invalid-after-native-boot.qcow2`，保留排查证据并阻止旧启动脚本直接复用。
+恢复后 Qwen 的实际聊天请求返回 `OK`，`ninfer-serve` 在 5090 上占用 23658 MiB，
+没有 Windows 测试单元继续运行；系统和 Home Manager generation 均未切换。
+
+本次没有把试验配置加入 NixOS，也没有启用自动切换服务。结论是已有 Windows
+可以在虚拟机内启动；核显直通和往返恢复尚未达到日常使用要求。后续应分别验证
+Windows 驱动、固件/UMA 映射及客体关机前设备释放，避免继续同时更改多个变量。
+参考：[上游动态交接实测](https://github.com/isc30/ryzen-gpu-passthrough-proxmox/issues/131)、
+[Microsoft DXGI 错误定义](https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/dxgi-error)。
+
 ## 2026-09-11 · h610 DAE 崩溃后的启动死锁 {#h610-dae-crash-recovery}
 
 13:40:30 HKT，DAE 1.0.0 的 VLESS `reqHeaderFromPool` 发生越界 panic，进程以
