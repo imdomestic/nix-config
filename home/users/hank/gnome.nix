@@ -20,7 +20,10 @@ in {
     ../../modules/vicinae
   ];
 
-  programs.gnome-shell.extensions = [{package = pkgs.gnomeExtensions.blur-my-shell;}];
+  programs.gnome-shell.extensions = [
+    {package = pkgs.gnomeExtensions.blur-my-shell;}
+    {package = pkgs.gnomeExtensions.just-perfection;}
+  ];
   xdg.terminal-exec = {
     enable = true;
     settings.default = ["com.mitchellh.ghostty.desktop"];
@@ -51,9 +54,12 @@ in {
       binding = "<Alt>Return";
     };
     "org/gnome/shell/extensions/forge" = {
+      focus-border-toggle = false;
+      split-border-toggle = false;
       window-gap-size = lib.hm.gvariant.mkUint32 10;
       resize-amount = lib.hm.gvariant.mkUint32 50;
     };
+    "org/gnome/shell/extensions/just-perfection".workspace-popup = false;
     "org/gnome/shell/extensions/forge/keybindings" = {
       window-focus-left = ["<Alt>h"];
       window-focus-down = ["<Alt>j"];
