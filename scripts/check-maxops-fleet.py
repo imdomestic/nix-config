@@ -103,7 +103,12 @@ def main():
             assert metrics["metrics"][key]["state"] == "available", f"{name}: {key} not fresh"
         profiles = query("resources.list", {"kind": "execution_profiles", "host": name})
         assert {entry["profile"]["name"] for entry in profiles["resources"]} == {"diagnostic", "operator", "activation"}
-        assert all(set(entry["profile"]) == {"name", "max_timeout_seconds", "output_limit_bytes"} for entry in profiles["resources"])
+        assert all({"name", "max_timeout_seconds", "output_limit_bytes", "user", "privileged", "interpreter", "working_roots", "path"} <= set(entry["profile"]) for entry in profiles["resources"])
+        diagnostic = next(entry["profile"] for entry in profiles["resources"] if entry["profile"]["name"] == "diagnostic")
+        assert diagnostic["user"] == "maxops-runner" and not diagnostic["privileged"]
+        assert diagnostic["path"] and "tailscale" in diagnostic["path"] and "systemd" in diagnostic["path"]
+        probes = query("resources.list", {"kind": "diagnostic_probes", "host": name})
+        assert {"tailscale-status", "ipv6-addresses", "ipv6-routes", "memory"} <= {entry["probe"] for entry in probes["resources"]}
         print(f"PASS {name}: {units['total']} observed units ({coverage}), agent/executor, profiles, service details, bounded logs, metrics and deployment profile", flush=True)
     failed = query("units.failed")
     assert {entry["host"] for entry in failed["hosts"]} == expected_hosts
