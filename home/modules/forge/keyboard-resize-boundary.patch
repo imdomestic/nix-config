@@ -1,0 +1,30 @@
+--- a/lib/extension/window.js
++++ b/lib/extension/window.js
+@@ -805,6 +805,27 @@
+   resize(grabOp, amount) {
+     let metaWindow = this.focusMetaWindow;
+     let display = global.display;
++    if (!metaWindow) return;
++
++    const focusNode = this.findNodeWindow(metaWindow);
++    if (focusNode?.mode === WINDOW_MODES.TILE) {
++      const monitorNode = this.tree.findAncestorMonitor(focusNode);
++      const hasResizeNeighbor = (op) => {
++        const neighbor = this.tree.nextVisible(focusNode, Utils.directionFromGrab(op));
++        return neighbor?.parentNode && this.tree.findAncestorMonitor(neighbor) === monitorNode;
++      };
++      if (!hasResizeNeighbor(grabOp)) {
++        const oppositeGrabOp = {
++          [Meta.GrabOp.KEYBOARD_RESIZING_E]: Meta.GrabOp.KEYBOARD_RESIZING_W,
++          [Meta.GrabOp.KEYBOARD_RESIZING_W]: Meta.GrabOp.KEYBOARD_RESIZING_E,
++          [Meta.GrabOp.KEYBOARD_RESIZING_N]: Meta.GrabOp.KEYBOARD_RESIZING_S,
++          [Meta.GrabOp.KEYBOARD_RESIZING_S]: Meta.GrabOp.KEYBOARD_RESIZING_N,
++        }[grabOp];
++        if (!oppositeGrabOp || !hasResizeNeighbor(oppositeGrabOp)) return;
++        // Keep grow/shrink semantics when the requested edge meets the monitor boundary.
++        grabOp = oppositeGrabOp;
++      }
++    }
+ 
+     this._handleGrabOpBegin(display, metaWindow, grabOp);
+ 
