@@ -4,6 +4,99 @@ The current design and Max/maxops ownership boundary are in
 [maxops.md](maxops.md). Sections below retain dated rollout evidence; a historical
 pilot's permissions or operation count must not be read as the current contract.
 
+## Diagnostic execution and task notice review (2026-09-11)
+
+This release pins Max `346a336` and maxops `36964fe` in nix-config `a509373`.
+The fleet also incorporates upstream configuration changes through `3c2f3c5`;
+`69f9356` fixes the diagnostic probe launcher. All 17 NixOS configurations
+evaluated successfully. Standalone Home Manager profiles were not activated by
+this release.
+
+Diagnostic profiles now expose their user, privilege, interpreter, working roots
+and PATH. Their command environment includes systemd, iproute2, procps, jq,
+network tools and Tailscale. Fixed probes use the absolute
+`/run/current-system/sw/bin/env` launcher, satisfying Hub startup validation while
+resolving commands from each target's diagnostic PATH. Probe output completeness
+and missing evidence remain explicit in full results and compact job summaries.
+Max distinguishes its task numbers from remote job UUIDs, retains uncertainty for
+process-only results, and reviews both progress and result notices before output.
+
+Local gates passed: 1,106 Max unit examples, 411 disposable-PostgreSQL integration
+examples, full builds, lint, architecture checks, prompt-flow generation/check,
+migration upgrade checks, 80 maxops native tests and 84 consumer compatibility
+tests. The real NixOS VM test passed in 141.77 seconds; native Linux Max and both
+maxops architectures built successfully.
+
+### Rollout corrections
+
+Interrupted transfers overlapping native builds left registered but incomplete
+maxops package contents on h310 and tank. Both hosts were rolled back to working
+systems, repaired from complete, locally verified binary-cache archives, and
+activated again successfully. Subsequent activation checks verified the NAR
+contents of every Max/maxops executable package before switching. Download cache
+archives completely before repairing a store path; do not overlap streamed
+imports with builds of the same output.
+
+The first h610 transition retained old binaries but not their complete
+configuration and migration bundle. It restarted Max, and the old process
+encountered the new output fence. Hub rejected the bare diagnostic command names;
+the final Hub binary enforced the same absolute-launcher constraint. The launcher
+fix restored Hub startup. Future staged releases must preserve the old config
+and migration paths as well as the executable, and validate the rendered Hub
+configuration before activation. The final matching Max/Hub configuration
+switched successfully; Max, runtime, Hub, Agent and Executor are active.
+
+### Live acceptance and limits
+
+Using Max's actual credential, all nine hosts passed discovery, loaded-unit
+coverage, service details, bounded logs, fresh metrics, execution profile and
+probe discovery, running/profile agreement, and authorization rejection checks.
+Nine real diagnostic-profile jobs verified the expected non-root user and command
+PATH. All 36 fixed probe executions produced complete output. One Shanghai bundle
+correctly returned `partial` with `missing_evidence=["unit_logs"]` after a journal
+timeout; a separate collection returned `complete`. The one-hour bounded journal
+check also timed out once before the unchanged full fleet check succeeded.
+These intermittent journal failures remain visible rather than being reported
+as healthy evidence.
+
+In real conversation 611798505, monitor task `#158` completed with an object-valued
+observation. Child task `#159` retained `partial` and `result_scope=process_exit`
+even though its remote job succeeded. Progress notice `322` and result notice
+`324` each persisted a publish decision and exactly one conversation message.
+Superseded progress notice `323` produced no output. Result notice `324` required
+two attempts. This proves the live handoff and output fencing for this sample;
+it is not evidence of an overall model-cost reduction. No synthetic conversation
+messages were injected for acceptance.
+
+b650 was rebooted by the user during the rollout. At boot its Agent retried once
+because the Tailscale address was not yet assigned, then remained active with a
+stable PID and restart counter. The strict zero-restart check therefore still
+reports this explained startup history. The checker now completes all functional
+checks before reporting restart history, retaining its nonzero exit status.
+
+The production operational-health gate also remains non-green. The final recorded
+snapshot has one unreviewed dispatch outcome, one unreviewed parked-media item,
+and 22 unreviewed failed requests. Failed requests increased from 113 to 123
+(unreviewed: 12 to 22) during the release window; this is not all historical debt.
+The inspected failures report missing explicit request disposition. Dispatch
+outcome-unknown increased from 11 to 12, including a lease expiry during the
+transition. Delivery outcome-unknown remained 3,054, all reviewed. Expired leases,
+overdue task deadlines, exhausted notices and unresolved active journal outcomes
+were zero. These records were not deleted, replayed or accepted to turn the gate
+green. Functional release acceptance and this operational backlog are distinct.
+
+| Host | Final running system store hash |
+| --- | --- |
+| b650 | `rx8z1n5d2hxax0qqg3gchs70zdjvm96i` |
+| h310 | `bzmff6hbgiah17pinaj5iwzz1cxlvvl8` |
+| h610 | `5dzrr8rsvr3nhcwxq5vl074dcsji2in7` |
+| r5s | `6drrnkbxzayjsa8vs8q6qbfilyblz6jr` |
+| r5sjp | `djj5pqlx4kiipc9v3rpsz1qj044zm378` |
+| r6s | `v0bi5zf3igf3drscd3hygdx724jk7icg` |
+| rpi4 | `z330yk49iyk5n9cc10dna7myan7aya52` |
+| shanghai | `16ibhdqbcdb1jrv7kl4sysaaw8rbcnwa` |
+| tank | `xkqfqrqgixf2sahk5lyid2sk99b4ljxx` |
+
 ## Broad observations and diagnostic tool fixes (2026-09-08)
 
 The release pins maxops `ebfd2fd` (45 operations, including the `c368fae`
