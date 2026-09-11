@@ -189,10 +189,10 @@ in {
         manageableUnits = entry.maxops.manageableUnits;
         diagnosticProfile = "diagnostic";
         diagnosticProbes = {
-          tailscale-status = ["tailscale" "status" "--json"];
-          ipv6-addresses = ["ip" "-j" "-6" "address" "show"];
-          ipv6-routes = ["ip" "-j" "-6" "route" "show"];
-          memory = ["free" "-b"];
+          tailscale-status = ["/run/current-system/sw/bin/env" "tailscale" "status" "--json"];
+          ipv6-addresses = ["/run/current-system/sw/bin/env" "ip" "-j" "-6" "address" "show"];
+          ipv6-routes = ["/run/current-system/sw/bin/env" "ip" "-j" "-6" "route" "show"];
+          memory = ["/run/current-system/sw/bin/env" "free" "-b"];
           failed-units = [
             "/run/current-system/sw/bin/systemctl"
             "--failed"
