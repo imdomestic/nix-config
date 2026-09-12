@@ -25,6 +25,12 @@ in {
     MOZ_DRM_DEVICE = "/dev/dri/by-path/pci-0000:14:00.0-render";
   };
 
+  fonts.fontconfig = {
+    enable = true;
+    # Shell's IBus candidate labels need Simplified Chinese glyphs in an English locale.
+    defaultFonts.sansSerif = ["Adwaita Sans" "Noto Sans CJK SC"];
+  };
+
   programs.gnome-shell.extensions = [
     {package = pkgs.gnomeExtensions.blur-my-shell;}
     {package = pkgs.gnomeExtensions.just-perfection;}

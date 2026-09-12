@@ -4,6 +4,10 @@
       (lib.hm.gvariant.mkTuple ["xkb" "us"])
       (lib.hm.gvariant.mkTuple ["ibus" "libpinyin"])
     ];
+    "org/gnome/desktop/wm/keybindings" = {
+      switch-input-source = ["<Control>space"];
+      switch-input-source-backward = ["<Shift><Control>space"];
+    };
     "com/github/libpinyin/ibus-libpinyin/libpinyin" = {
       double-pinyin = true;
       # ibus-libpinyin identifies Xiaohe (XHE) with schema index 5.
