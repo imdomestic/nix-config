@@ -47,6 +47,11 @@ in {
     default = false;
     description = "Resolve non-domestic domains through proxied Google TCP DNS instead of accepting potentially poisoned domestic UDP answers.";
   };
+  options.my.dae.bootstrapDomains = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [];
+    description = "Exact infrastructure domains that must resolve and connect without a working proxy.";
+  };
   options.my.dae.lanInterfaces = lib.mkOption {
     type = lib.types.listOf lib.types.str;
     default = ["br-lan"];
@@ -134,6 +139,7 @@ in {
                     # 可用的方法 qname, qtype
                     # 广告拒绝
                     qname(geosite:category-ads-all) -> reject
+                    ${lib.optionalString (cfg.bootstrapDomains != []) "qname(full: ${lib.concatStringsSep ", " cfg.bootstrapDomains}) -> alidns"}
                     # Proxy endpoints must resolve before a proxy is available.
                     qname(suffix: imdomestic.com) -> alidns
                     # 这里的意思是google中是cn的域名使用alidns
@@ -204,6 +210,7 @@ in {
             dip('fd7a:115c:a1e0::/48') -> must_direct
             pname(tailscaled) -> must_direct
             pname(tailscale) -> must_direct
+            ${lib.optionalString (cfg.bootstrapDomains != []) "domain(full: ${lib.concatStringsSep ", " cfg.bootstrapDomains}) -> must_direct"}
 
             # 去自建基础设施的连接一律直连。没有这条的话，routing 末尾的
             # `fallback: im` 会把 SSH 到 <host>.imdomestic.com 也丢进 im 组，而 im 组

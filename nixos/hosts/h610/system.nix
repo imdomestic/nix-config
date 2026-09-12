@@ -129,6 +129,8 @@ in {
   my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????" "max-sb-egress" "max-sb-native"];
   # See docs/incidents.md#max-native-runtime-dns.
   my.dae.foreignDnsOverTcp = true;
+  # Headscale must start even when proxy exits are unavailable.
+  my.dae.bootstrapDomains = ["controlplane.tailscale.com"];
   # See docs/incidents.md#h610-dae-crash-recovery.
   my.dae.disableWaitingNetwork = true;
   systemd.services.dae.serviceConfig = {
@@ -307,6 +309,8 @@ in {
   time.timeZone = "Asia/Hong_Kong";
 
   networking = {
+    # Avoid depending on public DNS and PPP hairpin access to our own control plane.
+    hosts."127.0.0.1" = ["tailscale.imdomestic.com"];
     networkmanager.enable = false; # Easiest to use and most distros use this by default.
     useDHCP = false;
     useNetworkd = true;
