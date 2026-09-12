@@ -880,6 +880,8 @@ in {
     };
     napcat = {
       enable = true;
+      # Official v4.18.19 / QQ 3.2.30-50969, fixed amd64 manifest.
+      image = "mlikiowa/napcat-docker@sha256:406611383c31cc102665207b13cf0a4c2b463e27e300ba6ee5e7cb29adabd93f";
       containerName = "napcat-chat-bot";
       dataDirectory = "/var/lib/napcat-chat-bot";
       account = "3580515978";
