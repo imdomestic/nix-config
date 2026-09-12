@@ -127,6 +127,20 @@ Before claiming a change works, at minimum make sure evaluation passes
 (`just check` or an `nix eval`/`--dry-run` of the affected configuration).
 Do not run `switch` on the user's behalf unless asked.
 
+### ARM 目标一律在 r6s 上编译
+
+`r2s` / `r5s` / `r5sjp` / `rpi4` **不要在目标机上跑 `nixos-rebuild build`**。它们
+是 1–4 GB 的小盒子，一次全量 input 更新足以把它们从网络上打下来 —— 而机器在国内，
+人不一定在。统一用 r6s（8 核 / 7.6 GB / 215 GB 空闲，同为 aarch64）当构建机：
+
+```sh
+ssh hank@100.64.0.5 \
+  'nixos-rebuild boot --flake ~/.config/nix-config#<host> --target-host root@<tsIp>'
+```
+
+目标机只收闭包、跑 `switch-to-configuration`，几乎没有负载。
+踩过一次，见 `docs/incidents.md#arm-boxes-oom-on-local-build`。
+
 ### Before any rebuild: freshness check
 
 Before running any `switch`-style command (`just switch` / `just darwin` /

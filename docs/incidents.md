@@ -9,6 +9,30 @@
 
 ---
 
+## 2026-09-13 · 在小 ARM 盒子上本地 build，把三台打下线 {#arm-boxes-oom-on-local-build}
+
+全量 `nix flake update` 之后按台 ssh 上去跑 `nixos-rebuild boot`。x86 那几台顺利，
+**r2s、r5s、r5sjp 三台 aarch64 全部在构建走到最后一步时从网络上消失**，rpi4 也掉过
+一次。r5s 掉线还连带把 tank 拖下去了。当时机器在国内，人在悉尼，没有物理手段。
+
+触发点是 **maxops**。它挂在 `nixos/profiles/base.nix` 上，每台 NixOS 主机都吃；
+这次 input 从旧版跳到 `a5503bd`，于是每台都得从源码整编一个 Rust 项目。而它不在
+`flake.nix` 的 `packages` 里，CI 没有推 cachix，任何二进制缓存都命不中。r2s 只有
+1 GB 内存，r5s / r5sjp 是 4 GB，编译峰值直接把它们压垮。
+
+三台掉线的位置**完全一样**：日志最后一行都是 `dry-activate.drv`，紧接着 ssh 超时。
+这个巧合一开始被当成"构建到某个特定 derivation 时触发了网络重配"去查，方向是错的
+—— `nixos-rebuild build` 不激活任何东西。真正的原因是那一步恰好是并行构建的尾巴，
+内存占用峰值落在那里。
+
+还有一个次要坑：`nixos-rebuild --sudo` 在无 tty 的 ssh 会话里会失败，报
+`a terminal is required to read the password`。预先 `sudo -S -v` 也不管用，因为
+nixos-rebuild 内部那次 sudo 不带 `-S`。要么 `ssh -tt`，要么根本不要在目标机上跑。
+
+结论写进了 AGENTS.md：aarch64 目标一律在 r6s 上编译再 `--target-host` 推过去。
+另一条没走的路是把 maxops 加进 `packages.aarch64-linux` 让 CI 推 cachix，那样小
+盒子才有资格自己 build。
+
 ## 2026-09-12 · h610 协调服务的代理启动依赖 {#h610-control-plane-bootstrap}
 
 22:50 的授权系统更新重启网络和 Tailscale 后，WireGuard 恢复，但 Tailscale
