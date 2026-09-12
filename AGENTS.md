@@ -127,18 +127,26 @@ Before claiming a change works, at minimum make sure evaluation passes
 (`just check` or an `nix eval`/`--dry-run` of the affected configuration).
 Do not run `switch` on the user's behalf unless asked.
 
-### ARM 目标一律在 r6s 上编译
+### 小内存机器不在自己身上编译
 
-`r2s` / `r5s` / `r5sjp` / `rpi4` **不要在目标机上跑 `nixos-rebuild build`**。它们
-是 1–4 GB 的小盒子，一次全量 input 更新足以把它们从网络上打下来 —— 而机器在国内，
-人不一定在。统一用 r6s（8 核 / 7.6 GB / 215 GB 空闲，同为 aarch64）当构建机：
+有几台机器**不要在目标机上跑 `nixos-rebuild build`**。一次全量 input 更新足以把
+它们从网络上打下来，而机器在国内、人不一定在，掉线就等于砖。每台指定一个同架构
+的构建机，目标机只收闭包、跑 `switch-to-configuration`，几乎没有负载。
+
+| 目标 | 内存 | 构建机 | 构建机地址 |
+|---|---|---|---|
+| `r2s` `r5s` `r5sjp` `rpi4` | 1–4 GB | `r6s`（8 核 / 7.6 GB / aarch64） | `hank@100.64.0.5` |
+| `shanghai` | 2 GB | `tank`（20 核 / 64 GB / x86_64） | `hank@100.64.0.4` |
 
 ```sh
-ssh hank@100.64.0.5 \
+ssh hank@<构建机> \
   'nixos-rebuild boot --flake ~/.config/nix-config#<host> --target-host root@<tsIp>'
 ```
 
-目标机只收闭包、跑 `switch-to-configuration`，几乎没有负载。
+以 `hank` 身份跑，不是 root：仓库在 `/home/hank/.config/nix-config`，root 打不开
+（libgit2 报 not owned by current user），而 `--target-host root@` 已经解决了目标
+机那边的权限。构建机到目标机的 root ssh 要先通。
+
 踩过一次，见 `docs/incidents.md#arm-boxes-oom-on-local-build`。
 
 ### Before any rebuild: freshness check
