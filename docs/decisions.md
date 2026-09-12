@@ -11,6 +11,24 @@
 
 ---
 
+## 2026-09-12 · hackintosh 的 raycast 为什么不从 unstable 取 {#x86-64-darwin-unstable-drop}
+
+`nixpkgs-unstable` 已经滚过 26.11，那个分支**彻底移除了 x86_64-darwin**：不是
+少了几个包，是一碰 stdenv 就 `throw`。hackintosh 是仓库里唯一的 x86_64-darwin
+机器，它的 home 里只有一处用到 unstable —— `home/profiles/gui/darwin.nix` 的
+`pkgs-unstable.raycast`。于是那一台的 home 求值直接失败。
+
+26.05 里的 raycast 是 1.104.17，`meta.platforms` 仍带 x86_64-darwin，够用。
+所以那一行改成按系统挑 pkgs 集，只有 x86_64-darwin 退回 stable，其余 Mac
+照旧吃 unstable。
+
+没有选择的另外两条路：把 `nixpkgs-unstable` 整个钉回支持 x86_64-darwin 的旧
+提交，代价是全仓库所有机器都失去 unstable 的意义；或者干脆把 hackintosh 从
+仓库里摘掉 —— 那台还在用，现在摘不合适。
+
+真正的期限在 26.05 结束支持时：那之后 x86_64-darwin 在这个仓库里没有任何
+nixpkgs 可用，hackintosh 要么换机器，要么留在最后一个能求值的提交上。
+
 ## 2026-09-09 · gaoji 账户登录与逐次手机授权 {#gaoji-account-mobile-approval}
 
 h610 的 gaoji 控制台使用账户密码登录；管理员可查看管理信息，成员仅可查看机器人状态。
