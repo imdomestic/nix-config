@@ -269,12 +269,12 @@ in {
         action = "<Cmd>nohlsearch<CR>";
       }
       {
-        mode = "n";
+        mode = [ "n" "o" ];
         key = "[b";
         action = "<Cmd>bprev<CR>";
       }
       {
-        mode = "n";
+        mode = [ "n" "o" ];
         key = "]b";
         action = "<Cmd>bnext<CR>";
       }
@@ -327,22 +327,13 @@ in {
         action = "<Cmd>w<CR>";
       }
       {
-        mode = "n";
+        # o 也要:operator-pending 序列(`3kj`)里同样是 gj/gk。
+        mode = [ "n" "x" "o" ];
         key = "j";
         action = "gj";
       }
       {
-        mode = "n";
-        key = "k";
-        action = "gk";
-      }
-      {
-        mode = "x";
-        key = "j";
-        action = "gj";
-      }
-      {
-        mode = "x";
+        mode = [ "n" "x" "o" ];
         key = "k";
         action = "gk";
       }
