@@ -32,6 +32,10 @@
   ...
 }: let
   cfg = config.my.dae;
+  # **每个域名都要自己的 `full:`。** 写成 `full: a, b` 的话 dae 只把前缀套在第一个
+  # 上,第二个变成裸 key,启动时 fatal:「addQName: unsupported key」。只有一个
+  # bootstrap 域名时看不出来 —— h610 加第二个(api.cloudflare.com)那天才炸。
+  bootstrapMatchers = lib.concatMapStringsSep ", " (domain: "full: ${domain}") cfg.bootstrapDomains;
   renderInterface = interface:
     if lib.any (token: lib.hasInfix token interface) ["*" "?" "["]
     then builtins.toJSON interface
@@ -151,7 +155,7 @@ in {
                     # 可用的方法 qname, qtype
                     # 广告拒绝
                     qname(geosite:category-ads-all) -> reject
-                    ${lib.optionalString (cfg.bootstrapDomains != []) "qname(full: ${lib.concatStringsSep ", " cfg.bootstrapDomains}) -> alidns"}
+                    ${lib.optionalString (cfg.bootstrapDomains != []) "qname(${bootstrapMatchers}) -> alidns"}
                     # Proxy endpoints must resolve before a proxy is available.
                     qname(suffix: imdomestic.com) -> alidns
                     # 这里的意思是google中是cn的域名使用alidns
@@ -223,7 +227,7 @@ in {
             # Nix's wrapped daemon has a Linux comm truncated to 15 bytes.
             pname(tailscaled, '.tailscaled-wrapped', '.tailscaled-wra') -> must_direct
             pname(tailscale) -> must_direct
-            ${lib.optionalString (cfg.bootstrapDomains != []) "domain(full: ${lib.concatStringsSep ", " cfg.bootstrapDomains}) -> must_direct"}
+            ${lib.optionalString (cfg.bootstrapDomains != []) "domain(${bootstrapMatchers}) -> must_direct"}
 
             # 去自建基础设施的连接一律直连。没有这条的话，routing 末尾的
             # `fallback: im` 会把 SSH 到 <host>.imdomestic.com 也丢进 im 组，而 im 组
