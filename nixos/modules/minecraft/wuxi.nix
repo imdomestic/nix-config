@@ -438,8 +438,6 @@
         "rcon.port" = 25576;
       };
 
-
-
       # jvmOpts = "-Xms4G -Xmx8G -Dluckperms.base-directory=config/luckperms";
 
       symlinks.mods = pkgs.linkFarmFromDrvs "mods" (builtins.attrValues {

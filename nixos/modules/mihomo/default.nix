@@ -340,7 +340,6 @@ in {
             "IP-CIDR,224.0.0.0/4,DIRECT,no-resolve"
             "IP-CIDR6,ff00::/8,DIRECT,no-resolve"
             "GEOIP,private,DIRECT,no-resolve"
-
           ]
           # **QUIC 只在「这条流量最终要出国」时才拦。** 见上面 quicReject 的说明。
           # 每个 tag 生成两条:先拦掉它的 QUIC,再把它的 TCP 送进代理。两条写在

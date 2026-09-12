@@ -68,7 +68,8 @@
     f = 15;
   };
   byte = hex: n:
-    16 * hexDigits.${lib.toLower (builtins.substring n 1 hex)}
+    16
+    * hexDigits.${lib.toLower (builtins.substring n 1 hex)}
     + hexDigits.${lib.toLower (builtins.substring (n + 1) 1 hex)};
   # "38;2;R;G;B" —— SGR 的 24 位前景色。
   fg = hex: "38;2;${toString (byte hex 1)};${toString (byte hex 3)};${toString (byte hex 5)}";

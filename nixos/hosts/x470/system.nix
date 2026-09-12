@@ -28,7 +28,6 @@ in {
 
   zramSwap.enable = true;
 
-
   networking = {
     networkmanager.enable = false;
     useDHCP = false;
@@ -74,7 +73,6 @@ in {
         RequiredForOnline = "routable";
       };
     };
-
   };
 
   # Set your time zone.
