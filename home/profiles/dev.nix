@@ -31,8 +31,9 @@ in {
       vscode-langservers-extracted
       typstyle
       marksman
-      markdownlint-cli
-      prettierd
+       markdownlint-cli
+       prettierd
+       biome
       lua-language-server
       bash-language-server
       nodejs_22
@@ -137,10 +138,4 @@ in {
     enableNushellIntegration = true;
   };
 
-  # TODO: update to 26.05
-  # programs.claude-code = {
-  #   enable = true;
-  #   enableMcpIntegration = true;
-  #   package = pkgs-unstable.claude-code;
-  # };
 }

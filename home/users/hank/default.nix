@@ -959,8 +959,8 @@ in {
     tmux-agent-sidebar
 
     # snacks.image 的转换在 **nvim 所在的机器** 上跑,所以 ssh 过去看图要求远端也有
-    # 这两个。它们本来只在 profiles/dev.nix 里,而 dev profile 只有 b650 引了
-    # (userModules.hank.dev),别的机器 ssh 过去 magick 不在,图就是出不来。
+    # 这两个。它们本来只在 profiles/dev.nix 里,而 hank 没开 dev profile 的机器
+    # ssh 过去 magick 不在,图就是出不来。
     # 提到这里 = 每台有 hank 的机器都能看图,又不用把整套 dev 工具链背过去。
     #
     # dev.nix 里那份没删:它同时被 linwhite/dev.nix 引着。b650 上两边都声明,指向
