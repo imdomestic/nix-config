@@ -9,6 +9,32 @@
 
 ---
 
+## 2026-09-12 · nixvim 升级掀开一段五个月没生效的 keymaps {#nixvim-plugins-keymaps-dropped}
+
+一次 `nix flake update` 之后，41 个 home 里有 34 个求值失败，报的都是同一句：
+`The option 'programs.nixvim.plugins.keymaps' does not exist`。
+
+真相不是新 nixvim 删了什么选项，而是**这个选项从来就不存在**。
+`home/modules/nixvim/default.nix` 里 treesitter-textobjects 的那批
+`af`/`if`/`ac`/`ic`、`]m`/`[m`/`]]`/`[[` 绑定，被写在了 `plugins = { … }`
+这一层里，和 `treesitter-textobjects` 平级。旧版 nixvim 的 `plugins` 是
+freeform 的，多出来的属性既不报错也不生成任何东西 —— 于是这批 keymaps 被
+静默丢掉，一次都没进过 `init.lua`。这批绑定 2026-04-14 就写进来了（`df45cf7`），
+在仓库里躺了五个月；新版收紧成严格 submodule，才把它顶了出来。
+
+**验证方式值得记下来**：nixvim 产出的 `~/.config/nvim/init.lua` 是 LuaJIT
+字节码，`grep` 默认把它当二进制文件、什么都不打印，看上去就像"匹配了 0 次"。
+必须 `grep -a`。用 `grep -ac` 对当时正在运行的那份 init.lua 一比：
+`nohlsearch`、`bprev` 这些顶层 keymaps 各命中 1 次，
+`select_textobject`、`goto_next_start` 命中 0 次 —— 这才坐实了它们从没生效。
+
+**最先误导人的是报错文本本身。** "option does not exist" 读起来像上游改名或
+删除，第一反应是去翻 nixvim 的 release notes 找重命名，白找。真正该问的是
+"这个选项以前存在过吗"，而这个问题只要看一眼缩进就能回答。
+
+修法是把那段列表挪进顶层 `keymaps`。注意这**不是**纯粹的求值修复：这些键位
+从今以后是真的会生效了，nvim 的行为会变。
+
 ## 2026-09-12 · NapCat 配套版本核验 {#napcat-paired-version-verification}
 
 `latest` 标签不等于容器正在使用最新内容；版本验收应核对实际镜像摘要、

@@ -545,6 +545,93 @@ in {
         '';
         options.desc = "Diagnostics";
       }
+
+      # treesitter-textobjects 的 select/move 绑定。它们必须待在这个顶层
+      # keymaps 列表里,不能挂在 plugins.treesitter-textobjects 旁边 ——
+      # 见 docs/incidents.md#nixvim-plugins-keymaps-dropped。
+      # select
+      {
+        mode = ["x" "o"];
+        key = "af";
+        action = mkRaw ''
+          function()
+            require("nvim-treesitter-textobjects.select")
+              .select_textobject("@function.outer", "textobjects")
+          end
+        '';
+      }
+      {
+        mode = ["x" "o"];
+        key = "if";
+        action = mkRaw ''
+          function()
+            require("nvim-treesitter-textobjects.select")
+              .select_textobject("@function.inner", "textobjects")
+          end
+        '';
+      }
+      {
+        mode = ["x" "o"];
+        key = "ac";
+        action = mkRaw ''
+          function()
+            require("nvim-treesitter-textobjects.select")
+              .select_textobject("@class.outer", "textobjects")
+          end
+        '';
+      }
+      {
+        mode = ["x" "o"];
+        key = "ic";
+        action = mkRaw ''
+          function()
+            require("nvim-treesitter-textobjects.select")
+              .select_textobject("@class.inner", "textobjects")
+          end
+        '';
+      }
+
+      # move
+      {
+        mode = ["n" "x" "o"];
+        key = "]m";
+        action = mkRaw ''
+          function()
+            require("nvim-treesitter-textobjects.move")
+              .goto_next_start("@function.outer", "textobjects")
+          end
+        '';
+      }
+      {
+        mode = ["n" "x" "o"];
+        key = "[m";
+        action = mkRaw ''
+          function()
+            require("nvim-treesitter-textobjects.move")
+              .goto_previous_start("@function.outer", "textobjects")
+          end
+        '';
+      }
+      {
+        mode = ["n" "x" "o"];
+        key = "]]";
+        action = mkRaw ''
+          function()
+            require("nvim-treesitter-textobjects.move")
+              .goto_next_start("@class.outer", "textobjects")
+          end
+        '';
+      }
+      {
+        mode = ["n" "x" "o"];
+        key = "[[";
+        action = mkRaw ''
+          function()
+            require("nvim-treesitter-textobjects.move")
+              .goto_previous_start("@class.outer", "textobjects")
+          end
+        '';
+      }
     ];
 
     dependencies.lean.enable = false;
@@ -811,6 +898,7 @@ in {
         ]);
       };
 
+      # 它的 af/if/ac/ic 和 ]m/[m/]]/[[ 绑定在上面那个顶层 keymaps 列表里。
       treesitter-textobjects = {
         enable = true;
         lazyLoad.settings.event = "DeferredUIEnter";
@@ -826,92 +914,6 @@ in {
           };
         };
       };
-
-      keymaps = [
-        # select
-        {
-          mode = ["x" "o"];
-          key = "af";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.select")
-                .select_textobject("@function.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["x" "o"];
-          key = "if";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.select")
-                .select_textobject("@function.inner", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["x" "o"];
-          key = "ac";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.select")
-                .select_textobject("@class.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["x" "o"];
-          key = "ic";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.select")
-                .select_textobject("@class.inner", "textobjects")
-            end
-          '';
-        }
-
-        # move
-        {
-          mode = ["n" "x" "o"];
-          key = "]m";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.move")
-                .goto_next_start("@function.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["n" "x" "o"];
-          key = "[m";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.move")
-                .goto_previous_start("@function.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["n" "x" "o"];
-          key = "]]";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.move")
-                .goto_next_start("@class.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["n" "x" "o"];
-          key = "[[";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.move")
-                .goto_previous_start("@class.outer", "textobjects")
-            end
-          '';
-        }
-      ];
 
       friendly-snippets.enable = true;
 

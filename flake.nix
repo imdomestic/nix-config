@@ -166,7 +166,9 @@
     };
 
     system-manager = {
-      url = "github:numtide/system-manager";
+      # 必须钉在和 nixpkgs 同一个 release 分支上:main 跟的是 nixos-unstable,
+      # 它会在求值时直接 throw 拒绝配一个 26.05 的 nixpkgs。
+      url = "github:numtide/system-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
