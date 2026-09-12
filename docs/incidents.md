@@ -24,7 +24,10 @@ Bot 集群控制器因此连本机 `100.64.0.3:55432` 都超时。PostgreSQL nod
 在 h610 为 `controlplane.tailscale.com` 声明精确匹配的直连 DNS/流量规则，
 不改变其他国外域名的代理策略。同时通过原生 `networking.hosts` 让本机访问
 自建协调服务走 loopback，保留 TLS 主机名校验，避免公网 DNS/PPP 回环依赖。
-验收必须检查协调服务 HTTP、Tailscale 地址、数据库连接和 Bot 实际在线状态。
+协调服务随后恢复 HTTP 200，本机 Tailscale 地址恢复。另发现 PPP 重拨后的
+公网 IPv4 已变化，而 DDNS 访问 `api.cloudflare.com` 也受同一代理 DNS 故障
+影响，其他设备仍在连接旧地址；将这个精确 API 域名一并列入启动直连规则。
+验收必须检查协调服务 HTTP、DDNS 更新、Tailscale 地址、数据库连接和 Bot 实际在线状态。
 
 ## 2026-09-12 · nixvim 升级掀开一段五个月没生效的 keymaps {#nixvim-plugins-keymaps-dropped}
 

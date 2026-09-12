@@ -130,7 +130,7 @@ in {
   # See docs/incidents.md#max-native-runtime-dns.
   my.dae.foreignDnsOverTcp = true;
   # Headscale must start even when proxy exits are unavailable.
-  my.dae.bootstrapDomains = ["controlplane.tailscale.com"];
+  my.dae.bootstrapDomains = ["controlplane.tailscale.com" "api.cloudflare.com"];
   # See docs/incidents.md#h610-dae-crash-recovery.
   my.dae.disableWaitingNetwork = true;
   systemd.services.dae.serviceConfig = {
