@@ -9,6 +9,15 @@
 
 ---
 
+## 2026-09-12 · NapCat 配套版本核验 {#napcat-paired-version-verification}
+
+`latest` 标签不等于容器正在使用最新内容；版本验收应核对实际镜像摘要、
+包内 NapCat/QQ 版本及 OneBot 在线状态，不能只检查 WebSocket 是否连接。
+官方 `v4.18.19` amd64 镜像包含 NapCat 4.18.19 和 Linux QQ 3.2.30-50969。
+[上游同类问题](https://github.com/NapNeko/NapCatQQ/issues/2027)在此版本仍有报告，
+因此升级后的短期在线检查不应被描述为已永久修复会话失效。
+公开记录不包含账号、内部部署路径、运行日志或授权材料。
+
 ## 2026-09-11 · b650 Windows 原盘启动成功，核显直通仍不稳定 {#b650-windows-igpu-probe}
 
 在 Ryzen 7 9800X3D / MSI B650M GAMING WIFI 上，用 QEMU 10.2.2、KVM 和 OVMF
