@@ -208,7 +208,8 @@ in {
             dport(41641) -> must_direct
             dip(100.64.0.0/10) -> must_direct
             dip('fd7a:115c:a1e0::/48') -> must_direct
-            pname(tailscaled) -> must_direct
+            # Nix's wrapped daemon has a Linux comm truncated to 15 bytes.
+            pname(tailscaled, '.tailscaled-wrapped', '.tailscaled-wra') -> must_direct
             pname(tailscale) -> must_direct
             ${lib.optionalString (cfg.bootstrapDomains != []) "domain(full: ${lib.concatStringsSep ", " cfg.bootstrapDomains}) -> must_direct"}
 
