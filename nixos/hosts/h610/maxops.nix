@@ -59,6 +59,9 @@
     })
     managed;
 in {
+  systemd.services.maxops-hub.after = ["maxops-agent.service" "maxops-executor.service"];
+  systemd.services.max.after = lib.mkAfter ["maxops-hub.service"];
+
   services.max.maxops = {
     enable = true;
     baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
