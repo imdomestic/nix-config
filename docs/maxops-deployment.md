@@ -4,6 +4,115 @@ The current design and Max/maxops ownership boundary are in
 [maxops.md](maxops.md). Sections below retain dated rollout evidence; a historical
 pilot's permissions or operation count must not be read as the current contract.
 
+## Bounded observation and submission receipts (2026-09-12)
+
+This release pins Max `2b98ca1` and maxops `a5503bd` in fleet commit
+`79bfed2`, with the consumer patch context refreshed in `3041d2d`. The
+nixpkgs pins are unchanged. All nine managed targets built their system
+configuration locally over SSH, from clean detached worktrees; activation used
+`nixos-rebuild --no-reexec switch --store-path` on each target. No deploy-rs or
+standalone Home Manager activation was used. Existing dirty checkouts were
+preserved.
+
+### Build and rollout evidence
+
+All 17 NixOS configurations evaluated successfully. The merged Max release
+passed 1,120 unit examples, 413 disposable-PostgreSQL integration examples,
+full builds, lint, architecture and prompt-flow checks. The Max package built
+natively on h610. Native maxops checks passed 94/94 on both x86_64-linux and
+aarch64-linux; the fleet's compatibility package passed 98/98. The actual
+NixOS VM test passed on b650 with KVM in 129.29 seconds.
+
+The first h610 build caught a context conflict between the consumer's exact
+source patch and maxops' new parameter descriptions. The fleet adapter refreshes
+only that patch context, preserving the consumer functionality and its tests.
+The corrected package built and passed its tests before activation.
+
+Each executable package passed NAR-content verification before switching.
+Complete binary-cache files from native builds were copied within the target
+network before imports; imports did not overlap builds of the same output.
+A verified PostgreSQL custom dump (1,022,534,421 bytes) and consistent, checked
+SQLite backups were retained under
+`/var/backups/max-maxops-20260912-79bfed2` on the relevant targets. Previous
+system generations remain available.
+
+Agent/Executor updates preceded the h610 Hub/Max transition. Native systemd
+ordering now places Agent/Executor before Hub, and Hub before Max. The rendered
+Hub configuration remained unchanged. h610's pre-existing system-generation
+drift also included the already committed CLIProxyAPI 7.2.151 to 7.2.158 update;
+its service was checked after the switch.
+
+### Live acceptance and limits
+
+Using Max's actual runtime credential, `scripts/check-maxops-fleet.py` passed
+across all nine hosts: discovery, loaded-unit coverage, bounded logs, fresh
+metrics, execution profile discovery, running/profile agreement, and permission
+rejections. The new contract checks passed for all 45 scoped tools, service-only
+mutation enums and rejection codes, compact fleet observations, grouped/paged
+alerts, and metric statistics.
+
+Nine non-root diagnostic jobs executed `id -u`. Repeating each original
+submission key returned the same job; changed parameters were rejected.
+`jobs.status`, `jobs.wait`, `jobs.logs`, and `jobs.result` returned equivalent
+records through the original key and job UUID, without submission headers on
+reads. Ambiguous/missing lookups were rejected. Explicit text-log requests
+returned `utf8_with_replacement` and the expected non-root output.
+
+Max's authenticated overview reports `git_rev=2b98ca1`; all 27 platform-status
+entries loaded, and unauthenticated administration was rejected. The native
+runtime was exercised as the Max service user. A disposable browser started
+through the deployed runtime, navigated to `https://example.com` with HTTP 200
+and complete readiness, produced a snapshot, and rejected private-loopback
+navigation. Its workspace and service were closed after acceptance.
+
+All nine running system paths match their persistent profiles and evaluated
+release paths. Actual process executables match the pinned packages. Every
+Agent/Executor, plus h610 Max, runtime, Hub and CLIProxyAPI, was active with
+`NRestarts=0` at the final stability check. No synthetic conversation messages
+were sent. The observer recovery/deadline and 19/26-tool skill partition are
+covered by the merged local integration gates; this rollout does not claim a
+new production conversation sample proves those paths end to end.
+
+The strict production operational-health gate remains non-green. The initial
+post-switch check matched the baseline, but the final check found one additional
+unreviewed delivery outcome:
+
+| Health item | Before | After |
+| --- | ---: | ---: |
+| Delivery outcome unknown | 1 | 2 |
+| Dispatch outcome unknown | 2 | 2 |
+| Parked media | 1 | 1 |
+| Failed requests | 33 | 33 |
+
+Total delivery outcomes unknown increased from 3,055 to 3,056; dispatch outcomes
+unknown remained 13, parked media 386, and failed requests 134. Expired
+leases/claims, overdue task deadlines, exhausted task notices and active
+unresolved journal outcomes were zero.
+The post-switch traffic sample contained no new failed-request updates.
+
+The additional item is iMessage delivery `171468`, created on September 9.
+Its last attempt began at 10:05:24 UTC, before the h610 switch at 10:06:03 UTC,
+and it became outcome-unknown at 10:07:35 UTC. It retains a preflight-timeout
+error and has no delivery-part records. This timing and the retained error are
+consistent with the expired-sending-lease quarantine path. Max's existing
+shutdown drain waits for agent dispatches, but does not account for delivery
+workers. This exposes a shutdown boundary that remains unresolved; the release
+must not be described as strictly healthy or as having only unchanged debt.
+The row was not replayed or marked accepted. Functional acceptance and this
+operational-health failure remain distinct.
+
+| Host | Running system store hash |
+| --- | --- |
+| b650 | `ik3q4rjg38csahx9c31bi6h7i06wb1c8` |
+| h310 | `zcy3vjlpp7pbazs7m23g1g3wklpxb70v` |
+| h610 | `4yvk9qg7a2mcyv53nf7ddynbnwpq6gpw` |
+| r5s | `padm8qpz1bgs6iqpdd5y5grcpxv3h326` |
+| r5sjp | `1m0pdssz15kr38vvwwl4hh6l0xkgm0r5` |
+| r6s | `1gh7rxa2mji6y8g0wah7y7gjcf7hkc99` |
+| rpi4 | `nk5v8l9x9y228lp4xjjirfx1x104spkh` |
+| shanghai | `c4gpkx3id654r3y4dr8nmchxj1qq62zl` |
+| tank | `6p7v246i4fw06z1c6x1fvykzz9zq5xpy` |
+
 ## Diagnostic execution and task notice review (2026-09-11)
 
 This release pins Max `346a336` and maxops `36964fe` in nix-config `a509373`.
