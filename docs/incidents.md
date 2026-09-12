@@ -9,6 +9,39 @@
 
 ---
 
+## 2026-09-13 · r5s 同一个 dae 越界 panic，把 tank 的 DNS 一起带走 {#r5s-dae-vless-panic}
+
+tank 看起来"死了"：tailscale 控制台里 offline 四小时，从悉尼连不上。实际上它
+运行了 28 天没重启，负载 0.08，只是**没有 DNS**。ICMP 通、HTTPS 到
+`223.5.5.5` 的 DoH 接口通，但对任何服务器的 UDP 53 都超时。
+
+根因在 r5s —— **tank 的网关是 r5s，不是 rpi4**。查的时候被两件事误导：
+tailscale 把 rpi4 的直连端点显示成 `192.168.20.1:41641`，而悉尼和国内两个局域网
+用了同一个 `192.168.20.0/24` 网段，地址正好撞上，于是"tank 的网关是 rpi4"这个
+错误结论看起来处处自洽。第二件是 r5s 在 tailscale 里显示 offline、ssh 不通，很
+容易当成整机挂了；其实它开机 178 天、负载 0.33，只是 tailscaled 登出了 —— 控制面
+headscale 在 h610 上，h610 那段时间自己也不在。从 tank 走内网
+`ssh root@192.168.20.1` 一直是通的。
+
+r5s 上 `dae.service` 的调用栈和 2026-09-11 h610 那次逐帧一致：
+`vless.(*Conn).reqHeaderFromPool` 越界 panic，退出码 2。上游单元
+`Restart=on-abnormal` 盖不住普通非零退出，进程死了没人拉起，而
+`br-lan` / `ppp0` / `dae0` 上的 clsact BPF 过滤器还挂着，局域网客户端的 UDP 53
+全部进死钩子。r5s 自己解析正常，因为它走 127.0.0.53，不经过转发路径 —— 这也是
+"网关活着但客户端没 DNS"这种看起来矛盾的现象的来源。
+
+恢复顺序（`systemctl restart dae` 直接卡死，正是 h610 那条死锁）：
+
+1. `systemctl stop dae` —— 只停不够，三个 clsact 依然在。
+2. `tc qdisc del dev {br-lan,ppp0,dae0} clsact` —— 删掉才真正放开 DNS。
+3. tank 立刻恢复解析，域内 HTTPS 全部 200；GitHub 仍然不通，因为此时没有代理。
+4. `systemctl restart tailscaled`，r5s 重新上线。
+
+修法不再是给 r5s 单独打补丁：`disable_waiting_network` 和
+`Restart=on-failure` / `RestartSec=5s` 已经提到 `nixos/modules/dae` 的默认值，
+h610 里那份重复的 per-host 覆盖删掉了。这个死锁与机器无关，凡是跑 dae 的都该有。
+VLESS 那个越界本身仍未修，这里修的只是恢复路径。
+
 ## 2026-09-13 · 在小 ARM 盒子上本地 build，把三台打下线 {#arm-boxes-oom-on-local-build}
 
 全量 `nix flake update` 之后按台 ssh 上去跑 `nixos-rebuild boot`。x86 那几台顺利，

@@ -37,9 +37,13 @@
     then builtins.toJSON interface
     else interface;
 in {
+  # 默认开着,不是每台各自打开。dae 崩掉之后 BPF 钩子还挂在网卡上,局域网
+  # 客户端的 DNS 全进死钩子;而它的启动前探测又要等网络通 —— "先恢复代理才能
+  # 联网 / 先联网才能启动代理"互相等。这个死锁和具体哪台机器无关。
+  # 见 docs/incidents.md#h610-dae-crash-recovery 和 #r5s-dae-vless-panic。
   options.my.dae.disableWaitingNetwork = lib.mkOption {
     type = lib.types.bool;
-    default = false;
+    default = true;
     description = "Skip the pre-start connectivity probe so DAE can reclaim its BPF hooks after a crash.";
   };
   options.my.dae.foreignDnsOverTcp = lib.mkOption {
@@ -69,6 +73,14 @@ in {
   };
 
   config = {
+    # 上游单元用的是 `Restart=on-abnormal`,盖不住"普通非零退出"。dae 的 VLESS
+    # `reqHeaderFromPool` 越界 panic 正好以退出码 2 结束,于是进程死了没人拉起,
+    # 钩子却还在 —— h610(2026-09-11)和 r5s(2026-09-13)栽的是同一处。
+    systemd.services.dae.serviceConfig = {
+      Restart = "on-failure";
+      RestartSec = "5s";
+    };
+
     # 节点 URI。
     #
     # **必须显式指定 sopsFile。** profiles/base.nix 把 defaultSopsFile 设成了

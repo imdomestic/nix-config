@@ -131,12 +131,8 @@ in {
   my.dae.foreignDnsOverTcp = true;
   # Headscale must start even when proxy exits are unavailable.
   my.dae.bootstrapDomains = ["controlplane.tailscale.com" "api.cloudflare.com"];
-  # See docs/incidents.md#h610-dae-crash-recovery.
-  my.dae.disableWaitingNetwork = true;
-  systemd.services.dae.serviceConfig = {
-    Restart = "on-failure";
-    RestartSec = "5s";
-  };
+  # 崩溃恢复(disable_waiting_network + Restart=on-failure)已经是 dae 模块的默认,
+  # 不再每台单写。见 docs/incidents.md#h610-dae-crash-recovery。
   # Prepare the shared mount before DAE binds its namespace.
   systemd.services.dae.after = ["max-sandbox-network.service"];
   systemd.services.dae.wants = ["max-sandbox-network.service"];
