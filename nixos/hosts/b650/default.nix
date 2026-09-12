@@ -51,6 +51,7 @@ in {
       userModules.hank.module
       userModules.hank.dev
       ../../../home/users/hank/gnome.nix
+      ../../../home/modules/ibus
     ];
   };
 }

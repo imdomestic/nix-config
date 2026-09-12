@@ -1,8 +1,10 @@
-{...}: {
+{pkgs, ...}: {
   imports = [
     ../../modules/keyd
     ../../modules/nerdfonts
   ];
+
+  i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
 
   services = {
     displayManager.gdm = {
