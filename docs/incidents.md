@@ -27,6 +27,9 @@ Bot 集群控制器因此连本机 `100.64.0.3:55432` 都超时。PostgreSQL nod
 协调服务随后恢复 HTTP 200，本机 Tailscale 地址恢复。另发现 PPP 重拨后的
 公网 IPv4 已变化，而 DDNS 访问 `api.cloudflare.com` 也受同一代理 DNS 故障
 影响，其他设备仍在连接旧地址；将这个精确 API 域名一并列入启动直连规则。
+23:33 DDNS 更新成功，但 peer 数据面仍不通。`/proc/<tailscaled-pid>/comm`
+实际为 `.tailscaled-wra`，原有 `pname(tailscaled)` 不匹配 Nix 包装后的进程；
+为该内核进程名补齐既有直连规则，保留原名以兼容非包装版本。
 验收必须检查协调服务 HTTP、DDNS 更新、Tailscale 地址、数据库连接和 Bot 实际在线状态。
 
 ## 2026-09-12 · nixvim 升级掀开一段五个月没生效的 keymaps {#nixvim-plugins-keymaps-dropped}
