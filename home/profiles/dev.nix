@@ -31,9 +31,9 @@ in {
       vscode-langservers-extracted
       typstyle
       marksman
-       markdownlint-cli
-       prettierd
-       biome
+      markdownlint-cli
+      prettierd
+      biome
       lua-language-server
       bash-language-server
       nodejs_22
@@ -137,5 +137,4 @@ in {
     nix-direnv.enable = true;
     enableNushellIntegration = true;
   };
-
 }

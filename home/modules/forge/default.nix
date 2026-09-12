@@ -8,10 +8,12 @@
       rev = "46736af63815b46cadeb1db2988f04d60e6601b8";
       hash = "sha256-bdoD5k33l0SwwuEmd+EvB0FiVJdbtIMeBrUAjRhSg2s=";
     };
-    patches = (oldAttrs.patches or []) ++ [
-      ./writable-stylesheet.patch
-      ./keyboard-resize-boundary.patch
-    ];
+    patches =
+      (oldAttrs.patches or [])
+      ++ [
+        ./writable-stylesheet.patch
+        ./keyboard-resize-boundary.patch
+      ];
   });
 in {
   programs.gnome-shell = {

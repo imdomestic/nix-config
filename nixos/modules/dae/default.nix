@@ -115,7 +115,11 @@ in {
 
         dns {
             upstream {
-                googledns: '${if cfg.foreignDnsOverTcp then "tcp://8.8.8.8:53" else "tcp+udp://dns.google.com:53"}'
+                googledns: '${
+          if cfg.foreignDnsOverTcp
+          then "tcp://8.8.8.8:53"
+          else "tcp+udp://dns.google.com:53"
+        }'
                 alidns: 'udp://dns.alidns.com:53'
                 txdns: 'udp://119.29.29.29:53'
                 # txdns: 'https://doh.pub/dns-query:443'
@@ -144,7 +148,11 @@ in {
                     # cname请求googledns
                     # qtype(cname) -> googledns
                     # 默认DNS服务器
-                    fallback: ${if cfg.foreignDnsOverTcp then "googledns" else "alidns"}
+                    fallback: ${
+          if cfg.foreignDnsOverTcp
+          then "googledns"
+          else "alidns"
+        }
                 }
 
                 # 根据DNS查询的响应，决定接受或者使用另外一个DNS服务器重新查询记录

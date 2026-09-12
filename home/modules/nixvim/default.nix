@@ -269,12 +269,12 @@ in {
         action = "<Cmd>nohlsearch<CR>";
       }
       {
-        mode = [ "n" "o" ];
+        mode = ["n" "o"];
         key = "[b";
         action = "<Cmd>bprev<CR>";
       }
       {
-        mode = [ "n" "o" ];
+        mode = ["n" "o"];
         key = "]b";
         action = "<Cmd>bnext<CR>";
       }
@@ -328,12 +328,12 @@ in {
       }
       {
         # o 也要:operator-pending 序列(`3kj`)里同样是 gj/gk。
-        mode = [ "n" "x" "o" ];
+        mode = ["n" "x" "o"];
         key = "j";
         action = "gj";
       }
       {
-        mode = [ "n" "x" "o" ];
+        mode = ["n" "x" "o"];
         key = "k";
         action = "gk";
       }
@@ -1534,6 +1534,5 @@ in {
       })
       vim.cmd.colorscheme("evergarden")
     '';
-
   };
 }

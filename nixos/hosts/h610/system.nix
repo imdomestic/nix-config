@@ -1421,8 +1421,15 @@ in {
   services.nginx.virtualHosts."kennethbot.inner.imdomestic.com" = {
     useACMEHost = "gaoji.inner.imdomestic.com";
     listen = [
-      { addr = "100.64.0.3"; port = 80; }
-      { addr = "100.64.0.3"; port = 443; ssl = true; }
+      {
+        addr = "100.64.0.3";
+        port = 80;
+      }
+      {
+        addr = "100.64.0.3";
+        port = 443;
+        ssl = true;
+      }
     ];
     locations."/".return = "308 https://gaoji.inner.imdomestic.com$request_uri";
   };
