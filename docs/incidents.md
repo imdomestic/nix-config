@@ -9,6 +9,23 @@
 
 ---
 
+## 2026-09-12 · h610 协调服务的代理启动依赖 {#h610-control-plane-bootstrap}
+
+22:50 的授权系统更新重启网络和 Tailscale 后，WireGuard 恢复，但 Tailscale
+地址没有重新配置。Headscale 反复因下载默认 DERP map 时域名解析失败退出；
+DAE 同时报告 `no proper dialer for DNS upstream: tcp://8.8.8.8:53`。
+Bot 集群控制器因此连本机 `100.64.0.3:55432` 都超时。PostgreSQL node 的 PID
+仍是 8264，并不是数据库进程崩溃。沙盒镜像另有加载耗时，但已通过 CJK PDF 检查。
+
+误导点是 `tailscaled` 和 DAE 都显示 active。更换 PPP 接口 DNS 为已配置的
+备用 DNS 无效，因为国外域名仍被 DAE 转送给不可用的代理；该临时设置已还原。
+单独重启 DAE 同样没有恢复国外域名解析。
+
+在 h610 为 `controlplane.tailscale.com` 声明精确匹配的直连 DNS/流量规则，
+不改变其他国外域名的代理策略。同时通过原生 `networking.hosts` 让本机访问
+自建协调服务走 loopback，保留 TLS 主机名校验，避免公网 DNS/PPP 回环依赖。
+验收必须检查协调服务 HTTP、Tailscale 地址、数据库连接和 Bot 实际在线状态。
+
 ## 2026-09-12 · nixvim 升级掀开一段五个月没生效的 keymaps {#nixvim-plugins-keymaps-dropped}
 
 一次 `nix flake update` 之后，41 个 home 里有 34 个求值失败，报的都是同一句：
