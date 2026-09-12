@@ -29,7 +29,8 @@
 `a terminal is required to read the password`。预先 `sudo -S -v` 也不管用，因为
 nixos-rebuild 内部那次 sudo 不带 `-S`。要么 `ssh -tt`，要么根本不要在目标机上跑。
 
-结论写进了 AGENTS.md：aarch64 目标一律在 r6s 上编译再 `--target-host` 推过去。
+结论写进了 AGENTS.md：小内存机器一律在指定构建机上编译再 `--target-host` 推过去，
+aarch64 那几台归 r6s，`shanghai`（只有 2 GB，40 GB 盘剩 11 GB）归 tank。
 另一条没走的路是把 maxops 加进 `packages.aarch64-linux` 让 CI 推 cachix，那样小
 盒子才有资格自己 build。
 
