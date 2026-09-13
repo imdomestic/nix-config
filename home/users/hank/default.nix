@@ -454,8 +454,8 @@ in {
 
     autosuggestion = {
       enable = true;
-      # Avoid assignment guesses such as "_="; see docs/incidents.md#zsh-inline-variable-assignments.
-      strategy = ["history"];
+      # Filter only the standalone "_=" suggestion; see docs/incidents.md#zsh-inline-variable-assignments.
+      strategy = ["history" "completion"];
     };
 
     historySubstringSearch.enable = true;
@@ -665,6 +665,15 @@ in {
     #
     # key 是函数名、value 是函数体(不要自己写 `name() { }` 外壳)。
     siteFunctions = {
+      _zsh_autosuggest_strategy_completion_filtered = ''
+        emulate -L zsh
+        setopt EXTENDED_GLOB
+        _zsh_autosuggest_strategy_completion "$@"
+        if [[ $suggestion == [[:space:]]#_= ]]; then
+          unset suggestion
+        fi
+      '';
+
       _ignore_terminal_focus_event = ''
         return 0
       '';
@@ -789,6 +798,10 @@ in {
       '')
       ''
         ${builtins.readFile ./init-extra.zsh}
+      ''
+      ''
+        # Home Manager's strategy enum excludes custom strategy names.
+        ZSH_AUTOSUGGEST_STRATEGY=(history completion_filtered)
       ''
       ''
         # Consume focus reports before vi mode treats O as a newline; see docs/incidents.md#zsh-focus-report-newlines.
