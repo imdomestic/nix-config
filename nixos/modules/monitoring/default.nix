@@ -548,7 +548,8 @@ in {
 
       settings = {
         server = {
-          http_addr = selfName;
+          # Grafana's embedded API server requires a numeric bind address.
+          http_addr = "$__file{/run/grafana/tailscale-bind-address}";
           http_port = cfg.grafanaPort;
           domain = selfName;
           root_url = "http://${selfName}:${toString cfg.grafanaPort}/";
@@ -726,6 +727,9 @@ in {
       # 幂等 —— 只在文件不存在或为空时生成,所以重启和 rebuild 都不会换钥匙
       # (换了的话 DB 里已有的密文就解不开了)。
       preStart = lib.mkAfter ''
+        TAILSCALE_BIND_IP=${pkgs.iproute2}/bin/ip ${pkgs.python3}/bin/python3 -c \
+          ${lib.escapeShellArg "import runpy; bind = runpy.run_path('${../tailscale/resolve-bind.py}'); print(bind['wait_local']('${selfName}'))"} \
+          > /run/grafana/tailscale-bind-address
         if [ ! -s ${grafanaSecretKeyFile} ]; then
           ( umask 077
             ${pkgs.coreutils}/bin/head -c 32 /dev/urandom \

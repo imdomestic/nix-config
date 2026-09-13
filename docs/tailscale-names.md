@@ -27,6 +27,10 @@ or wildcard listener. The shared client declares `--accept-dns=true` through
 
 For applications requiring numeric IPs:
 
+- Grafana: its native file provider reads the checked current address from
+  `/run/grafana/tailscale-bind-address`, generated before startup. This also
+  satisfies the embedded API server, which rejects hostnames.
+
 - maxops agent/hub: a package wrapper resolves the native JSON config's `listen`
   field, writes a mode-0600 runtime config, and execs the original binary. All
   other native settings and credential paths are retained.
@@ -68,7 +72,9 @@ The h610/tank PostgreSQL HA configuration now uses MagicDNS names for listeners,
 monitor/replication endpoints and exact HBA hostname rules. HBA requires working
 reverse **and** forward DNS, in addition to the existing TLS and password checks.
 Startup converges the existing keeper's mutable hostname, monitor URI and listen
-address using `pg_autoctl config set`; it does not register or recreate members.
+address using `pg_autoctl config set` and `pg_autoctl set node metadata`; the
+latter also updates the monitor while the keeper is stopped. Neither command
+registers or recreates members.
 The password file includes dynamically resolved numeric peer addresses during
 rolling migration, while older peers still advertise numbers. Before activation,
 verify both hosts' PTR answers and forward lookup results. Roll out the database
