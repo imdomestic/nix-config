@@ -9,6 +9,21 @@
 
 ---
 
+## 2026-09-13 · zsh 把终端焦点通知当成 vi 插行命令 {#zsh-focus-report-newlines}
+
+b650 的 Ghostty 1.3.1 切换焦点后，提示符下方不断增加空行，灰色补全被挤到下面。
+截图最初像自动补全重绘错位；实际检查 ZLE 的 `BUFFER`，发现换行已经写进输入缓冲。
+
+Hank 的 zsh 默认用 `viins`，没有绑定焦点通知 `ESC [ I` / `ESC [ O`。焦点上报
+开启时，这些字节会落入 vi 按键解释：`ESC` 切到命令模式，`O` 执行
+`vi-open-line-above`，插入一行。没有追溯具体是哪个先前程序启用了焦点上报。
+
+在 b650 的独立 PTY 中加载现有 zsh 配置，发送 3 组失焦/聚焦通知，`ping` 确实
+变成了 `\n\n\nping`。修复通过原生 `programs.zsh.siteFunctions` / `initContent`
+在 `viins`、`vicmd`、`emacs` 中将两个完整序列绑定到空操作，不修改终端的上报开关。
+同一配置加上修复后，各模式连续 20 组通知均保持缓冲、光标和模式不变；空缓冲、
+多行缓冲也通过，手动按 vi 的 `O` 仍正常插行。测试未修改用户正在使用的终端会话。
+
 ## 2026-09-13 · r5s 同一个 dae 越界 panic，把 tank 的 DNS 一起带走 {#r5s-dae-vless-panic}
 
 tank 看起来"死了"：tailscale 控制台里 offline 四小时，从悉尼连不上。实际上它
