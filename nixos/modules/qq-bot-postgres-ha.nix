@@ -257,8 +257,9 @@
 
       pg_autoctl config set --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
         pg_autoctl.monitor ${lib.escapeShellArg monitorUri}
-      pg_autoctl config set --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
-        pg_autoctl.hostname ${lib.escapeShellArg cfg.node.hostname}
+      # Update the monitor too; writing a stopped keeper's config alone does not.
+      pg_autoctl set node metadata --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
+        --hostname ${lib.escapeShellArg cfg.node.hostname}
       pg_autoctl config set --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
         postgresql.listen_addresses ${lib.escapeShellArg cfg.node.hostname}
 
