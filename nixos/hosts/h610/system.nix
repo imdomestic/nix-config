@@ -6,6 +6,11 @@
   lib,
   ...
 }: let
+  # 全 tailnet 的子网路由,直接从 registry 取。**这是 policy 里唯一一处
+  # 不能手抄的清单** —— 广播那一端在 nixos/modules/tailscale 里也读同一个
+  # lanRoutes,两边同源。加一台路由只改 registry,ACL 和 autoApprovers 自动
+  # 跟上,不会重演 ci.yml 那种"名单漂了三台没人发现"。
+  lanRoutes = lib.unique (lib.concatMap (h: h.lanRoutes or []) (lib.attrValues (import ../../hosts {inherit inputs;})));
   matrixUpstream = "http://100.64.0.4:8008";
   mkCliProxyProfile = model: aliases: {
     provider = "cliproxy";
@@ -1178,13 +1183,23 @@ in {
             dst = ["autogroup:internet:*"];
           }
 
-          # (可选) 允许所有人访问你广播的特定子网（比如你家的 R6S 局域网）
-          # {
-          #   action = "accept";
-          #   src = [ "group:friends" ];
-          #   dst = [ "192.168.1.0/24:*" ];
-          # }
+          # 子网路由。上面那条 group -> group 只覆盖 tailnet 设备地址
+          # (100.64.0.0/10),不含被广播的局域网网段 —— 少了这条,路由批准了
+          # 也会在策略层被挡掉,而且现象是"不通",不会告诉你是 ACL 拦的。
+          {
+            action = "accept";
+            src = ["group:imdomestic"];
+            dst = map (route: "${route}:*") lanRoutes;
+          }
         ];
+
+        # 路由广播出来还要批准,否则只是挂在 `headscale nodes list-routes` 里。
+        # 交给 autoApprovers 自动过:这些网段本来就是我们自己声明在 registry
+        # 里的,重装一台机器不该还要人去 h610 上敲一次 approve-routes。
+        autoApprovers = {
+          routes = lib.genAttrs lanRoutes (_: ["group:imdomestic"]);
+          exitNode = ["group:imdomestic"];
+        };
 
         # Tailscale SSH。**这一段在任何节点开启 `tailscale set --ssh` 之前
         # 完全不生效** —— SSH 规则只对启用了 tailscale SSH 的节点有意义,所以

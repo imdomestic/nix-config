@@ -155,11 +155,20 @@ in {
   boot.initrd.supportedFilesystems = ["bcachefs"];
 
   # 救援用的 initrd sshd。tank 没有 IPMI，而 `ssh tank` 走的是 tailscale——
-  # 根挂不上的话 tailscale 起不来，就彻底进不去了。rpi4 是这个 LAN 的网关
-  # (192.168.20.1) 且能独立访问，所以从 Mac 跳板进来：
-  #     ssh -J rpi4 -p 2222 root@192.168.20.50
+  # 根挂不上的话 tailscale 起不来，就彻底进不去了。
   #
-  # 192.168.20.50 是静态的，选在 rpi4 的 DHCP 池 (100-199) 之外。
+  # **这个 LAN 的网关是 r5s（192.168.20.1），不是 rpi4。** 原来这里写的是
+  # rpi4，那是错的：rpi4 在悉尼，只是它那边的局域网恰好也编号成
+  # 192.168.20.0/24。这处笔误在 2026-09-13 真的把人带进沟里过，见
+  # docs/incidents.md#r5s-dae-vless-panic；rpi4 已经改到 192.168.2.0/24。
+  #
+  # 现在 r5s 会把 192.168.20.0/24 广播进 tailnet（registry 里的 lanRoutes），
+  # 所以任何开了 accept-routes 的设备可以直连：
+  #     ssh -p 2222 root@192.168.20.50
+  # 路由没生效时退回跳板：
+  #     ssh -J r5s -p 2222 root@192.168.20.50
+  #
+  # 192.168.20.50 是静态的，选在 r5s 的 DHCP 池 (100-199) 之外。
   # initrd 里直接用物理口，不要重建 br-lan。
   boot.initrd.network = {
     enable = true;

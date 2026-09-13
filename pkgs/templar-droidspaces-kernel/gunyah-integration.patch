@@ -1,0 +1,33 @@
+diff --git a/arch/arm64/configs/gki_defconfig b/arch/arm64/configs/gki_defconfig
+--- a/arch/arm64/configs/gki_defconfig
++++ b/arch/arm64/configs/gki_defconfig
+@@ -122,5 +122,10 @@ CONFIG_CFI_CLANG=y
+ CONFIG_MODULES=y
+ CONFIG_MODULE_UNLOAD=y
++CONFIG_VIRT_DRIVERS=y
++CONFIG_GUNYAH=m
++CONFIG_GUNYAH_VCPU=m
++CONFIG_GUNYAH_IRQFD=m
++CONFIG_GUNYAH_IOEVENTFD=m
+ CONFIG_MODVERSIONS=y
+ CONFIG_MODULE_SCMVERSION=y
+ CONFIG_BLK_CGROUP_IOCOST=y
+diff --git a/drivers/virt/Kconfig b/drivers/virt/Kconfig
+--- a/drivers/virt/Kconfig
++++ b/drivers/virt/Kconfig
+@@ -31,3 +31,5 @@ source "drivers/virt/vboxguest/Kconfig"
+ 
+ source "drivers/virt/nitro_enclaves/Kconfig"
++
++source "drivers/virt/gunyah/Kconfig"
+ endif
+diff --git a/drivers/virt/Makefile b/drivers/virt/Makefile
+--- a/drivers/virt/Makefile
++++ b/drivers/virt/Makefile
+@@ -6,4 +6,6 @@
+ obj-$(CONFIG_FSL_HV_MANAGER)	+= fsl_hypervisor.o
+ obj-y				+= vboxguest/
+ 
++obj-y				+= gunyah/
++
+ obj-$(CONFIG_NITRO_ENCLAVES)	+= nitro_enclaves/

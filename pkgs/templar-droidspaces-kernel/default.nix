@@ -28,7 +28,10 @@ stdenv.mkDerivation {
     hash = "sha256-1Sf3XhIDMx18wF/DyYMTcy0AC07N82Gpc04kL1d2wms=";
   };
 
-  patches = [./droidspaces.patch];
+  patches = [
+    ./droidspaces.patch
+    ./gunyah-integration.patch
+  ];
 
   nativeBuildInputs = [
     bc
@@ -55,6 +58,9 @@ stdenv.mkDerivation {
   hardeningDisable = ["all"];
 
   postPatch = ''
+    cp -R ${./gunyah-backport}/drivers/virt/gunyah drivers/virt/
+    cp ${./gunyah-backport}/include/linux/gunyah*.h include/linux/
+    cp ${./gunyah-backport}/include/uapi/linux/gunyah.h include/uapi/linux/
     patchShebangs scripts
   '';
 
@@ -72,15 +78,29 @@ stdenv.mkDerivation {
     export KBUILD_BUILD_USER=nix
     export KBUILD_BUILD_HOST=nix
     export KBUILD_BUILD_TIMESTAMP="@1772928000"
+    # Match the release string used by the currently running marble kernel and
+    # its downstream vendor modules.  A mismatch here makes modversions reject
+    # otherwise compatible modules before any runtime testing can start.
+    export LOCALVERSION=-dirty
 
     # Determinate's native Linux builder exposes /build over virtiofs. Keep all
     # objects and ThinLTO bitcode on the VM's own tmpfs: lld mmaps its inputs and
     # receives SIGBUS when those inputs live on virtiofs. Buffered output avoids
     # the same problem for the final vmlinux.o write.
-    export KBUILD_LDFLAGS="--no-mmap-output-file"
+    # lld 21's parallel ELF writer can SIGBUS in the 8 GiB native Linux
+    # builder during the second kallsyms link. Serialise only the linker;
+    # compile jobs still use all builder CPUs.
+    export KBUILD_LDFLAGS="--no-mmap-output-file --threads=1"
 
     make O="$buildDir" gki_defconfig
+    # Build vmlinux first so CONFIG_MODVERSIONS produces a complete symbol
+    # version dump, then prepare the module linker script.  This 5.10 tree
+    # names the vmlinux-only dump vmlinux.symvers, while an M= build expects
+    # the conventional Module.symvers name.
     make O="$buildDir" -j$NIX_BUILD_CORES Image
+    make O="$buildDir" -j$NIX_BUILD_CORES modules_prepare
+    cp "$buildDir/vmlinux.symvers" "$buildDir/Module.symvers"
+    make O="$buildDir" -j$NIX_BUILD_CORES M=drivers/virt/gunyah modules
 
     for option in \
       CONFIG_SYSVIPC \
@@ -97,7 +117,17 @@ stdenv.mkDerivation {
       grep -qx "$option=y" "$buildDir/.config"
     done
     grep -qx '# CONFIG_LTO_CLANG_FULL is not set' "$buildDir/.config"
+    for option in \
+      CONFIG_GUNYAH \
+      CONFIG_GUNYAH_VCPU \
+      CONFIG_GUNYAH_IRQFD \
+      CONFIG_GUNYAH_IOEVENTFD; do
+      grep -qx "$option=m" "$buildDir/.config"
+    done
     test -s "$buildDir/arch/arm64/boot/Image"
+    for module in gunyah gunyah_vcpu gunyah_irqfd gunyah_ioeventfd; do
+      test -s "$buildDir/drivers/virt/gunyah/$module.ko"
+    done
 
     runHook postBuild
   '';
@@ -108,6 +138,10 @@ stdenv.mkDerivation {
     buildDir=/tmp/templar-kernel-build
     install -Dm444 "$buildDir/arch/arm64/boot/Image" $out/Image
     install -Dm444 "$buildDir/.config" $out/config
+    for module in gunyah gunyah_vcpu gunyah_irqfd gunyah_ioeventfd; do
+      install -Dm444 "$buildDir/drivers/virt/gunyah/$module.ko" \
+        "$out/modules/$module.ko"
+    done
 
     mkdir -p $out/nix-support
     cat >$out/nix-support/build-info <<EOF
