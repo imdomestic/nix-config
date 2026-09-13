@@ -664,6 +664,10 @@ in {
     #
     # key 是函数名、value 是函数体(不要自己写 `name() { }` 外壳)。
     siteFunctions = {
+      _ignore_terminal_focus_event = ''
+        return 0
+      '';
+
       # sops 路径补全的替代实现,见 init-extra.zsh 里 compdef 那段的注释。
       # 名字不能叫 _sops —— sops 包自己就往这个目录写同名文件,会撞车。
       _sops_files = ''
@@ -784,6 +788,15 @@ in {
       '')
       ''
         ${builtins.readFile ./init-extra.zsh}
+      ''
+      ''
+        # Consume focus reports before vi mode treats O as a newline; see docs/incidents.md#zsh-focus-report-newlines.
+        zle -N _ignore_terminal_focus_event
+        for _hm_keymap in viins vicmd emacs; do
+          bindkey -M "$_hm_keymap" '\e[I' _ignore_terminal_focus_event
+          bindkey -M "$_hm_keymap" '\e[O' _ignore_terminal_focus_event
+        done
+        unset _hm_keymap
       ''
       # macOS 那段原来是运行时 `if [ "$(uname)" = "Darwin" ]` 加一层
       # `if [ "$(uname -m)" = "x86_64" ]`,每开一个 shell fork 两次 uname 去问
