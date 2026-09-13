@@ -9,6 +9,31 @@
 
 ---
 
+## 2026-09-13 · MagicDNS 迁移的运行时兼容性 {#tailscale-name-runtime-compatibility}
+
+`tsIp` 改为 `tsName` 后，17 个 NixOS 系统求值通过，maxops 和 exporter 的
+实际监听测试也通过；但这不能证明其他应用内部的所有地址字段都接受域名。
+分批部署时出现四处需要补齐的行为：
+
+- Grafana 13.0.7 的内置 API server 拒绝 `http_addr` 中的域名。现在通过原生
+  `$__file{...}` 读取启动时解析、且确认属于本机 `tailscale0` 的地址。
+- Docker 的 host network 不等于继承宿主机的 DNS 路由。Qwen 容器的
+  `/etc/resolv.conf` 实际只有外部 DNS，无法解析 MagicDNS；加上
+  `--dns=100.100.100.100` 后，同一镜像的解析和 llama-server 监听正常。
+- tank 的 NFS 服务早于 DNS 就绪时执行 `exportfs`，解析失败却仍显示 active，
+  实际只导出了另一个 LAN 路径。启动步骤现在等待客户端域名解析成功，再以
+  不忽略错误的方式重新加载导出；h610 重新挂载后恢复访问。
+- 对已停止 keeper 执行 `pg_autoctl config set pg_autoctl.hostname` 只改本地
+  文件。启动后监控器仍保留旧地址，因为没有发现配置变化。改用
+  `pg_autoctl set node metadata` 同时更新监控器和本地配置；节点 ID、数据目录
+  和复制时间线不变。tank 的一次迁移中间状态使用同一原生命令修复。
+
+误导点分别是“顶层监听能解析域名就代表子服务也能”、“host network 会复制
+宿主机 DNS 行为”、“active 就代表导出成功”和“本地配置等于监控器元数据”。
+后续验收应检查实际监听、容器内解析、`exportfs -v` 和 `pg_autoctl show state`，
+而不只看求值或服务 active。持续运行后的地址变更边界见
+[域名迁移说明](tailscale-names.md)。
+
 ## 2026-09-13 · 灰色建议出现 `_=` 等变量赋值候选 {#zsh-inline-variable-assignments}
 
 最初怀疑是历史里存了异常命令，但 b650 的历史文件中没有以 `_=` 开头的记录。
