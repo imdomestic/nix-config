@@ -38,6 +38,7 @@ in {
       "--device=/dev/dri/card0"
       "--device=/dev/dri/renderD128"
       "--network=host"
+      "--dns=100.100.100.100"
     ];
 
     cmd = [
