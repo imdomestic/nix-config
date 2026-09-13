@@ -98,4 +98,63 @@ routes are not allocated node identities and remain numeric.
 Run `python3 scripts/test-tailscale-bind.py`, then evaluate the affected system
 closures with `nix eval --raw .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath`.
 Changes under `home/` are not needed. No automatic registration, pre-auth key
-creation, database restoration or system activation is part of this change.
+creation or database restoration is part of this migration.
+
+## Deployment on 2026-09-13
+
+The authorized rollout includes `fadfd33`, `86b95e7` and `007d177`. All ten
+running system paths and persistent profiles match the evaluated final closures.
+All clients report DNS acceptance enabled, resolve their own names and the
+dynamic aliases, and serve node/ping metrics through names. All 17 NixOS systems
+evaluated successfully. Eight bind-adapter checks passed; the earlier isolated
+nftables tests covered IPv4/IPv6 and private/public ports.
+
+Builds used clean Linux worktrees. r6s built r2s/r5s/r5sjp/rpi4; tank built
+Shanghai. No small target compiled its system. No machine rebooted, and no
+standalone Home Manager profile was activated. The unrelated local marble edit
+and existing target checkouts were preserved.
+
+Runtime verification passed:
+
+- Prometheus: h610 27/27 targets up; tank 25/25 targets up.
+- Complete nine-host maxops read-only acceptance, including Agent/Executor,
+  metrics, deployment/profile agreement and authorization boundaries.
+- Public Headscale health, Headplane, both Grafanas and the Shanghai gateway.
+  The independent nftables guards are loaded for h610 80/443 and r6s 9090.
+- PostgreSQL monitor and keepers restarted one at a time. Both node addresses
+  now use names; node IDs remain 1/4 and timeline remains 11. h610 remains the
+  healthy primary and tank the healthy secondary. A read-only query using the
+  application's credentials and both DNS endpoints selected writable `qq_bot`.
+  PostgreSQL remains 17.10; this was not a database upgrade.
+- Archive export and mounted source use names, and access succeeds. Qwen's DNS
+  listener, health endpoint and actual native warmup all succeeded. Max, Hub
+  and Qwen showed zero restarts after their final starts.
+
+Corrections and misleading assumptions are recorded in
+[the incident entry](incidents.md#tailscale-name-runtime-compatibility).
+rpi4's first switch reported a root user-manager exit during reactivation;
+a foreground retry of the same closure succeeded. One Shanghai journal query
+returned HTTP 502; a subsequent query and the final complete fleet check passed.
+
+Functional acceptance is separate from strict business health. Max had zero
+failed deliveries at the first sample and one at the final sample. The remaining
+row is delivery `171477`, created September 9, retrying an iMessage bridge
+preflight timeout. Both the bridge name and its currently resolved IP time out
+from h610; DNS resolution itself succeeds. Unknown deliveries remain 3,058,
+parked media 388, failed captures 19 and permanent delivery failures 4. These
+records were preserved; no messages were replayed or synthetic notifications
+sent. r2s retains a failed SSH session scope; no migrated service is failed.
+Rollback timers were cancelled after verification; prior generations remain.
+
+| Host | Final system store hash |
+| --- | --- |
+| b650 | `93shdvxx1cjs7p9zfvfsgc8qlhf0zf49` |
+| h310 | `dl4i7f8gmmrmj47my0nc716bp6x4dvaj` |
+| h610 | `299brvf4rb8ql83vqvdkzskidr6xm9dq` |
+| r2s | `y3cw0h41aa62r7pcl27cz0jycdpw7kr7` |
+| r5s | `wknjbzzdbgj2c0kg84yr3vxbjwszx75d` |
+| r5sjp | `zzlmsxza731zbxg7g1d6amhyjjg2gpla` |
+| r6s | `jc0fyydc6w1fpzwd7qml0flgqg6w9vjm` |
+| rpi4 | `hhji6lb3hdka4w9alyg4kfcd5wvb6p0p` |
+| shanghai | `6lzjzpmn7fh1ams1dwhznv52ih6na98l` |
+| tank | `ky201haigvp6ivf1rkbmvrx8shhcb7ss` |
