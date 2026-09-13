@@ -250,6 +250,22 @@ in {
     '';
   };
 
+  systemd.services.nfs-server = {
+    after = ["tailscaled.service" "tailscaled-set.service"];
+    wants = ["tailscaled.service" "tailscaled-set.service"];
+    # The vendor unit ignores exportfs failures; retry after MagicDNS is ready.
+    preStart = lib.mkAfter ''
+      for attempt in $(${pkgs.coreutils}/bin/seq 1 30); do
+        if ${pkgs.getent}/bin/getent ahostsv4 h610.inner.imdomestic.com >/dev/null; then
+          exec ${pkgs.nfs-utils}/bin/exportfs -r
+        fi
+        ${pkgs.coreutils}/bin/sleep 2
+      done
+      echo "MagicDNS client for the archive export is unavailable" >&2
+      exit 1
+    '';
+  };
+
   services.filebrowser = {
     enable = true;
     user = "hank"; # FileBrowser 以 hank 身份运行

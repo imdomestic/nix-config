@@ -80,7 +80,10 @@ rolling migration, while older peers still advertise numbers. Before activation,
 verify both hosts' PTR answers and forward lookup results. Roll out the database
 nodes one at a time and check replication after each activation.
 
-The archive NFS mount/export use names too. NFS keeps established mounts and
+The archive NFS mount/export use names too. The exporter waits for the client
+name before reloading exports; the upstream unit otherwise ignores resolution
+failures. The host-network Qwen container explicitly uses the Tailscale DNS
+server because Docker strips the host's loopback resolver. NFS keeps established mounts and
 export resolution as runtime state: refresh the export and remount if a server
 or client is replaced with a new address.
 
