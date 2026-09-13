@@ -11,11 +11,11 @@
   # lanRoutes,两边同源。加一台路由只改 registry,ACL 和 autoApprovers 自动
   # 跟上,不会重演 ci.yml 那种"名单漂了三台没人发现"。
   lanRoutes = lib.unique (lib.concatMap (h: h.lanRoutes or []) (lib.attrValues (import ../../hosts {inherit inputs;})));
-  matrixUpstream = "http://100.64.0.4:8008";
+  matrixUpstream = "http://matrix-tailnet";
   mkCliProxyProfile = model: aliases: {
     provider = "cliproxy";
     protocol = "openai-chat";
-    base_url = "http://100.64.0.3:8317/v1";
+    base_url = "http://h610.inner.imdomestic.com:8317/v1";
     api_key_env = "CLIPROXY_API_KEY";
     inherit model aliases;
     timeout_seconds = 180;
@@ -120,9 +120,9 @@ in {
     ../../modules/keyd
     ../../modules/qq-bot-postgres-ha.nix
     # 监控的第二份(tank 是第一份)。开关读 ./default.nix 的 roles,不在这里写。
-    #   Prometheus    http://100.64.0.3:9009
-    #   Alertmanager  http://100.64.0.3:9093
-    #   Grafana       http://100.64.0.3:3000
+    #   Prometheus    http://h610.inner.imdomestic.com:9009
+    #   Alertmanager  http://h610.inner.imdomestic.com:9093
+    #   Grafana       http://h610.inner.imdomestic.com:3000
     ../../modules/monitoring
     # ../../modules/minecraft/wuxi.nix
   ];
@@ -149,7 +149,7 @@ in {
   # bindAddress 的说明,公网上不该有这个监听。
   services.cliproxy = {
     enable = true;
-    bindAddress = "100.64.0.3";
+    bindAddress = config.my.host.tsName;
   };
 
   # 重新启用 modules/mihomo 时这几行就位,现在 import 注释掉了所以是死设置
@@ -206,16 +206,6 @@ in {
     "net.ipv6.conf.all.forwarding" = 1;
     "net.core.default_qdisc" = "fq";
     "net.ipv4.tcp_congestion_control" = "bbr";
-
-    # nginx 里有一个只绑 tailnet 地址的 server 块(kennethbot 那个,
-    # `listen 100.64.0.3:80`),而 100.64.0.3 要等 tailscaled 登录成功才存在;
-    # 偏偏 tailscaled 要连的 headscale 又挂在同一个 nginx 的 8443 后面 ——
-    # 冷启动时两者互等:nginx 的 config test 绑不上就退出,试满 5 次耗尽
-    # StartLimitBurst 之后永久放弃,headscale 从此对外失联,而且不会自愈。
-    # 2026-08-17 真实发生过,持续 13 小时。见 docs/incidents.md#nginx-tailnet-bind-deadlock
-    #
-    # 允许绑定当前不存在的地址,从根上打断这个环 —— keepalived/HA 场景的标准做法。
-    "net.ipv4.ip_nonlocal_bind" = 1;
 
     # --- 内存压力 (见下面 zramSwap / systemd.oomd) ---
     #
@@ -794,10 +784,12 @@ in {
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
+  my.tailscale.bindServices = ["ollama" "headplane" "cliproxy" "max"];
+
   services.ollama = {
     enable = true;
     package = pkgs-unstable.ollama-vulkan;
-    host = config.my.host.tsIp;
+    host = config.my.host.tsName;
     loadModels = [
       "bge-m3"
       "qwen3.5:2b-q4_K_M"
@@ -859,13 +851,13 @@ in {
       FORWARDED_ALLOW_IPS = "127.0.0.1";
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
-      AI_PROMETHEUS_URL = "http://100.64.0.3:9009";
-      AI_ALERTMANAGER_URL = "http://100.64.0.3:9093";
+      AI_PROMETHEUS_URL = "http://h610.inner.imdomestic.com:9009";
+      AI_ALERTMANAGER_URL = "http://h610.inner.imdomestic.com:9093";
       AI_ALERT_NOTIFY_ENABLED = "false";
       AI_ALERT_NOTIFY_GROUP_ID = "611798505";
       AI_ALERT_NOTIFY_CHECK_SECONDS = "30";
       AI_SEMANTIC_ENABLED = "true";
-      AI_EMBEDDING_BASE_URL = "http://${config.my.host.tsIp}:11434/v1";
+      AI_EMBEDDING_BASE_URL = "http://${config.my.host.tsName}:11434/v1";
       AI_EMBEDDING_API_KEY = "ollama-local";
       AI_EMBEDDING_MODEL = "bge-m3";
       AI_EMBEDDING_DIMENSIONS = "1024";
@@ -913,7 +905,7 @@ in {
       scrape_interval = "15s";
       static_configs = [
         {
-          targets = ["${config.my.host.tsIp}:8091"];
+          targets = ["${config.my.host.tsName}:8091"];
           labels.instance = "h610";
         }
       ];
@@ -984,7 +976,7 @@ in {
     node = {
       enable = true;
       name = "h610";
-      hostname = "100.64.0.3";
+      hostname = config.my.host.tsName;
       stateDir = "/var/lib/qq-bot-postgres-node";
       dataDir = "/var/lib/qq-bot-postgres-node/data";
       candidatePriority = 100;
@@ -1011,7 +1003,7 @@ in {
       "gaoji.service"
     ];
     content = ''
-      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@100.64.0.3:55432,100.64.0.4:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
+      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@h610.inner.imdomestic.com:55432,tank.inner.imdomestic.com:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
       AI_POSTGRES_SCHEMA=qq_bot
       AI_POSTGRES_POOL_MIN_SIZE=1
       AI_POSTGRES_POOL_MAX_SIZE=10
@@ -1100,7 +1092,7 @@ in {
   ];
 
   fileSystems."/mnt/kennethbot-archive" = {
-    device = "100.64.0.4:/data/services/kennethbot-archive";
+    device = "tank.inner.imdomestic.com:/data/services/kennethbot-archive";
     fsType = "nfs";
     options = [
       "nfsvers=4.2"
@@ -1243,18 +1235,6 @@ in {
         magic_dns = true;
         nameservers = {};
         override_local_dns = false;
-        extra_records = [
-          {
-            name = "gaoji.inner.imdomestic.com";
-            type = "A";
-            value = "100.64.0.3";
-          }
-          {
-            name = "kennethbot.inner.imdomestic.com";
-            type = "A";
-            value = "100.64.0.3";
-          }
-        ];
       };
       ip_prefixes = ["100.64.0.0/10"];
     };
@@ -1306,9 +1286,10 @@ in {
     enable = true;
     settings = {
       server = {
-        host = config.my.host.tsIp;
+        # The package wrapper supplies HEADPLANE_SERVER__HOST from the local tailnet address.
+        host = "127.0.0.1";
         port = 3001;
-        base_url = "http://${config.my.host.tsIp}:3001";
+        base_url = "http://${config.my.host.tsName}:3001";
         cookie_secure = false;
         cookie_secret_path = config.sops.secrets."headplane/cookie_secret".path;
       };
@@ -1322,7 +1303,7 @@ in {
     };
   };
 
-  # 绑 tsIp 的服务都得等 tailscaled 把地址配上,否则首次启动 bind 失败。
+  # 绑 tsName 的服务都得等 tailscaled 把地址配上,否则首次启动 bind 失败。
   # 和 modules/monitoring 里 prometheus/grafana/alertmanager 同样的处理。
   systemd.services.headplane = {
     after = ["tailscaled.service"];
@@ -1405,19 +1386,18 @@ in {
   # 0 = 取消时间窗,不再有"失败太快"的判定,按 RestartSec 一直重试下去。
   systemd.services.nginx.startLimitIntervalSec = lib.mkForce 0;
 
-  # Gaoji 管理台只在 tailnet 地址上提供服务。Headscale 的 MagicDNS
-  # 把 kennethbot.inner.imdomestic.com 解析到 100.64.0.3，公网接口不监听。
+  # Private web ports are interface-filtered; see ./tailscale-names.nix.
   services.nginx.virtualHosts."gaoji.inner.imdomestic.com" = {
     serverName = "gaoji.inner.imdomestic.com";
     useACMEHost = "gaoji.inner.imdomestic.com";
     forceSSL = true;
     listen = [
       {
-        addr = "100.64.0.3";
+        addr = "0.0.0.0";
         port = 80;
       }
       {
-        addr = "100.64.0.3";
+        addr = "0.0.0.0";
         port = 443;
         ssl = true;
       }
@@ -1439,11 +1419,11 @@ in {
     useACMEHost = "gaoji.inner.imdomestic.com";
     listen = [
       {
-        addr = "100.64.0.3";
+        addr = "0.0.0.0";
         port = 80;
       }
       {
-        addr = "100.64.0.3";
+        addr = "0.0.0.0";
         port = 443;
         ssl = true;
       }

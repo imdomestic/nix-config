@@ -54,7 +54,7 @@
     settings.Resolve.FallbackDNS = ["223.5.5.5"];
   };
   services.openssh.enable = true;
-  # 没有 tsIp(不是部署目标),所以要显式开。见 nixos/modules/tailscale。
+  # 没有 tsName(不是部署目标),所以要显式开。见 nixos/modules/tailscale。
   my.tailscale.enable = true;
 
   system.stateVersion = "25.11";

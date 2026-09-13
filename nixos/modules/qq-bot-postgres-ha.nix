@@ -2,10 +2,12 @@
   config,
   lib,
   pkgs,
+  inputs,
   ...
 }: let
   inherit (lib) mkEnableOption mkIf mkOption types;
   cfg = config.services.qq-bot-postgres-ha;
+  hosts = import ../hosts {inherit inputs;};
 
   pgAutoFailover = pkgs.postgresql17Packages.pg_auto_failover.overrideAttrs (old: {
     patches =
@@ -42,7 +44,8 @@
   waitForAddress = address: ''
     found=0
     for _ in $(seq 1 90); do
-      if ip -4 -o address show dev tailscale0 | grep -Fq "${address}/"; then
+      resolved=$(${pkgs.getent}/bin/getent ahostsv4 ${lib.escapeShellArg address} | head -n 1 | cut -d ' ' -f 1 || true)
+      if [ -n "$resolved" ] && ip -4 -o address show dev tailscale0 | grep -Fq "$resolved/"; then
         found=1
         break
       fi
@@ -64,9 +67,9 @@
     # Keepers are restricted to their exact Tailscale identities and must
     # authenticate with the dedicated HA password over TLS.
     ${lib.concatMapStringsSep "\n" (address: ''
-        hostssl "pg_auto_failover" "autoctl_node" ${address}/32 scram-sha-256
+        hostssl "pg_auto_failover" "autoctl_node" ${address} scram-sha-256
       '')
-      cfg.peerAddresses}
+      cfg.peerNames}
 
     host all all 0.0.0.0/0 reject
     host all all ::0/0 reject
@@ -96,17 +99,17 @@
 
     # pg_auto_failover 2.2 uses a restricted health-check role with a fixed
     # password. SCRAM still prevents unauthenticated role impersonation.
-    hostssl all pgautofailover_monitor ${cfg.monitor.hostname}/32 scram-sha-256
+    hostssl all pgautofailover_monitor ${cfg.monitor.hostname} scram-sha-256
 
     # Replication and pg_rewind share this role. Both peers use a separate,
     # encrypted HA secret rather than the application's database password.
     ${lib.concatMapStringsSep "\n" (address: ''
-        hostssl all pgautofailover_replicator ${address}/32 scram-sha-256
+        hostssl all pgautofailover_replicator ${address} scram-sha-256
       '')
-      cfg.peerAddresses}
+      cfg.peerNames}
 
     # The bot always originates on h610 and must use TLS plus SCRAM.
-    hostssl "qq_bot" "qq_bot" ${cfg.applicationClientCidr} scram-sha-256
+    hostssl "qq_bot" "qq_bot" ${cfg.applicationClientName} scram-sha-256
   '';
   nodePostgresConfig = pkgs.writeText "qq-bot-postgres-node-local.conf" ''
     password_encryption = 'scram-sha-256'
@@ -219,8 +222,12 @@
             ${toString cfg.node.port} \
             pgautofailover_replicator \
             "$ha_password"
+          while read -r peer_ip _; do
+            [ -n "$peer_ip" ] || continue
+            printf '%s:%s:*:%s:%s\n' "$peer_ip" ${toString cfg.node.port} pgautofailover_replicator "$ha_password"
+          done < <(${pkgs.getent}/bin/getent ahostsv4 ${lib.escapeShellArg address} || true)
         '')
-        cfg.peerAddresses}
+        cfg.peerNames}
       } > "$pgpass"
       chmod 0600 "$pgpass"
       export PGPASSFILE="$pgpass"
@@ -247,6 +254,13 @@
           --candidate-priority=${toString cfg.node.candidatePriority} \
           --maximum-backup-rate=${lib.escapeShellArg cfg.node.maximumBackupRate}
       fi
+
+      pg_autoctl config set --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
+        pg_autoctl.monitor ${lib.escapeShellArg monitorUri}
+      pg_autoctl config set --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
+        pg_autoctl.hostname ${lib.escapeShellArg cfg.node.hostname}
+      pg_autoctl config set --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
+        postgresql.listen_addresses ${lib.escapeShellArg cfg.node.hostname}
 
       pg_autoctl config set \
         --pgdata=${lib.escapeShellArg cfg.node.dataDir} \
@@ -1089,15 +1103,15 @@ in {
       default = null;
       description = "File containing the dedicated 64-character hexadecimal HA password.";
     };
-    applicationClientCidr = mkOption {
+    applicationClientName = mkOption {
       type = types.str;
-      default = "100.64.0.3/32";
-      description = "Exact Tailscale source CIDR allowed to use the qq_bot role.";
+      default = hosts.h610.tsName;
+      description = "Exact MagicDNS hostname allowed to use the qq_bot role.";
     };
-    peerAddresses = mkOption {
+    peerNames = mkOption {
       type = types.listOf types.str;
-      default = ["100.64.0.3" "100.64.0.4"];
-      description = "Exact Tailscale addresses allowed to contact the monitor.";
+      default = [hosts.h610.tsName hosts.tank.tsName];
+      description = "Exact MagicDNS hostnames allowed to contact the monitor.";
     };
     preferredNodeName = mkOption {
       type = types.strMatching "[A-Za-z0-9_-]+";
@@ -1114,7 +1128,7 @@ in {
       enable = mkEnableOption "the pg_auto_failover monitor";
       hostname = mkOption {
         type = types.str;
-        default = "100.64.0.3";
+        default = hosts.h610.tsName;
       };
       port = mkOption {
         type = types.port;

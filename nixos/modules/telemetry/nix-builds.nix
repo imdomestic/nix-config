@@ -31,12 +31,12 @@
     (import ../../../lib/mkInventory.nix {inherit inputs;})
     {hosts = import ../../hosts {inherit inputs;};};
 
-  # tailnet IP → 主机名,用来把远程构建会话标成人能看懂的来源。
-  ipToName = lib.concatMapStrings (h: "${h.tsIp} ${h.name}\n") inventory;
+  # Resolve the inventory names at collection time to label remote build sessions.
+  dnsToName = lib.concatMapStrings (h: "${h.tsName} ${h.name}\n") inventory;
 
   script = pkgs.writeShellApplication {
     name = "nix-build-metrics";
-    runtimeInputs = [pkgs.procps pkgs.coreutils];
+    runtimeInputs = [pkgs.procps pkgs.coreutils pkgs.getent];
     text = ''
       dir=${lib.escapeShellArg cfg.textfileDir}
       out="$dir/nix_builds.prom"
@@ -117,9 +117,11 @@
       # tailscale SSH 的包装进程带 --remote-ip=<tailnet 地址>,而每个远程
       # 构建都是一路 `nix-daemon --stdio`。数 IP 就知道是替谁在干活。
       declare -A ip_name=()
-      while read -r ip name; do
-        [ -n "$ip" ] && ip_name[$ip]=$name
-      done <<< ${lib.escapeShellArg ipToName}
+      while read -r dns name; do
+        while read -r ip _; do
+          [ -n "$ip" ] && ip_name[$ip]=$name
+        done < <(timeout 2 getent ahostsv4 "$dns" || true)
+      done <<< ${lib.escapeShellArg dnsToName}
 
       # 匹配全部用 bash 内置的 case,不调 grep —— grep 不在 runtimeInputs 里,
       # 而 writeShellApplication 会把 PATH 限死;调它会是运行时才暴露的

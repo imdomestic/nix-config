@@ -6,7 +6,7 @@ in {
   system = "x86_64-linux";
   kind = "nixos";
   roles = ["server"];
-  tsIp = "100.64.0.30";
+  tsName = "h310.inner.imdomestic.com";
   maxops = {
     enable = true;
     manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "gaoji-cluster-worker.service"];

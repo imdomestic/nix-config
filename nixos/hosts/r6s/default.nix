@@ -6,7 +6,7 @@ in {
   system = "aarch64-linux";
   kind = "nixos";
   roles = ["server"];
-  tsIp = "100.64.0.5";
+  tsName = "r6s.inner.imdomestic.com";
   lanRoutes = ["192.168.22.0/24"];
   maxops = {
     enable = true;

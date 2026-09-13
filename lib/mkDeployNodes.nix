@@ -39,7 +39,7 @@
   # 按 system 收敛也避免了每台 host 各 import 一遍。
   deployLibs =
     lib.genAttrs (lib.unique (
-      lib.mapAttrsToList (_: h: h.system) (lib.filterAttrs (_: h: (h ? tsIp) && (h ? system)) hosts)
+      lib.mapAttrsToList (_: h: h.system) (lib.filterAttrs (_: h: ((h.tsName or null) != null) && (h ? system)) hosts)
     ))
     mkDeployLib;
 
@@ -66,33 +66,16 @@
     };
   in
     lib.mapAttrs' mkProfile (hostConfig.users or {});
-  # **部署一律走 tailscale 地址,`my.host.tsIp` 就是可部署的判据。**
-  #
-  # 为什么不是 `ip`(wireguard 的 10.0.0.x):
-  #
-  #   - **r5sjp 和 r2s 只有 tailscale 地址。** 按 `ip` 过滤的话这两台压根不在
-  #     deploy.nodes 里,根本没法部署 —— 而 r5sjp 是整条代理链唯一的出口,
-  #     docs/proxy-todo.md 里也写明了它只能经 100.64.0.16 访问。
-  #   - tailnet 到哪都通,不需要人先接进 wg;headscale 的 ACL 已经把这四个人
-  #     圈好了。
-  #   - 实测到 tank 两条路延迟相当(wg 30ms / ts 32ms),换过去不吃亏。
-  #
-  # 反过来,只有 `ip` 没有 tsIp 的 b650 / x470 就此不再是部署目标 ——
-  # 这两台是桌面机,它们在 tailnet 里那个节点其实是各自的 Windows 那份。
-  # 实测两台的 wg 地址也 ssh 不通,所以它们留在 deploy.nodes 里只是个
-  # 一按就失败的空壳。它们照常有
-  # nixosConfigurations,本机 `just switch` 不受影响。
-  #
-  # 加一台新机器进部署范围 = 在 registry 里填一行 tsIp,和监控是同一个开关。
+  # Deployment uses the same MagicDNS inventory as monitoring.
 in
   lib.mapAttrs (
     name: hostConfig: let
-      isDeployable = (hostConfig ? tsIp) && (builtins.hasAttr name nixosConfigurations);
+      isDeployable = ((hostConfig.tsName or null) != null) && (builtins.hasAttr name nixosConfigurations);
       homeProfiles = mkHomeProfiles name hostConfig;
     in
       if isDeployable
       then {
-        hostname = hostConfig.tsIp;
+        hostname = hostConfig.tsName;
 
         # **现在是在发起方构建**(commit 0645dfa 把 `remoteBuild = true;` 注释
         # 掉了,而 deploy-rs 的默认值就是 false)。后果:从 mac 部署任何 linux
@@ -123,4 +106,4 @@ in
       }
       else {}
   )
-  (lib.filterAttrs (n: v: (v ? tsIp) && (v.kind or "nixos" == "nixos")) hosts)
+  (lib.filterAttrs (n: v: ((v.tsName or null) != null) && (v.kind or "nixos" == "nixos")) hosts)

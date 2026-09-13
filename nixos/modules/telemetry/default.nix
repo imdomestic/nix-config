@@ -1,9 +1,9 @@
 # 采集端:每台被纳管的机器上跑一个 node_exporter。
 #
-# 纳管与否由 `my.host.tsIp` 单独决定 —— 设了就采,没设就不采。tank 上的
+# 纳管与否由 `my.host.tsName` 单独决定 —— 设了就采,没设就不采。tank 上的
 # Prometheus 抓取目标读的是同一个字段(见 nixos/modules/monitoring),所以
 # 不可能出现"开了 exporter 没人抓"或者"配了抓取目标但对面没开"。加一台机器
-# 只需要在 registry 里填一行 tsIp。
+# 只需要在 registry 里填一行 tsName。
 {
   config,
   lib,
@@ -16,13 +16,13 @@ in {
   options.my.telemetry = {
     enable = lib.mkOption {
       type = lib.types.bool;
-      default = config.my.host.tsIp != null;
-      defaultText = lib.literalExpression "config.my.host.tsIp != null";
+      default = config.my.host.tsName != null;
+      defaultText = lib.literalExpression "config.my.host.tsName != null";
       description = ''
-        默认跟着 `my.host.tsIp` 走。要单独关掉某台机器就显式写 false,
-        但注意 Prometheus 那边的抓取目标也是从 tsIp 生成的 —— 只关这边
+        默认跟着 `my.host.tsName` 走。要单独关掉某台机器就显式写 false,
+        但注意 Prometheus 那边的抓取目标也是从 tsName 生成的 —— 只关这边
         会让那台机器在监控里变成"一直抓不到",而不是"不监控"。想彻底移出
-        监控范围,把 tsIp 置空。
+        监控范围,把 tsName 置空。
       '';
     };
 
@@ -50,18 +50,20 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    # 这条断言是 fail-closed 的关键。没有它,tsIp 忘了填时 listenAddress
+    my.tailscale.bindServices = ["prometheus-node-exporter"];
+
+    # 这条断言是 fail-closed 的关键。没有它,tsName 忘了填时 listenAddress
     # 会拿到 null,而 nixpkgs 那边的默认是 "0.0.0.0" —— 在下面这几台
     # firewall.enable = false 的机器上,那等于把 exporter 直接挂出去。
     # 宁可求值失败也不要静默降级成公开监听。
     assertions = [
       {
-        assertion = config.my.host.tsIp != null;
+        assertion = config.my.host.tsName != null;
         message = ''
           my.telemetry.enable 为 true,但 ${config.my.host.name} 没有设
-          my.host.tsIp。node_exporter 必须绑定一个确定的 tailscale 地址,
+          my.host.tsName。node_exporter 必须绑定一个确定的 tailscale 地址,
           不能回落到 0.0.0.0。在 nixos/hosts/${config.my.host.name}/default.nix
-          里补上 tsIp,或者把 my.telemetry.enable 显式设成 false。
+          里补上 tsName,或者把 my.telemetry.enable 显式设成 false。
         '';
       }
     ];
@@ -76,7 +78,7 @@ in {
       # 别小看这个 exporter 的信息量:开了 systemd collector 之后它会导出
       # 全部 unit 名字和状态。对跑着 xray/mihomo/wireguard 的这几台机器来说,
       # 那是一份完整的服务清单,不该落到 tailnet 之外。
-      listenAddress = config.my.host.tsIp;
+      listenAddress = config.my.host.tsName;
       port = cfg.port;
 
       # 只在下面的 tailscale0 放行,不让 openFirewall 把端口开到其他网卡。

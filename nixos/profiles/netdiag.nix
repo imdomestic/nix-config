@@ -7,7 +7,7 @@
 #     一个一行都没声明的 shanghai 上 `command -v ip` 照样解析到
 #     iproute2/bin/ip)。
 #   - `tailscale` 三处也是废话。`services.tailscale.enable` 自己会把 CLI
-#     装进去,而这几台的 tailscale 是 modules/tailscale 按 my.host.tsIp 开的。
+#     装进去,而这几台的 tailscale 是 modules/tailscale 按 my.host.tsName 开的。
 #
 # 剩下这几个才是 NixOS 默认真的没有的(同一台 shanghai 上 tcpdump / ethtool /
 # mtr 三个 `command -v` 全是 MISSING)。

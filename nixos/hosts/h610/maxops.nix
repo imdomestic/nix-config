@@ -64,7 +64,7 @@ in {
 
   services.max.maxops = {
     enable = true;
-    baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
+    baseUrl = "http://${host.tsName}:${toString config.services.maxops-hub.port}";
     tokenFile = config.sops.secrets."maxops/max_token".path;
     allowedGroups = [611798505 650536599];
   };
@@ -167,17 +167,25 @@ in {
     hosts = hostNames;
   };
 
+  my.tailscale.bindServices = ["maxops-hub" "gaoji-cluster-control" "gaoji-cluster-worker"];
+  systemd.services.maxops-hub.serviceConfig.RuntimeDirectory = "maxops-hub-bind";
   services.maxops-hub = {
     enable = true;
-    package = import ../../../lib/gaoji-ops-package.nix {inherit inputs pkgs;};
-    listenAddress = host.tsIp;
+    package = import ../../../lib/tailscale-bind-package.nix {
+      inherit pkgs;
+      package = import ../../../lib/gaoji-ops-package.nix {inherit inputs pkgs;};
+      programs = ["maxops-hub"];
+      kind = "json";
+      tsName = host.tsName;
+    };
+    listenAddress = host.tsName;
     hosts =
       map (entry: {
         name = entry.name;
         agentUrl = "http://${
           if entry.name == host.name
           then "127.0.0.1"
-          else entry.tsIp
+          else entry.tsName
         }:9720";
         tokenFile =
           if entry.name == host.name
@@ -268,8 +276,8 @@ in {
         flakeAttribute = "nixosConfigurations.${entry.name}.config.system.build.toplevel";
       })
       managed;
-    prometheusUrl = "http://${host.tsIp}:${toString config.my.monitoring.port}";
-    alertmanagerUrl = "http://${host.tsIp}:${toString config.my.monitoring.alertmanagerPort}";
+    prometheusUrl = "http://${host.tsName}:${toString config.my.monitoring.port}";
+    alertmanagerUrl = "http://${host.tsName}:${toString config.my.monitoring.alertmanagerPort}";
     alertIngress = {
       enable = true;
       tokenFile = config.sops.secrets."maxops/alert_ingress".path;
@@ -285,7 +293,7 @@ in {
     ["${pkgs.systemd}/bin/systemctl" "is-active" "gaoji.service"]
     ["${pkgs.systemd}/bin/systemctl" "is-active" "prometheus.service"]
     ["${pkgs.systemd}/bin/systemctl" "is-active" "alertmanager.service"]
-    ["${pkgs.curl}/bin/curl" "--fail" "--silent" "http://${host.tsIp}:${toString config.services.maxops-hub.port}/readyz"]
+    ["${pkgs.curl}/bin/curl" "--fail" "--silent" "http://${host.tsName}:${toString config.services.maxops-hub.port}/readyz"]
   ];
 
   services.gaoji-host-control = {
@@ -297,14 +305,14 @@ in {
     stateDirectory = "kennethbot-cluster-control";
     environmentFile = config.sops.templates."qq-deepseek-bot-postgres.env".path;
     apiTokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
-    listenAddress = host.tsIp;
+    listenAddress = host.tsName;
     openFirewall = true;
     firewallInterfaces = ["tailscale0"];
     inventory = gaojiInventory;
     hostControlHelpers = lib.genAttrs gaojiManagementHosts (_: "/run/current-system/sw/bin/gaoji-host-control");
     ops = {
       enable = true;
-      baseUrl = "http://${host.tsIp}:${toString config.services.maxops-hub.port}";
+      baseUrl = "http://${host.tsName}:${toString config.services.maxops-hub.port}";
       tokenFile = config.sops.secrets."maxops/kennethbot_token".path;
       management = {
         enable = true;
@@ -346,7 +354,7 @@ in {
         target_id = "${entry.name}-worker";
         label = "${entry.name} gaoji Worker";
         kind = "service";
-        url = "http://${entry.tsIp}:8092/health";
+        url = "http://${entry.tsName}:8092/health";
         observer_host = "h610";
         host_id = entry.name;
         service_ref = "gaoji-cluster-worker.service";
@@ -358,10 +366,10 @@ in {
     enable = true;
     stateDirectory = "kennethbot-cluster-worker";
     workerId = "h610-worker";
-    controlUrl = "http://${host.tsIp}:${toString config.services.gaoji-cluster-control.port}";
+    controlUrl = "http://${host.tsName}:${toString config.services.gaoji-cluster-control.port}";
     tokenFile = config.sops.secrets."kennethbot/worker_token".path;
-    listenAddress = host.tsIp;
-    publicBaseUrl = "http://${host.tsIp}:${toString config.services.gaoji-cluster-worker.port}";
+    listenAddress = host.tsName;
+    publicBaseUrl = "http://${host.tsName}:${toString config.services.gaoji-cluster-worker.port}";
     cpuMillis = 2000;
     memoryBytes = 2 * 1024 * 1024 * 1024;
     concurrency = 2;
@@ -369,7 +377,7 @@ in {
 
   services.gaoji.cluster = {
     enable = true;
-    controlUrl = "http://${host.tsIp}:${toString config.services.gaoji-cluster-control.port}";
+    controlUrl = "http://${host.tsName}:${toString config.services.gaoji-cluster-control.port}";
     tokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
     allowedGroups = [611798505 650536599];
     logAllowedGroups = [];

@@ -30,9 +30,10 @@ in {
   my.mihomo.smart = true;
   # 这台是网关,要接管 LAN 转发流量。
   my.mihomo.router = true;
-  # metacubexd 面板: http://100.64.0.5:9090/ui —— 只绑 tailscale,
-  # 这台 firewall.enable = false,绑 0.0.0.0 等于挂公网上。
-  my.mihomo.controllerAddress = "100.64.0.5:9090";
+  # metacubexd: http://r6s.inner.imdomestic.com:9090/ui; guarded independently of the general firewall.
+  my.mihomo.controllerAddress = "0.0.0.0:9090";
+  # mihomo provides DNS during bootstrap, so its controller must not wait for MagicDNS.
+  my.tailscale.guardedTCPServices.mihomo = [9090];
 
   # 重新启用 modules/singbox 时,这台要一并加上
   #   my.singbox.autoRedirect = false;
@@ -469,13 +470,13 @@ in {
   # firewall.enable = false,openFirewall 是空操作,exporter 实际听在包括 ppp0
   # 在内的每一张网卡上。开了 systemd collector 之后它会导出全部 unit 名字,
   # 对这台跑 xray/mihomo 的机器来说那是一份不该外泄的服务清单。
-  # 新模块绑 my.host.tsIp(100.64.0.5),和上面 mihomo 面板同一个规矩。
+  # 新模块绑 my.host.tsName(100.64.0.5),和上面 mihomo 面板同一个规矩。
 
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
   # tailscale + Tailscale SSH 由 nixos/modules/tailscale 统一管(经 base profile
-  # 引入,按 my.host.tsIp 自动开)。这台是 2026-08-08 那次 Tailscale SSH 的试点,
+  # 引入,按 my.host.tsName 自动开)。这台是 2026-08-08 那次 Tailscale SSH 的试点,
   # 实测结论记在模块的文件头注释里。
 
   # Set your time zone.

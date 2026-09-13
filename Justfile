@@ -88,7 +88,7 @@ upp input:
   nix flake update {{input}}
 
 # -------- deploy-rs (push servers/routers over the wireguard mesh) --------
-# 目标是每台设了 `tsIp` 的机器(lib/mkDeployNodes.nix):h610 tank r6s r5s
+# 目标是每台设了 `tsName` 的机器(lib/mkDeployNodes.nix):h610 tank r6s r5s
 # rpi4 r2s shanghai r5sjp。走 tailscale 地址,所以从哪台机器发起都行。
 #
 # **构建发生在目标机上**(节点配置里 remoteBuild = true)。发起方只做求值,

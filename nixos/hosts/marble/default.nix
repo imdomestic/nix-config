@@ -7,7 +7,7 @@ in {
   kind = "nixos";
   roles = ["server"];
   sshUser = "hank";
-  # tsIp = "100.64.0.9";
+  # tsName = "marble.inner.imdomestic.com";
 
   profiles = with nixosProfiles; [
     base

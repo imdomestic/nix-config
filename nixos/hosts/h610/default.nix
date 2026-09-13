@@ -8,7 +8,7 @@ in {
   # 第二份监控。**和 tank 配对的意义全在于故障域不同** —— 2026-08-10 tank 那边
   # 停电一整天,h610 全程在线。放同一个屋子里等于还是一份。
   roles = ["server" "monitor"];
-  tsIp = "100.64.0.3";
+  tsName = "h610.inner.imdomestic.com";
   maxops = {
     enable = true;
     manageableUnits = [
@@ -39,6 +39,7 @@ in {
 
   modules = [
     ./system.nix
+    ./tailscale-names.nix
     ./maxops.nix
     ./qwen35-sycl.nix
     ./hardware-configuration.nix

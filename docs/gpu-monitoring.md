@@ -5,7 +5,7 @@
 在 `nixos/hosts/<host>/default.nix` 登记，采集端和所有 monitor 的抓取目标共用此信息：
 
 ```nix
-tsIp = "100.64.0.33";
+tsName = "b650.inner.imdomestic.com";
 gpuMonitoring = {
   enable = true;
   uuids = ["GPU-d8ec4dea-3771-68e6-9f8b-11811e47ac9d"];

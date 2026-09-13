@@ -6,7 +6,7 @@ in {
   system = "aarch64-linux";
   kind = "nixos";
   roles = ["server"];
-  tsIp = "100.64.0.6";
+  tsName = "r5s.inner.imdomestic.com";
   # tank 那一段;tank 的救援 initrd 也在这段上(192.168.20.50)。
   lanRoutes = ["192.168.20.0/24"];
   maxops = {

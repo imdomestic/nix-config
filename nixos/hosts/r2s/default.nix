@@ -6,7 +6,7 @@ in {
   system = "aarch64-linux";
   kind = "nixos";
   roles = ["server"];
-  tsIp = "100.64.0.11";
+  tsName = "r2s.inner.imdomestic.com";
   lanRoutes = ["192.168.4.0/24"];
 
   profiles = with nixosProfiles; [
