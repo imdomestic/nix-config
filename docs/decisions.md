@@ -11,6 +11,14 @@
 
 ---
 
+## 2026-09-13 · 纳管主机用 MagicDNS 名称寻址 {#tailscale-names}
+
+移除 registry 的 `tsIp`，由 `tsName` 同时供部署、监控和服务互连使用。
+本机监听在启动时解析并验证 Tailscale 接口地址，数字地址由运行时产生。
+不能把所有 `listenAddress` 机械替换成域名：maxops、Headplane 和
+Alertmanager 的部分字段只接受 IP，h610 的 nginx 又承载控制平面的启动入口。
+这些适配及数据库/NFS 的迁移边界见 [操作说明](tailscale-names.md)。
+
 ## 2026-09-12 · hackintosh 的 raycast 为什么不从 unstable 取 {#x86-64-darwin-unstable-drop}
 
 `nixpkgs-unstable` 已经滚过 26.11，那个分支**彻底移除了 x86_64-darwin**：不是

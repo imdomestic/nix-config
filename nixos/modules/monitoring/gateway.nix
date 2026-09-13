@@ -17,7 +17,7 @@
 # **为什么不是 keepalived/VRRP 那种浮动 IP:** 那要求两台在同一个二层网段。
 # tank 和 h610 本来就故意放在不同地方,直接出局。
 #
-# 入口挂了怎么办:直接敲那两台的地址,`http://<tsIp>:3000`,两份都是完整的。
+# 入口挂了怎么办:直接敲那两台的地址,`http://<tsName>:3000`,两份都是完整的。
 # 也就是说这一层只是便利,不在故障路径上 —— 告警更是完全不经过它,
 # Alertmanager 集群自己就把通知发出去了。
 {
@@ -36,7 +36,7 @@
   # roles 字段,所以加一份监控不需要回来改这里。
   monitors = lib.filter (h: lib.elem "monitor" h.roles) inventory;
 
-  selfIp = config.my.host.tsIp;
+  selfName = config.my.host.tsName;
 in {
   options.my.monitoring.gateway = {
     enable = lib.mkOption {
@@ -69,12 +69,14 @@ in {
   };
 
   config = lib.mkIf cfg.gateway.enable {
+    my.tailscale.bindServices = ["nginx"];
+
     assertions = [
       {
-        assertion = selfIp != null;
+        assertion = selfName != null;
         message = ''
           my.monitoring.gateway 开在了 ${config.my.host.name} 上,但这台没设
-          my.host.tsIp。入口只绑 tailscale 地址 —— 理由同 Prometheus,
+          my.host.tsName。入口只绑 tailscale 地址 —— 理由同 Prometheus,
           见 nixos/modules/telemetry/default.nix 里那条断言。
         '';
       }
@@ -99,7 +101,7 @@ in {
         '';
       }
       {
-        # 端口会撞:两边都是 grafanaPort,而且都绑在同一个 tsIp 上。
+        # 端口会撞:两边都是 grafanaPort,而且都绑在同一个 tsName 上。
         assertion = !cfg.enable;
         message = ''
           ${config.my.host.name} 同时开了 my.monitoring.enable 和
@@ -114,8 +116,14 @@ in {
     ];
 
     services.nginx.enable = true;
+    services.nginx.resolver = {
+      addresses = ["100.100.100.100"];
+      valid = "30s";
+      ipv6 = false;
+    };
 
     services.nginx.upstreams.grafana = {
+      extraConfig = "zone grafana 64k;";
       # 恰好一台是主(backup = false),其余全是 backup。**这不是负载均衡** ——
       # Grafana 的会话和"最近看过哪个看板"存在各自的 sqlite 里,轮询会让人
       # 一会儿登录着一会儿又没登录。要的是故障转移,不是分流。
@@ -126,7 +134,8 @@ in {
       servers = lib.listToAttrs (
         lib.imap0 (
           i: m:
-            lib.nameValuePair "${m.tsIp}:${toString cfg.grafanaPort}" {
+            lib.nameValuePair "${m.tsName}:${toString cfg.grafanaPort}" {
+              resolve = true;
               backup =
                 if cfg.gateway.primary != null
                 then m.name != cfg.gateway.primary
@@ -139,12 +148,12 @@ in {
 
     services.nginx.virtualHosts."grafana-ha" = {
       # 只绑 tailscale,和这个 fleet 里其它面板一个路子(r6s 的 metacubexd 在
-      # 100.64.0.5:9090,Grafana 本体在 <tsIp>:3000)。**故意不做
+      # 100.64.0.5:9090,Grafana 本体在 <tsName>:3000)。**故意不做
       # grafana.imdomestic.com + acme**:那要多一条 Cloudflare 记录和一张证书,
       # 而 tailnet 已经是这里的认证边界了,headscale 的 ACL 圈定了能连进来的人。
       listen = [
         {
-          addr = selfIp;
+          addr = selfName;
           port = cfg.grafanaPort;
         }
       ];

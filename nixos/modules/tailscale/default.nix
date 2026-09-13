@@ -18,16 +18,18 @@
 }: let
   cfg = config.my.tailscale;
 in {
+  imports = [./bind.nix ./guards.nix];
+
   options.my.tailscale = {
     enable = lib.mkOption {
       type = lib.types.bool;
-      default = config.my.host.tsIp != null;
-      defaultText = lib.literalExpression "config.my.host.tsIp != null";
+      default = config.my.host.tsName != null;
+      defaultText = lib.literalExpression "config.my.host.tsName != null";
       description = ''
-        默认跟着 `my.host.tsIp` 走 —— 和监控(modules/telemetry)、部署
-        (lib/mkDeployNodes.nix)同一个判据,registry 里填一行 tsIp,三样一起生效。
+        默认跟着 `my.host.tsName` 走 —— 和监控(modules/telemetry)、部署
+        (lib/mkDeployNodes.nix)同一个判据,registry 里填一行 tsName,三样一起生效。
 
-        桌面机和 WSL 那几台在 tailnet 里但没有 tsIp(它们的 tailnet 节点往往
+        桌面机和 WSL 那几台在 tailnet 里但没有 tsName(它们的 tailnet 节点往往
         是 Windows 那一份,或者压根不是部署目标),需要显式设 true。
       '';
     };
@@ -98,7 +100,8 @@ in {
       # authKeyFile 才会被应用**,这些机器都没设,写 extraUpFlags 会被静默忽略。
       # extraSetFlags 走的是独立的 tailscaled-set.service,跑 `tailscale set`。
       extraSetFlags =
-        lib.optionals cfg.ssh ["--ssh"]
+        ["--accept-dns=true"]
+        ++ lib.optionals cfg.ssh ["--ssh"]
         ++ lib.optional (cfg.advertiseRoutes != []) "--advertise-routes=${lib.concatStringsSep "," cfg.advertiseRoutes}";
     };
   };

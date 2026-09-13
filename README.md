@@ -25,7 +25,8 @@ returns **metadata, not a module**:
   system = "x86_64-linux";
   kind = "nixos";                 # nixos | darwin | home
   roles = ["desktop" "gui"];
-  ip = "10.0.0.68";               # presence makes it a deploy-rs target
+  tsName = "example.inner.imdomestic.com"; # deployment and telemetry opt-in
+  ip = "10.0.0.68";               # optional separate WireGuard address
   sshUser = "root";
 
   profiles = [...];               # from {nixos,darwin,home}/profiles/default.nix
@@ -56,7 +57,7 @@ The same metadata reaches every evaluator as `config.my.host`
 | `nixosConfigurations.<host>`, `darwinConfigurations.<host>` | `lib/mkConfigurations.nix` |
 | `homeConfigurations."hosts/<host>/<user>"`, also `"<user>@<host>"` | `lib/mkHomeConfigurations.nix` |
 | `systemConfigs.<host>` (also `.hosts.<host>`, `.<system>.<host>`) | `lib/mkSystemManagerConfigurations.nix` |
-| `deploy.nodes.<host>` — `profiles.system` + one `profiles.home-<user>` per account | `lib/mkDeployNodes.nix` — hosts with an `ip` and `kind = "nixos"` |
+| `deploy.nodes.<host>` — `profiles.system` + one `profiles.home-<user>` per account | `lib/mkDeployNodes.nix` — hosts with a `tsName` and `kind = "nixos"` |
 | `checks` | deploy-rs `deployChecks` |
 
 ## Layout
@@ -130,10 +131,11 @@ system-manager has no recipe: `sudo system-manager switch --flake .#<host>`.
 
 ## Deploys
 
-Servers and routers are pushed with deploy-rs over the WireGuard mesh
-(`10.0.0.0/24`) from **h610**, the build box — it has `aarch64-linux` binfmt so
-it can build the SBC closures locally. `autoRollback` and `magicRollback` are on,
-so a deploy that breaks connectivity reverts itself.
+Servers and routers are deployed with deploy-rs using the MagicDNS names in
+`tsName`. The initiator must resolve `*.inner.imdomestic.com`; see
+[the Tailscale name migration](docs/tailscale-names.md). `autoRollback` and
+`magicRollback` are enabled. Small targets still use the designated builders
+listed in `AGENTS.md`.
 
 Each node carries a `system` profile plus one `home-<user>` profile per account,
 activated in that order. Homes are separate closures now, so without those
@@ -143,7 +145,7 @@ user via `sudo -H -u <user>`; the `-H` matters, since Home Manager resolves ever
 path relative to `$HOME` and deploy-rs' default `sudo -u` would leave it pointing
 at root's.
 
-Current targets: `h610, r2s, r5s, r5sjp, r6s, rpi4, shanghai, tank`.
+Current targets: `b650, h310, h610, r2s, r5s, r5sjp, r6s, rpi4, shanghai, tank`.
 
 ## CI
 

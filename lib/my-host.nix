@@ -15,7 +15,7 @@ let
         name = hostName;
         inherit system;
         roles = host.roles or [];
-        tsIp = host.tsIp or null;
+        tsName = host.tsName or null;
         lanRoutes = host.lanRoutes or [];
         gpuMonitoring = host.gpuMonitoring or {};
         maxops = host.maxops or {};

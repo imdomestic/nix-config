@@ -30,9 +30,11 @@ in {
   };
 
   config = lib.mkIf inventory.enable {
+    my.tailscale.bindServices = ["prometheus-nvidia-gpu-exporter"];
+
     assertions = [
       {
-        assertion = config.my.telemetry.enable && config.my.host.tsIp != null;
+        assertion = config.my.telemetry.enable && config.my.host.tsName != null;
         message = "GPU monitoring requires telemetry and a Tailnet address.";
       }
       {
@@ -47,7 +49,7 @@ in {
 
     services.prometheus.exporters.nvidia-gpu = {
       enable = true;
-      listenAddress = config.my.host.tsIp;
+      listenAddress = config.my.host.tsName;
       port = 9835;
       openFirewall = false;
       extraFlags = ["--query-field-names=AUTO"];

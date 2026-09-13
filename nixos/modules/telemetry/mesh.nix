@@ -204,17 +204,23 @@ in {
   };
 
   config = lib.mkIf cfg.mesh {
+    my.tailscale.bindServices = ["prometheus-ping-exporter"];
+
     services.prometheus.exporters.ping = {
       enable = true;
       # 同 node_exporter:只绑 tailscale 地址,防火墙则只对 tailscale0 放行。
-      listenAddress = config.my.host.tsIp;
+      listenAddress = config.my.host.tsName;
       port = cfg.pingPort;
 
       settings = {
-        # 用 IP 不用 MagicDNS 名字:tank 上没有 services.resolved,不能假设
-        # 每台都能解析 *.inner.imdomestic.com。IP 字面量零依赖,而可读的
-        # peer 名字在 Prometheus 侧用 relabel 补回来(见 modules/monitoring)。
-        targets = map (h: h.tsIp) peers;
+        # MagicDNS names are resolved by ping_exporter; the client accepts DNS declaratively.
+        targets = map (h: h.tsName) peers;
+        dns = {
+          refresh = "30s";
+          timeout = "3s";
+        };
+        # Preserve the existing IPv4-only latency series.
+        options.disableIPv6 = true;
 
         ping = {
           # 5 秒一轮、留 24 个历史点 = 2 分钟窗口,而抓取间隔是 30 秒。

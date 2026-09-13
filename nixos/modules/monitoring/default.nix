@@ -16,7 +16,7 @@
 # 还是一份。
 #
 # 抓取目标不手维护 —— 从 host registry 经 lib/mkInventory.nix 生成,和各台机器
-# 上 node_exporter 的开关读同一个字段(my.host.tsIp)。参见 docs/maxops.md §8。
+# 上 node_exporter 的开关读同一个字段(my.host.tsName)。参见 docs/maxops.md §8。
 # **谁跑监控同样从 registry 派生:roles 里有 "monitor" 就是一份。**
 {
   config,
@@ -49,7 +49,7 @@
   maxopsHub = lib.findFirst (entry: entry.name == "h610") null maxopsHosts;
 
   # 自己这台的地址。Prometheus 和 Grafana 都只绑它。
-  selfIp = config.my.host.tsIp;
+  selfName = config.my.host.tsName;
 
   # 谁在跑监控 —— 和抓取目标一样从 registry 派生,不手维护第二份名单。
   # 加/减一份监控 = 改 nixos/hosts/<name>/default.nix 里 roles 那一行,
@@ -114,7 +114,7 @@ in {
 
         h610 上曾经有一份注释掉的 headplane 也写着 3000;2026-08-16 headplane
         真正启用时挪到了 3001,就是为了不跟这里撞(见 hosts/h610/system.nix)。
-        Grafana 只绑 tsIp、headplane 也只绑 tsIp,同端口会是硬冲突。
+        Grafana 只绑 tsName、headplane 也只绑 tsName,同端口会是硬冲突。
       '';
     };
 
@@ -149,7 +149,7 @@ in {
     webhookUrl = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "http://100.64.0.3:9722/alert";
+      example = "http://h610.inner.imdomestic.com:9722/alert";
       description = ''
         告警投递的去处。**null 时告警只进 Alertmanager 界面,不往外发。**
 
@@ -181,6 +181,8 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    my.tailscale.bindServices = ["prometheus" "alertmanager" "grafana"];
+
     sops.secrets = lib.optionalAttrs cfg.maxopsNotifications {
       "maxops/alert_ingress" = {
         sopsFile = ../../../secrets/maxops/alert-ingress.yaml;
@@ -191,19 +193,17 @@ in {
     };
     assertions = [
       {
-        assertion = selfIp != null;
+        assertion = selfName != null;
         message = ''
           my.monitoring 开在了 ${config.my.host.name} 上,但这台没有设
-          my.host.tsIp。Prometheus 和 Grafana 都必须绑定确定的 tailscale
-          地址 —— 这个 fleet 上全部 8 台纳管机器都是
-          networking.firewall.enable = false,绑定地址是唯一真正起作用的边界,
-          回落到 0.0.0.0 等于直接挂到每一张网卡上。
+          my.host.tsName。监听必须解析到本机 tailscale0 上的地址，不能
+          回落到通配地址；部分纳管主机未启用通用防火墙。
         '';
       }
       {
         assertion = inventory != [];
         message = ''
-          没有任何一台机器设置了 my.host.tsIp,Prometheus 会起来但一个目标
+          没有任何一台机器设置了 my.host.tsName,Prometheus 会起来但一个目标
           都没有。检查 nixos/hosts/*/default.nix。
         '';
       }
@@ -231,7 +231,7 @@ in {
       enable = true;
 
       # 只绑 tailscale。同 node_exporter,理由见 modules/telemetry。
-      listenAddress = selfIp;
+      listenAddress = selfName;
       port = cfg.port;
       retentionTime = cfg.retention;
 
@@ -255,7 +255,7 @@ in {
       ruleFiles = [
         (pkgs.writeText "gpu.rules" (builtins.toJSON (import ./gpu-alerts.nix {
           inherit lib gpuHosts;
-          dashboardUrl = "http://${(lib.head (gateways ++ monitors)).tsIp}:${toString cfg.grafanaPort}";
+          dashboardUrl = "http://${(lib.head (gateways ++ monitors)).tsName}:${toString cfg.grafanaPort}";
         })))
       ];
 
@@ -277,7 +277,7 @@ in {
           static_configs = [
             {
               targets =
-                map (m: "${m.tsIp}:${toString cfg.alertmanagerPort}") monitors;
+                map (m: "${m.tsName}:${toString cfg.alertmanagerPort}") monitors;
             }
           ];
         }
@@ -296,7 +296,7 @@ in {
             # 一台机器一个 static_config,这样 labels 能逐台给。
             static_configs =
               map (h: {
-                targets = ["${h.tsIp}:9100"];
+                targets = ["${h.tsName}:9100"];
                 labels = {
                   # instance 默认会是 "100.64.0.5:9100" 这种,查询和看板里
                   # 全是 IP,认不出来。覆盖成 registry 里的主机名。
@@ -314,7 +314,7 @@ in {
             scrape_timeout = "10s";
             static_configs =
               map (h: {
-                targets = ["${h.tsIp}:9835"];
+                targets = ["${h.tsName}:9835"];
                 labels = {
                   instance = h.name;
                   vendor = "nvidia";
@@ -354,24 +354,18 @@ in {
             job_name = "ping";
             static_configs =
               map (h: {
-                targets = ["${h.tsIp}:9427"];
+                targets = ["${h.tsName}:9427"];
                 # instance = 发起探测的那台。被探测的那台在下面 relabel 成 peer,
                 # 所以一条时序读起来是 "从 instance 打到 peer"。
                 labels.instance = h.name;
               })
               inventory;
 
-            # ping_exporter 的 target 标签是 IP(见 modules/telemetry/mesh.nix
-            # 里为什么用 IP 而不是 MagicDNS 名字)。这里按 inventory 生成一组
-            # 一一对应的改写规则,把它翻成主机名。
-            #
-            # 每条规则只在 target 精确等于某个 IP 时命中 —— Prometheus 的
-            # relabel regex 是全锚定的。tsIp 里的点要转义,否则 `.` 会匹配任意
-            # 字符(实际不会撞上,但错的正则迟早咬人)。
+            # Keep the human-readable peer label when the target is a MagicDNS FQDN.
             metric_relabel_configs =
               map (h: {
                 source_labels = ["target"];
-                regex = lib.replaceStrings ["."] ["\\."] h.tsIp;
+                regex = lib.replaceStrings ["."] ["\\."] h.tsName;
                 target_label = "peer";
                 replacement = h.name;
               })
@@ -387,7 +381,7 @@ in {
             job_name = "prometheus";
             static_configs = [
               {
-                targets = ["${selfIp}:${toString cfg.port}"];
+                targets = ["${selfName}:${toString cfg.port}"];
                 labels.instance = config.my.host.name;
               }
             ];
@@ -403,7 +397,7 @@ in {
           job_name = "prometheus-peer";
           static_configs =
             map (p: {
-              targets = ["${p.tsIp}:${toString cfg.port}"];
+              targets = ["${p.tsName}:${toString cfg.port}"];
               labels.instance = p.name;
             })
             peers;
@@ -415,7 +409,7 @@ in {
           job_name = "alertmanager";
           static_configs =
             map (m: {
-              targets = ["${m.tsIp}:${toString cfg.alertmanagerPort}"];
+              targets = ["${m.tsName}:${toString cfg.alertmanagerPort}"];
               labels.instance = m.name;
             })
             monitors;
@@ -424,8 +418,15 @@ in {
     };
 
     services.prometheus.alertmanager = {
+      package = import ../../../lib/tailscale-bind-package.nix {
+        inherit pkgs;
+        package = pkgs.prometheus-alertmanager;
+        programs = ["alertmanager"];
+        kind = "alertmanager";
+        tsName = selfName;
+      };
       enable = true;
-      listenAddress = selfIp;
+      listenAddress = selfName;
       port = cfg.alertmanagerPort;
 
       # **HA 的全部协调就在这两行。** 两个 Alertmanager 用 memberlist gossip
@@ -435,22 +436,19 @@ in {
       # 去重是靠 gossip 同步"谁已经发过了"实现的,所以它降级得很温和 ——
       # 网络断了各发各的(重复),而不是互相等待(不发)。这个方向是对的:
       # 告警系统宁可吵也不能哑。
-      clusterPeers = map (p: p.tsIp) peers;
+      clusterPeers = map (p: p.tsName) peers;
 
       extraFlags =
         if peers == []
         then
-          # 单实例。**必须显式关掉**,不能省略:上游默认监听 0.0.0.0:9094,
-          # 而这个 fleet 全部 firewall.enable = false,省略等于凭空在每张网卡
-          # 上开一个 gossip 端口。空值是 alertmanager 认的"禁用集群"写法。
+          # An empty listen address explicitly disables gossip for a single monitor.
           ["--cluster.listen-address="]
         else
-          # 绑 tailscale 地址,同 Prometheus / node_exporter。绑到具体地址
-          # 之后 advertise 地址也跟着确定,不用再单独指定。
-          ["--cluster.listen-address ${selfIp}:${toString clusterPort}"];
+          # Resolve the bind name normally; the wrapper supplies the numeric advertise address.
+          ["--cluster.listen-address ${selfName}:${toString clusterPort}"];
       # Alertmanager 发出去的链接(比如"点这里静默")要用得上的地址。
       # 不设的话它会拿 hostname 拼,群里收到的链接点不开。
-      webExternalUrl = "http://${selfIp}:${toString cfg.alertmanagerPort}";
+      webExternalUrl = "http://${selfName}:${toString cfg.alertmanagerPort}";
 
       configuration = {
         route = {
@@ -507,7 +505,7 @@ in {
               name = "maxops";
               webhook_configs = [
                 {
-                  url = "http://${maxopsHub.tsIp}:9721/v1/alerts";
+                  url = "http://${maxopsHub.tsName}:9721/v1/alerts";
                   send_resolved = true;
                   max_alerts = 100;
                   http_config = {
@@ -550,10 +548,10 @@ in {
 
       settings = {
         server = {
-          http_addr = selfIp;
+          http_addr = selfName;
           http_port = cfg.grafanaPort;
-          domain = selfIp;
-          root_url = "http://${selfIp}:${toString cfg.grafanaPort}/";
+          domain = selfName;
+          root_url = "http://${selfName}:${toString cfg.grafanaPort}/";
         };
 
         analytics = {
@@ -573,7 +571,7 @@ in {
         # 没有入口时是空表,这一项不会出现在 ini 里。
         security.csrf_trusted_origins = lib.mkIf (gateways != []) (
           lib.concatStringsSep " " (
-            map (g: "${g.tsIp}:${toString cfg.grafanaPort}") gateways
+            map (g: "${g.tsName}:${toString cfg.grafanaPort}") gateways
           )
         );
 
@@ -668,10 +666,8 @@ in {
               # 打开是一片 "Datasource not found"。
               uid = "prometheus";
               access = "proxy";
-              # **必须是 selfIp,不能"顺手优化"成 127.0.0.1。** Prometheus 只
-              # 接受一个 listen 地址,而上面把它绑到了 tailscale 地址上,回环
-              # 根本没有监听。同机通信绕一下 tailscale0 的开销可以忽略。
-              url = "http://${selfIp}:${toString cfg.port}";
+              # Prometheus binds the resolved tailnet address, so loopback is not a listener.
+              url = "http://${selfName}:${toString cfg.port}";
               isDefault = true;
             }
           ]
@@ -689,7 +685,7 @@ in {
             # 按那个 uid 引用数据源。
             uid = "prometheus-${p.name}";
             access = "proxy";
-            url = "http://${p.tsIp}:${toString cfg.port}";
+            url = "http://${p.tsName}:${toString cfg.port}";
             isDefault = false;
           })
           peers;

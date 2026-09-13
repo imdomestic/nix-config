@@ -24,7 +24,7 @@ in {
     (lib.mkIf cfg.enable {
       assertions = [
         {
-          assertion = host.tsIp != null;
+          assertion = host.tsName != null;
           message = "maxops requires an inventory Tailscale address";
         }
         {
@@ -56,13 +56,22 @@ in {
           };
       };
 
+      my.tailscale.bindServices = lib.optional (!localHub) "maxops-agent";
+      systemd.services.maxops-agent.serviceConfig.RuntimeDirectory = "maxops-agent-bind";
       services.maxops-agent = {
+        package = import ../../../lib/tailscale-bind-package.nix {
+          inherit pkgs;
+          package = inputs.maxops.packages.${pkgs.stdenv.hostPlatform.system}.default;
+          programs = ["maxops-agent"];
+          kind = "json";
+          tsName = host.tsName;
+        };
         enable = true;
         hostName = host.name;
         listenAddress =
           if localHub
           then "127.0.0.1"
-          else host.tsIp;
+          else host.tsName;
         tokenFile = config.sops.secrets."maxops/agent_token".path;
         readAllUnits = cfg.readAllUnits;
         readableUnits = cfg.readableUnits ++ cfg.manageableUnits;

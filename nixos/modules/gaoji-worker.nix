@@ -19,15 +19,16 @@ in {
     mode = "0400";
     restartUnits = ["gaoji-cluster-worker.service"];
   };
+  my.tailscale.bindServices = ["gaoji-cluster-worker"];
   services.gaoji-cluster-worker =
     resources
     // {
       enable = true;
       workerId = "${host.name}-worker";
-      controlUrl = "http://${hosts.h610.tsIp}:8091";
+      controlUrl = "http://${hosts.h610.tsName}:8091";
       tokenFile = config.sops.secrets.${tokenName}.path;
-      listenAddress = host.tsIp;
-      publicBaseUrl = "http://${host.tsIp}:8092";
+      listenAddress = host.tsName;
+      publicBaseUrl = "http://${host.tsName}:8092";
     };
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [8092];
 }

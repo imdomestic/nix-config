@@ -50,7 +50,7 @@
         "gpt-5.6-terra" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-terra-api-key";
-          "base_url" = "http://100.64.0.3:8317/v1";
+          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
           "model" = "gpt-5.6-terra";
           "effort" = "high";
           "multimodal" = true;
@@ -58,7 +58,7 @@
         "gpt-6-astra" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-6-astra-api-key";
-          "base_url" = "http://100.64.0.3:8317/v1";
+          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
           "model" = "gpt-6-astra";
           "effort" = "xhigh";
           "multimodal" = true;
@@ -66,7 +66,7 @@
         "gpt-5.6-sol" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-sol-api-key";
-          "base_url" = "http://100.64.0.3:8317/v1";
+          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
           "model" = "gpt-5.6-sol";
           "effort" = "high";
           "multimodal" = true;
@@ -74,7 +74,7 @@
         "gpt-5.6-luna" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-luna-api-key";
-          "base_url" = "http://100.64.0.3:8317/v1";
+          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
           "model" = "gpt-5.6-luna";
           "effort" = "xhigh";
           "multimodal" = true;
@@ -82,7 +82,7 @@
         "gpt-5.6-luna-medium" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-luna-medium-api-key";
-          "base_url" = "http://100.64.0.3:8317/v1";
+          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
           "model" = "gpt-5.6-luna";
           "effort" = "medium";
           "multimodal" = true;
@@ -173,7 +173,7 @@
       "caption_profile" = "gpt-5.6-luna";
     };
     "embedding" = {
-      "base_url" = "http://100.64.0.3:11434/v1";
+      "base_url" = "http://h610.inner.imdomestic.com:11434/v1";
       "api_key" = "ollama";
       "model" = "bge-m3";
       "timeout_seconds" = 60;
@@ -187,7 +187,7 @@
       "access_token" = config.sops.placeholder."max/matrix-access-token";
     };
     "imessage" = {
-      "bridge_url" = "http://100.64.0.12:8787";
+      "bridge_url" = "http://hackintosh.inner.imdomestic.com:8787";
       "account_key" = "hackintosh-messages";
       "chat_guid" = "iMessage;+;chat605491083481902531";
       "mention_handles" = ["hnkhgn@icloud.com"];
@@ -197,15 +197,15 @@
       "mirror_qq_group" = 611798505;
     };
     "wechathook" = {
-      "api_url" = "http://100.64.0.2:30001";
-      "listen_host" = "100.64.0.3";
+      "api_url" = "http://b650-windows.inner.imdomestic.com:30001";
+      "listen_host" = config.my.host.tsName;
       "listen_port" = 8787;
       "callback_path" = "/wechat/hbhbhb/callback";
-      "callback_url" = "http://100.64.0.3:8787/wechat/hbhbhb/callback";
+      "callback_url" = "http://h610.inner.imdomestic.com:8787/wechat/hbhbhb/callback";
       "self_wxid" = "wxid_jtwwr1csw5tk12";
       "bot_name" = "Max";
       "chatrooms" = ["22866834680@chatroom"];
-      "bridge_url" = "http://100.64.0.2:8788";
+      "bridge_url" = "http://b650-windows.inner.imdomestic.com:8788";
       "bridge_token" = config.sops.placeholder."max/wechathook-bridge-token";
       "nicknames" = {
         "wxid_5j6dsd0lngw512" = "hank";
@@ -220,7 +220,7 @@
       "access_token" = config.sops.placeholder."max/server-access-token";
     };
     "cliproxy" = {
-      "base_url" = "http://100.64.0.3:8317";
+      "base_url" = "http://h610.inner.imdomestic.com:8317";
       "management_key" = config.sops.placeholder."cliproxy/management_key";
     };
     "log_color" = "always";

@@ -6,7 +6,7 @@
   modelDirectory = "/var/lib/qwen35-sycl/models";
   modelName = "Qwen_Qwen3.5-4B-Q4_K_M.gguf";
   modelPath = "${modelDirectory}/${modelName}";
-  listenAddress = config.my.host.tsIp;
+  listenAddress = config.my.host.tsName;
   listenPort = 11435;
   endpoint = "http://${listenAddress}:${toString listenPort}";
   warmupRequest = builtins.toJSON {
@@ -22,6 +22,7 @@
     chat_template_kwargs.enable_thinking = false;
   };
 in {
+  my.tailscale.bindServices = ["docker-qwen35-sycl"];
   virtualisation.oci-containers.backend = "docker";
   virtualisation.oci-containers.containers.qwen35-sycl = {
     image = "ghcr.io/ggml-org/llama.cpp@sha256:9b1c2d30d81bcf00861f5a0f106c53f91f0a1e9b4ae44c6b3e566bd893e7b3b5";
