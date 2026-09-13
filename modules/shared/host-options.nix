@@ -24,6 +24,26 @@
       description = "Roles this host fulfils, e.g. [\"desktop\" \"gui\"].";
     };
 
+    lanRoutes = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [];
+      example = ["192.168.22.0/24"];
+      description = ''
+        这台机器背后的局域网网段,会由 `nixos/modules/tailscale` 向 tailnet
+        广播,让别处的设备直接用局域网 IP 访问那边**没装 tailscale**的主机。
+
+        放在 registry 而不是各自的 system.nix,是因为它有**两个**消费方:
+        广播那一端在 tailscale 模块,批准和放行那一端在 h610 的 headscale
+        policy。policy 直接遍历整份 registry 生成 ACL 和 autoApprovers,
+        所以加一台路由只要在这里写一行,不用记得再去改 h610。
+
+        **网段在整个 tailnet 里必须唯一。** tailscale 按目的地前缀路由,两台
+        广播同一段时只会命中一台,静默,不报错。rpi4 和 r5s 原来都是
+        192.168.20.0/24,这个撞车让人把"tank 的网关是谁"整个判断错 ——
+        见 docs/incidents.md#r5s-dae-vless-panic。rpi4 因此改到 192.168.2.0/24。
+      '';
+    };
+
     tsIp = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;

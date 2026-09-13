@@ -7,6 +7,8 @@ in {
   kind = "nixos";
   roles = ["server"];
   tsIp = "100.64.0.7";
+  # 悉尼公寓。原来是 192.168.20.0/24,和 r5s 撞车,2026-09-13 改到 2 段。
+  lanRoutes = ["192.168.2.0/24"];
   maxops = {
     enable = true;
     manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];

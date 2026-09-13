@@ -7,6 +7,7 @@ in {
   kind = "nixos";
   roles = ["server"];
   tsIp = "100.64.0.11";
+  lanRoutes = ["192.168.4.0/24"];
 
   profiles = with nixosProfiles; [
     base

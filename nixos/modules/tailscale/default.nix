@@ -32,6 +32,38 @@ in {
       '';
     };
 
+    advertiseRoutes = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = config.my.host.lanRoutes;
+      defaultText = lib.literalExpression "config.my.host.lanRoutes";
+      example = ["192.168.22.0/24"];
+      description = ''
+        这台机器要向 tailnet 广播的局域网网段,让 tailnet 里的设备能直接用
+        局域网 IP 访问那边**没装 tailscale**的主机。
+
+        默认跟着 registry 里的 `lanRoutes` 走 —— 和 h610 的 headscale policy
+        同源,那边遍历同一份 registry 生成 ACL 和 autoApprovers。加一台路由
+        只要在 `nixos/hosts/<name>/default.nix` 写一行 `lanRoutes`,广播、
+        批准、放行三样一起生效,不会出现"广播了但策略没放行"的半吊子状态。
+
+        **网段在整个 tailnet 里必须唯一。** tailscale 按目的地前缀路由,两台
+        广播同一个网段时它只会命中其中一台,而且是静默的,不报错也不告警。
+        rpi4(悉尼)和 r5s(国内)原来都是 192.168.20.0/24,这个撞车一度让人
+        把"tank 的网关是谁"整个判断错 —— 经过见
+        docs/incidents.md#r5s-dae-vless-panic。rpi4 因此改到 192.168.2.0/24。
+
+        **不必是那个网段的网关。** 只要人在网段里就行:tailscale 默认开
+        `--snat-subnet-routes`,会把进来的流量伪装成自己的局域网地址,对端
+        因此不需要知道 100.64.0.0/10 怎么走。r5sjp 走的正是这条路 —— 它在
+        日本只是 10.1.2.0/24 上的一个 DHCP 客户端,网关是别人的设备。
+
+        **广播 ≠ 可用**,还有两步在机器之外:headscale 要批准这条路由
+        (h610 的 policy 里有 autoApprovers,新机器自动过),ACL 的 dst 要
+        包含这个网段。客户端那边 macOS / iOS 默认接受子网路由,Linux 要
+        `tailscale set --accept-routes`。
+      '';
+    };
+
     ssh = lib.mkOption {
       type = lib.types.bool;
       default = cfg.enable;
@@ -55,13 +87,19 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    # 广播子网就得让内核转发起来;不设的话 ip_forward 之类不会被打开,
+    # 广播了也转不动。和 shanghai 的 exit node 是同一个开关。
+    services.tailscale.useRoutingFeatures = lib.mkIf (cfg.advertiseRoutes != []) "server";
+
     services.tailscale = {
       enable = true;
 
       # 用 extraSetFlags 不用 extraUpFlags:后者在 nixpkgs 的模块里**只有设了
       # authKeyFile 才会被应用**,这些机器都没设,写 extraUpFlags 会被静默忽略。
       # extraSetFlags 走的是独立的 tailscaled-set.service,跑 `tailscale set`。
-      extraSetFlags = lib.optionals cfg.ssh ["--ssh"];
+      extraSetFlags =
+        lib.optionals cfg.ssh ["--ssh"]
+        ++ lib.optional (cfg.advertiseRoutes != []) "--advertise-routes=${lib.concatStringsSep "," cfg.advertiseRoutes}";
     };
   };
 }

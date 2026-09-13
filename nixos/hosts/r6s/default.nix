@@ -7,6 +7,7 @@ in {
   kind = "nixos";
   roles = ["server"];
   tsIp = "100.64.0.5";
+  lanRoutes = ["192.168.22.0/24"];
   maxops = {
     enable = true;
     manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];

@@ -7,6 +7,8 @@ in {
   kind = "nixos";
   roles = ["server"];
   tsIp = "100.64.0.6";
+  # tank 那一段;tank 的救援 initrd 也在这段上(192.168.20.50)。
+  lanRoutes = ["192.168.20.0/24"];
   maxops = {
     enable = true;
     manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];
