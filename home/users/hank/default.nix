@@ -454,7 +454,8 @@ in {
 
     autosuggestion = {
       enable = true;
-      strategy = ["history" "completion"];
+      # Avoid assignment guesses such as "_="; see docs/incidents.md#zsh-inline-variable-assignments.
+      strategy = ["history"];
     };
 
     historySubstringSearch.enable = true;
