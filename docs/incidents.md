@@ -31,6 +31,30 @@ HBA 文件并热重载。`pg_hba_file_rules` 无解析错误，数据库启动�
 均未改变；两边 health 检查恢复 healthy，Bot `/metrics` 恢复 200。持久配置
 保留现有 `restartIfChanged = false`，后续 switch 不应重启数据节点或管理器。
 
+12:49 完成两台的持久配置切换。h610 新系统为 `sja3hjax9hv5spyja7f9xhcmfzdwc920`，
+tank 为 `4plybcisdjibgsix3klpqqmalvkp52hl`；两边 keeper 的 InvocationID 未变，
+h610 的高级、Max、NapCat、Docker 与 Worker 进程也未重启。使用高级实际 DSN
+新建连接可读到 h610 主库，QQ 状态 online/good 均为 true；12:25 后未再出现
+HBA 拒绝或连接池超时。运行中节点 HBA 与 Nix 生成文件的 SHA256 一致。
+
+构建时另一个误导点是缓存缺失：把 h610 配置放在 tank 上 dry-run，列出了大量
+包括 Max 和 PostgreSQL 的构建项，不代表这次改了这些软件。暂停实际构建后
+核对精确 Git ref、输出路径和现有闭包，改为各主机复用本地软件及官方缓存；
+h610 实际只构建 29 个配置项，下载约 2.5 MiB，没有重建沙盒镜像。部署前再次
+fetch，确认无远端新增提交；dry-activate 确认不会重启数据库和 Bot。
+
+同次维护清理了 h610 的历史系统版本（最终保留 526--533 八个版本）、9 个
+已核实的旧构建 GC 根、无引用 store 路径、约 3 GiB 归档日志、7 个超过五天的
+llama-server 崩溃转储和未使用的 `kennethbot-sandbox:latest` 镜像。Docker
+共享层不能按镜像标称 6.7 GB 计算释放量，该镜像独占部分只有约 0.22 GB。
+初始根盘可用 140,248,735,744 字节，最终 148,641,325,056 字节，净增加约
+8.39 GB（7.82 GiB），使用率 71% -> 69%。数字包含维护期间正常写入及构建缓存。
+
+数据库、真实用户文件、现用镜像、共享 Nix 缓存与其他账户的 GC 根未删除。
+停止的高级任务仍有 partial/未交付状态，工作目录占用很小，不按“容器停止”
+就判定为垃圾。保留今天的 pg_autoctl 转储用于下面的独立问题调查；既有每周
+Nix GC 定时器继续启用，不为了本次清理改变整个集群的保留政策。
+
 期间 keeper 的 node-active 子进程因 `__fdelt_warn` 中止过一次，被既有 supervisor
 自动拉起；PostgreSQL 本体未重启。此诊断转储保留，不能把它当作已修复的软件
 缺陷。新的 HBA 规则消除了此次持续认证失败，但不声称修复了 pg_autoctl 的
