@@ -63,6 +63,25 @@ Nix GC 定时器继续启用，不为了本次清理改变整个集群的保留�
 第二轮后根盘可用 149,553,262,592 字节，比初始增加约 9.30 GB；Bot 新数据库
 连接、QQ online/good、metrics 200 和主库健康检查再次通过。
 
+用户查看整机明细后要求继续清除能确认废弃的大项。先核对 Max 当前浏览器与
+沙盒均为 Nix 原生服务，而非旧 Docker 实验镜像；以非强制 `docker image rm`
+移除 13 个无容器引用的历史浏览器、沙盒及内核构建镜像，保留 current/latest、
+被停止任务引用的镜像和 NapCat 回退镜像。Docker 镜像数 31 -> 18，数据卷和
+现存容器均未删除。
+
+对 `/home/hank/migrate/max-nix-volume.tar` 完整遍历 554,539 个归档条目，确认
+仅含 Nix store 与管理元数据，再删除该 23,363,686,400 字节软件库迁移归档及
+1,847,900,261 字节旧 Docker 镜像导出；三份数据库 dump 均保留。检查进程打开
+文件和 cwd 无引用后，删除 go-build、Cabal 下载、npm/pip 下载缓存，以及
+`codex-kernel-build-20260812/templar/out` 中可重建的 `.o/.a/.cmd/.d` 文件，
+保留源码、Git 历史、Clang 工具链、内核 `.config` 和成品文件。
+
+本轮根盘可用从 149,629,997,056 增至 203,671,076,864 字节，净释放约 54.04 GB，
+使用率 69% -> 58%；从当天初始测量累计净释放约 63.42 GB。高级、Max、NapCat
+和数据库 keeper 的 PID/InvocationID 未变；QQ 在线、Bot 新建数据库连接和
+metrics 200 再次验证通过。命名为 release/验收的两个目录实际装有 production
+数据库备份，并非编译缓存，因此未按目录名删除；同样未动共享沙盒数据卷。
+
 期间 keeper 的 node-active 子进程因 `__fdelt_warn` 中止过一次，被既有 supervisor
 自动拉起；PostgreSQL 本体未重启。此诊断转储保留，不能把它当作已修复的软件
 缺陷。新的 HBA 规则消除了此次持续认证失败，但不声称修复了 pg_autoctl 的
