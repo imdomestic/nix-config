@@ -9,6 +9,33 @@
 
 ---
 
+## 2026-09-14 · PostgreSQL 域名白名单被服务别名破坏 {#qq-bot-postgres-hba-reverse-name}
+
+高级进程仍然 active，但新数据库连接全部被 HBA 拒绝，连接池每次等待 10 秒后
+超时，群消息处理和监控接口一起失效。h610 与 tank 的数据库进程、主备身份和
+现有复制连接仍在，磁盘也未满，不能据此误判为模型故障或直接重启数据库。
+
+白名单写的是 `h610.inner.imdomestic.com`，但 h610 的地址反查在本机返回旧的
+`kennethbot.inner.imdomestic.com`，在 tank 返回 `gaoji.inner.imdomestic.com`。
+PostgreSQL 的主机名 HBA 规则先进行反查，再正向核验，并不是只检查域名能否
+解析到客户端 IP。服务别名和 NSS 返回顺序足以让原来可用的连接规则失效。
+连接池保留的旧连接还可以暂时工作，因此刚部署时检查通过不能覆盖连接轮换。
+
+现在把连接名称与访问授权分开：DSN、节点注册和密码文件继续使用 MagicDNS
+名称；`access` 下的三项配置使用明确的单机 `/32` 地址。应用只允许 h610，HA
+只允许 h610 与 tank，继续要求 TLS 和 SCRAM；物理复制也有单独的显式规则，
+不依赖 pg_auto_failover 生成的尾部规则。没有扩大到整个 Tailscale 网段。
+
+恢复时先确认 h610 为主库、tank 为 streaming 备用库，再原子更新两边专用
+HBA 文件并热重载。`pg_hba_file_rules` 无解析错误，数据库启动时间和主备身份
+均未改变；两边 health 检查恢复 healthy，Bot `/metrics` 恢复 200。持久配置
+保留现有 `restartIfChanged = false`，后续 switch 不应重启数据节点或管理器。
+
+期间 keeper 的 node-active 子进程因 `__fdelt_warn` 中止过一次，被既有 supervisor
+自动拉起；PostgreSQL 本体未重启。此诊断转储保留，不能把它当作已修复的软件
+缺陷。新的 HBA 规则消除了此次持续认证失败，但不声称修复了 pg_autoctl 的
+所有异常路径。
+
 ## 2026-09-13 · MagicDNS 迁移的运行时兼容性 {#tailscale-name-runtime-compatibility}
 
 `tsIp` 改为 `tsName` 后，17 个 NixOS 系统求值通过，maxops 和 exporter 的

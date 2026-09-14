@@ -40,6 +40,7 @@
   monitorSocketDir = "/run/qq-bot-postgres-monitor";
   nodeSocketDir = "/run/qq-bot-postgres-node";
   nodeRuntimeConfig = "${nodeSocketDir}/postgresql.conf";
+  exactIPv4 = types.strMatching "([0-9]{1,3}\\.){3}[0-9]{1,3}/32";
 
   waitForAddress = address: ''
     found=0
@@ -69,7 +70,7 @@
     ${lib.concatMapStringsSep "\n" (address: ''
         hostssl "pg_auto_failover" "autoctl_node" ${address} scram-sha-256
       '')
-      cfg.peerNames}
+      cfg.access.peerAddresses}
 
     host all all 0.0.0.0/0 reject
     host all all ::0/0 reject
@@ -99,17 +100,18 @@
 
     # pg_auto_failover 2.2 uses a restricted health-check role with a fixed
     # password. SCRAM still prevents unauthenticated role impersonation.
-    hostssl all pgautofailover_monitor ${cfg.monitor.hostname} scram-sha-256
+    hostssl all pgautofailover_monitor ${cfg.access.monitorAddress} scram-sha-256
 
     # Replication and pg_rewind share this role. Both peers use a separate,
     # encrypted HA secret rather than the application's database password.
     ${lib.concatMapStringsSep "\n" (address: ''
         hostssl all pgautofailover_replicator ${address} scram-sha-256
+        hostssl replication pgautofailover_replicator ${address} scram-sha-256
       '')
-      cfg.peerNames}
+      cfg.access.peerAddresses}
 
     # The bot always originates on h610 and must use TLS plus SCRAM.
-    hostssl "qq_bot" "qq_bot" ${cfg.applicationClientName} scram-sha-256
+    hostssl "qq_bot" "qq_bot" ${cfg.access.applicationClientAddress} scram-sha-256
   '';
   nodePostgresConfig = pkgs.writeText "qq-bot-postgres-node-local.conf" ''
     password_encryption = 'scram-sha-256'
@@ -1104,15 +1106,29 @@ in {
       default = null;
       description = "File containing the dedicated 64-character hexadecimal HA password.";
     };
-    applicationClientName = mkOption {
-      type = types.str;
-      default = hosts.h610.tsName;
-      description = "Exact MagicDNS hostname allowed to use the qq_bot role.";
-    };
     peerNames = mkOption {
       type = types.listOf types.str;
       default = [hosts.h610.tsName hosts.tank.tsName];
-      description = "Exact MagicDNS hostnames allowed to contact the monitor.";
+      description = "Peer connection hostnames used for HA credential lookup, not reverse-DNS authorization.";
+    };
+    # Connection names can have service aliases; HBA must not depend on PTR/NSS order.
+    # See docs/incidents.md#qq-bot-postgres-hba-reverse-name.
+    access = {
+      applicationClientAddress = mkOption {
+        type = exactIPv4;
+        default = "100.64.0.3/32";
+        description = "Exact Tailscale IPv4 client allowed to authenticate as qq_bot over TLS.";
+      };
+      monitorAddress = mkOption {
+        type = exactIPv4;
+        default = "100.64.0.3/32";
+        description = "Exact Tailscale IPv4 address of the HA monitor.";
+      };
+      peerAddresses = mkOption {
+        type = types.listOf exactIPv4;
+        default = ["100.64.0.3/32" "100.64.0.4/32"];
+        description = "Exact HA peer addresses allowed to authenticate; DNS aliases cannot grant access.";
+      };
     };
     preferredNodeName = mkOption {
       type = types.strMatching "[A-Za-z0-9_-]+";
