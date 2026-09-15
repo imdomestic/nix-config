@@ -67,7 +67,7 @@ in {
     "org/gnome/shell/extensions/forge" = {
       focus-border-toggle = false;
       split-border-toggle = false;
-      window-gap-size = lib.hm.gvariant.mkUint32 10;
+      window-gap-size = lib.hm.gvariant.mkUint32 6;
       resize-amount = lib.hm.gvariant.mkUint32 50;
     };
     "org/gnome/shell/extensions/just-perfection".workspace-popup = false;
