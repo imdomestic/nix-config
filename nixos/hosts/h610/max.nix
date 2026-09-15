@@ -1,6 +1,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }: let
   # Configuration/storage migration: docs/incidents.md#max-unified-state
@@ -267,4 +268,8 @@ in {
     after = lib.mkAfter ["tailscaled.service" "ollama.service"];
     wants = lib.mkAfter ["tailscaled.service" "ollama.service"];
   };
+  # The host's Headscale loopback alias must use the veth gateway inside maxops.
+  systemd.services.max-ops-tailscaled.serviceConfig.BindReadOnlyPaths = [
+    "${pkgs.writeText "max-ops-hosts" "10.232.0.1 tailscale.imdomestic.com\n"}:/etc/hosts"
+  ];
 }

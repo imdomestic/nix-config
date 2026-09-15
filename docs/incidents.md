@@ -9,6 +9,23 @@
 
 ---
 
+## 2026-09-15 · Max SSH 运维首次切换 {#max-ssh-first-activation}
+
+首次激活保留了服务 UID/GID，但 Max 启动更新已有 sandbox 时被旧数据库
+`sandboxes_network_mode_check` 拒绝。Max 迁移 113 增加 `maxops`，数据库回归
+覆盖已有记录切到运维网络及撤回。此前真实网络 VM 使用测试服务而非业务数据库，
+因此 VM 和原数据库套件通过没有覆盖这个组合。
+
+专用 tailscaled 还继承了宿主 `/etc/hosts` 中指向 `127.0.0.1` 的 Headscale
+别名；namespace 内这个地址指向自身。h610 通过原生 systemd 的
+`BindReadOnlyPaths` 为该服务提供独立 hosts，将控制域名指向 veth 网关。
+只替换 resolver 文件不能修复 hosts 优先解析。沙箱内 `ssh h610` 已验证登录
+`max`，`sudo -n id -u` 返回 `0`。
+
+停止 target 不代表成员已全部停止；迁移前显式停止并等待 Max、broker 和 socket。
+构建优先在 h610 下载，但其原有 swap 已满，首次求值触发 OOM；加入临时磁盘
+swap 后单任务本机构建完成。数据库备份与账号映射备份均保留在 h610 本地。
+
 ## 2026-09-14 · PostgreSQL 域名白名单被服务别名破坏 {#qq-bot-postgres-hba-reverse-name}
 
 高级进程仍然 active，但新数据库连接全部被 HBA 拒绝，连接池每次等待 10 秒后
