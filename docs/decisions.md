@@ -21,7 +21,9 @@
 Gaoji 的控制与计算 worker 保留，旧 ops／部署入口停用，主机清单改用
 `clusterControl`；Alertmanager 保留规则与独立 webhook，移除经 Hub 的群告警。
 历史决策与事故记录保留。配置、密钥与首次迁移顺序见
-[Max SSH 运维接入](max-ssh-operations.md)。本次仅发布代码，未执行系统切换。
+[Max SSH 运维接入](max-ssh-operations.md)。当日已完成 10 台 NixOS fleet 切换与
+SSH/sudo 验收；h310 的原有 Gaoji 安装失败使 switch 非零，实际新系统已生效，
+详见该页的发布记录。Darwin 仅有配置，不在本次实机验收范围。
 
 ## 2026-09-13 · 纳管主机用 MagicDNS 名称寻址 {#tailscale-names}
 
@@ -79,6 +81,8 @@ Prometheus 指标和新控制台域名随之改名；旧域名保留为别名。
 
 ## 2026-09-07 · maxops 执行面扩到八台纳管主机 {#maxops-fleet-full-control}
 
+> 历史方案，已于 2026-09-15 退役；当前流程见 [SSH 运维](max-ssh-operations.md)。
+
 h610 继续作为唯一 Hub；八台纳管主机各自运行 Agent 与 Executor。Hank 和 Max
 使用独立 token，但都获得全部 host、job、unit、diagnostic、workspace 与 deployment
 权限。Kennethbot 保持只读。每台主机的 manageable unit 仍来自
@@ -97,6 +101,8 @@ profile，虽然它们都指向同一个公开 Git 远端。这样 x86_64 与 aa
 ---
 
 ## 2026-09-07 · maxops 完整执行面先落在 h610 {#maxops-h610-full-control}
+
+> 历史方案，已于 2026-09-15 退役；当前流程见 [SSH 运维](max-ssh-operations.md)。
 
 Hank 和 Max 使用独立 token，但在 Hub 上拥有相同的完整 capability、`nix-config`
 workspace 和 `h610-system` deployment 权限。h610 同时运行 agent 与 executor；executor

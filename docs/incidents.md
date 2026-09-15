@@ -9,6 +9,24 @@
 
 ---
 
+## 2026-09-15 · fleet 切换与 SSH 验收 {#max-ssh-fleet-activation}
+
+只在 h610 部署专用客户端后，其他目标尚无 `max` 账户，群内 SSH 被拒绝。
+这不是要恢复旧 Hub：补齐 fleet 的系统账户后，10 台真实沙箱 SSH/sudo 均通过。
+旧后台目标和保留的 `/work/repos/max` checkout 仍可携带 API 时代的说明；
+新客户端、新提示词和旧任务上下文是三个独立状态，不应仅靠重启猜测其同步。
+
+tank → h310 的传输出现大量重传，但工作站和其他节点仍能连接 h310。按用户指令
+改为 h310 本机构建，未继续通过跨境工作站搬运闭包。r2s 的首次收尾遇到短 root
+SSH 会话结束后用户 bus 消失，保持 SSH 会话并启动 `user@0.service` 后重新完成
+同一闭包的收尾，没有改变 linger 配置。
+
+h310 已切换到新系统，switch 却返回 4：multi-user.target 重试了原先失败的
+Gaoji 安装 oneshot，后者拉取 whisper.cpp 超过 180 秒。误导点是把非零 switch
+直接理解成“旧系统仍在运行”；运行闭包、profile 和 SSH 权限必须分别核对。
+保留失败证据，没有反复重试安装或伪造健康状态。具体版本、构建分工和证据位置见
+[发布记录](max-ssh-operations.md#2026-09-15-fleet-rollout)。
+
 ## 2026-09-15 · Max SSH 运维首次切换 {#max-ssh-first-activation}
 
 首次激活保留了服务 UID/GID，但 Max 启动更新已有 sandbox 时被旧数据库
@@ -589,7 +607,7 @@ hub 对完整标签对象做相等比较,导致采样时间匹配失败。之前
 
 root 直接以 Git flake 重建还会碰到 hank 工作树的所有权检查。此次由 hank 构建
 固定的系统 store closure,root 对该闭包执行 dry-activate,核对后设置 system profile
-并 switch;仓库权限保持原样。操作入口与后续验收见 [maxops-deployment.md](maxops-deployment.md)。
+并 switch;仓库权限保持原样。当时的 API 部署入口已退役；当前操作与验收见 [SSH 运维](max-ssh-operations.md)。
 
 ## 2026-09-05 · NInfer 满 catalog 时漏算逻辑准入,搜索超时清空缓存 {#b650-ninfer-catalog-admission}
 

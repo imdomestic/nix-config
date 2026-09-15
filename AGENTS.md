@@ -135,12 +135,12 @@ Do not run `switch` on the user's behalf unless asked.
 
 | 目标 | 内存 | 构建机 | 构建机地址 |
 |---|---|---|---|
-| `r2s` `r5s` `r5sjp` `rpi4` | 1–4 GB | `r6s`（8 核 / 7.6 GB / aarch64） | `hank@100.64.0.5` |
-| `shanghai` | 2 GB | `tank`（20 核 / 64 GB / x86_64） | `hank@100.64.0.4` |
+| `r2s` `r5s` `r5sjp` `rpi4` | 1–4 GB | `r6s`（8 核 / 7.6 GB / aarch64） | `hank@r6s` |
+| `shanghai` | 2 GB | `tank`（20 核 / 64 GB / x86_64） | `hank@tank` |
 
 ```sh
 ssh hank@<构建机> \
-  'nixos-rebuild boot --flake ~/.config/nix-config#<host> --target-host root@<tsIp>'
+  'nixos-rebuild boot --flake ~/.config/nix-config#<host> --target-host root@<tsName>'
 ```
 
 以 `hank` 身份跑，不是 root：仓库在 `/home/hank/.config/nix-config`，root 打不开
@@ -148,6 +148,9 @@ ssh hank@<构建机> \
 机那边的权限。构建机到目标机的 root ssh 要先通。
 
 踩过一次，见 `docs/incidents.md#arm-boxes-oom-on-local-build`。
+用户在当前任务中明确指定构建机时按该指令执行，先核对资源并限制构建并发；
+2026-09-15 的 h310、b650、rpi4 本机构建例外与实测见
+`docs/max-ssh-operations.md#2026-09-15-fleet-rollout`。
 
 ### Before any rebuild: freshness check
 
