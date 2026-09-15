@@ -131,7 +131,7 @@ in {
   # 流量的入口。dae 1.0.0 的 lan_interface 支持 path.Match 模式并会
   # 自动绑定后续新建的网卡;12 个 ? 只匹配 Docker 生成的 br-<id>,
   # 不会与现有 br-lan 重复挂载 eBPF。
-  my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????" "max-sb-egress" "max-sb-native"];
+  my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????" "max-sb-egress" "max-sb-native" "max-ops-host"];
   # See docs/incidents.md#max-native-runtime-dns.
   my.dae.foreignDnsOverTcp = true;
   # Headscale must start even when proxy exits are unavailable.
@@ -822,7 +822,7 @@ in {
     ];
     enable32Bit = true;
   };
-  users.users.hank.extraGroups = ["video" "render" "docker" "max"];
+  users.users.hank.extraGroups = ["video" "render" "docker" "max-service"];
 
   # Other QQ bot workloads still use Docker. Max has its own native systemd
   # stack and no longer needs access to the Docker daemon.
@@ -1152,6 +1152,7 @@ in {
             "fendada@imdomestic.com"
             "kenneth@imdomestic.com"
             "genisys@imdomestic.com"
+            "max@imdomestic.com"
           ];
         };
 

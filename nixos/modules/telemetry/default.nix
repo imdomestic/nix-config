@@ -39,9 +39,8 @@ in {
         默认之外额外启用的 collector。
 
         `systemd` 是这里面最重要的一个:它导出 `node_systemd_unit_state`,
-        也就是"服务运行状态"。有它就不需要另做一套服务健康检查 —— 这也是
-        为什么 maxops 的只读操作里 `units.failed` 能直接从 Prometheus 答,
-        不用逐台去问 agent。
+        也就是"服务运行状态"。可直接从 Prometheus 查询失败服务，
+        再通过 SSH 检查相关日志。
 
         `processes` 给进程数和状态分布,判断 fork 炸弹/僵尸堆积用得上,
         开销很小。

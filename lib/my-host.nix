@@ -18,7 +18,7 @@ let
         tsName = host.tsName or null;
         lanRoutes = host.lanRoutes or [];
         gpuMonitoring = host.gpuMonitoring or {};
-        maxops = host.maxops or {};
+        clusterControl = host.clusterControl or {};
         users = host.users or {};
         homeOverlays = host.homeOverlays or [];
       }

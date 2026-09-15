@@ -66,13 +66,8 @@
       };
     };
 
-    maxops = {
-      enable = lib.mkEnableOption "fleet management for this inventory host";
-      readAllUnits = lib.mkOption {
-        type = lib.types.bool;
-        default = true;
-        description = "Observe all loaded systemd units on enabled maxops hosts; does not grant mutations.";
-      };
+    clusterControl = {
+      enable = lib.mkEnableOption "Gaoji cluster control inventory for this host";
       manageableUnits = lib.mkOption {
         type = lib.types.listOf lib.types.str;
         default = [];
