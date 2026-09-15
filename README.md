@@ -147,6 +147,10 @@ at root's.
 
 Current targets: `b650, h310, h610, r2s, r5s, r5sjp, r6s, rpi4, shanghai, tank`.
 
+Max operates these targets through ordinary SSH as the full-sudo `max` account,
+using its own Tailscale client. The bot service runs as `max-service`. Configuration,
+builder assignments and dated rollout evidence: [Max SSH operations](docs/max-ssh-operations.md).
+
 ## CI
 
 `.github/workflows/ci.yml` dry-builds a 15-host matrix on push/PR — Linux hosts

@@ -43,8 +43,11 @@ h610 worker 的密钥分别迁到 `secrets/gaoji/control.yaml`、`worker-h610.ya
 
 ## 首次切换顺序
 
+下面仅用于尚未迁移的安装。已经运行 `max-service` 的 h610 不要重复账号迁移。
+
 1. 构建新的 h610 系统，记录新 store path 和原 generation。
-2. 停止 `max-stack.target`，运行新系统的 `max-migrate-service-account --check`
+2. 显式停止并等待 `max-stack.target`、`max.service`、`max-runtime.service` 和
+   `max-runtime.socket`，确认旧服务 UID 没有残留进程，再运行新系统的 `max-migrate-service-account --check`
    和 `--migrate`。脚本保留旧服务 UID/GID，将名称改为 `max-service`；数据库/角色
    继续叫 `max`，通过 PostgreSQL peer map 登录。
 3. 激活 h610 新系统；新 `max` 登录账户与旧服务 UID 分离。未先迁移时 pre-switch
@@ -56,3 +59,54 @@ h610 worker 的密钥分别迁到 `secrets/gaoji/control.yaml`、`worker-h610.ya
 
 完整生命周期和故障恢复见 Max 仓库 `docs/runbooks/ssh-operations.md`。
 构建和 VM 测试不等同于线上切换或真实群聊验收。
+
+## 运行时约定
+
+- `maxops` 是共享 netns 和客户端节点名，入站 SSH 关闭；连接目标填实际 fleet 主机，
+  例如 `ssh h610`。模型无需使用专门的 SSH 子命令或寻找 Hub API。
+- `operations` 技能加载 sandbox 工具；网络由 broker 按群配置选择，加载技能和
+  选择后台 task profile 都不会改变网络权限。已开启群的 shell 可完整运维。
+- 专用客户端与网络属于 `max-stack.target`，资源放在 `max.slice`；普通重启
+  `max.service` 不重启客户端。节点状态、preauthkey 和控制 socket 不交给 sandbox。
+- 共享 netns 包括 localhost 和端口空间，临时服务使用动态端口。各 sandbox 的
+  `/work` 仍分别保留；升级不会更新其中的 Git clone，也不会改写旧 monitor/task 目标。
+- Max 当前实现以 `self-knowledge` / `inspect_source` 的 build revision 为准；修改
+  仓库前核对远端、HEAD 和未提交改动，用独立 worktree。旧任务引用的 MaxOps API
+  是历史信息；检查原目标与远端状态后使用当前 SSH 流程，不能重放旧 job。
+- 内嵌技能和提示词需要新的 Max 构建及激活才生效。DB-global/群技能可以覆盖 builtin，
+  已加载技能在当前执行内固定；文档提交不会替换已有任务的加载记录。
+
+## 2026-09-15 fleet rollout
+
+发布基线：Max `cfcbba9b0a8b07159c396967ce24fafe2e598216`，
+nix-config `3071dc2e5df69686ad1f5f195606060b9f8df7b2`。
+下表记录当次用户指定的构建分工，不覆盖以后任务的新指令。
+
+| 目标 | 构建位置 | 本次结果 |
+| --- | --- | --- |
+| h610 | h610（先行部署）；tank 复核相同目标闭包 | 已激活，Max/broker/数据库及 SSH 验收通过 |
+| tank、shanghai | tank | 构建、激活、SSH 验收通过 |
+| r2s、r5s、r5sjp、r6s | r6s | 构建、激活、SSH 验收通过 |
+| b650 | b650 | 本机构建、激活、SSH 验收通过 |
+| rpi4 | rpi4，单任务、2 核、2 GiB 构建上限 | 本机构建、激活、SSH 验收通过 |
+| h310 | h310，单任务、2 核、4 GiB 构建上限 | 目标系统已生效，SSH 验收通过；switch 返回 4，见下 |
+
+tank 到 h310 的闭包传输不稳定，按用户指令改为 h310 直接 fetch、下载并构建，
+约 1 分 39 秒完成；构建产物未经过操作者的跨境工作站中转。所有远端使用干净的
+`/home/hank/max-fleet-deploy-20260915` worktree，保留原 checkout 的独立改动。
+
+从 h610 的 Max 沙箱，以 `max-service` 调用真实 broker，对以上 **10/10** 主机
+执行普通 SSH，确认登录 `max`、`sudo -n id -u` 为 0、运行闭包与目标一致、原
+Tailscale 节点身份未变。另核对系统 profile 相同，旧 `maxops*` unit 文件均消失。
+验收沙箱及卷已删除。Darwin/WSL 配置求值不代表这些机器已经远程部署或通过 SSH。
+
+h310 的旧 Gaoji 安装 oneshot 在激活 target 时被重试，下载 whisper.cpp 达到
+180 秒超时，再次失败；因此 switch 返回 4，部署 unit 保留失败证据。新系统及
+profile 均已切换，运维验收通过。这不是严格系统健康通过，不能为得到零退出码
+盲目重跑 switch。r2s 的 `network-rps` 已恢复；另有短 SSH 进程提前退出造成的
+`session-c10.scope` 失败。Max 原有投递债务也未被清除或重放。
+
+证据保存在 h610 的 `/var/lib/max/backups/ssh-operations-20260915/`：
+`fleet-acceptance.json` 是逐机验收，`fleet-deployment-result.json` 记录版本、闭包、
+构建分工与异常。其他目标在 `/var/lib/max-fleet-deploy/20260915/` 保留原系统、
+Tailscale 状态、切换前失败单元与激活脚本。备份含私有状态，不应作为聊天附件发布。

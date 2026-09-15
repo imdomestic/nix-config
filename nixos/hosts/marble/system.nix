@@ -17,6 +17,12 @@
   # as application UIDs and may block their network access. Keep dedicated
   # build users, but place them in the unallocated Android system UID range.
   ids.uids.nixbld = lib.mkForce 9000;
+  ids.gids.nixbld = lib.mkForce 9000;
+  nix.settings.build-users-group = "nixbld";
+  # Droidspaces generates /etc/resolv.conf as a symlink into /run. Nix copies
+  # the symlink into build sandboxes, so include its target as well; otherwise
+  # fixed-output derivations cannot resolve GitHub or Codeberg.
+  nix.settings.extra-sandbox-paths = [ "/run/droidspaces/resolv.conf" ];
   systemd.services.nix-daemon.serviceConfig.ExecStart = lib.mkForce [
     ""
     "${pkgs.util-linux}/bin/unshare --mount --mount-proc ${config.nix.package}/bin/nix-daemon --daemon"
@@ -42,6 +48,8 @@
 
   security.sudo.wheelNeedsPassword = false;
   programs.zsh.enable = true;
+
+  services.tailscale.enable = true;
 
   # git 删了:hank 的 programs.git 已经装了。vim 留着 —— root 进来修东西用。
   environment.systemPackages = with pkgs; [
