@@ -227,19 +227,34 @@
   };
   secretNames = ["admin-token" "search-tavily-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "imessage-bridge-token" "wechathook-bridge-token" "server-access-token"];
 in {
-  sops.secrets = lib.genAttrs (map (name: "max/${name}") secretNames) (name: {
-    sopsFile = ../../../secrets/hosts/h610-max.yaml;
-    key = lib.removePrefix "max/" name;
-    restartUnits = lib.optional (name == "max/server-access-token") "max-napcat.service";
-  });
+  sops.secrets =
+    lib.genAttrs (map (name: "max/${name}") secretNames) (name: {
+      sopsFile = ../../../secrets/hosts/h610-max.yaml;
+      key = lib.removePrefix "max/" name;
+      restartUnits = lib.optional (name == "max/server-access-token") "max-napcat.service";
+    })
+    // {
+      "max/ops-preauthkey" = {
+        sopsFile = ../../../secrets/hosts/h610-ops.yaml;
+        key = "preauthkey";
+        mode = "0400";
+        restartUnits = ["max-ops-tailscaled.service"];
+      };
+    };
   sops.templates."max-config.json" = {
     content = builtins.toJSON settings;
-    owner = "max";
+    owner = "max-service";
     mode = "0400";
     restartUnits = ["max.service"];
   };
   services.max = {
     enable = true;
+    operations = {
+      enable = true;
+      allowedGroups = [611798505 650536599];
+      loginServer = "https://tailscale.imdomestic.com:8443";
+      authKeyFile = config.sops.secrets."max/ops-preauthkey".path;
+    };
     configFile = config.sops.templates."max-config.json".path;
     napcat = {
       enable = true;

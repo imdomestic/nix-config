@@ -8,7 +8,7 @@ Do not assume the registry name equals the actual MagicDNS name: verify the
 node's `DNSName` first, especially for dual-boot machines (`b650` and
 `b650-windows` are different nodes).
 
-Deployment destinations, maxops/worker URLs, Prometheus targets, Alertmanager
+Deployment destinations, worker URLs, Prometheus targets, Alertmanager
 peers, Grafana data sources, ping targets and the migrated h610/tank consumers
 use fully qualified names. Explicit `instance`/`peer` labels retain the short
 registry names, preserving dashboard and alert identities. Ping remains IPv4
@@ -31,9 +31,6 @@ For applications requiring numeric IPs:
   `/run/grafana/tailscale-bind-address`, generated before startup. This also
   satisfies the embedded API server, which rejects hostnames.
 
-- maxops agent/hub: a package wrapper resolves the native JSON config's `listen`
-  field, writes a mode-0600 runtime config, and execs the original binary. All
-  other native settings and credential paths are retained.
 - Alertmanager: the wrapper supplies a numeric gossip advertise address. Its
   cluster peers and public URLs remain names.
 - Headplane 0.6.2: the wrapper uses its native `HEADPLANE_SERVER__HOST`

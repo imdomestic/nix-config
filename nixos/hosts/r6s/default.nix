@@ -8,9 +8,9 @@ in {
   roles = ["server"];
   tsName = "r6s.inner.imdomestic.com";
   lanRoutes = ["192.168.22.0/24"];
-  maxops = {
+  clusterControl = {
     enable = true;
-    manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];
+    manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];
   };
   ip = "10.0.0.4";
   sshUser = "root";

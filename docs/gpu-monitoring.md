@@ -72,7 +72,7 @@ Xid 首次启动仅回看当前开机最近 5 分钟，之后依游标增量读�
 Xid 63/92 只记录；79/48/94/95 critical，其余新 Xid warning，具体原因仍须结合日志判断。
 
 规则带 `component=gpu`、主机和 UUID 标签，接入两份 Prometheus 已有的 Alertmanager 集群和
-现有 Maxops/default 接收器。critical 温度抑制同卡 warning；既有 HostUnreachable 抑制保留。
+现有 default 接收器。critical 温度抑制同卡 warning；既有 HostUnreachable 抑制保留。
 无自动调频、杀进程、重启或复位动作。验证测试通过 promtool 完成，不发送伪造告警到群。
 
 ## 验证

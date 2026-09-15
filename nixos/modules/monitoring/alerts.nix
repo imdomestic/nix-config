@@ -33,8 +33,7 @@ in
               description = ''
                 Prometheus 已经连续 10 分钟抓不到 {{ $labels.instance }}
                 ({{ $labels.arch }})。可能是机器下线、node_exporter 挂了,
-                或者 tailscale 断了 —— 这三种现在还分不开,等 maxops-agent
-                上线后才能区分(见 docs/maxops.md §7)。
+                或者 tailscale 断了；通过 SSH 检查主机和 exporter 的实际状态。
               '';
             };
           }

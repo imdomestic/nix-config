@@ -11,6 +11,18 @@
 
 ---
 
+## 2026-09-15 · Max 运维改用独立 Tailscale 与 SSH {#max-ssh-operations}
+
+运维入口改为开启群内的普通 `ssh hostname`。Nix 与原生 systemd 管理专用
+`maxops` netns、tailscaled 和 `max-stack.target` 生命周期；fleet 的 `max`
+账户有完整免密 sudo，机器人进程改名 `max-service` 并保留原 UID/GID。
+
+旧 maxops Hub／Agent／Executor、客户端凭据、专用检查与 flake 输入移除。
+Gaoji 的控制与计算 worker 保留，旧 ops／部署入口停用，主机清单改用
+`clusterControl`；Alertmanager 保留规则与独立 webhook，移除经 Hub 的群告警。
+历史决策与事故记录保留。配置、密钥与首次迁移顺序见
+[Max SSH 运维接入](max-ssh-operations.md)。本次仅发布代码，未执行系统切换。
+
 ## 2026-09-13 · 纳管主机用 MagicDNS 名称寻址 {#tailscale-names}
 
 移除 registry 的 `tsIp`，由 `tsName` 同时供部署、监控和服务互连使用。

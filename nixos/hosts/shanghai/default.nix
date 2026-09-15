@@ -10,9 +10,9 @@ in {
   # 故障域就没有意义了。见 nixos/modules/monitoring/gateway.nix。
   roles = ["server" "monitor-gateway"];
   tsName = "shanghai.inner.imdomestic.com";
-  maxops = {
+  clusterControl = {
     enable = true;
-    manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "xray.service" "derper.service"];
+    manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "xray.service" "derper.service"];
   };
   ip = "10.0.0.1";
   sshUser = "root";

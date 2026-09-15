@@ -10,9 +10,9 @@ in {
   # 的 gossip 名单、以及"另一份挂了"那条告警的预期成员数。
   roles = ["server" "monitor"];
   tsName = "tank.inner.imdomestic.com";
-  maxops = {
+  clusterControl = {
     enable = true;
-    manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service" "gaoji-cluster-worker.service"];
+    manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service" "gaoji-cluster-worker.service"];
   };
   ip = "10.0.0.66";
   sshUser = "root";

@@ -16,7 +16,7 @@
 # 还是一份。
 #
 # 抓取目标不手维护 —— 从 host registry 经 lib/mkInventory.nix 生成,和各台机器
-# 上 node_exporter 的开关读同一个字段(my.host.tsName)。参见 docs/maxops.md §8。
+# 上 node_exporter 的开关读同一个字段(my.host.tsName)。
 # **谁跑监控同样从 registry 派生:roles 里有 "monitor" 就是一份。**
 {
   config,
@@ -44,9 +44,7 @@
   inventory =
     (import ../../../lib/mkInventory.nix {inherit inputs;})
     {hosts = import ../../hosts {inherit inputs;};};
-  maxopsHosts = lib.filter (entry: entry.maxops.enable or false) inventory;
   gpuHosts = lib.filter (entry: entry.gpuMonitoring.enable) inventory;
-  maxopsHub = lib.findFirst (entry: entry.name == "h610") null maxopsHosts;
 
   # 自己这台的地址。Prometheus 和 Grafana 都只绑它。
   selfName = config.my.host.tsName;
@@ -102,7 +100,7 @@ in {
 
         2026-08-12 cockpit 删了,9090 空了出来(r6s 上现在是 mihomo 的
         metacubexd 面板占着)。**但这里保持 9009 不动** —— 让路的理由没了,
-        而端口已经写进两份监控配置、看板和 docs/maxops.md,再挪回去是净损失。
+        而端口已经写进两份监控配置、看板,再挪回去是净损失。
       '';
     };
 
@@ -155,18 +153,12 @@ in {
 
         这是 P2 的最后一公里,故意留成一个选项:告警规则和 Alertmanager 本身
         跟"发到哪"是两件事,前者现在就该上,后者取决于 max 那边暴露什么接口
-        (见 docs/maxops.md,notify sink 最终归 maxops-hub 管)。
+        。
 
         null 不是"没配好",是一个有意义的中间状态 —— 规则先跑起来攒几天,
         看清楚哪几条会误报、哪几条太吵,调完了再接出口。**先接出口再调规则,
         第一周就会把群刷炸,然后所有人开始无视这个群。**
       '';
-    };
-
-    maxopsNotifications = lib.mkOption {
-      type = lib.types.bool;
-      default = maxopsHub != null;
-      description = "Send warning/critical managed-host alerts to maxops in addition to the independent webhook receiver.";
     };
 
     retention = lib.mkOption {
@@ -183,14 +175,6 @@ in {
   config = lib.mkIf cfg.enable {
     my.tailscale.bindServices = ["prometheus" "alertmanager" "grafana"];
 
-    sops.secrets = lib.optionalAttrs cfg.maxopsNotifications {
-      "maxops/alert_ingress" = {
-        sopsFile = ../../../secrets/maxops/alert-ingress.yaml;
-        key = "token";
-        mode = "0400";
-        restartUnits = ["alertmanager.service"] ++ lib.optional (config.my.host.name == "h610") "maxops-hub.service";
-      };
-    };
     assertions = [
       {
         assertion = selfName != null;
@@ -468,54 +452,26 @@ in {
           repeat_interval = "4h";
 
           receiver = "default";
-          routes = lib.optionals cfg.maxopsNotifications [
-            {
-              receiver = "maxops";
-              matchers = [
-                ''instance =~ "${lib.concatStringsSep "|" (map (entry: entry.name) maxopsHosts)}"''
-                ''severity =~ "warning|critical"''
-              ];
-              continue = true;
-            }
-            {receiver = "default";}
-          ];
         };
 
         # info 级的(比如 HostRebooted)不该和 critical 走同一条路,
         # 但现在只有一个 receiver,先靠 group_by 隔开。接了真出口之后
         # 这里要拆成 routes(critical 立刻发、warning 攒一攒、info 只留档)。
-        receivers =
-          [
-            (
-              {name = "default";}
-              // lib.optionalAttrs (cfg.webhookUrl != null) {
-                webhook_configs = [
-                  {
-                    url = cfg.webhookUrl;
-                    # 告警恢复也要发。只发"炸了"不发"好了"的系统,用两周之后
-                    # 就没人相信它了 —— 你永远不知道手上这条是不是还成立。
-                    send_resolved = true;
-                  }
-                ];
-              }
-            )
-          ]
-          ++ lib.optionals cfg.maxopsNotifications [
-            {
-              name = "maxops";
+        receivers = [
+          (
+            {name = "default";}
+            // lib.optionalAttrs (cfg.webhookUrl != null) {
               webhook_configs = [
                 {
-                  url = "http://${maxopsHub.tsName}:9721/v1/alerts";
+                  url = cfg.webhookUrl;
+                  # 告警恢复也要发。只发"炸了"不发"好了"的系统,用两周之后
+                  # 就没人相信它了 —— 你永远不知道手上这条是不是还成立。
                   send_resolved = true;
-                  max_alerts = 100;
-                  http_config = {
-                    follow_redirects = false;
-                    authorization.credentials_file = "/run/credentials/alertmanager.service/maxops-alert-ingress";
-                  };
                 }
               ];
             }
-          ];
+          )
+        ];
 
         # 机器整个不可达时,它上面的 unit failed / 磁盘 / 温度告警全都会
         # 跟着触发(或者说,全都会因为抓不到而变成陈旧数据)。这条让
@@ -540,7 +496,6 @@ in {
       after = ["network-online.target" "tailscaled.service"];
       wants = ["network-online.target" "tailscaled.service"];
       serviceConfig.RestartSec = "10s";
-      serviceConfig.LoadCredential = lib.optional cfg.maxopsNotifications "maxops-alert-ingress:${config.sops.secrets."maxops/alert_ingress".path}";
     };
 
     services.grafana = {

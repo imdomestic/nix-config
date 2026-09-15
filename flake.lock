@@ -1111,36 +1111,16 @@
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1789209085,
-        "narHash": "sha256-mfSxlS3XKnVVlpXFP3ySD7P2OMLoGylWs6MOlLwOYdo=",
+        "lastModified": 1789471883,
+        "narHash": "sha256-/PaP87VcwluIgW9/90Jbhq+9AKz9Xwxx0ZXKQiUKv3A=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "4003144ecc2a3cbdcde24f835d5d98885e5110c4",
+        "rev": "4a897fec1f0672f425e851b1d87f952cd2b006cc",
         "type": "github"
       },
       "original": {
         "owner": "HCHogan",
         "repo": "max",
-        "type": "github"
-      }
-    },
-    "maxops": {
-      "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
-      },
-      "locked": {
-        "lastModified": 1789203058,
-        "narHash": "sha256-yCrRCdcSXj1Q8XcaQIdPyHGB4Em7wga8JkAfqQZneGo=",
-        "owner": "HCHogan",
-        "repo": "maxops",
-        "rev": "a5503bda960376a0214a44e5a5166fb396909480",
-        "type": "github"
-      },
-      "original": {
-        "owner": "HCHogan",
-        "repo": "maxops",
         "type": "github"
       }
     },
@@ -1851,17 +1831,17 @@
     },
     "nixpkgs_6": {
       "locked": {
-        "lastModified": 1782116945,
-        "narHash": "sha256-G3tw/IXmaH6IQ2upZvhuN9sG8CkuX+BLuJDpE8hz0Ds=",
+        "lastModified": 1789114715,
+        "narHash": "sha256-ugpsyk3NM2s87vXfUiIIiibbJ4Pp0JPS5p/3mfs+q+c=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "34268251cf5547d39063f2c5ea9a196246f7f3a6",
+        "rev": "21a67dc470149f337cecafbe965d8d252a390518",
         "type": "github"
       },
       "original": {
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "34268251cf5547d39063f2c5ea9a196246f7f3a6",
+        "rev": "21a67dc470149f337cecafbe965d8d252a390518",
         "type": "github"
       }
     },
@@ -2187,7 +2167,6 @@
         "llama-swap-proxy": "llama-swap-proxy",
         "llm-agents": "llm-agents",
         "max": "max",
-        "maxops": "maxops",
         "nix-darwin": "nix-darwin",
         "nix-index-database": "nix-index-database",
         "nix-minecraft": "nix-minecraft",

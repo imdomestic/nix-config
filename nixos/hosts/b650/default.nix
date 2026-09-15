@@ -12,11 +12,9 @@ in {
     uuids = ["GPU-d8ec4dea-3771-68e6-9f8b-11811e47ac9d"];
   };
 
-  maxops = {
+  clusterControl = {
     enable = true;
     manageableUnits = [
-      "maxops-agent.service"
-      "maxops-executor.service"
       "tailscaled.service"
       "prometheus-node-exporter.service"
       "llama-swap.service"

@@ -7,9 +7,9 @@ in {
   kind = "nixos";
   roles = ["server"];
   tsName = "h310.inner.imdomestic.com";
-  maxops = {
+  clusterControl = {
     enable = true;
-    manageableUnits = ["maxops-agent.service" "maxops-executor.service" "tailscaled.service" "prometheus-node-exporter.service" "gaoji-cluster-worker.service"];
+    manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "gaoji-cluster-worker.service"];
   };
 
   profiles = with nixosProfiles; [

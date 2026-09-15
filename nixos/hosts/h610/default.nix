@@ -9,13 +9,10 @@ in {
   # 停电一整天,h610 全程在线。放同一个屋子里等于还是一份。
   roles = ["server" "monitor"];
   tsName = "h610.inner.imdomestic.com";
-  maxops = {
+  clusterControl = {
     enable = true;
     manageableUnits = [
       "max.service"
-      "maxops-agent.service"
-      "maxops-executor.service"
-      "maxops-hub.service"
       "docker-qwen35-sycl.service"
       "qwen35-sycl-warmup.service"
       "gaoji-cluster-control.service"
@@ -40,7 +37,7 @@ in {
   modules = [
     ./system.nix
     ./tailscale-names.nix
-    ./maxops.nix
+    ./cluster.nix
     ./qwen35-sycl.nix
     ./hardware-configuration.nix
   ];
@@ -48,7 +45,6 @@ in {
   externalModules = [
     # inputs.headplane.nixosModules.headplane
     inputs.max.nixosModules.max
-    inputs.maxops.nixosModules.hub
     inputs.qq-bot.nixosModules.gaoji
     inputs.qq-bot.nixosModules.cluster-control
     inputs.qq-bot.nixosModules.cluster-worker
