@@ -68,6 +68,9 @@ h610 worker 的密钥分别迁到 `secrets/gaoji/control.yaml`、`worker-h610.ya
   选择后台 task profile 都不会改变网络权限。已开启群的 shell 可完整运维。
 - 专用客户端与网络属于 `max-stack.target`，资源放在 `max.slice`；普通重启
   `max.service` 不重启客户端。节点状态、preauthkey 和控制 socket 不交给 sandbox。
+- 同一 sandbox 的独立命令可并发，不再由单个后台任务独占；每条命令保留独立的
+  systemd 执行单元、超时和输出。删除及策略重建等待活动命令结束，同路径写入和
+  同一主机部署由调用者协调。这项行为随新的 Max 版本激活生效。
 - 共享 netns 包括 localhost 和端口空间，临时服务使用动态端口。各 sandbox 的
   `/work` 仍分别保留；升级不会更新其中的 Git clone，也不会改写旧 monitor/task 目标。
 - Max 当前实现以 `self-knowledge` / `inspect_source` 的 build revision 为准；修改
