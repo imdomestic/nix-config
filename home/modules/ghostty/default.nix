@@ -92,6 +92,7 @@ in {
       background-blur-radius = 20;
       macos-option-as-alt = true;
       macos-titlebar-style = "tabs";
+      gtk-titlebar-style = "tabs";
       shell-integration = "detect";
       auto-update = "off";
       cursor-style = "bar";

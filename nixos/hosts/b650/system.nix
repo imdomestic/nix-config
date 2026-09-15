@@ -76,6 +76,7 @@
   environment.systemPackages = with pkgs; [
     pciutils
     nvtopPackages.nvidia
+    btop-cuda
   ];
 
   time.timeZone = "Asia/Hong_Kong";
