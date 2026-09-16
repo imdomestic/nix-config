@@ -30,6 +30,11 @@
     rev = "1303f24df1649202834e052f1d66560ed186e413";
     hash = "sha256-zv5wUMo/8ihyqdzFgLD+dQNandRGA33+NOokFwzsB+Y=";
   };
+  # tmux-agent-sidebar 的 OpenCode 桥:一个 JS 插件,把 opencode 的事件经
+  # hook.sh 转发给侧边栏二进制。文件由包构建时从 src 拷进插件目录
+  # (pkgs/tmux-agent-sidebar),不在 store 里的话上游的软链装法无从谈起。
+  agentSidebar = pkgs.callPackage ../../../pkgs/tmux-agent-sidebar {};
+  sidebarBridge = "file://${agentSidebar}/share/tmux-plugins/tmux-agent-sidebar/.opencode/plugins/tmux-agent-sidebar.js";
   runtimePlugins = [
     modelStatsPlugin
     "file://${notificator}/notificator.js"
@@ -37,6 +42,7 @@
     "opencode-supermemory@2.0.13"
     "@franlol/opencode-md-table-formatter@0.0.6"
     "@zenobius/opencode-skillful@1.2.5"
+    sidebarBridge
   ];
   both = color: {
     dark = color;
@@ -140,6 +146,7 @@ in {
       plugin = [
         modelStatsPlugin
         "@tarquinen/opencode-dcp@3.1.15"
+        sidebarBridge
       ];
     };
     themes."evergarden-winter".theme = evergardenWinter;
