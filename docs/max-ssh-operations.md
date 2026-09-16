@@ -64,8 +64,11 @@ h610 worker 的密钥分别迁到 `secrets/gaoji/control.yaml`、`worker-h610.ya
 
 - `maxops` 是共享 netns 和客户端节点名，入站 SSH 关闭；连接目标填实际 fleet 主机，
   例如 `ssh h610`。模型无需使用专门的 SSH 子命令或寻找 Hub API。
-- `operations` 技能加载 sandbox 工具；网络由 broker 按群配置选择，加载技能和
-  选择后台 task profile 都不会改变网络权限。已开启群的 shell 可完整运维。
+- 后台 profile 只有 `research`、`browser`、`sandbox`；SSH 运维使用 `sandbox`，
+  加载 `operations` 技能获得 fleet/部署指导，通用 shell 用法由它依赖的 sandbox 技能提供。
+  旧 `operations` profile 在读取时归一为 `sandbox`，历史记录保留。
+- 网络由 broker 按群配置选择，加载技能和选择后台 task profile 都不会改变网络权限。
+  已开启群的 shell 可完整运维。
 - 专用客户端与网络属于 `max-stack.target`，资源放在 `max.slice`；普通重启
   `max.service` 不重启客户端。节点状态、preauthkey 和控制 socket 不交给 sandbox。
 - 同一 sandbox 的独立命令可并发，不再由单个后台任务独占；每条命令保留独立的
