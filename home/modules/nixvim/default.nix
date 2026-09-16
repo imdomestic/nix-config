@@ -134,6 +134,7 @@ in {
       auto-reload.clear = true;
       highlight-yank.clear = true;
       terminal-cleanup.clear = true;
+      external-lsp.clear = true;
       indent-two.clear = true;
       indent-four.clear = true;
       haskell-extra.clear = true;
@@ -142,6 +143,41 @@ in {
 
     autoCmd =
       [
+        {
+          event = "VimEnter";
+          group = "external-lsp";
+          desc = "Enable configured language servers already available on PATH";
+          callback = mkRaw ''
+            function()
+              local external_lsp_servers = {
+                "basedpyright",
+                "bashls",
+                "clangd",
+                "cssls",
+                "elmls",
+                "html",
+                "jdtls",
+                "jsonls",
+                "lemminx",
+                "lua_ls",
+                "neocmake",
+                "nil_ls",
+                "pylsp",
+                "taplo",
+                "tinymist",
+                "yamlls",
+              }
+              for _, server in ipairs(external_lsp_servers) do
+                local lsp_config = vim.lsp.config[server]
+                local cmd = type(lsp_config) == "table" and lsp_config.cmd or nil
+                local executable = type(cmd) == "table" and cmd[1] or nil
+                if type(executable) == "string" and vim.fn.executable(executable) == 1 then
+                  vim.lsp.enable(server)
+                end
+              end
+            end
+          '';
+        }
         {
           event = [
             "FocusGained"
@@ -634,7 +670,11 @@ in {
       }
     ];
 
-    dependencies.lean.enable = false;
+    # Language servers come from the host/profile/devshell, never Nixvim.
+    dependencies = {
+      lean.enable = false;
+      rust-analyzer.enable = false;
+    };
 
     plugins = {
       lz-n.enable = true;
@@ -885,6 +925,8 @@ in {
         # the nixvim default (all grammars).
         grammarPackages = lib.mkIf (!dev) (with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
           bash
+          c
+          cpp
           json
           lua
           markdown
@@ -1305,8 +1347,8 @@ in {
         };
         servers = {
           basedpyright = {
-            enable = dev;
-            # Don't bundle basedpyright; use it from PATH/devshell.
+            enable = true;
+            autostart = false;
             package = null;
             cmd = [
               "basedpyright-langserver"
@@ -1327,8 +1369,9 @@ in {
           };
 
           bashls = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             cmd = [
               "bash-language-server"
               "start"
@@ -1343,8 +1386,8 @@ in {
           };
 
           clangd = {
-            enable = dev;
-            # Don't bundle LLVM/clang (~1.9 GiB); use clangd from PATH/devshell.
+            enable = true;
+            autostart = false;
             package = null;
             cmd = [
               "clangd"
@@ -1362,8 +1405,9 @@ in {
           };
 
           cssls = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             filetypes = [
               "css"
               "scss"
@@ -1382,8 +1426,9 @@ in {
           };
 
           elmls = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             filetypes = ["elm"];
             rootMarkers = ["elm.json"];
             extraOptions.init_options = {
@@ -1395,8 +1440,9 @@ in {
           };
 
           html = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             filetypes = [
               # templ 不接 html-lsp:dev 机上 cornelis 才是它的 LSP,双挂会刷
               # 一堆把 templ 当 HTML 解析出来的假诊断;非 dev 机 templ 无 LSP。
@@ -1421,8 +1467,9 @@ in {
           };
 
           jsonls = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             filetypes = [
               "json"
               "jsonc"
@@ -1432,8 +1479,9 @@ in {
           };
 
           lua_ls = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             cmd = ["lua-language-server"];
             filetypes = ["lua"];
             rootMarkers = [".git"];
@@ -1447,8 +1495,9 @@ in {
           };
 
           neocmake = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             cmd = [
               "neocmakelsp"
               "--stdio"
@@ -1464,7 +1513,8 @@ in {
 
           nil_ls = {
             enable = true;
-            packageFallback = true;
+            autostart = false;
+            package = null;
             cmd = ["nil"];
             filetypes = ["nix"];
             rootMarkers = [
@@ -1475,9 +1525,26 @@ in {
             extraOptions.single_file_support = true;
           };
 
+          pylsp = {
+            enable = true;
+            autostart = false;
+            package = null;
+            cmd = ["pylsp"];
+            filetypes = ["python"];
+            rootMarkers = [
+              "pyproject.toml"
+              "setup.py"
+              "setup.cfg"
+              "requirements.txt"
+              ".git"
+            ];
+            extraOptions.single_file_support = true;
+          };
+
           taplo = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             cmd = [
               "taplo"
               "lsp"
@@ -1492,16 +1559,18 @@ in {
           };
 
           tinymist = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             cmd = ["tinymist"];
             filetypes = ["typst"];
             rootMarkers = [".git"];
           };
 
           yamlls = {
-            enable = dev;
-            packageFallback = true;
+            enable = true;
+            autostart = false;
+            package = null;
             cmd = [
               "yaml-language-server"
               "--stdio"

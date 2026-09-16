@@ -374,7 +374,8 @@ in {
         taplo.enable = lib.mkForce true;
         lemminx = {
           enable = true;
-          packageFallback = true;
+          autostart = false;
+          package = null;
         };
       };
 
@@ -411,7 +412,7 @@ in {
 
       jdtls = {
         enable = true;
-        jdtLanguageServerPackage = pkgs.jdt-language-server;
+        jdtLanguageServerPackage = null;
         settings = {
           init_options.bundles = mkRaw ''
             (function()
@@ -463,6 +464,8 @@ in {
           };
         };
       };
+
+      lsp.servers.jdtls.autostart = false;
 
       treesitter.grammarPackages = lib.mkAfter (
         with config.programs.nixvim.plugins.treesitter.package.builtGrammars; [
