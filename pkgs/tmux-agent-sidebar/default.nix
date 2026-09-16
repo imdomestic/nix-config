@@ -43,6 +43,10 @@ rustPlatform.buildRustPackage (finalAttrs: {
     cp hook.sh $plugindir/
     cp -r .claude-plugin hooks $plugindir/
 
+    # OpenCode 那边要的:.opencode/ 桥插件。它从自己所在目录逐级往上找 hook.sh
+    # (resolveHookScript),所以必须和 hook.sh 一起落在插件目录里,而不是留在 src。
+    cp -r .opencode $plugindir/
+
     ln -s $out/bin/tmux-agent-sidebar $plugindir/bin/tmux-agent-sidebar
   '';
 
