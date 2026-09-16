@@ -109,7 +109,7 @@ in {
         options.baseURL = "http://b650.inner.imdomestic.com:8000/v1";
         models = {
           "qwen3.8-27b-fast" = {
-            name = "Qwen3.8 27B · NVFP4 · 100K · Vision 8K · MTP3";
+            name = "Qwen3.8 27B · 100K";
             limit = {
               context = 100000;
               output = 100000;
@@ -120,7 +120,7 @@ in {
             };
           };
           "qwen3.8-27b" = {
-            name = "Qwen3.8 27B · Groupwise INT · 262K · Vision 8K · MTP3";
+            name = "Qwen3.8 27B · 262K";
             limit = {
               context = 262144;
               output = 262144;
