@@ -23,7 +23,11 @@ in {
         i18n.glibcLocales = lib.mkForce pkgs.glibcLocalesUtf8;
         nix = {
           package = pkgs.nix;
-          settings.experimental-features = ["nix-command" "flakes"];
+          settings = {
+            experimental-features = ["nix-command" "flakes"];
+            # The CSE home is NFS-backed; SQLite WAL is unsafe across login nodes.
+            use-sqlite-wal = false;
+          };
         };
         programs.nixvim = {
           # CSE is SSH-only and uses the OSC 52 clipboard configured by nixvim.
