@@ -25,4 +25,5 @@ in {
   m16 = callHost "m16";
   "9950x" = callHost "9950x";
   marble = callHost "marble";
+  cse = callHost "cse";
 }
