@@ -29,6 +29,7 @@
     })
     managed;
 in {
+  imports = [../../modules/gaoji-ssh.nix];
   sops.secrets =
     lib.listToAttrs (map (name: {
       name = "gaoji/workers/${name}";
@@ -90,6 +91,17 @@ in {
     firewallInterfaces = ["tailscale0"];
     inventory = gaojiInventory;
     hostControlHelpers = lib.genAttrs gaojiManagementHosts (_: "/run/current-system/sw/bin/gaoji-host-control");
+    ssh = {
+      enable = true;
+      targets = lib.listToAttrs (map (entry: lib.nameValuePair entry.name {
+        destination = "gaoji-operator@${entry.tsName}";
+        port = 2224;
+      }) gaojiManaged);
+      knownHostsFile = ../../../lib/gaoji-ssh-known-hosts;
+      identityFile = "/var/lib/gaoji-operations-identity/id_ed25519";
+      managementHosts = gaojiManagementHosts;
+      administrators = ["qq:3526452465" "admin:kenneth"];
+    };
     workers = map (name: {
       workerId = "${name}-worker";
       hostId = name;
