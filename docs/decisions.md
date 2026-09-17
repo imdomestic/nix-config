@@ -11,6 +11,19 @@
 
 ---
 
+## 2026-09-17 · Gaoji 独立 SSH 运维入口 {#gaoji-native-ssh}
+
+Gaoji 在 h610、h310、tank 使用独立的 `gaoji-operator` 账户与密钥。
+2224 端口仅在 `tailscale0` 放行，走原生 OpenSSH 公钥认证，避免 22 端口的
+Tailscale SSH 认证接管；原有 SSH 登录不变。该账户强制执行固定 JSON 入口，
+sudo 只允许该入口，关闭终端和转发，不向聊天沙盒提供私钥。
+
+私钥仅保存在 h610 的 `/var/lib/gaoji-operations-identity/id_ed25519`，目录
+0700、文件 0600，由 systemd credential 提供给控制服务。主机公钥通过已有可信
+管理员连接核验后固定在 `lib/gaoji-ssh-known-hosts`。换密钥或目标时旧授权失效。
+保留任务授权、持久回执、重启恢复、服务/开机身份复查及最终投递；旧 Hub 任务
+不自动转换或重放。旧 MaxOps 专用部署工作流不重新启用。
+
 ## 2026-09-15 · Max 运维改用独立 Tailscale 与 SSH {#max-ssh-operations}
 
 运维入口改为开启群内的普通 `ssh hostname`。Nix 与原生 systemd 管理专用

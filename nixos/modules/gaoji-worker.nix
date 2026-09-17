@@ -8,7 +8,7 @@
   resources = (import ../../lib/gaoji-workers.nix).${host.name};
   tokenName = "gaoji/worker_token";
 in {
-  imports = [inputs.qq-bot.nixosModules.cluster-worker inputs.qq-bot.nixosModules.host-control];
+  imports = [inputs.qq-bot.nixosModules.cluster-worker inputs.qq-bot.nixosModules.host-control ./gaoji-ssh.nix];
   services.gaoji-host-control = {
     enable = true;
     hostId = host.name;
