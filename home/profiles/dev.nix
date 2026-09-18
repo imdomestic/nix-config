@@ -2,6 +2,7 @@
   pkgs,
   inputs,
   lib,
+  config,
   system,
   ...
 }: let
@@ -12,6 +13,17 @@ in {
   # 由那里 import 本文件复用这套工具链。
   home.packages = with pkgs;
     [
+      # Nix configuration and deployment
+      just
+      nix-output-monitor
+      sops
+      nil
+      alejandra
+
+      # Network diagnostics and operations
+      wireguard-tools
+      iperf3
+
       # neovim dependencies
       devenv
       codesnap
@@ -136,5 +148,12 @@ in {
     enableBashIntegration = true;
     nix-direnv.enable = true;
     enableNushellIntegration = true;
+  };
+
+  programs.nh = {
+    enable = true;
+    clean.enable = false;
+    clean.extraArgs = "--keep-since 4d --keep 3";
+    flake = "${config.home.homeDirectory}/.config/nix-config";
   };
 }

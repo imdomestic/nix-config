@@ -435,7 +435,7 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  # fzf 删了:profiles/base.nix 里的 programs.fzf 已经装了它。
+  # fzf 删了:home/profiles/interactive.nix 里的 programs.fzf 已经装了它。
   # git 和 neovim 留着 —— 这是台服务器,出事时是 root 进来修,而且本机
   # `nixos-rebuild --flake` 要 git。
   environment.systemPackages = with pkgs; [

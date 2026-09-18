@@ -39,10 +39,6 @@ in {
       # pkgs.vimPlugins.kanso-nvim
     ];
 
-    extraPackages = [
-      pkgs.lazygit
-    ];
-
     extraFiles = {
       "snippets/package.json".source = ./nvim-snippets/package.json;
       "snippets/rust.json".source = ./nvim-snippets/rust.json;

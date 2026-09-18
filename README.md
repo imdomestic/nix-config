@@ -71,7 +71,7 @@ nixos/hosts/<name>/             # default.nix (metadata) + system.nix + hardware
 nixos/profiles/                 # base, desktop, server, virtualisation
 nixos/modules/                  # system modules: nix*, users, mihomo, vfio, …
 darwin/profiles/                # macOS base (pulls in nixos/modules/nix.nix, users, home-manager-cli)
-home/profiles/                  # core, base, gui/{linux,darwin}
+home/profiles/                  # core, base, interactive, gui/{linux,darwin}
 home/modules/                   # forge, vicinae, nixvim, ghostty, starship, …
 home/users/<name>/              # default.nix + dev.nix (dev is per-user, not a shared profile)
 secrets/                        # sops-nix: secrets.yaml + hosts/<host>.yaml

@@ -41,6 +41,7 @@ in {
         profiles = with homeProfiles; [
           core
           base
+          interactive
         ];
         modules = [
           userModules.linwhite.module
@@ -53,6 +54,7 @@ in {
         profiles = with homeProfiles; [
           core
           base
+          interactive
         ];
         modules = [
           userModules.hank.module

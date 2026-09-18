@@ -730,7 +730,7 @@ in {
   #   GUI / 桌面配套 (clapper radeontop brightnessctl) -> home/users/hank
   #   内核构建那几个 (flex bison elfutils libelf pkg-config) -> home/profiles/dev.nix
   #   虚拟化那一组 -> profiles/virtualisation 本来就装了,这里是抄的第二遍
-  #   wget git starship zsh duf bat just btop cachix -> home 的 base / dev 早就有
+  #   wget git starship zsh duf bat just btop cachix -> home 的 base / interactive / dev 早就有
   #   ddns-go 删了:单元里写的是 ${pkgs.ddns-go.outPath}/bin/ddns-go,不吃 PATH
   #   jellyfin 三件套删了:services.jellyfin 是注释掉的,全文件再无第二处引用
   #

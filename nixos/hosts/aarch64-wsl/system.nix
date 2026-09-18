@@ -33,7 +33,7 @@
   };
   programs.command-not-found.enable = false;
 
-  # 其余的都搬去了 home:wget/starship/zsh/duf/bat/just 在 profiles/base.nix,
+  # 其余的都搬去了 home:wget/zsh 在 base,duf/bat 在 interactive,just 在 dev,
   # git 是 hank 自己的 programs.git,neovim 是 nixvim,gcc 在 profiles/dev.nix,
   # distrobox 挂在 users/hank 的 host 条件里。
   environment.systemPackages = with pkgs; [

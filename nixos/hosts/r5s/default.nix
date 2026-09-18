@@ -43,6 +43,7 @@ in {
         profiles = with homeProfiles; [
           core
           base
+          interactive
         ];
         modules = [
           userModules.hank.module
