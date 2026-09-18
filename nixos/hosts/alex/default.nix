@@ -24,6 +24,7 @@ in {
     profiles = with homeProfiles; [
       core
       base
+      interactive
       gui.darwin
     ];
     modules = [

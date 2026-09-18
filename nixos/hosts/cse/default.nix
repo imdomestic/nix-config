@@ -7,10 +7,11 @@ in {
 
   users.z5730136.home = {
     profiles = with homeProfiles; [
-      # core only supplies the standalone Home Manager plumbing; base is the
-      # sole feature profile on this restricted university account.
+      # core supplies the standalone Home Manager plumbing; CSE keeps the
+      # portable shell base plus the explicitly selected interactive tools.
       core
       base
+      interactive
     ];
     modules = [
       ../../../home/modules/nixvim

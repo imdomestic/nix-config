@@ -1,28 +1,16 @@
 {
   pkgs,
-  config,
   ...
 }: {
   home.packages = with pkgs; [
-    zoxide
     curl
-    wireguard-tools
-    just
     tmux
-    bat
-    fastfetch
     ripgrep
     fd
-    eza
-    duf
-    btop
-    nix-output-monitor
     tree
     file
-    iperf3
     which
     wget
-    sops
     gnugrep
     gnused
     coreutils
@@ -33,53 +21,14 @@
     unzip
     p7zip
     zstd
-
-    # nix
-    nil
-    alejandra
   ];
-
-  programs.yazi = {
-    enable = true;
-    shellWrapperName = "y";
-    settings = {
-      theme = {
-        flavor = {
-          dark = "kanso-ink";
-          light = "kanso-pearl";
-        };
-      };
-    };
-    flavors = {
-      kanso-ink = ../modules/yazi/kanso-ink.yazi;
-      kanso-pearl = ../modules/yazi/kanso-pearl.yazi;
-    };
-  };
 
   programs.zsh = {
     enable = true;
   };
 
-  programs.fzf = {
-    enable = true;
-    defaultOptions = ["--height 40%" "--layout=reverse" "--border"];
-  };
-
-  programs.zoxide = {
-    enable = true;
-    enableNushellIntegration = true;
-    # options = ["--cmd cd"];
-  };
-
   programs.neovim = {
     enable = true;
     defaultEditor = true;
-  };
-
-  programs.nh = {
-    enable = true;
-    clean.enable = false;
-    clean.extraArgs = "--keep-since 4d --keep 3";
-    flake = "${config.home.homeDirectory}/.config/nix-config";
   };
 }
