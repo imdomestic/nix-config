@@ -97,7 +97,7 @@ in {
         destination = "gaoji-operator@${entry.tsName}";
         port = 2224;
       }) gaojiManaged);
-      knownHostsFile = ../../../lib/gaoji-ssh-known-hosts;
+      knownHostsFile = "${../../../lib/gaoji-ssh-known-hosts}";
       identityFile = "/var/lib/gaoji-operations-identity/id_ed25519";
       managementHosts = gaojiManagementHosts;
       administrators = ["qq:3526452465" "admin:kenneth"];
