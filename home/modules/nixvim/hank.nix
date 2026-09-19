@@ -273,7 +273,6 @@ in {
     diagnostic.settings = {
       virtual_lines = false;
       virtual_text = true;
-      update_in_insert = true;
       severity_sort = true;
       float = {
         border = "rounded";
@@ -289,6 +288,10 @@ in {
             [vim.diagnostic.severity.HINT] = "DiagnosticHint",
           }
         '';
+        # 空字符串 = 不放 sign,但 numhl 照旧 —— signcolumn 只有一列
+        # (opts.signcolumn = "yes:1"),诊断图标会把 gitsigns 的 hunk 标记顶掉。
+        # 诊断只靠上面的 numhl 把行号染色。注意不能写成 text = {},那样 nvim
+        # 会退回它自己的默认图标 "E "。
         text.__raw = ''
           {
             [vim.diagnostic.severity.ERROR] = "",
@@ -1491,8 +1494,10 @@ in {
           haskell = ["hlint"];
         };
         autoCmd = {
+          # BufReadPost 而不是 BufEnter:打开文件时 lint 一次就够了,
+          # BufEnter 会在每次切 buffer 时都 spawn 一遍 linter。
           event = [
-            "BufEnter"
+            "BufReadPost"
             "BufWritePost"
             "InsertLeave"
           ];
@@ -1730,6 +1735,13 @@ in {
     '';
 
     extraConfigLuaPost = ''
+      -- nvim 0.11+ 内置了 grn/gra/grr/gri/grt。我们自己用的是 gr/gi 和
+      -- <leader>lr/<leader>la,功能完全重复;留着它们只会让 gr 每次都要等满
+      -- timeoutlen(300ms)去分辨后面还有没有 r/a/n/i/t。
+      for _, key in ipairs({ "grn", "gra", "grr", "gri", "grt" }) do
+        pcall(vim.keymap.del, "n", key)
+      end
+
       require("evergarden").setup({
         theme = {
           variant = "winter",
