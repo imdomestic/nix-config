@@ -10,6 +10,7 @@
   # Dev machines (importing home/users/<user>/dev.nix) get the full setup;
   # everything gated on `dev` below stays out of the closure elsewhere.
   dev = config.my.nixvim.dev.enable;
+  toLua = inputs.nixvim.lib.nixvim.toLuaObject;
   # React 那几个插件共用的 filetype 列表。
   reactFiletypes = [
     "javascript"
@@ -17,6 +18,177 @@
     "typescript"
     "typescriptreact"
   ];
+
+  # LSP 的唯一真相:下面的 lsp.servers 和 VimEnter 守卫的白名单都从这里派生,
+  # 不再是两份要手工同步的列表。
+  #
+  # 一个都不由 nixvim 安装(lsp.servers.*.package = null)。要用的装在
+  # home/profiles/dev.nix 里,项目 devshell 里的版本会盖掉它 —— nixvim 不往
+  # PATH 里塞东西,PATH 的顺序自然就是 devshell > home profile。
+  #
+  # exe 是给守卫用的可执行文件名,省略表示从 vim.lsp.config[name].cmd[1] 推。
+  # 上游把 cmd 写成 function 的(为了优先用项目 node_modules 里那份)推不出来,
+  # 必须点名,否则守卫永远为假、声明了也不会启动。
+  # config 直接就是 vim.lsp.config 的表,省略的字段用 nvim-lspconfig 的默认值。
+  externalServers = {
+    basedpyright.config = {
+      cmd = ["basedpyright-langserver" "--stdio"];
+      filetypes = ["python"];
+      root_markers = ["pyproject.toml" "requirements.txt"];
+      settings.basedpyright.analysis = {
+        autoSearchPaths = true;
+        diagnosticMode = "openFilesOnly";
+        useLibraryCodeForTypes = true;
+      };
+    };
+
+    bashls.config = {
+      cmd = ["bash-language-server" "start"];
+      filetypes = ["bash" "sh"];
+      root_markers = [".git"];
+      single_file_support = true;
+      settings.bashIde.globPattern = mkRaw ''vim.env.GLOB_PATTERN or "*@(.sh|.inc|.bash|.command)"'';
+    };
+
+    clangd.config = {
+      cmd = ["clangd" "--background-index"];
+      filetypes = ["c" "cpp"];
+      root_markers = [".clangd" "compile_commands.json"];
+      single_file_support = true;
+    };
+
+    cssls.config = {
+      filetypes = ["css" "scss" "less"];
+      root_markers = ["package.json" ".git"];
+      init_options.provideFormatter = true;
+      settings = {
+        css.validate = true;
+        scss.validate = true;
+        less.validate = true;
+      };
+    };
+
+    elmls.config = {
+      filetypes = ["elm"];
+      root_markers = ["elm.json"];
+      init_options = {
+        elmReviewDiagnostics = "off";
+        skipInstallPackageConfirmation = false;
+        disableElmLSDiagnostics = false;
+        onlyUpdateDiagnosticsOnSave = false;
+      };
+    };
+
+    html.config = {
+      # templ 不接 html-lsp:html-lsp 把 templ 当 HTML 解析,会刷一堆假诊断。
+      # templ 现在没有 LSP(要接的话是 templ 包自带的 `templ lsp`,不是
+      # cornelis —— cornelis 是 Agda 的)。
+      filetypes = ["html"];
+      root_markers = ["package.json" ".git"];
+      init_options = {
+        provideFormatter = true;
+        embeddedLanguages = {
+          css = true;
+          javascript = true;
+        };
+        configurationSection = ["html" "css" "javascript"];
+      };
+    };
+
+    # jdtls / lemminx 是 kenneth 用的(kenneth.nix 里配)。列在这里只为了让
+    # 守卫认得它们 —— config 是空的,不会生成任何 vim.lsp.config 调用。
+    jdtls = {};
+    lemminx = {};
+
+    jsonls.config = {
+      filetypes = ["json" "jsonc"];
+      root_markers = [".git"];
+      init_options.provideFormatter = true;
+    };
+
+    lua_ls.config = {
+      cmd = ["lua-language-server"];
+      filetypes = ["lua"];
+      root_markers = [".git"];
+      # 这里的 settings 是原样透传给 vim.lsp.config 的,所以 Lua 这一层要自己写。
+      # 旧的 plugins.lsp 模块会按 server 自动套(`settings = cfg: { Lua = cfg; }`),
+      # 迁过来时漏掉这层的话 lua-language-server 根本读不到。
+      settings.Lua = {
+        runtime.version = "LuaJIT";
+        workspace = {
+          checkThirdParty = false;
+          library = mkRaw ''vim.api.nvim_get_runtime_file("", true)'';
+        };
+      };
+    };
+
+    neocmake.config = {
+      cmd = ["neocmakelsp" "--stdio"];
+      filetypes = ["cmake"];
+      root_markers = [".git" "build" "cmake"];
+      single_file_support = true;
+    };
+
+    nil_ls.config = {
+      cmd = ["nil"];
+      filetypes = ["nix"];
+      root_markers = [".git" "flake.nix" "flake.lock"];
+      single_file_support = true;
+    };
+
+    # 不写 cmd:上游默认先找项目 node_modules/.bin 里的那份,版本跟着项目走。
+    # 代价是 cmd 成了 function,守卫推不出可执行文件名,所以这里点名。
+    # root_markers 同理不写:上游 root_dir 是个函数,会去找 tailwind.config.*
+    # 或带 @import "tailwindcss" 的 CSS。
+    tailwindcss = {
+      exe = "tailwindcss-language-server";
+      config.settings.tailwindCSS.classFunctions = ["cn" "clsx" "cva" "tw" "twMerge"];
+    };
+
+    taplo.config = {
+      cmd = ["taplo" "lsp" "stdio"];
+      filetypes = ["toml"];
+      root_markers = [".taplo.toml" "taplo.toml" ".git"];
+    };
+
+    tinymist.config = {
+      cmd = ["tinymist"];
+      filetypes = ["typst"];
+      root_markers = [".git"];
+    };
+
+    vtsls.config = {
+      cmd = ["vtsls" "--stdio"];
+      # 上游默认还挂 vue,仓库里已经不装 vue-language-server 了。
+      filetypes = reactFiletypes;
+      # root_markers 不写:上游 root_dir 是函数,会先认 lockfile 再退到
+      # tsconfig/.git,monorepo 里比一串 marker 准。
+      settings = {
+        vtsls.experimental.completion.enableServerSideFuzzyMatch = true;
+        typescript = {
+          updateImportsOnFileMove.enabled = "always";
+          suggest.completeFunctionCalls = true;
+          # 默认全关,靠 <leader>lH 临时开。
+          inlayHints = {
+            parameterNames.enabled = "literals";
+            parameterTypes.enabled = true;
+            propertyDeclarationTypes.enabled = true;
+            functionLikeReturnTypes.enabled = true;
+            variableTypes.enabled = false;
+          };
+        };
+      };
+    };
+
+    yamlls.config = {
+      cmd = ["yaml-language-server" "--stdio"];
+      filetypes = ["yaml" "yaml.docker-compose" "yaml.gitlab"];
+      root_markers = [".git"];
+      # 旧模块会把它套成 yaml.redhat.telemetry(错路径);顶层 redhat.telemetry
+      # 才是 yaml-language-server 读的地方,现在原样透传正好对。
+      settings.redhat.telemetry.enabled = false;
+    };
+  };
 in {
   imports = [
     inputs.nixvim.homeModules.nixvim
@@ -152,25 +324,7 @@ in {
               -- tailwindcss 这类上游把 cmd 写成 function(为了优先用项目
               -- node_modules/.bin 里的那份),推不出来,只能在这里点名 ——
               -- 写成 true 的话守卫永远为假,声明了也不会启动。
-              local external_lsp_servers = {
-                basedpyright = true,
-                bashls = true,
-                clangd = true,
-                cssls = true,
-                elmls = true,
-                html = true,
-                jdtls = true,
-                jsonls = true,
-                lemminx = true,
-                lua_ls = true,
-                neocmake = true,
-                nil_ls = true,
-                tailwindcss = "tailwindcss-language-server",
-                taplo = true,
-                tinymist = true,
-                vtsls = true,
-                yamlls = true,
-              }
+              local external_lsp_servers = ${toLua (lib.mapAttrs (_: srv: srv.exe or true) externalServers)}
               for server, executable in pairs(external_lsp_servers) do
                 if executable == true then
                   local lsp_config = vim.lsp.config[server]
@@ -707,6 +861,11 @@ in {
     plugins = {
       lz-n.enable = true;
 
+      # 新的 lsp.* 模块不再自带 nvim-lspconfig。我们要它:cssls/html/jsonls
+      # 的默认 cmd、tailwindcss 那个会找 node_modules 的 cmd function、
+      # vtsls 的 root_dir 函数,全靠它提供。
+      lspconfig.enable = true;
+
       sleuth.enable = true;
 
       codesnap = {
@@ -1021,7 +1180,10 @@ in {
 
       blink-cmp = {
         enable = true;
-        setupLspCapabilities = true;
+        # 这个选项写的是 plugins.lsp.capabilities,而那条路只在 plugins.lsp.enable
+        # 为真时才生成代码。迁到新模块之后它是空转的,capabilities 改由
+        # lsp.servers."*".config 注入。
+        setupLspCapabilities = false;
         settings = {
           keymap = {
             "<C-Space>" = [
@@ -1427,331 +1589,116 @@ in {
           enable_tailwind = false;
         };
       };
+    };
 
-      lsp = {
-        enable = true;
-        keymaps = {
-          silent = true;
-          lspBuf = {
-            "gd" = "definition";
-            "gD" = "declaration";
-            "gr" = "references";
-            "gi" = "implementation";
-            "<leader>lr" = "rename";
-            "<leader>la" = "code_action";
-          };
-          extra = [
-            {
-              key = "<leader>ld";
-              action = mkRaw ''
-                function()
-                  vim.diagnostic.open_float()
-                end
-              '';
-              options.desc = "LSP: Hover diagnostic";
-            }
-            {
-              key = "gh";
-              action = mkRaw ''
-                function()
-                  vim.lsp.buf.typehierarchy()
-                end
-              '';
-              options.desc = "LSP: Goto type hierarchy";
-            }
-            {
-              key = "K";
-              action = mkRaw ''
-                function()
-                  vim.lsp.buf.hover({ border = "rounded" })
-                end
-              '';
-              options.desc = "LSP: Hover";
-            }
-            {
-              key = "<leader>lH";
-              action = mkRaw ''
-                function()
-                  local bufnr = vim.api.nvim_get_current_buf()
-                  local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
-                  vim.lsp.inlay_hint.enable(not enabled, { bufnr = bufnr })
-                end
-              '';
-              options.desc = "LSP: Toggle inlay hints";
-            }
-          ];
-        };
-        servers = {
-          basedpyright = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = [
-              "basedpyright-langserver"
-              "--stdio"
-            ];
-            filetypes = ["python"];
-            rootMarkers = [
-              "pyproject.toml"
-              "requirements.txt"
-            ];
-            settings = {
-              basedpyright.analysis = {
-                autoSearchPaths = true;
-                diagnosticMode = "openFilesOnly";
-                useLibraryCodeForTypes = true;
-              };
-            };
-          };
+    # 顶层 lsp.* 模块(不在 plugins 下面)。plugins.lsp 是转发到这里的兼容层,
+    # 上游标着 "will be removed when plugins.lsp is dropped"。
+    lsp = {
+      servers =
+        {
+          # "*" = 所有 server 共享的默认值。blink 的 capabilities 原来靠
+          # plugins.lsp.capabilities 注入,那条路只在 plugins.lsp.enable 为真时
+          # 才生成 __wrapConfig,迁走之后必须走这里。
+          "*".config.capabilities = mkRaw ''require("blink-cmp").get_lsp_capabilities(nil, true)'';
+        }
+        // lib.mapAttrs (_: srv: {
+          enable = true;
+          # 不在这里 vim.lsp.enable,交给上面 external-lsp 那个 VimEnter 守卫:
+          # PATH 上没有这个可执行文件就不启动,免得 nvim 去 spawn 一个不存在的
+          # 进程然后报错。
+          activate = false;
+          # nixvim 一个 LSP 都不装。装在 home/profiles/dev.nix 里,项目 devshell
+          # 可以再覆盖 —— package = null 意味着 nixvim 不往 PATH 里塞东西,
+          # 于是顺序就是 devshell > home profile,天然是对的。
+          package = null;
+          config = srv.config or {};
+        })
+        externalServers;
 
-          bashls = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = [
-              "bash-language-server"
-              "start"
-            ];
-            filetypes = [
-              "bash"
-              "sh"
-            ];
-            rootMarkers = [".git"];
-            settings.bashIde.globPattern = mkRaw ''vim.env.GLOB_PATTERN or "*@(.sh|.inc|.bash|.command)"'';
-            extraOptions.single_file_support = true;
-          };
+      keymaps = [
+        # 这六个原来是 plugins.lsp.keymaps.lspBuf,mode "n" + silent。
+        {
+          mode = "n";
+          key = "gd";
+          lspBufAction = "definition";
+          options.silent = true;
+        }
+        {
+          mode = "n";
+          key = "gD";
+          lspBufAction = "declaration";
+          options.silent = true;
+        }
+        {
+          mode = "n";
+          key = "gr";
+          lspBufAction = "references";
+          options.silent = true;
+        }
+        {
+          mode = "n";
+          key = "gi";
+          lspBufAction = "implementation";
+          options.silent = true;
+        }
+        {
+          mode = "n";
+          key = "<leader>lr";
+          lspBufAction = "rename";
+          options.silent = true;
+        }
+        {
+          mode = "n";
+          key = "<leader>la";
+          lspBufAction = "code_action";
+          options.silent = true;
+        }
 
-          clangd = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = [
-              "clangd"
-              "--background-index"
-            ];
-            filetypes = [
-              "c"
-              "cpp"
-            ];
-            rootMarkers = [
-              ".clangd"
-              "compile_commands.json"
-            ];
-            extraOptions.single_file_support = true;
-          };
-
-          cssls = {
-            enable = true;
-            autostart = false;
-            package = null;
-            filetypes = [
-              "css"
-              "scss"
-              "less"
-            ];
-            rootMarkers = [
-              "package.json"
-              ".git"
-            ];
-            settings = {
-              css.validate = true;
-              scss.validate = true;
-              less.validate = true;
-            };
-            extraOptions.init_options.provideFormatter = true;
-          };
-
-          elmls = {
-            enable = true;
-            autostart = false;
-            package = null;
-            filetypes = ["elm"];
-            rootMarkers = ["elm.json"];
-            extraOptions.init_options = {
-              elmReviewDiagnostics = "off";
-              skipInstallPackageConfirmation = false;
-              disableElmLSDiagnostics = false;
-              onlyUpdateDiagnosticsOnSave = false;
-            };
-          };
-
-          html = {
-            enable = true;
-            autostart = false;
-            package = null;
-            filetypes = [
-              # templ 不接 html-lsp:html-lsp 把 templ 当 HTML 解析,会刷一堆
-              # 假诊断。templ 现在没有 LSP(要接的话是 templ 包自带的
-              # `templ lsp`,不是 cornelis —— cornelis 是 Agda 的)。
-              "html"
-            ];
-            rootMarkers = [
-              "package.json"
-              ".git"
-            ];
-            extraOptions.init_options = {
-              provideFormatter = true;
-              embeddedLanguages = {
-                css = true;
-                javascript = true;
-              };
-              configurationSection = [
-                "html"
-                "css"
-                "javascript"
-              ];
-            };
-          };
-
-          jsonls = {
-            enable = true;
-            autostart = false;
-            package = null;
-            filetypes = [
-              "json"
-              "jsonc"
-            ];
-            rootMarkers = [".git"];
-            extraOptions.init_options.provideFormatter = true;
-          };
-
-          lua_ls = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = ["lua-language-server"];
-            filetypes = ["lua"];
-            rootMarkers = [".git"];
-            settings = {
-              runtime.version = "LuaJIT";
-              workspace = {
-                checkThirdParty = false;
-                library = mkRaw ''vim.api.nvim_get_runtime_file("", true)'';
-              };
-            };
-          };
-
-          neocmake = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = [
-              "neocmakelsp"
-              "--stdio"
-            ];
-            filetypes = ["cmake"];
-            rootMarkers = [
-              ".git"
-              "build"
-              "cmake"
-            ];
-            extraOptions.single_file_support = true;
-          };
-
-          nil_ls = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = ["nil"];
-            filetypes = ["nix"];
-            rootMarkers = [
-              ".git"
-              "flake.nix"
-              "flake.lock"
-            ];
-            extraOptions.single_file_support = true;
-          };
-
-          taplo = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = [
-              "taplo"
-              "lsp"
-              "stdio"
-            ];
-            filetypes = ["toml"];
-            rootMarkers = [
-              ".taplo.toml"
-              "taplo.toml"
-              ".git"
-            ];
-          };
-
-          tailwindcss = {
-            enable = true;
-            autostart = false;
-            package = null;
-            # 不写 cmd:上游默认先找项目 node_modules/.bin 里的那份,版本跟着
-            # 项目走。代价是 cmd 成了 function,上面的守卫推不出可执行文件名,
-            # 所以在那边点名。rootMarkers 同理不写:上游 root_dir 是个函数,
-            # 会去找 tailwind.config.* 或带 @import "tailwindcss" 的 CSS。
-            settings.tailwindCSS.classFunctions = [
-              "cn"
-              "clsx"
-              "cva"
-              "tw"
-              "twMerge"
-            ];
-          };
-
-          tinymist = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = ["tinymist"];
-            filetypes = ["typst"];
-            rootMarkers = [".git"];
-          };
-
-          vtsls = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = [
-              "vtsls"
-              "--stdio"
-            ];
-            # 上游默认还挂 vue,仓库里已经不装 vue-language-server 了。
-            filetypes = reactFiletypes;
-            # rootMarkers 不写:上游 root_dir 是函数,会先认 lockfile 再退到
-            # tsconfig/.git,monorepo 里比一串 marker 准。
-            settings = {
-              vtsls.experimental.completion.enableServerSideFuzzyMatch = true;
-              typescript = {
-                updateImportsOnFileMove.enabled = "always";
-                suggest.completeFunctionCalls = true;
-                # 默认全关,靠 <leader>lH 临时开。
-                inlayHints = {
-                  parameterNames.enabled = "literals";
-                  parameterTypes.enabled = true;
-                  propertyDeclarationTypes.enabled = true;
-                  functionLikeReturnTypes.enabled = true;
-                  variableTypes.enabled = false;
-                };
-              };
-            };
-          };
-
-          yamlls = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = [
-              "yaml-language-server"
-              "--stdio"
-            ];
-            filetypes = [
-              "yaml"
-              "yaml.docker-compose"
-              "yaml.gitlab"
-            ];
-            rootMarkers = [".git"];
-            settings.redhat.telemetry.enabled = false;
-          };
-        };
-      };
+        # 下面四个原来是 plugins.lsp.keymaps.extra。那边的默认 mode 是 ""
+        # (normal + visual + operator-pending),这里原样保留,迁移不改行为。
+        {
+          mode = "";
+          key = "<leader>ld";
+          action = mkRaw ''
+            function()
+              vim.diagnostic.open_float()
+            end
+          '';
+          options.desc = "LSP: Hover diagnostic";
+        }
+        {
+          mode = "";
+          key = "gh";
+          action = mkRaw ''
+            function()
+              vim.lsp.buf.typehierarchy()
+            end
+          '';
+          options.desc = "LSP: Goto type hierarchy";
+        }
+        {
+          mode = "";
+          key = "K";
+          action = mkRaw ''
+            function()
+              vim.lsp.buf.hover({ border = "rounded" })
+            end
+          '';
+          options.desc = "LSP: Hover";
+        }
+        {
+          mode = "";
+          key = "<leader>lH";
+          action = mkRaw ''
+            function()
+              local bufnr = vim.api.nvim_get_current_buf()
+              local enabled = vim.lsp.inlay_hint.is_enabled({ bufnr = bufnr })
+              vim.lsp.inlay_hint.enable(not enabled, { bufnr = bufnr })
+            end
+          '';
+          options.desc = "LSP: Toggle inlay hints";
+        }
+      ];
     };
 
     # 内置 document_color 的渲染把 extmark 写死在 range 起始列,只能画在
