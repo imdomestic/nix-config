@@ -1508,6 +1508,14 @@ in {
         proxy_set_header X-Forwarded-Proto $scheme;
       '';
     };
+    locations."/hooks/" = {
+      proxyPass = "http://127.0.0.1:7700";
+      extraConfig = ''
+        client_max_body_size 64k;
+        limit_req zone=maxapi burst=20 nodelay;
+        limit_req_status 429;
+      '';
+    };
     # 数据面单独限速。burst 给到 20 是因为切一次标签页会并发拉
     # overview + 列表 + 两张图,一次操作打出小几个请求很正常。
     locations."/api/" = {
