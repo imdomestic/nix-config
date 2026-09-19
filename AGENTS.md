@@ -24,7 +24,10 @@ Home Manager module options** (`programs.*`, `services.*`, etc.).
 ## Neovim: nixvim only
 
 Neovim is configured with **nixvim** (flake input, pinned to the
-`nixos-26.05` branch). The module lives in `home/modules/nixvim/`.
+`nixos-26.05` branch). The module lives in `home/modules/nixvim/`. There is no
+`default.nix` there — the baseline is `hank.nix`, and `linwhite.nix` /
+`kenneth.nix` import it and override on top, so every importer has to name a
+file explicitly.
 
 - **Never copy `.lua` files or a whole `nvim/` directory into the repo.**
 - Declare plugins via `plugins.*`, options via `opts`/`globals`, keymaps via

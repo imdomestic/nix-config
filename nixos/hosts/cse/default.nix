@@ -14,7 +14,7 @@ in {
       interactive
     ];
     modules = [
-      ../../../home/modules/nixvim
+      ../../../home/modules/nixvim/hank.nix
       ({
         lib,
         pkgs,

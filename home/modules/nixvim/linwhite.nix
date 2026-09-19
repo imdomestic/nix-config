@@ -1,6 +1,6 @@
-# linwhite = shared base + input-method auto switching (macOS).
+# linwhite = hank.nix 那套 + 输入法自动切换(macOS)。
 {pkgs-unstable, ...}: {
-  imports = [./default.nix];
+  imports = [./hank.nix];
 
   programs.nixvim = {
     extraPlugins = [
