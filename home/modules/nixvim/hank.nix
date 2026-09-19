@@ -1354,6 +1354,22 @@ in {
         lazyLoad.settings.event = "DeferredUIEnter";
       };
 
+      # 不跟 dev 走:改 token-theme 之类的 nix 文件时一样要看十六进制。
+      highlight-colors = {
+        enable = true;
+        lazyLoad.settings.event = "DeferredUIEnter";
+        settings = {
+          # virtual:在颜色后面补一个 ■,不去动原文本的语法高亮。
+          render = "virtual";
+          virtual_symbol = "■";
+          virtual_symbol_prefix = " ";
+          virtual_symbol_suffix = "";
+          # tailwind 类名归 tailwind-tools(走 LSP 的 documentColor),
+          # 两边都开会画两遍。
+          enable_tailwind = false;
+        };
+      };
+
       lsp = {
         enable = true;
         keymaps = {
