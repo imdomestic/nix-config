@@ -269,7 +269,8 @@ Bot 集群控制器因此连本机 `100.64.0.3:55432` 都超时。PostgreSQL nod
 `The option 'programs.nixvim.plugins.keymaps' does not exist`。
 
 真相不是新 nixvim 删了什么选项，而是**这个选项从来就不存在**。
-`home/modules/nixvim/default.nix` 里 treesitter-textobjects 的那批
+`home/modules/nixvim/default.nix`（2026-09-19 改名为 `hank.nix`）里
+treesitter-textobjects 的那批
 `af`/`if`/`ac`/`ic`、`]m`/`[m`/`]]`/`[[` 绑定，被写在了 `plugins = { … }`
 这一层里，和 `treesitter-textobjects` 平级。旧版 nixvim 的 `plugins` 是
 freeform 的，多出来的属性既不报错也不生成任何东西 —— 于是这批 keymaps 被
