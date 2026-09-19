@@ -11,6 +11,14 @@
 
 ---
 
+## 2026-09-19 · 暂停 Max 的 iMessage 和微信接入 {#max-pause-imessage-wechat}
+
+按用户要求从 h610 的 Max 配置移除 iMessage 和 WeChat hook，并停止部署这两个
+桥接凭据。QQ 和 Matrix 继续启用；加密凭据、消息历史和平台记录保留。
+生产库中这两个平台的账户及端点同时设为 `enabled = false`，避免已有镜像关系
+继续生成投递。恢复时需要恢复接入配置，并显式重新启用对应账户和端点；旧的
+失败或结果不确定投递不会自动重放。
+
 ## 2026-09-17 · Gaoji 独立 SSH 运维入口 {#gaoji-native-ssh}
 
 Gaoji 在 h610、h310、tank 使用独立的 `gaoji-operator` 账户与密钥。

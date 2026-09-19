@@ -187,34 +187,6 @@
       "sync_timeout_ms" = 30000;
       "access_token" = config.sops.placeholder."max/matrix-access-token";
     };
-    "imessage" = {
-      "bridge_url" = "http://hackintosh.inner.imdomestic.com:8787";
-      "account_key" = "hackintosh-messages";
-      "chat_guid" = "iMessage;+;chat605491083481902531";
-      "mention_handles" = ["hnkhgn@icloud.com"];
-      "bot_name" = "Maxwell";
-      "poll_interval_ms" = 1000;
-      "bridge_token" = config.sops.placeholder."max/imessage-bridge-token";
-      "mirror_qq_group" = 611798505;
-    };
-    "wechathook" = {
-      "api_url" = "http://b650-windows.inner.imdomestic.com:30001";
-      "listen_host" = config.my.host.tsName;
-      "listen_port" = 8787;
-      "callback_path" = "/wechat/hbhbhb/callback";
-      "callback_url" = "http://h610.inner.imdomestic.com:8787/wechat/hbhbhb/callback";
-      "self_wxid" = "wxid_jtwwr1csw5tk12";
-      "bot_name" = "Max";
-      "chatrooms" = ["22866834680@chatroom"];
-      "bridge_url" = "http://b650-windows.inner.imdomestic.com:8788";
-      "bridge_token" = config.sops.placeholder."max/wechathook-bridge-token";
-      "nicknames" = {
-        "wxid_5j6dsd0lngw512" = "hank";
-        "wxid_a2l3hnbpumsk22" = "fendada";
-        "wxid_27q7sxk3ktft22" = "kenneth";
-        "wxid_c9rbnydlcozq12" = "linwhite";
-      };
-    };
     "server" = {
       "host" = "127.0.0.1";
       "port" = 18080;
@@ -226,7 +198,7 @@
     };
     "log_color" = "always";
   };
-  secretNames = ["admin-token" "search-tavily-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "imessage-bridge-token" "wechathook-bridge-token" "server-access-token"];
+  secretNames = ["admin-token" "search-tavily-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token"];
 in {
   sops.secrets =
     lib.genAttrs (map (name: "max/${name}") secretNames) (name: {
