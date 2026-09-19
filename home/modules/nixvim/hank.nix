@@ -133,6 +133,7 @@ in {
       highlight-yank.clear = true;
       terminal-cleanup.clear = true;
       external-lsp.clear = true;
+      lsp-document-color.clear = true;
       indent-two.clear = true;
       indent-four.clear = true;
       haskell-extra.clear = true;
@@ -179,6 +180,25 @@ in {
                 if type(executable) == "string" and vim.fn.executable(executable) == 1 then
                   vim.lsp.enable(server)
                 end
+              end
+            end
+          '';
+        }
+        {
+          event = "LspAttach";
+          group = "lsp-document-color";
+          desc = "Show LSP color swatches for tailwind class names";
+          callback = mkRaw ''
+            function(args)
+              local client = vim.lsp.get_client_by_id(args.data.client_id)
+              -- 只给 tailwindcss 开。cssls 也实现了 documentColor,在 css
+              -- 文件里会和 highlight-colors 画重。
+              if client and client.name == "tailwindcss" then
+                vim.lsp.document_color.enable(
+                  true,
+                  { bufnr = args.buf, client_id = client.id },
+                  { style = _G.__hank_lsp_color_swatch }
+                )
               end
             end
           '';
@@ -992,24 +1012,6 @@ in {
         settings.enable_autocmd = false;
       };
 
-      tailwind-tools = {
-        enable = dev;
-        lazyLoad.settings.ft = reactFiletypes ++ ["html" "css"];
-        settings = {
-          # tailwindcss LSP 归 plugins.lsp.servers 管,不让插件再起一份。
-          server.override = false;
-          # 类名的色块走这里而不是 highlight-colors 的 enable_tailwind:
-          # 它问的是 LSP,认项目真实调色板(自定义主题色、bg-[#abc123] 任意值、
-          # v4 的 @theme 变量色),而且不会漏。符号跟 highlight-colors 对齐成
-          # "■ ",两边字形和位置就一致了。
-          document_color = {
-            enabled = true;
-            inline_symbol = "■ ";
-          };
-          conceal.enabled = false;
-        };
-      };
-
       package-info = {
         enable = dev;
         lazyLoad.settings.ft = ["json"];
@@ -1409,11 +1411,11 @@ in {
           # virtual:补一个 ■,不去动原文本的语法高亮。
           render = "virtual";
           virtual_symbol = "■";
-          virtual_symbol_prefix = "";
-          virtual_symbol_suffix = " ";
-          # inline = 打在 token 起始处,符号在前面 —— 和 tailwind-tools 的
-          # document_color 对齐(它只能画在前面)。
-          virtual_symbol_position = "inline";
+          virtual_symbol_prefix = " ";
+          virtual_symbol_suffix = "";
+          # eow = 结束列,符号落在 token 之后。tailwind 那边靠自定义 style
+          # 函数对齐到同一侧,见上面的 extraConfigLuaPre。
+          virtual_symbol_position = "eow";
           # tailwind 类名归 tailwind-tools 走 LSP。这里的实现是内置静态表,
           # 而且相邻两个颜色类只会画一个(`bg-sky-500 text-slate-100` 这种
           # React 里最常见的写法就会漏),不能用。
@@ -1746,6 +1748,34 @@ in {
         };
       };
     };
+
+    # 内置 document_color 的渲染把 extmark 写死在 range 起始列,只能画在
+    # token 前面。style 传函数就由我们接管渲染,才能和 highlight-colors 的
+    # eow 一样落在 token 之后。代价:自定义函数下内置不再提供 hl_group,
+    # 高亮组和 extmark 清理都得自己管。
+    extraConfigLuaPre = ''
+      do
+        local ns = vim.api.nvim_create_namespace("hank_lsp_document_color")
+        -- 内置逻辑每个 buffer version 只 apply 一批,所以拿 changedtick 判批次:
+        -- 一批里第一次调用时清空整个 namespace,避免删掉颜色后留下残影。
+        local applied = {}
+
+        function _G.__hank_lsp_color_swatch(bufnr, range, hex_code)
+          local tick = vim.api.nvim_buf_get_changedtick(bufnr)
+          if applied[bufnr] ~= tick then
+            vim.api.nvim_buf_clear_namespace(bufnr, ns, 0, -1)
+            applied[bufnr] = tick
+          end
+
+          local group = "HankLspColor" .. hex_code:gsub("#", "")
+          vim.api.nvim_set_hl(0, group, { fg = hex_code, default = true })
+          vim.api.nvim_buf_set_extmark(bufnr, ns, range.end_row, range.end_col, {
+            virt_text = { { " ■", group } },
+            virt_text_pos = "inline",
+          })
+        end
+      end
+    '';
 
     extraConfigLuaPost = ''
       require("evergarden").setup({
