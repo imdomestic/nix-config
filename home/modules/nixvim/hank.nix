@@ -1108,7 +1108,47 @@ in {
               '';
               border = "rounded";
               winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:PmenuSel,Search:None";
-              draw.treesitter = ["lsp"];
+              draw = {
+                treesitter = ["lsp"];
+                # 颜色类的补全项(tailwind 的类名、cssls 的颜色值)用一个上色的
+                # ■ 顶掉 kind 图标。highlight-colors 是 DeferredUIEnter 懒加载
+                # 的,这里只用 pcall 取,取不到就退回默认图标 —— 不 require 硬拉,
+                # 免得把它提前唤醒。
+                components.kind_icon = {
+                  text = mkRaw ''
+                    function(ctx)
+                      local icon = ctx.kind_icon
+                      if ctx.source_name == "LSP" then
+                        local ok, hl_colors = pcall(require, "nvim-highlight-colors")
+                        if ok then
+                          local color_item = hl_colors.format(ctx.item.documentation, { kind = ctx.kind })
+                          if color_item and color_item.abbr ~= "" then
+                            icon = color_item.abbr
+                          end
+                        end
+                      end
+                      return icon .. ctx.icon_gap
+                    end
+                  '';
+                  # 保留 blink 默认的 priority 20000,否则光标行上会被
+                  # CursorLine 盖掉。
+                  highlight = mkRaw ''
+                    function(ctx)
+                      local group = ctx.kind_hl
+                      if ctx.source_name == "LSP" then
+                        local ok, hl_colors = pcall(require, "nvim-highlight-colors")
+                        if ok then
+                          local color_item = hl_colors.format(ctx.item.documentation, { kind = ctx.kind })
+                          if color_item and color_item.abbr_hl_group then
+                            group = color_item.abbr_hl_group
+                          end
+                        end
+                      end
+                      return { { group = group, priority = 20000 } }
+                    end
+                  '';
+                };
+              };
             };
             accept.auto_brackets.enabled = true;
             documentation = {
