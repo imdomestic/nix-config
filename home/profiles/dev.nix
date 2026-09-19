@@ -35,10 +35,7 @@ in {
       tinymist
       taplo
       yaml-language-server
-      typescript-language-server
-      vue-language-server
       vtsls
-      astro-language-server
       tailwindcss-language-server
       vscode-langservers-extracted
       typstyle

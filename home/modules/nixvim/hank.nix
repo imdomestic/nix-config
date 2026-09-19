@@ -10,6 +10,13 @@
   # Dev machines (importing home/users/<user>/dev.nix) get the full setup;
   # everything gated on `dev` below stays out of the closure elsewhere.
   dev = config.my.nixvim.dev.enable;
+  # React 那几个插件共用的 filetype 列表。
+  reactFiletypes = [
+    "javascript"
+    "javascriptreact"
+    "typescript"
+    "typescriptreact"
+  ];
 in {
   imports = [
     inputs.nixvim.homeModules.nixvim
@@ -140,27 +147,35 @@ in {
           desc = "Enable configured language servers already available on PATH";
           callback = mkRaw ''
             function()
+              -- true = 从 vim.lsp.config[server].cmd[1] 推可执行文件名。
+              -- tailwindcss 这类上游把 cmd 写成 function(为了优先用项目
+              -- node_modules/.bin 里的那份),推不出来,只能在这里点名 ——
+              -- 写成 true 的话守卫永远为假,声明了也不会启动。
               local external_lsp_servers = {
-                "basedpyright",
-                "bashls",
-                "clangd",
-                "cssls",
-                "elmls",
-                "html",
-                "jdtls",
-                "jsonls",
-                "lemminx",
-                "lua_ls",
-                "neocmake",
-                "nil_ls",
-                "taplo",
-                "tinymist",
-                "yamlls",
+                basedpyright = true,
+                bashls = true,
+                clangd = true,
+                cssls = true,
+                elmls = true,
+                html = true,
+                jdtls = true,
+                jsonls = true,
+                lemminx = true,
+                lua_ls = true,
+                neocmake = true,
+                nil_ls = true,
+                tailwindcss = "tailwindcss-language-server",
+                taplo = true,
+                tinymist = true,
+                vtsls = true,
+                yamlls = true,
               }
-              for _, server in ipairs(external_lsp_servers) do
-                local lsp_config = vim.lsp.config[server]
-                local cmd = type(lsp_config) == "table" and lsp_config.cmd or nil
-                local executable = type(cmd) == "table" and cmd[1] or nil
+              for server, executable in pairs(external_lsp_servers) do
+                if executable == true then
+                  local lsp_config = vim.lsp.config[server]
+                  local cmd = type(lsp_config) == "table" and lsp_config.cmd or nil
+                  executable = type(cmd) == "table" and cmd[1] or nil
+                end
                 if type(executable) == "string" and vim.fn.executable(executable) == 1 then
                   vim.lsp.enable(server)
                 end
@@ -800,7 +815,19 @@ in {
           tabline = {};
           pairs = {};
           surround = {};
-          comment = {};
+          comment = lib.optionalAttrs dev {
+            options.custom_commentstring = mkRaw ''
+              function()
+                -- ts-context-commentstring 按 ft 懒加载,tsx 之外 require
+                -- 不到,退回 buffer 自己的 commentstring。
+                local ok, ts_context = pcall(require, "ts_context_commentstring")
+                if not ok then
+                  return vim.bo.commentstring
+                end
+                return ts_context.calculate_commentstring() or vim.bo.commentstring
+              end
+            '';
+          };
           statusline = {
             use_icons = true;
             content.active = mkRaw ''
@@ -948,6 +975,37 @@ in {
             set_jumps = true;
           };
         };
+      };
+
+      # 前端(React + Tailwind)。LSP 在下面 plugins.lsp.servers 里统一声明,
+      # 这里只管编辑体验,全部跟着 dev 走。
+      ts-autotag = {
+        enable = dev;
+        lazyLoad.settings.ft = reactFiletypes ++ ["html" "xml" "markdown"];
+      };
+
+      ts-context-commentstring = {
+        enable = dev;
+        lazyLoad.settings.ft = reactFiletypes;
+        # 由 mini.comment 的 custom_commentstring 钩子按需调用,
+        # 不用它自己再挂一套 autocmd 改 commentstring。
+        settings.enable_autocmd = false;
+      };
+
+      tailwind-tools = {
+        enable = dev;
+        lazyLoad.settings.ft = reactFiletypes ++ ["html" "css"];
+        settings = {
+          # tailwindcss LSP 归 plugins.lsp.servers 管,不让插件再起一份。
+          server.override = false;
+          document_color.enabled = true;
+          conceal.enabled = false;
+        };
+      };
+
+      package-info = {
+        enable = dev;
+        lazyLoad.settings.ft = ["json"];
       };
 
       friendly-snippets.enable = true;
@@ -1255,6 +1313,10 @@ in {
             html = ["biome"];
             css = ["biome"];
             markdown = ["biome"];
+            javascript = ["biome"];
+            javascriptreact = ["biome"];
+            typescript = ["biome"];
+            typescriptreact = ["biome"];
             haskell = ["ormolu"];
             ocaml = ["ocamlformat"];
             python = ["ruff"];
@@ -1543,6 +1605,23 @@ in {
             ];
           };
 
+          tailwindcss = {
+            enable = true;
+            autostart = false;
+            package = null;
+            # 不写 cmd:上游默认先找项目 node_modules/.bin 里的那份,版本跟着
+            # 项目走。代价是 cmd 成了 function,上面的守卫推不出可执行文件名,
+            # 所以在那边点名。rootMarkers 同理不写:上游 root_dir 是个函数,
+            # 会去找 tailwind.config.* 或带 @import "tailwindcss" 的 CSS。
+            settings.tailwindCSS.classFunctions = [
+              "cn"
+              "clsx"
+              "cva"
+              "tw"
+              "twMerge"
+            ];
+          };
+
           tinymist = {
             enable = true;
             autostart = false;
@@ -1550,6 +1629,35 @@ in {
             cmd = ["tinymist"];
             filetypes = ["typst"];
             rootMarkers = [".git"];
+          };
+
+          vtsls = {
+            enable = true;
+            autostart = false;
+            package = null;
+            cmd = [
+              "vtsls"
+              "--stdio"
+            ];
+            # 上游默认还挂 vue,仓库里已经不装 vue-language-server 了。
+            filetypes = reactFiletypes;
+            # rootMarkers 不写:上游 root_dir 是函数,会先认 lockfile 再退到
+            # tsconfig/.git,monorepo 里比一串 marker 准。
+            settings = {
+              vtsls.experimental.completion.enableServerSideFuzzyMatch = true;
+              typescript = {
+                updateImportsOnFileMove.enabled = "always";
+                suggest.completeFunctionCalls = true;
+                # 默认全关,靠 <leader>lH 临时开。
+                inlayHints = {
+                  parameterNames.enabled = "literals";
+                  parameterTypes.enabled = true;
+                  propertyDeclarationTypes.enabled = true;
+                  functionLikeReturnTypes.enabled = true;
+                  variableTypes.enabled = false;
+                };
+              };
+            };
           };
 
           yamlls = {
