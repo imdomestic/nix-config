@@ -366,25 +366,6 @@ in {
         };
       };
 
-      lsp.servers = {
-        lua_ls = {
-          enable = lib.mkForce true;
-          settings = {
-            hint = {
-              enable = true;
-              arrayIndex = "Disable";
-            };
-            format.enable = false;
-          };
-        };
-        taplo.enable = lib.mkForce true;
-        lemminx = {
-          enable = true;
-          autostart = false;
-          package = null;
-        };
-      };
-
       rustaceanvim = {
         enable = lib.mkForce true;
         settings = {
@@ -471,8 +452,6 @@ in {
         };
       };
 
-      lsp.servers.jdtls.autostart = false;
-
       treesitter.grammarPackages = lib.mkAfter (
         with config.programs.nixvim.plugins.treesitter.package.builtGrammars; [
           html
@@ -505,6 +484,18 @@ in {
           "Always"
         ];
       };
+    };
+
+    # lua_ls 的额外设置。hank.nix 里那份(runtime/workspace)和这里的会在
+    # config.settings 上合并。lemminx 已经在 hank.nix 的 externalServers 里
+    # 声明了,不用重复;原来的 taplo/lua_ls mkForce 是空转的 —— 那两个在
+    # hank.nix 里本来就无条件开着,删掉。
+    lsp.servers.lua_ls.config.settings.Lua = {
+      hint = {
+        enable = true;
+        arrayIndex = "Disable";
+      };
+      format.enable = false;
     };
 
     extraConfigLuaPost = lib.mkAfter ''
