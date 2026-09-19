@@ -10,6 +10,7 @@
     "admin" = {
       "port" = 7700;
       "host" = "127.0.0.1";
+      "webhook_base_url" = "https://max.imdomestic.com:8443";
       "token" = config.sops.placeholder."max/admin-token";
     };
     "search" = {
