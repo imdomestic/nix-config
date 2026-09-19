@@ -39,11 +39,6 @@ in {
       # pkgs.vimPlugins.kanso-nvim
     ];
 
-    extraFiles = {
-      "snippets/package.json".source = ./nvim-snippets/package.json;
-      "snippets/rust.json".source = ./nvim-snippets/rust.json;
-    };
-
     globals = {
       mapleader = " ";
       maplocalleader = "\\";
@@ -158,7 +153,6 @@ in {
                 "lua_ls",
                 "neocmake",
                 "nil_ls",
-                "pylsp",
                 "taplo",
                 "tinymist",
                 "yamlls",
@@ -360,14 +354,17 @@ in {
       }
       {
         # o 也要:operator-pending 序列(`3kj`)里同样是 gj/gk。
+        # 带 count 时退回原生 j/k:`10j` 要的是 10 个缓冲区行,不是屏幕行。
         mode = ["n" "x" "o"];
         key = "j";
-        action = "gj";
+        action = "v:count == 0 ? 'gj' : 'j'";
+        options.expr = true;
       }
       {
         mode = ["n" "x" "o"];
         key = "k";
-        action = "gk";
+        action = "v:count == 0 ? 'gk' : 'k'";
+        options.expr = true;
       }
       {
         mode = "n";
@@ -1073,12 +1070,19 @@ in {
             use_nvim_cmp_as_default = true;
             nerd_font_variant = "mono";
           };
-          sources.default = [
-            "lsp"
-            "path"
-            "snippets"
-            "buffer"
-          ];
+          sources = {
+            default = [
+              "lsp"
+              "path"
+              "snippets"
+              "buffer"
+            ];
+            # blink 只扫 `stdpath('config')/snippets` 和 rtp 里名字匹配
+            # `friendly.snippets` 的目录。nixvim 把 stdpath('config') 从 rtp
+            # 里摘掉了,extraFiles 生成的目录又叫 nvim-config —— 两条都不匹配,
+            # 所以自带的 snippets 必须把 store 路径直接喂给它。
+            providers.snippets.opts.search_paths = ["${./nvim-snippets}"];
+          };
           fuzzy.implementation = "prefer_rust_with_warning";
         };
       };
@@ -1440,8 +1444,9 @@ in {
             autostart = false;
             package = null;
             filetypes = [
-              # templ 不接 html-lsp:dev 机上 cornelis 才是它的 LSP,双挂会刷
-              # 一堆把 templ 当 HTML 解析出来的假诊断;非 dev 机 templ 无 LSP。
+              # templ 不接 html-lsp:html-lsp 把 templ 当 HTML 解析,会刷一堆
+              # 假诊断。templ 现在没有 LSP(要接的话是 templ 包自带的
+              # `templ lsp`,不是 cornelis —— cornelis 是 Agda 的)。
               "html"
             ];
             rootMarkers = [
@@ -1517,22 +1522,6 @@ in {
               ".git"
               "flake.nix"
               "flake.lock"
-            ];
-            extraOptions.single_file_support = true;
-          };
-
-          pylsp = {
-            enable = true;
-            autostart = false;
-            package = null;
-            cmd = ["pylsp"];
-            filetypes = ["python"];
-            rootMarkers = [
-              "pyproject.toml"
-              "setup.py"
-              "setup.cfg"
-              "requirements.txt"
-              ".git"
             ];
             extraOptions.single_file_support = true;
           };

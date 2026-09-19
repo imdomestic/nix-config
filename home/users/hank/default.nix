@@ -10,7 +10,7 @@
 in {
   imports = [
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
-    ../../modules/nixvim
+    ../../modules/nixvim/hank.nix
     # 只 import 不 enable:2026-08-28 整套试过一轮,终端那边不合用,退回
     # kanso + evergarden。模块留着(默认关),想再试就
     # `my.theme.token.enable = true`。import 在这里的另一个作用是让它继续
