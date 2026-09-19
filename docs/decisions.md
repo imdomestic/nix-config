@@ -24,28 +24,29 @@
 渲染由 `hank.nix` 的 `extraConfigLuaPre` 接管。代价是自定义函数下内置不再提供
 `hl_group`,高亮组和 extmark 清理都得自己管。
 
-**类名排序(`useSortedClasses`)没有在这个仓库里打开,也打不开。** 两个原因:
+**类名排序(`useSortedClasses`)不在这个仓库里,它是项目配置。** 这条规则在
+biome 2.4 里属于 `lint/nursery`,默认关闭,要在**每个项目自己的** `biome.json`
+里开,还要用 `options.functions` 告诉它 `cn`/`clsx`/`cva` 这些包装函数。
 
-1. 它在 biome 2.4 里是 `lint/nursery` 规则,默认关闭,要在**每个项目自己的**
-   `biome.json` 里开,还要用 `options.functions` 告诉它 `cn`/`clsx`/`cva`
-   这些包装函数。这是项目配置,不属于 home。
-2. 它的 fix 标记为 **unsafe**,`biome check --write` 不会应用。实测:
+它的 fix 标记为 **unsafe**,`biome check --write` 默认不会应用。但**不要为此去用
+`--unsafe`** —— 那是一刀切的开关,会把所有已启用规则的 unsafe fix 一起放进来。
+默认规则(连 biome.json 都没有)下实测:
 
-   ```
-   biome check --write            → text-white p-4 bg-sky-500 flex   (没排)
-   biome check --write --unsafe   → flex bg-sky-500 p-4 text-white   (排了)
-   ```
+```
+--write          import 排序、格式化,语义不动
+--write --unsafe 整行 import 删掉;unused -> _unused;
+                 `props.a == "1"` 改成 `=== "1"`;<>…</> 片段拆掉
+```
 
-   conform 内置的 `biome-check` 不带 `--unsafe`,所以 `hank.nix` 里另外定义了
-   `biome-check-unsafe`。**`--unsafe` 是全局开关**:所有已启用规则的 unsafe fix
-   都会被应用,不只是类名排序。
+`props.a` 类型是 `number` 时,`== "1"` 在 `a === 1` 时为真,改成 `===` 之后永远
+为假 —— 语义被悄悄改了。
 
-hank 的 `format_on_save` 是 `null`,格式化只在按 `<leader>lf` 时发生,所以
-unsafe 只在显式触发时跑。kenneth 那边 `format_on_save` 是 `mkForce` 开着的,
-他会在每次保存时吃到 unsafe fix —— 他如果不想要,把 js/ts 的 formatter 在
-`kenneth.nix` 里覆盖回 `biome-check` 即可。
+正确做法是按规则放行:biome 2 支持在单条规则上写 `"fix": "safe"`,这样普通的
+`biome check --write` 就会应用它,别的 unsafe fix 一律不动。实测同一份
+`biome.json` 下类名排序生效、而上面那几处危险改写都没发生。所以 `hank.nix` 用的是
+conform 内置的 `biome-check`(`check --write`),没有自定义的 unsafe 变体。
 
-项目侧要开的话,`biome.json` 长这样(已实测能排序):
+项目侧的 `biome.json` 长这样(已实测):
 
 ```json
 {
@@ -54,6 +55,7 @@ unsafe 只在显式触发时跑。kenneth 那边 `format_on_save` 是 `mkForce` 
       "nursery": {
         "useSortedClasses": {
           "level": "info",
+          "fix": "safe",
           "options": { "functions": ["clsx", "cn", "cva"] }
         }
       }
