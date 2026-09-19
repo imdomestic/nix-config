@@ -998,7 +998,15 @@ in {
         settings = {
           # tailwindcss LSP 归 plugins.lsp.servers 管,不让插件再起一份。
           server.override = false;
-          document_color.enabled = true;
+          # 色块统一交给 highlight-colors(符号和位置才一致),这里关掉,
+          # 否则同一个类名会被画两遍。
+          #
+          # 取舍:highlight-colors 认 tailwind 靠内置的静态表(v3 默认调色板,
+          # 222 条),不走 LSP。所以项目自定义的主题色、bg-[#abc123] 这种任意值、
+          # v4 的 @theme 变量色都不会有色块,v4 项目里默认色的色值也会是 v3 的
+          # 近似值。要精确就得换回 document_color(它问的是 LSP,认项目真实调色板),
+          # 代价是色块回到类名前面、字形也不同。
+          document_color.enabled = false;
           conceal.enabled = false;
         };
       };
@@ -1399,14 +1407,17 @@ in {
         enable = true;
         lazyLoad.settings.event = "DeferredUIEnter";
         settings = {
-          # virtual:在颜色后面补一个 ■,不去动原文本的语法高亮。
+          # virtual:补一个 ■,不去动原文本的语法高亮。
           render = "virtual";
           virtual_symbol = "■";
           virtual_symbol_prefix = " ";
           virtual_symbol_suffix = "";
-          # tailwind 类名归 tailwind-tools(走 LSP 的 documentColor),
-          # 两边都开会画两遍。
-          enable_tailwind = false;
+          # eow = end of word,符号落在 token 之后。默认的 "inline" 是打在
+          # 起始列 +1,位置不好说;eow 直接用结束列,没有歧义。
+          virtual_symbol_position = "eow";
+          # tailwind 类名也归这里,好让色块的字形和位置跟 #RRGGBB 一致。
+          # 代价见 tailwind-tools 那边的注释。
+          enable_tailwind = true;
         };
       };
 
