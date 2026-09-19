@@ -998,15 +998,14 @@ in {
         settings = {
           # tailwindcss LSP 归 plugins.lsp.servers 管,不让插件再起一份。
           server.override = false;
-          # 色块统一交给 highlight-colors(符号和位置才一致),这里关掉,
-          # 否则同一个类名会被画两遍。
-          #
-          # 取舍:highlight-colors 认 tailwind 靠内置的静态表(v3 默认调色板,
-          # 222 条),不走 LSP。所以项目自定义的主题色、bg-[#abc123] 这种任意值、
-          # v4 的 @theme 变量色都不会有色块,v4 项目里默认色的色值也会是 v3 的
-          # 近似值。要精确就得换回 document_color(它问的是 LSP,认项目真实调色板),
-          # 代价是色块回到类名前面、字形也不同。
-          document_color.enabled = false;
+          # 类名的色块走这里而不是 highlight-colors 的 enable_tailwind:
+          # 它问的是 LSP,认项目真实调色板(自定义主题色、bg-[#abc123] 任意值、
+          # v4 的 @theme 变量色),而且不会漏。符号跟 highlight-colors 对齐成
+          # "■ ",两边字形和位置就一致了。
+          document_color = {
+            enabled = true;
+            inline_symbol = "■ ";
+          };
           conceal.enabled = false;
         };
       };
@@ -1410,14 +1409,15 @@ in {
           # virtual:补一个 ■,不去动原文本的语法高亮。
           render = "virtual";
           virtual_symbol = "■";
-          virtual_symbol_prefix = " ";
-          virtual_symbol_suffix = "";
-          # eow = end of word,符号落在 token 之后。默认的 "inline" 是打在
-          # 起始列 +1,位置不好说;eow 直接用结束列,没有歧义。
-          virtual_symbol_position = "eow";
-          # tailwind 类名也归这里,好让色块的字形和位置跟 #RRGGBB 一致。
-          # 代价见 tailwind-tools 那边的注释。
-          enable_tailwind = true;
+          virtual_symbol_prefix = "";
+          virtual_symbol_suffix = " ";
+          # inline = 打在 token 起始处,符号在前面 —— 和 tailwind-tools 的
+          # document_color 对齐(它只能画在前面)。
+          virtual_symbol_position = "inline";
+          # tailwind 类名归 tailwind-tools 走 LSP。这里的实现是内置静态表,
+          # 而且相邻两个颜色类只会画一个(`bg-sky-500 text-slate-100` 这种
+          # React 里最常见的写法就会漏),不能用。
+          enable_tailwind = false;
         };
       };
 
