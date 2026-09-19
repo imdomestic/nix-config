@@ -1355,24 +1355,11 @@ in {
         settings = {
           notify_on_error = true;
           format_on_save = null;
-          # conform 内置的 biome-check 跑的是 `check --write`,而 tailwind 类名
-          # 排序(nursery/useSortedClasses)的 fix 在 biome 2 里标记为 unsafe,
-          # 不加 --unsafe 就不会排。注意 --unsafe 是全局开关:所有已启用规则的
-          # unsafe fix 都会被应用,不只是排序。
-          #
-          # 排序还要项目自己的 biome.json 打开那条 nursery 规则(默认是关的),
-          # 见 docs/decisions.md#nixvim-no-tailwind-tools。
-          formatters.biome-check-unsafe = {
-            command = mkRaw ''require("conform.util").from_node_modules("biome")'';
-            args = [
-              "check"
-              "--write"
-              "--unsafe"
-              "--stdin-file-path"
-              "$FILENAME"
-            ];
-            stdin = true;
-          };
+          # biome-check = `check --write`:格式化 + 整理 import + 只应用 safe fix。
+          # 不用 --unsafe —— 那是一刀切的,会连 `==` 改 `===`、删未用 import 一起
+          # 放进来。需要 unsafe fix 的规则(比如 tailwind 类名排序)由项目自己在
+          # biome.json 里按规则写 `"fix": "safe"` 放行,见
+          # docs/decisions.md#nixvim-no-tailwind-tools。
           formatters_by_ft = {
             swift = ["swiftformat"];
             typst = ["typstyle"];
@@ -1380,10 +1367,10 @@ in {
             html = ["biome"];
             css = ["biome"];
             markdown = ["biome"];
-            javascript = ["biome-check-unsafe"];
-            javascriptreact = ["biome-check-unsafe"];
-            typescript = ["biome-check-unsafe"];
-            typescriptreact = ["biome-check-unsafe"];
+            javascript = ["biome-check"];
+            javascriptreact = ["biome-check"];
+            typescript = ["biome-check"];
+            typescriptreact = ["biome-check"];
             haskell = ["ormolu"];
             ocaml = ["ocamlformat"];
             python = ["ruff"];
