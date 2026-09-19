@@ -117,6 +117,9 @@ in {
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.opencode
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.pi
+      # inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.dsh
+      # inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.hermes-agent
+      # inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.hermes-desktop
     ]
     ++ lib.optionals (lib.hasInfix "linux" system) [
       iproute2
