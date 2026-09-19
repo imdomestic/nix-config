@@ -11,6 +11,57 @@
 
 ---
 
+## 2026-09-19 · nixvim 里没有 tailwind-tools,也不全局开类名排序 {#nixvim-no-tailwind-tools}
+
+**tailwind-tools 删掉了。** 上游仓库已归档,nixvim 会报
+`plugins.tailwind-tools: This plugin has been deprecated`,而且启用它还会连带
+触发 lspconfig 的弃用警告。它原来只负责两件事:类名的色块和 `:TailwindSort`。
+
+色块换成了 Neovim 0.12 内置的 `vim.lsp.document_color` —— 同样问 LSP 的
+`documentColor`,认项目真实调色板,少一个插件、也少一个 `server.override`
+的坑(那个插件默认会自己再起一份 tailwindcss LSP)。内置渲染把 extmark 写死
+在 range 起始列,所以要让色块落在 token 之后,`style` 传的是函数而不是字符串,
+渲染由 `hank.nix` 的 `extraConfigLuaPre` 接管。代价是自定义函数下内置不再提供
+`hl_group`,高亮组和 extmark 清理都得自己管。
+
+**类名排序(`useSortedClasses`)没有在这个仓库里打开,也打不开。** 两个原因:
+
+1. 它在 biome 2.4 里是 `lint/nursery` 规则,默认关闭,要在**每个项目自己的**
+   `biome.json` 里开,还要用 `options.functions` 告诉它 `cn`/`clsx`/`cva`
+   这些包装函数。这是项目配置,不属于 home。
+2. 它的 fix 标记为 **unsafe**,`biome check --write` 不会应用。实测:
+
+   ```
+   biome check --write            → text-white p-4 bg-sky-500 flex   (没排)
+   biome check --write --unsafe   → flex bg-sky-500 p-4 text-white   (排了)
+   ```
+
+   conform 内置的 `biome-check` 不带 `--unsafe`,所以 `hank.nix` 里另外定义了
+   `biome-check-unsafe`。**`--unsafe` 是全局开关**:所有已启用规则的 unsafe fix
+   都会被应用,不只是类名排序。
+
+hank 的 `format_on_save` 是 `null`,格式化只在按 `<leader>lf` 时发生,所以
+unsafe 只在显式触发时跑。kenneth 那边 `format_on_save` 是 `mkForce` 开着的,
+他会在每次保存时吃到 unsafe fix —— 他如果不想要,把 js/ts 的 formatter 在
+`kenneth.nix` 里覆盖回 `biome-check` 即可。
+
+项目侧要开的话,`biome.json` 长这样(已实测能排序):
+
+```json
+{
+  "linter": {
+    "rules": {
+      "nursery": {
+        "useSortedClasses": {
+          "level": "info",
+          "options": { "functions": ["clsx", "cn", "cva"] }
+        }
+      }
+    }
+  }
+}
+```
+
 ## 2026-09-19 · 暂停 Max 的 iMessage 和微信接入 {#max-pause-imessage-wechat}
 
 按用户要求从 h610 的 Max 配置移除 iMessage 和 WeChat hook，并停止部署这两个

@@ -1355,6 +1355,24 @@ in {
         settings = {
           notify_on_error = true;
           format_on_save = null;
+          # conform 内置的 biome-check 跑的是 `check --write`,而 tailwind 类名
+          # 排序(nursery/useSortedClasses)的 fix 在 biome 2 里标记为 unsafe,
+          # 不加 --unsafe 就不会排。注意 --unsafe 是全局开关:所有已启用规则的
+          # unsafe fix 都会被应用,不只是排序。
+          #
+          # 排序还要项目自己的 biome.json 打开那条 nursery 规则(默认是关的),
+          # 见 docs/decisions.md#nixvim-no-tailwind-tools。
+          formatters.biome-check-unsafe = {
+            command = mkRaw ''require("conform.util").from_node_modules("biome")'';
+            args = [
+              "check"
+              "--write"
+              "--unsafe"
+              "--stdin-file-path"
+              "$FILENAME"
+            ];
+            stdin = true;
+          };
           formatters_by_ft = {
             swift = ["swiftformat"];
             typst = ["typstyle"];
@@ -1362,10 +1380,10 @@ in {
             html = ["biome"];
             css = ["biome"];
             markdown = ["biome"];
-            javascript = ["biome"];
-            javascriptreact = ["biome"];
-            typescript = ["biome"];
-            typescriptreact = ["biome"];
+            javascript = ["biome-check-unsafe"];
+            javascriptreact = ["biome-check-unsafe"];
+            typescript = ["biome-check-unsafe"];
+            typescriptreact = ["biome-check-unsafe"];
             haskell = ["ormolu"];
             ocaml = ["ocamlformat"];
             python = ["ruff"];
