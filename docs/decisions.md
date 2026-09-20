@@ -11,6 +11,59 @@
 
 ---
 
+## 2026-09-21 · dev profile 里不装 clang / clang-tools,C/C++ toolchain 交给 devshell {#no-clang-in-dev-profile}
+
+nixvim 声明了 `clangd`(`hank.nix` 的 `externalServers`),但这个仓库一个 C/C++
+toolchain 都不装。macOS 上用 CLT 自带的 `/usr/bin/clangd` 凑合;Linux 上压根没有
+clangd,VimEnter 那个 `executable()` 守卫会直接跳过,要用就由项目 devshell 提供。
+
+**不是图省事没加 —— 加了会在 macOS 上主动弄坏现在能用的环境。** home profile 的
+PATH 排在 `/usr/bin` 前面,装上 `clang-tools` 就会盖掉 Apple 那份正常工作的
+clangd,不是"多一个选择"而是"换掉一个能用的"。
+
+实测(aarch64-darwin,Apple clangd 21.0.0 vs nixpkgs clang-tools 21.1.8)。发真的
+LSP `didOpen` 读 `publishDiagnostics`,文件是完全正确的 vector/string/cstdio:
+
+```
+Apple /usr/bin/clangd            0 条
+nixpkgs clang-tools 的 clangd    5 条假报错
+    No member named 'string' in namespace 'std'
+    reference to unresolved using declaration
+```
+
+根因是两套 libc++ 头文件串了。nixpkgs 给 clangd 套了 shell wrapper,把 nixpkgs
+libcxx 注进 `CPLUS_INCLUDE_PATH`,而 clangd 内嵌的 driver 仍走 Apple SDK 的
+sysroot:
+
+```
+wrapper 注入   -cxx-isystem /nix/store/…-libcxx-21.1.6+apple-sdk-26.4/include/c++/v1
+driver 实际用  /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1
+```
+
+三个对照,定位到 wrapper 那段 CPATH 注入:
+
+```
+clangd-unwrapped(绕过 wrapper)     0   ← 确认就是注入干的
+加 compile_commands.json            5   ← 没用,别指望这个能修
+加 --query-driver                   0   ← wrapper 见到它就不注入(源码里写死的)
+```
+
+`clang` 本身没这个问题(nixpkgs clang++ 编译 + 运行都正常),但单独装它意义不大。
+将来真要装 `clang-tools`,`clangd.config.cmd` 必须同时加
+`--query-driver=/nix/store/*/bin/*clang*,/usr/bin/clang*`,否则就是上面那 5 条。
+
+Linux 侧**没有实测**。预期不一样 —— 那边没有 Apple SDK,nixpkgs libc++ 是唯一
+一套,冲突的前提不存在。这是推断,上 Linux 前值得单独验。
+
+**踩过的弯路:** 一开始用 `clangd --check=file.cpp` 测,加不加 `--clang-tidy` 都是
+0 诊断,差点据此断定 Apple 把 clang-tidy 裁掉了。那个模式根本不跑 tidy。真身
+55M,`strings` 里 `bugprone-` 97 个、`readability-` 67 个,模块是全的。要测 LSP
+行为就得发真的 LSP 请求,`--check` 不算数。
+
+顺带记 clang-tidy 的现状:clangd 21 **默认就开** clang-tidy(`--clang-tidy` 这个
+flag 现在是空转的),但默认 check 集是空的 —— 没有 `.clang-tidy` 文件就一条都不
+报。要用就在项目里放一个,nvim 这边不用动。
+
 ## 2026-09-19 · nixvim 里没有 tailwind-tools,也不全局开类名排序 {#nixvim-no-tailwind-tools}
 
 **tailwind-tools 删掉了。** 上游仓库已归档,nixvim 会报
