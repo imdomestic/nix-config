@@ -416,7 +416,6 @@ in {
           group = "indent-two";
           pattern = [
             "bs"
-            "c"
             "cabal"
             "cmake"
             "cpp"
@@ -449,6 +448,7 @@ in {
             "kotlin"
             "java"
             "go"
+            "c"
           ];
           callback = mkRaw ''
             function()
