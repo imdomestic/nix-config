@@ -574,7 +574,7 @@ in {
       }
       {
         mode = "n";
-        key = "<M-n>";
+        key = "<M-m>";
         action = mkRaw ''
           function()
             require("snacks").terminal()
@@ -584,7 +584,7 @@ in {
       }
       {
         mode = "t";
-        key = "<M-n>";
+        key = "<M-m>";
         action = mkRaw ''
           function()
             require("snacks").terminal()
@@ -1269,11 +1269,13 @@ in {
               '')
               "fallback"
             ];
-            "<M-l>" = [
+            # 不用 <M-h>/<M-l>:aerospace 把整个 alt-hjkl 拿去做窗口 focus 了,
+            # nvim 根本收不到。alt-i 同理被 ghostty 的 quick terminal 占着。
+            "<M-n>" = [
               "snippet_forward"
               "fallback"
             ];
-            "<M-h>" = [
+            "<M-b>" = [
               "snippet_backward"
               "fallback"
             ];
