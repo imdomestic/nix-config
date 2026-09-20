@@ -134,6 +134,15 @@
       filetypes = ["nix"];
       root_markers = [".git" "flake.nix" "flake.lock"];
       single_file_support = true;
+      # 打开 flake.nix 时 nil 会去加载 flake workspace,发现有 input 不在 store
+      # 里就发 window/showMessageRequest 弹"Some flake inputs are not available.
+      # Fetch them now?"。不设这一项(默认)就是每次都问。设 true = 直接替你跑
+      # `nix flake archive`,走的是 LSP progress 不挡编辑,拉完这次之后 input
+      # 都在 store 里了,后面开同一个 flake 也就不用再拉。
+      #
+      # 顶层的 "nil" 这一层要自己写:新的 lsp.* 模块是原样透传,不像旧的
+      # plugins.lsp 会按 server 自动套(`nil_ls = { settings = cfg: { nil = cfg; }; }`)。
+      settings."nil".nix.flake.autoArchive = true;
     };
 
     # 不写 cmd:上游默认先找项目 node_modules/.bin 里的那份,版本跟着项目走。
