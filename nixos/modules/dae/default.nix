@@ -36,6 +36,7 @@
   # 上,第二个变成裸 key,启动时 fatal:「addQName: unsupported key」。只有一个
   # bootstrap 域名时看不出来 —— h610 加第二个(api.cloudflare.com)那天才炸。
   bootstrapMatchers = lib.concatMapStringsSep ", " (domain: "full: ${domain}") cfg.bootstrapDomains;
+  jpDomainMatchers = lib.concatMapStringsSep ", " (domain: "suffix: ${domain}") cfg.jpDomainSuffixes;
   renderInterface = interface:
     if lib.any (token: lib.hasInfix token interface) ["*" "?" "["]
     then builtins.toJSON interface
@@ -74,6 +75,21 @@ in {
 
       h610 还会把 Docker bridge 的转发流量纳入代理;rpi4 保持默认。
     '';
+  };
+  options.my.dae.chinaRouting = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = ''
+      Enable the existing China-oriented application routing policy and use the
+      Japanese proxy as the fallback. Disable this on overseas networks to keep
+      traffic direct except for my.dae.jpDomainSuffixes.
+    '';
+  };
+  options.my.dae.jpDomainSuffixes = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [];
+    example = ["x.com" "twitter.com"];
+    description = "Domain suffixes that always use the Japanese im group.";
   };
 
   config = {
@@ -230,9 +246,10 @@ in {
             ${lib.optionalString (cfg.bootstrapDomains != []) "domain(${bootstrapMatchers}) -> must_direct"}
 
             # 去自建基础设施的连接一律直连。没有这条的话，routing 末尾的
-            # `fallback: im` 会把 SSH 到 <host>.imdomestic.com 也丢进 im 组，而 im 组
-            # 本身就是经 portal -> 反向隧道 -> r5sjp。于是隧道一断，用来修隧道的 SSH
-            # 也跟着断，没法回滚。自己的机器本来也不需要走代理才能到达。
+            # 中国路由模式的 `fallback: im` 会把 SSH 到 <host>.imdomestic.com 也
+            # 丢进 im 组，而 im 组本身就是经 portal -> 反向隧道 -> r5sjp。于是
+            # 隧道一断，用来修隧道的 SSH 也跟着断，没法回滚。自己的机器本来也
+            # 不需要走代理才能到达。
             # (原先只有 tailscale.imdomestic.com 一条，已被这条 suffix 规则覆盖。)
             domain(suffix: imdomestic.com) -> must_direct
 
@@ -243,6 +260,9 @@ in {
 
             dip(geoip:private) -> direct
 
+            ${lib.optionalString (cfg.jpDomainSuffixes != []) "domain(${jpDomainMatchers}) -> im"}
+
+            ${lib.optionalString cfg.chinaRouting ''
             pname(qbittorrent, qq, wechat) -> direct
             pname(git) -> im
             domain(suffix: qq.com, full: woshicver.com, geosite:category-companies@cn) -> direct
@@ -311,8 +331,9 @@ in {
             domain(geosite:google) -> im
 
             domain(geosite:telegram) -> im
+            ''}
 
-            fallback: im
+            fallback: ${if cfg.chinaRouting then "im" else "direct"}
         }
       '';
     };
