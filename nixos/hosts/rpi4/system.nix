@@ -14,9 +14,7 @@ in {
   imports = [
     ./hardware-configuration.nix
     # ../../modules/mihomo
-    # dae 摘了 —— 搬到悉尼之后它是净损害,实测数据见
-    # docs/decisions.md#rpi4-drop-dae。另外八台照旧。
-    # ../../modules/dae
+    ../../modules/dae
     # ../../modules/singbox
     # tuigreet 摘掉了。它是个图形登录管理器(services.greetd),而 NixOS 26.05 里
     # greetd 算 displayManager —— 一开就把 graphical-desktop.nix 整个拉进来。
@@ -86,6 +84,14 @@ in {
 
   # 公寓的 hotspot 认证。凭据走 sops,不进 store。
   my.tsRelay.enable = true;
+
+  # 悉尼默认直连，只让 X 的页面/API 控制面从日本出去；twimg/twvid 等媒体
+  # CDN 不在这里，继续走澳洲本地线路。见
+  # docs/decisions.md#rpi4-x-control-via-jp。
+  my.dae = {
+    chinaRouting = false;
+    jpDomainSuffixes = ["x.com" "twitter.com" "twitteroauth.com"];
+  };
 
   my.captivePortal = {
     enable = true;
