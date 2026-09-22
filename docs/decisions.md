@@ -11,21 +11,17 @@
 
 ---
 
-## 2026-09-22 · rpi4 只代理 X 控制面，媒体继续从悉尼直连 {#rpi4-x-control-via-jp}
+## 2026-09-22 · rpi4 整个 X 域名集走日本，其余默认直连 {#rpi4-x-via-jp}
 
 rpi4 重新启用 dae，但不恢复原来的中国网关策略：默认出口仍是 `direct`，只有
-`x.com`、`twitter.com` 和 `twitteroauth.com` 走日本 `im` 组。目的是绕开 X 在
-澳洲反复出现的年龄验证循环，同时不牺牲悉尼本地网络的吞吐和时延。
+`geosite:twitter` 走日本 `im` 组。这个集合包含 X 的页面、API、图片、视频和
+直播域名；除此以外，悉尼网络仍全部直连。
 
-这里故意不用 `geosite:twitter`。那份集合还包含 `twimg.com`、`twvid.com`、
-`pscp.tv`、`periscope.tv` 等图片、视频和直播域名；整组代理会把真正占带宽的
-媒体也绕成悉尼 → 国内 portal → 日本。现在这些 CDN 以及其他所有未列出的流量
-都落到 `fallback: direct`。
-
-这个分界只能做到 HTTPS 主机名粒度。帖子正文和时间线元数据与年龄状态共用
-`x.com` 的页面/API，所以它们也会走日本；图片和视频字节仍从澳洲直连。若 X
-把地区判定固化在账户状态里，分流未必能修复已卡住的账户，但不会因此扩大代理
-范围。原先摘掉全局 dae 的性能依据仍见 `#rpi4-drop-dae`。
+最初试过只代理 `x.com` / `twitter.com` 控制面、让 `twimg` / `twvid` 继续从
+澳洲直连；首屏短暂正常，继续滚动后年龄确认立即回来。既然控制 API 已确认全走
+日本，剩下的网络变量就是同一 X 会话的媒体/CDN 澳洲出口，因此不再拆分。证据和
+误导点见 `docs/incidents.md#rpi4-x-split-age-loop`。原先摘掉全局 dae 的性能依据
+仍见 `#rpi4-drop-dae`；这次只扩大 X，不改变其他服务。
 
 ## 2026-09-21 · dev profile 里不装 clang / clang-tools,C/C++ toolchain 交给 devshell {#no-clang-in-dev-profile}
 
