@@ -888,6 +888,10 @@ in {
         enable = true;
         metricsFile = "${config.my.telemetry.textfileDir}/gaoji-qq.prom";
       };
+      passwordLogin = {
+        enable = true;
+        passwordFile = "/var/lib/gaoji-qq-login-secret/password";
+      };
     };
   };
 
