@@ -877,7 +877,9 @@ in {
     };
     napcat = {
       enable = true;
-      # Official v4.18.28 paired image; immutable amd64 manifest.
+      backend = "native";
+      nativePackage = config.services.max.napcat.package.napcat;
+      # Retain the former image pin for an explicit, backed-up rollback only.
       image = "mlikiowa/napcat-docker@sha256:41b1a8e10953065f4796ab19c0c8760cd3175376be976c5480710d29a77357ee";
       containerName = "napcat-chat-bot";
       dataDirectory = "/var/lib/napcat-chat-bot";
