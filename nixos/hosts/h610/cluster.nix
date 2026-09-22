@@ -57,7 +57,7 @@ in {
         sopsFile = ../../../secrets/gaoji/account-auth.yaml;
         key = "onebot_access_token";
         mode = "0400";
-        restartUnits = ["gaoji.service" "docker-napcat-chat-bot.service"];
+        restartUnits = ["gaoji.service" "gaoji-napcat.service"];
       };
       "gaoji/onebot_secret" = {
         sopsFile = ../../../secrets/gaoji/account-auth.yaml;
