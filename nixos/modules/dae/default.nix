@@ -36,7 +36,10 @@
   # 上,第二个变成裸 key,启动时 fatal:「addQName: unsupported key」。只有一个
   # bootstrap 域名时看不出来 —— h610 加第二个(api.cloudflare.com)那天才炸。
   bootstrapMatchers = lib.concatMapStringsSep ", " (domain: "full: ${domain}") cfg.bootstrapDomains;
-  jpDomainMatchers = lib.concatMapStringsSep ", " (domain: "suffix: ${domain}") cfg.jpDomainSuffixes;
+  jpDomainMatchers = lib.concatStringsSep ", " (
+    (map (domain: "suffix: ${domain}") cfg.jpDomainSuffixes)
+    ++ (map (site: "geosite:${site}") cfg.jpGeoSites)
+  );
   renderInterface = interface:
     if lib.any (token: lib.hasInfix token interface) ["*" "?" "["]
     then builtins.toJSON interface
@@ -82,7 +85,7 @@ in {
     description = ''
       Enable the existing China-oriented application routing policy and use the
       Japanese proxy as the fallback. Disable this on overseas networks to keep
-      traffic direct except for my.dae.jpDomainSuffixes.
+      traffic direct except for my.dae.jpDomainSuffixes and my.dae.jpGeoSites.
     '';
   };
   options.my.dae.jpDomainSuffixes = lib.mkOption {
@@ -90,6 +93,12 @@ in {
     default = [];
     example = ["x.com" "twitter.com"];
     description = "Domain suffixes that always use the Japanese im group.";
+  };
+  options.my.dae.jpGeoSites = lib.mkOption {
+    type = lib.types.listOf lib.types.str;
+    default = [];
+    example = ["twitter"];
+    description = "Geosite categories that always use the Japanese im group.";
   };
 
   config = {
@@ -260,7 +269,7 @@ in {
 
             dip(geoip:private) -> direct
 
-            ${lib.optionalString (cfg.jpDomainSuffixes != []) "domain(${jpDomainMatchers}) -> im"}
+            ${lib.optionalString (jpDomainMatchers != "") "domain(${jpDomainMatchers}) -> im"}
 
             ${lib.optionalString cfg.chinaRouting ''
             pname(qbittorrent, qq, wechat) -> direct

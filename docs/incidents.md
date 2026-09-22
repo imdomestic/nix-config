@@ -9,6 +9,22 @@
 
 ---
 
+## 2026-09-22 · X 控制面走日本、媒体走澳洲仍会重触年龄确认 {#rpi4-x-split-age-loop}
+
+为绕开 X 在澳洲反复出现的年龄验证循环，第一版只把 `x.com`、`twitter.com`、
+`twitteroauth.com` 送进日本 `im` 组，媒体 CDN 保持澳洲直连。首屏看似恢复，但
+继续滚动几次后立刻再次要求确认年龄。
+
+失败发生时，dae 日志里的 `api.twitter.com`、`api-stream.twitter.com`、
+`probe.twitter.com` 全部是 `outbound=im`，分别由 `imdomestic-sh-v2` 或
+`imdomestic-h610-v2` 承载；不是漏掉了一条控制 API。服务保持 active，0 次重启，
+普通出口仍由 Cloudflare 识别为 AU/SYD。
+
+最初误导人的证据是首屏正常，以及 `x.com` 的响应落在 NRT；这只能证明页面/API
+连接走了日本，不能证明 X 没有把同一会话的媒体/CDN 澳洲连接作为地区信号。为了
+隔离这个变量，改为整个 `geosite:twitter` 走日本。若全量 X 仍复现，剩余根因就
+是账户或设备侧状态，继续增加域名规则没有意义。
+
 ## 2026-09-20 · QQ 进程在线不等于账号在线 {#gaoji-qq-account-health}
 
 高级进程和 NapCat 容器均为 active，未发生 OOM 或进程重启，但 OneBot 的

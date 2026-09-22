@@ -85,12 +85,11 @@ in {
   # 公寓的 hotspot 认证。凭据走 sops,不进 store。
   my.tsRelay.enable = true;
 
-  # 悉尼默认直连，只让 X 的页面/API 控制面从日本出去；twimg/twvid 等媒体
-  # CDN 不在这里，继续走澳洲本地线路。见
-  # docs/decisions.md#rpi4-x-control-via-jp。
+  # 悉尼默认直连，整个 X 域名集走日本；控制面/媒体拆分会重新触发年龄确认。
+  # 见 docs/incidents.md#rpi4-x-split-age-loop。
   my.dae = {
     chinaRouting = false;
-    jpDomainSuffixes = ["x.com" "twitter.com" "twitteroauth.com"];
+    jpGeoSites = ["twitter"];
   };
 
   my.captivePortal = {
