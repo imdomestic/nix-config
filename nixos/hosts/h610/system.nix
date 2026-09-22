@@ -891,6 +891,14 @@ in {
       passwordLogin = {
         enable = true;
         passwordFile = "/var/lib/gaoji-qq-login-secret/password";
+        notification = {
+          enable = true;
+          webuiConfigFile = "/var/lib/max/napcat/config/webui.json";
+          webuiPort = config.services.max.napcat.webuiPort;
+          account = config.services.max.napcat.qq;
+          groupId = "611798505";
+          userId = "3526452465";
+        };
       };
     };
   };
