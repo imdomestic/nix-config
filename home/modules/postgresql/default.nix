@@ -13,9 +13,9 @@
   pkgs,
   ...
 }: let
-  # 换大版本不会自动迁移:dataDir 带版本号,新版本会 initdb 一个空库,
-  # 旧数据要自己 pg_dumpall / pg_upgrade 过去。
-  postgresql = pkgs.postgresql_18;
+  # 课程要求 17。换大版本不会自动迁移:dataDir 带版本号,新版本会 initdb
+  # 一个空库,旧数据要自己 pg_dumpall / pg_upgrade 过去。
+  postgresql = pkgs.postgresql_17;
   dataDir = "${config.xdg.dataHome}/postgresql/${postgresql.psqlSchema}";
 
   # launchd 下没有 LANG,不指定的话 initdb 会建成 SQL_ASCII。macOS 的 libc
