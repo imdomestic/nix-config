@@ -42,6 +42,7 @@ in {
         modules = [
           userModules.hank.module
           userModules.hank.dev
+          ../../../home/modules/postgresql
         ];
       };
     };
