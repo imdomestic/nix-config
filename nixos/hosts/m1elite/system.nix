@@ -54,6 +54,11 @@
 
   programs.nix-index-database.comma.enable = true;
 
+  security.pam.services.sudo_local = {
+    touchIdAuth = true;
+    reattach = true; # 在 tmux/screen 里也能用 Touch ID
+  };
+
   # services.postgresql = {
   #   enable = true;
   #   enableTCPIP = true;
