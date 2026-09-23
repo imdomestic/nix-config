@@ -145,6 +145,23 @@
       settings."nil".nix.flake.autoArchive = true;
     };
 
+    # 上游要求项目里有 postgres-language-server.jsonc 才启动,零散的练习 .sql
+    # 就永远没 LSP,所以放宽成可以单文件跑。
+    postgres_lsp.config = {
+      cmd = ["postgres-language-server" "lsp-proxy"];
+      filetypes = ["sql"];
+      root_markers = ["postgres-language-server.jsonc" ".git"];
+      workspace_required = false;
+      # 不显式给 host 它根本不连库(没有类型检查和表名补全),默认值不算数。
+      # 用户名和库名跟裸 `psql` 一样取当前用户。这里会盖掉项目 jsonc 的同名字段;
+      # PG* 环境变量优先级更高,但只在 daemon 启动时读一次。
+      settings.db = {
+        host = "127.0.0.1";
+        username = config.home.username;
+        database = config.home.username;
+      };
+    };
+
     # 不写 cmd:上游默认先找项目 node_modules/.bin 里的那份,版本跟着项目走。
     # 代价是 cmd 成了 function,守卫推不出可执行文件名,所以这里点名。
     # root_markers 同理不写:上游 root_dir 是个函数,会去找 tailwind.config.*
