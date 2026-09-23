@@ -13,8 +13,7 @@
   ...
 }: let
   substituters = import ../../lib/nix-substituters.nix {
-    # 只在 linwhite 独占的机器禁用中国镜像，共用机器保留系统默认源。
-    useChinaMirror = config.my.host.usernames != ["linwhite"];
+    inherit (config.my.host) useChinaMirror;
   };
 
   publicKeys = [

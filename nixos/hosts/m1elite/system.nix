@@ -39,6 +39,7 @@
   networking.computerName = config.my.host.name;
   system.defaults.smb.NetBIOSName = config.my.host.name;
   system.primaryUser = "hank";
+  my.host.useChinaMirror = false;
 
   homebrew = {
     enable = true;

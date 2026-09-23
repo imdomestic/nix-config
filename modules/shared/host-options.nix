@@ -12,6 +12,13 @@
       description = "Host name (attribute name in the host registry).";
     };
 
+    useChinaMirror = lib.mkOption {
+      type = lib.types.bool;
+      default = config.my.host.usernames != ["linwhite"];
+      defaultText = lib.literalExpression ''config.my.host.usernames != ["linwhite"]'';
+      description = "Whether to use the China (SJTU) substituter mirror.";
+    };
+
     system = lib.mkOption {
       type = lib.types.str;
       example = "x86_64-linux";
