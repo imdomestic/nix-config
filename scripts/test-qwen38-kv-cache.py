@@ -14,9 +14,9 @@ import uuid
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--url", default="http://127.0.0.1:18101")
+    parser.add_argument("--url", default="http://127.0.0.1:18100")
     parser.add_argument("--ssh-target", default="hank@b650")
-    parser.add_argument("--log", default="/var/lib/qwen38/ninfer-logs/qwen38-long.jsonl")
+    parser.add_argument("--log", default="/var/lib/qwen38/ninfer-logs/qwen38.jsonl")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 

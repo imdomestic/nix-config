@@ -9,10 +9,11 @@
 
 ---
 
-## 2026-09-24 · Fast 档改用 QUASAR QAT NVFP4，保留视觉和 262K {#b650-quasar-nvfp4-262k}
+## 2026-09-24 · QUASAR QAT NVFP4 成为唯一模型，保留视觉和 262K {#b650-quasar-nvfp4-262k}
 
-目标是只替换 `qwen3.8-27b-fast`，保留原 Groupwise INT long 档及其缓存补丁。
-Fast 单并发，NVFP4 权重、NVFP4 KV、MTP3、视觉同时启用，context/KV 为
+先替换 `qwen3.8-27b-fast` 做对照；功能和容量验收后，按用户要求移除旧 long
+服务及 fast 别名，最终对外只保留 `qwen3.8-27b`。先验收单并发，再按用户要求
+升至三并发。NVFP4 权重、NVFP4 KV、MTP3、视觉同时启用，context/KV 为
 262144；输入、图像 tokens 和输出共享这个窗口，并不是 262K 输入再加 262K 输出。
 
 采用 [cometkim 的 NInfer 转换](https://huggingface.co/cometkim/Qwen3.8-27B-nvfp4qat-NInfer)，
@@ -22,13 +23,14 @@ Fast 单并发，NVFP4 权重、NVFP4 KV、MTP3、视觉同时启用，context/K
 `8b86901a8cd2a297a3d737e470c793b67e5ce65b49131c48c2f2f0b346fd943c`。
 下载及校验用 `scripts/fetch-qwen38-quasar.sh`，落盘名携带 revision，旧权重保留。
 
-新文件用 NInfer v3 格式，因此 Fast 单独使用上游引擎
+新文件用 NInfer v3 格式，使用上游引擎
 `bace20dc70249eed6402b66d4852c6c3f9612905`。构建脚本
 `scripts/build-qwen38-quasar.sh NEW_BUILD_DIRECTORY [NEW_IMAGE_ARCHIVE]`
 默认两路编译、8 GiB 内存上限；在提供 NVIDIA CDI 的 Linux 主机上执行。
 镜像 `localhost/ninfer:qwen38-quasar-bace20dc`，归档
 `/var/lib/qwen38/ninfer-quasar-bace20dc.tar`，缺失镜像时由独立 import unit 导入。
-Long 继续用旧镜像，不能把已有 catalog 修复等同于新引擎的验收。
+对照阶段 long 使用旧镜像，最终停用其服务；旧镜像及权重文件保留供回退。
+旧引擎的 catalog 修复不能等同于新引擎的验收。
 
 误导过排查的两点：其一，旧 Unsloth 混合 FP8/NVFP4 文件的约 20 GiB
 权重预算不适用于 QUASAR，必须看实际加载的组件和 runtime/KV 总驻留。
@@ -36,7 +38,7 @@ Long 继续用旧镜像，不能把已有 catalog 修复等同于新引擎的验
 CDI 会报缺库，不能据此判断编译失败。新上游没有旧补丁的
 `--vision-max-tokens`，使用原生视觉容量，并在真实请求中验证。
 
-在 b650 RTX 5090 D v2（24,455 MiB）实测启动成功：权重 17,542,223,360
+在 b650 RTX 5090 D v2（24,455 MiB）单并发实测启动成功：权重 17,542,223,360
 bytes（16.34 GiB），runtime 6,262,258,945 bytes（5.83 GiB，其中 KV payload
 4.78 GiB），CUDA 启动后可用 860,487,680 bytes（820.6 MiB）。
 `nvidia-smi` 驻留 23,158 MiB，约 819 MiB 可用；不能把文件大小当成 GPU 总占用。
@@ -46,9 +48,9 @@ bytes（16.34 GiB），runtime 6,262,258,945 bytes（5.83 GiB，其中 KV payloa
 验收命令：
 
 ```sh
-python3 scripts/test-qwen38-fast.py \
+python3 scripts/test-qwen38-quasar.py \
   --url http://b650.inner.imdomestic.com:8000 \
-  --model qwen3.8-27b-fast --output REPORT.json
+  --model qwen3.8-27b --output REPORT.json
 ```
 
 七项全部通过：算术、中文 Python 列表别名、SQL NULL、SSE、工具调用、红蓝
@@ -66,11 +68,37 @@ tokens，端到端 5.19 s）。经网关切回原 long，再切回 fast 都成�
 | 长请求 prefill | 160.03 s | 102.57 s |
 | 长请求答案 | 三处秘密、图片均正确 | 三处秘密、图片均正确 |
 
+短输入补测（独立随机前缀，无缓存命中，均输出 `OK`）：
+
+| 实际 prompt tokens | Prefill | Prefill 耗时 |
+|---:|---:|---:|
+| 2043 | 11552 tok/s | 0.177 s |
+| 8188 | 13842 tok/s | 0.592 s |
+| 32768 | 10084 tok/s | 3.250 s |
+
+提升为唯一模型前，在暂停网关、全新后端上运行
+`scripts/test-qwen38-kv-cache.py`，17 个请求的回归通过。7 个 45096-token
+会话重放均命中 45091 tokens；Main-KV 换出 1,824,915,456 bytes、换入
+990,904,320 bytes，Host-KV 峰值 1,936,392,192 bytes。第九个 owner 只淘汰
+一个旧 owner，maximal fallback 为 0，最近重用的会话仍能恢复。
+
+三并发实测启动后剩余 524,943,360 bytes（500.6 MiB），`nvidia-smi` 驻留
+23476 MiB、可用 501 MiB。三个随机前缀的数数请求同时发送，总输出 4875 tokens，
+端到端 8.49 s，总吞吐 574.19 tok/s；各路 API decode 约 223–225 tok/s。
+日志确认 running=3、decode-ready=3，包含平均 batch=2.80 的五秒采样窗口。
+同一 C3 配置只发一路时 decode 为 239.06 tok/s。数数的 MTP 接受率接近 100%，
+不能据此推断复杂代码/推理也有同样速度；同期实际带图和 30 个工具定义的
+23695-token 请求，prefill 约 10.7K tok/s、decode 138 tok/s、MTP 接受率 47.6%。
+三路共享 262144-token Device-KV 池，不是每路各有一个完整的 262K 池。
+升为 C3 后重跑七项验收全部通过；259238-token 文本＋图片的 prefill 为
+102.71 s（2524 tok/s）、decode 172.53 tok/s。该请求排队约 10.3 s，运行时
+另一个请求因共享 KV 池不足排队，完成后继续处理。实测显存可用最低约
+499 MiB，服务无自动重启，未发现 CUDA OOM 或 GPU Xid。
+
 这些合成测试验证功能和容量，不是通用模型质量或真实文档速度评测，也没有
-证明 QUASAR 的精度优于旧量化。新引擎的完整多会话 Host-KV/catalog 回归未在
-本次重跑。报告存于 b650 `/var/lib/qwen38/validation/20260924-quasar/`。
-系统切换、b650 和 m1elite 的独立 Home Manager 激活完成，网关报告 fast 的
-context 为 262144，OpenCode 的 context/output 均为 262144；默认模型选择仍是 long。
+证明 QUASAR 的精度优于旧量化。报告存于 b650
+`/var/lib/qwen38/validation/20260924-quasar/`。网关和 OpenCode 仅保留
+`qwen3.8-27b`，context 为 262144，OpenCode output 同为 262144。
 
 ## 2026-09-24 · opencode 每次启动都报 skill 发现警告 {#opencode-skillful-startup-warning}
 
