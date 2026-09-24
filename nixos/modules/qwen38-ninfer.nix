@@ -27,8 +27,7 @@
       '';
     };
 
-  qwenFastRunner = modelUnitRunner "run-qwen38-fast" "podman-qwen38.service";
-  qwen262kRunner = modelUnitRunner "run-qwen38-262k" "podman-qwen38-long.service";
+  qwenRunner = modelUnitRunner "run-qwen38" "podman-qwen38.service";
 
   commonModel = {
     checkEndpoint = "/health";
@@ -54,26 +53,13 @@
     healthCheckTimeout = 300;
     logLevel = "info";
     models = {
-      "qwen3.8-27b-fast" =
+      "qwen3.8-27b" =
         commonModel
         // {
           name = "Qwen3.8 27B QUASAR NVFP4 262K MTP3";
           description = "QUASAR QAT NVFP4 weights, NVFP4 KV cache, vision and MTP3";
-          cmd = lib.getExe qwenFastRunner;
+          cmd = lib.getExe qwenRunner;
           proxy = "http://127.0.0.1:8100";
-          metadata = {
-            model_type = "vlm";
-            context = 262144;
-          };
-          capabilities = commonModel.capabilities // {context = 262144;};
-        };
-      "qwen3.8-27b" =
-        commonModel
-        // {
-          name = "Qwen3.8 27B Groupwise INT 262K MTP3";
-          description = "Groupwise INT weights and NVFP4 KV cache; 8K vision budget";
-          cmd = lib.getExe qwen262kRunner;
-          proxy = "http://127.0.0.1:8101";
           metadata = {
             model_type = "vlm";
             context = 262144;
@@ -128,19 +114,9 @@ in {
     enable = lib.mkEnableOption "Qwen3.8 27B NInfer inference gateway";
     image = lib.mkOption {
       type = lib.types.str;
-      # Patched image build and validation: docs/incidents.md#b650-ninfer-catalog-admission.
-      default = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
-      description = "Locally imported NInfer OCI image reference.";
-    };
-    fastImage = lib.mkOption {
-      type = lib.types.str;
       # Artifact pins and measured residency: docs/incidents.md#b650-quasar-nvfp4-262k.
       default = "localhost/ninfer:qwen38-quasar-bace20dc";
-      description = "NInfer v3 image for the QUASAR fast profile; built by scripts/build-qwen38-quasar.sh.";
-    };
-    fastImageArchive = lib.mkOption {
-      type = lib.types.str;
-      default = "${cfg.stateDirectory}/ninfer-quasar-bace20dc.tar";
+      description = "NInfer v3 image for QUASAR; built by scripts/build-qwen38-quasar.sh.";
     };
     stateDirectory = lib.mkOption {
       type = lib.types.str;
@@ -156,7 +132,7 @@ in {
     };
     imageArchive = lib.mkOption {
       type = lib.types.str;
-      default = "${cfg.stateDirectory}/ninfer-image.tar";
+      default = "${cfg.stateDirectory}/ninfer-quasar-bace20dc.tar";
       description = "OCI archive imported on demand when the configured image is absent.";
     };
     gatewayPort = lib.mkOption {
@@ -182,7 +158,6 @@ in {
           qwen38 =
             commonContainer
             // {
-              image = cfg.fastImage;
               cmd = [
                 "ninfer-serve"
                 "/models/qwen3_8_27b_nvfp4qat-a45b9f5c.ninfer"
@@ -198,8 +173,9 @@ in {
                 "262144"
                 "--kv-capacity"
                 "262144"
+                # Three active lanes share this KV pool: docs/incidents.md#b650-quasar-nvfp4-262k.
                 "--max-concurrency"
-                "1"
+                "3"
                 # A queued request waits behind a full-length prefill, and the
                 # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
                 "--max-pending-requests"
@@ -238,66 +214,6 @@ in {
                 "/logs/qwen38.jsonl"
               ];
             };
-          qwen38-long =
-            commonContainer
-            // {
-              cmd = [
-                "ninfer-serve"
-                "/models/qwen3_8_27b.ninfer"
-                "--model-id"
-                "qwen3.8-27b"
-                "--host"
-                "127.0.0.1"
-                "--port"
-                "8101"
-                "--max-context"
-                "262144"
-                "--default-max-tokens"
-                "131072"
-                "--kv-capacity"
-                "262144"
-                # 24 GB C=3 startup and live batching: docs/incidents.md#b650-ninfer-c3.
-                "--max-concurrency"
-                "3"
-                # A queued request waits behind a full-length prefill, and the
-                # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
-                "--max-pending-requests"
-                "16"
-                "--pending-timeout-ms"
-                "600000"
-                "--prefill-chunk"
-                "1024"
-                "--kv-dtype"
-                "nvfp4"
-                "--device-state-slots"
-                "0"
-                # Host state and KV are sized for one full checkpoint: docs/incidents.md#b650-ninfer-host-kv-undersized
-                "--host-state-slots"
-                "24"
-                "--host-kv-mib"
-                "8192"
-                "--max-private-continuations"
-                "8"
-                "--max-shared-prefixes"
-                "1"
-                "--max-long-anchors-per-continuation"
-                "1"
-                "--media-cache-mib"
-                "256"
-                "--media-live-mib"
-                "2048"
-                "--vision-max-tokens"
-                "8192"
-                "--spec"
-                "mtp"
-                "--draft-tokens"
-                "3"
-                "--lm-head-draft"
-                "--preserve-thinking"
-                "--request-log-jsonl"
-                "/logs/qwen38-long.jsonl"
-              ];
-            };
         };
       };
     };
@@ -309,21 +225,6 @@ in {
     ];
 
     systemd.services = {
-      qwen38-fast-image-import = {
-        description = "Import the NInfer v3 QUASAR image";
-        path = [pkgs.podman];
-        script = ''
-          if podman image exists ${lib.escapeShellArg cfg.fastImage}; then
-            exit 0
-          fi
-          podman load --input ${lib.escapeShellArg cfg.fastImageArchive}
-          podman image exists ${lib.escapeShellArg cfg.fastImage}
-        '';
-        serviceConfig = {
-          Type = "oneshot";
-          RemainAfterExit = true;
-        };
-      };
       qwen38-image-import = {
         description = "Import the local NInfer OCI image";
         path = [pkgs.podman];
@@ -347,25 +248,12 @@ in {
         after = [
           "network-online.target"
           "nvidia-container-toolkit-cdi-generator.service"
-          "qwen38-fast-image-import.service"
-        ];
-        requires = [
-          "nvidia-container-toolkit-cdi-generator.service"
-          "qwen38-fast-image-import.service"
-        ];
-        conflicts = ["podman-qwen38-long.service"];
-      };
-      podman-qwen38-long = {
-        after = [
-          "network-online.target"
-          "nvidia-container-toolkit-cdi-generator.service"
           "qwen38-image-import.service"
         ];
         requires = [
           "nvidia-container-toolkit-cdi-generator.service"
           "qwen38-image-import.service"
         ];
-        conflicts = ["podman-qwen38.service"];
       };
       llama-swap.serviceConfig = {
         DynamicUser = lib.mkForce false;

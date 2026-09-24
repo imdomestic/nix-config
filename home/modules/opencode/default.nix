@@ -114,19 +114,8 @@ in {
         name = "NInfer";
         options.baseURL = "http://b650.inner.imdomestic.com:8000/v1";
         models = {
-          "qwen3.8-27b-fast" = {
-            name = "Qwen3.8 27B QUASAR · 262K";
-            limit = {
-              context = 262144;
-              output = 262144;
-            };
-            modalities = {
-              input = ["text" "image"];
-              output = ["text"];
-            };
-          };
           "qwen3.8-27b" = {
-            name = "Qwen3.8 27B · 262K";
+            name = "Qwen3.8 27B QUASAR · 262K";
             limit = {
               context = 262144;
               output = 262144;
