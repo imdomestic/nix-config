@@ -9,6 +9,54 @@
 
 ---
 
+## 2026-09-25 · marble 的 Nix 内核误用了 GCC 头文件 {#marble-nix-kernel-headers}
+
+epoll_pwait2 的 Clang 21 构建虽然通过 QEMU 双 ABI 的 66 项测试，但真机
+刷入后回到 fastboot。去掉 KernelSU、保留原包 ramdisk 的对照同样失败，
+已分别刷回原包 boot_a 恢复；没有动 userdata 或其他分区。拿不到失败启动的
+内核 panic 日志，不能仅凭回到 fastboot 就认定是 CFI、AVB 或 epoll 补丁。
+
+从当前 ROM 的 vendor_boot 提取 356 个驱动，对照 Module.symvers，发现
+140 个不同的导入符号 CRC 不匹配，主要是 DRM 符号和 vsnprintf/vscnprintf。
+先检查的 qcom-scm 的 84 个导入全部匹配，不能把单个模块结果推广至全部。
+不在 vmlinux 中的符号可能由其他 vendor 模块提供，不算缺失符号证据。
+
+从 h610 取回旧可用构建的 Android Clang 12.0.5 r416183b，在 b650 用相同
+源码和补丁编译：QEMU 同样通过 66 项，但 140 个 CRC 差异与 Clang 21 完全
+相同。这排除了“只要把 Clang 降级就能消除这些 CRC 差异”的猜测。
+构建对照时要显式使用旧版 ld.lld，避免 Nix compiler wrapper 的 bintools
+传播使 LLVM 12 bitcode 被新版链接器处理；这属于对照环境问题，不是真机证据。
+
+进一步只编译 lib/vsprintf.c，保存 .cmd、预处理输出和 .symtypes，发现旧
+Makefile 使用 `$(CC) -print-file-name=include`，在 Nix 构建环境得到宿主
+GCC 15 的 include 目录。于是虽然 CC 是 Clang，stdarg.h 却来自 GCC，
+`va_list` 展开为 `typedef __gnuc_va_list va_list`，而 vendor 使用 Clang 的
+`typedef __builtin_va_list va_list`。genksyms 把 typedef 链计入校验值；
+这不是已经证明的运行时结构布局变化，却足以令模块加载器拒绝对应驱动。
+DRM 结构经 drm_printer/va_format 间接引用 va_list，因此一起受影响。
+
+修复在 postPatch 将头文件查询改成 Clang 的 `-print-resource-dir` 加
+`/include`，继续使用 nixpkgs Clang 21 和 ThinLTO，不以禁用 modversions 或
+强制加载驱动绕过检查。额外断言 vendor 所需的 vsnprintf `0x00148653`、
+vscnprintf `0xaa0c318b`，防止同类问题再次混入成功构建。
+
+正式修复产物是
+`/nix/store/f13wv9bzb6nscdygqk6a238d1qkrj6g6-templar-droidspaces-kernel-5.10.252-unstable-2026-03-08`，
+Image SHA256 `46f474d200ce6a9a3a202d127ec9166cd38f5f2de7aaeb3d01dfdfffd2f32a92`。
+356 个 vendor 模块的 16,397 个 vmlinux 导入全部匹配，差异从 140 个符号
+降为零；QEMU 再次通过 66 项。沿用旧可用 KernelSU ramdisk 打包，验证 AVB
+hash 和重解包后的 Image/ramdisk，刷 boot_a 后真机成功启动到 Clang/LLD
+21.1.8 的 5.10.252-dirty，KernelSU root 可用，boot_completed=1。
+真机 native/compat 各 33 项也全部通过，未发现模块版本拒载或 CFI failure。
+这次只改头文件选择就从启动失败变为成功，是该构建问题的真机对照证据。
+
+容器 nixos 自动启动、hostname marble，systemd running、零失败单元；
+在容器内 `unshare --user --map-root-user --pid --fork true` 返回 0。
+Android system_server/SystemUI PID 在观察期间不变，crash buffer 为空；
+用户解锁交互验收仍待确认，不将启动成功等同于长期稳定性或性能验收。
+另查明 `ssh marble` 超时是容器 tailscaled 为 NeedsLogin、没有 Tailscale IP；
+sshd.socket 已 active 且端口 22 正在监听，未修改登录状态或网络配置。
+
 ## 2026-09-25 · marble 回移 epoll_pwait2，b650 构建与双 ABI 测试 {#marble-epoll-pwait2}
 
 HyperOS 从 4.0.0.26 升至 4.0.0.31 后，旧 Templar 5.10.252 在解锁后反复
@@ -45,7 +93,8 @@ ARM32 测试程序；`run-epoll-tests.sh` 用 QEMU TCG 启动实际 Image，不�
 `/nix/store/kvqp290ljsxfwc2bak3aqq8mqhhh05vq-templar-droidspaces-kernel-5.10.252-unstable-2026-03-08`，
 Image SHA256 为 `abd6dab604c115f5c80f4037d22fe14f13e158a9af1f760ae4d50496851f95f4`。
 两个 flake 架构入口均通过求值；本轮只编译 x86_64 主机生成的 ARM64 目标。
-手机尚未刷入；QEMU 通过不等于高通 vendor 模块、HyperOS 图形、KernelSU
+当时手机尚未刷入；后续真机启动失败及排查见上方
+[Nix 内核头文件事故](#marble-nix-kernel-headers)。QEMU 通过不等于高通 vendor 模块、HyperOS 图形、KernelSU
 或功耗已经验收。构建有非致命的 Nix compiler-wrapper 跨 target 提示及模块
 patchelf 提示，未把这些警告当作运行时问题，也未为消除它们扩大补丁范围。
 

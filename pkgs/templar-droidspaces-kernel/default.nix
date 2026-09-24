@@ -60,6 +60,10 @@ stdenv.mkDerivation {
   hardeningDisable = ["all"];
 
   postPatch = ''
+    # GCC's stdarg.h changes genksyms CRCs; see docs/incidents.md#marble-nix-kernel-headers.
+    substituteInPlace Makefile \
+      --replace-fail '-isystem $(shell $(CC) -print-file-name=include)' \
+        '-isystem $(shell $(CC) -print-resource-dir)/include'
     cp -R ${./gunyah-backport}/drivers/virt/gunyah drivers/virt/
     cp ${./gunyah-backport}/include/linux/gunyah*.h include/linux/
     cp ${./gunyah-backport}/include/uapi/linux/gunyah.h include/uapi/linux/
@@ -132,6 +136,9 @@ stdenv.mkDerivation {
     for symbol in __arm64_sys_epoll_pwait2 __arm64_compat_sys_epoll_pwait2; do
       grep -Eq " [Tt] $symbol$" "$buildDir/System.map"
     done
+    # These vendor imports catch accidental use of the host GCC's va_list typedef.
+    grep -Eq '^0x00148653[[:space:]]+vsnprintf[[:space:]]' "$buildDir/vmlinux.symvers"
+    grep -Eq '^0xaa0c318b[[:space:]]+vscnprintf[[:space:]]' "$buildDir/vmlinux.symvers"
     for module in gunyah gunyah_vcpu gunyah_irqfd gunyah_ioeventfd; do
       test -s "$buildDir/drivers/virt/gunyah/$module.ko"
     done
