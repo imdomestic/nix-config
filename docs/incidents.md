@@ -9,6 +9,29 @@
 
 ---
 
+## 2026-09-24 · opencode 每次启动都报 skill 发现警告 {#opencode-skillful-startup-warning}
+
+`opencode` 一启动就打印
+
+```
+[OpencodeSkillful][warn] ... No valid base paths found for skill discovery: [
+  "~/.config/opencode/skills", "~/.opencode/skills", "<project>/.opencode/skills"
+]
+```
+
+根因:`opencode-skillful` 插件在启动时扫描上面三类 skills 目录,本机上三个
+都不存在,于是每次(每个项目)都打一条 warn,skill 工具也跟着加载不出任何
+skill。日志文件(`~/.local/share/opencode/log/opencode.log`)里只有一条
+9-11/9-14 的 fff 警告,查不到它——这条 warn 走的是插件自己的 console 输出,
+`opencode serve` 模式下甚至完全静默,只有单进程模式(`opencode run`)和 TUI
+启动瞬间才落到终端上。所以最初的排查方向(翻日志、怀疑 model-stats 的
+websocket、notificator 的 jsonc)全都不对,用 `script -qec "opencode"` 抓
+PTY 输出才复现出来。
+
+修复:在 `home/modules/opencode/default.nix` 加一个 activation,每次激活后
+`install -d` 出 `~/.config/opencode/skills` 空目录;目录存在即消除警告,
+skill 内容以后用 `home.file."opencode/skills/..."` 放进该目录。
+
 ## 2026-09-22 · X 控制面走日本、媒体走澳洲仍会重触年龄确认 {#rpi4-x-split-age-loop}
 
 为绕开 X 在澳洲反复出现的年龄验证循环，第一版只把 `x.com`、`twitter.com`、
