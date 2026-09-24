@@ -5,6 +5,7 @@
   imports = [
     ../../profiles/dev.nix
     ../../modules/nixvim/linwhite.nix
+    ../../modules/opencode
   ];
 
   my.nixvim.dev.enable = true;
