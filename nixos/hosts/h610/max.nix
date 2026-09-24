@@ -47,7 +47,9 @@
           "base_url" = "http://b650.inner.imdomestic.com:8000/v1";
           "multimodal" = true;
           "model" = "qwen3.8-27b";
-          "max_input_tokens" = 262144;
+          "context_window" = 262144;
+          "context_budget" = 131072;
+          "prompt_cache_breakpoints" = true;
           "effort" = "xhigh";
         };
         "gpt-5.6-terra" = {
