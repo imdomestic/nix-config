@@ -46,8 +46,7 @@
         # 里那个值,保证和 r6s 真正要的是同一个 drv;哪天别的机器也开 smart,
         # 按同样写法往对应 system 下加一条。
         mihomo-smart = nixos.r6s.config.services.mihomo.package;
-        # 由 Determinate 的原生 aarch64-linux builder 构建。工具链全部来自
-        # nixpkgs;这个输出只产出可塞进 boot.img 的 Image,不是 NixOS kernelPackages。
+        # 原生 ARM64 构建入口；只产出 Android Image，不是 NixOS kernelPackages。
         templar-droidspaces-kernel = templarDroidspacesKernel nixos.rpi4;
         # hank 的 home 在每台机器上都一样,所以这个 Rust TUI 会跟到 r2s / rpi4
         # 这种小 ARM 盒子上去 —— 而 home 是 deploy 时在**目标机**上编的
@@ -55,6 +54,8 @@
         tmux-agent-sidebar = agentSidebar nixos.rpi4;
       };
       x86_64-linux = {
+        # 在 b650 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。
+        templar-droidspaces-kernel = templarDroidspacesKernel nixos.b650;
         # b650 / x470 两台解析出来是同一个 drv,取哪台都一样。
         recursive-mono-cascadia-italic = font nixos.b650;
         tmux-agent-sidebar = agentSidebar nixos.b650;
