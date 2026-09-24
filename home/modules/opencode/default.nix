@@ -175,4 +175,12 @@ in {
       $DRY_RUN_CMD ${pkgs.coreutils}/bin/mv -fT "$tui_path.hm-new" "$tui_path"
     fi
   '';
+  # opencode-skillful 启动时会扫描 skills 目录,一个都不存在就每次打印
+  # "No valid base paths found for skill discovery" 的 warn(见
+  # docs/incidents.md#opencode-skillful-startup-warning)。空目录即可消除;
+  # 以后要加 skill 内容就放进 home.file."opencode/skills/..."。
+  home.activation.createOpenCodeSkillsDir = lib.hm.dag.entryAfter ["writeFile"] ''
+    skills_dir=${lib.escapeShellArg "${config.xdg.configHome}/opencode/skills"}
+    $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -d -m 0755 "$skills_dir"
+  '';
 }
