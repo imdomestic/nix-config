@@ -27,7 +27,7 @@
       '';
     };
 
-  qwen100kRunner = modelUnitRunner "run-qwen38-100k" "podman-qwen38.service";
+  qwenFastRunner = modelUnitRunner "run-qwen38-fast" "podman-qwen38.service";
   qwen262kRunner = modelUnitRunner "run-qwen38-262k" "podman-qwen38-long.service";
 
   commonModel = {
@@ -57,15 +57,15 @@
       "qwen3.8-27b-fast" =
         commonModel
         // {
-          name = "Qwen3.8 27B NVFP4 100K MTP3";
-          description = "Native NVFP4 weights and KV cache; 8K vision budget";
-          cmd = lib.getExe qwen100kRunner;
+          name = "Qwen3.8 27B QUASAR NVFP4 262K MTP3";
+          description = "QUASAR QAT NVFP4 weights, NVFP4 KV cache, vision and MTP3";
+          cmd = lib.getExe qwenFastRunner;
           proxy = "http://127.0.0.1:8100";
           metadata = {
             model_type = "vlm";
-            context = 100000;
+            context = 262144;
           };
-          capabilities = commonModel.capabilities // {context = 100000;};
+          capabilities = commonModel.capabilities // {context = 262144;};
         };
       "qwen3.8-27b" =
         commonModel
@@ -132,6 +132,16 @@ in {
       default = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
       description = "Locally imported NInfer OCI image reference.";
     };
+    fastImage = lib.mkOption {
+      type = lib.types.str;
+      # Artifact pins and measured residency: docs/incidents.md#b650-quasar-nvfp4-262k.
+      default = "localhost/ninfer:qwen38-quasar-bace20dc";
+      description = "NInfer v3 image for the QUASAR fast profile; built by scripts/build-qwen38-quasar.sh.";
+    };
+    fastImageArchive = lib.mkOption {
+      type = lib.types.str;
+      default = "${cfg.stateDirectory}/ninfer-quasar-bace20dc.tar";
+    };
     stateDirectory = lib.mkOption {
       type = lib.types.str;
       default = "/var/lib/qwen38";
@@ -172,9 +182,10 @@ in {
           qwen38 =
             commonContainer
             // {
+              image = cfg.fastImage;
               cmd = [
                 "ninfer-serve"
-                "/models/qwen3_8_27b_nvfp4.ninfer"
+                "/models/qwen3_8_27b_nvfp4qat-a45b9f5c.ninfer"
                 "--model-id"
                 "qwen3.8-27b"
                 "--host"
@@ -182,11 +193,11 @@ in {
                 "--port"
                 "8100"
                 "--max-context"
-                "100000"
+                "262144"
                 "--default-max-tokens"
-                "100000"
+                "262144"
                 "--kv-capacity"
-                "100000"
+                "262144"
                 "--max-concurrency"
                 "1"
                 # A queued request waits behind a full-length prefill, and the
@@ -216,8 +227,7 @@ in {
                 "256"
                 "--media-live-mib"
                 "2048"
-                "--vision-max-tokens"
-                "8192"
+                "--vision"
                 "--spec"
                 "mtp"
                 "--draft-tokens"
@@ -299,6 +309,21 @@ in {
     ];
 
     systemd.services = {
+      qwen38-fast-image-import = {
+        description = "Import the NInfer v3 QUASAR image";
+        path = [pkgs.podman];
+        script = ''
+          if podman image exists ${lib.escapeShellArg cfg.fastImage}; then
+            exit 0
+          fi
+          podman load --input ${lib.escapeShellArg cfg.fastImageArchive}
+          podman image exists ${lib.escapeShellArg cfg.fastImage}
+        '';
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+      };
       qwen38-image-import = {
         description = "Import the local NInfer OCI image";
         path = [pkgs.podman];
@@ -322,11 +347,11 @@ in {
         after = [
           "network-online.target"
           "nvidia-container-toolkit-cdi-generator.service"
-          "qwen38-image-import.service"
+          "qwen38-fast-image-import.service"
         ];
         requires = [
           "nvidia-container-toolkit-cdi-generator.service"
-          "qwen38-image-import.service"
+          "qwen38-fast-image-import.service"
         ];
         conflicts = ["podman-qwen38-long.service"];
       };

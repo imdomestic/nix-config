@@ -115,10 +115,10 @@ in {
         options.baseURL = "http://b650.inner.imdomestic.com:8000/v1";
         models = {
           "qwen3.8-27b-fast" = {
-            name = "Qwen3.8 27B · 100K";
+            name = "Qwen3.8 27B QUASAR · 262K";
             limit = {
-              context = 100000;
-              output = 100000;
+              context = 262144;
+              output = 262144;
             };
             modalities = {
               input = ["text" "image"];
