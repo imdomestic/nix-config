@@ -1189,6 +1189,22 @@ in {
 
   services.headscale = {
     enable = true;
+    # nixpkgs 26.05 still has 0.28.0; pin upstream 0.29.4 for the incremental-map fix.
+    package = pkgs.headscale.overrideAttrs (old: {
+      version = "0.29.4";
+      src = pkgs.fetchFromGitHub {
+        owner = "juanfont";
+        repo = "headscale";
+        tag = "v0.29.4";
+        hash = "sha256-oBl8oQuZ8LUhK6FsGZkTXCJtwqmegmUDreeIILH4wRg=";
+      };
+      vendorHash = "sha256-fzKyXNMw/2yAEhaTZu0n1NXatPO2IP0HFA2ey1vZIYM=";
+      postPatch = ''
+        substituteInPlace hscontrol/types/version.go \
+          --replace-fail 'Version:   "dev"' 'Version: "0.29.4"' \
+          --replace-fail 'Commit:    "unknown"' 'Commit: "v0.29.4"'
+      '';
+    });
     address = "127.0.0.1";
     port = 8080;
     settings = {
