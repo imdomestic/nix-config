@@ -19,6 +19,15 @@
     "typescriptreact"
   ];
 
+  # 本机练习库(home/modules/postgresql),postgres_lsp 和 dadbod 都从这里取,
+  # 两边连的不是同一个库时,dadbod 里跑得通的语句 LSP 会报"表不存在"。
+  # 用户名和库名跟裸 `psql` 一样取当前用户。
+  localPg = {
+    host = "127.0.0.1";
+    user = config.home.username;
+    database = config.home.username;
+  };
+
   # LSP 的唯一真相:下面的 lsp.servers 和 VimEnter 守卫的白名单都从这里派生,
   # 不再是两份要手工同步的列表。
   #
@@ -153,12 +162,11 @@
       root_markers = ["postgres-language-server.jsonc" ".git"];
       workspace_required = false;
       # 不显式给 host 它根本不连库(没有类型检查和表名补全),默认值不算数。
-      # 用户名和库名跟裸 `psql` 一样取当前用户。这里会盖掉项目 jsonc 的同名字段;
-      # PG* 环境变量优先级更高,但只在 daemon 启动时读一次。
+      # 这里会盖掉项目 jsonc 的同名字段;PG* 环境变量优先级更高,但只在
+      # daemon 启动时读一次。
       settings.db = {
-        host = "127.0.0.1";
-        username = config.home.username;
-        database = config.home.username;
+        inherit (localPg) host database;
+        username = localPg.user;
       };
     };
 
@@ -258,6 +266,14 @@ in {
           "*" = mkRaw ''require("vim.ui.clipboard.osc52").paste("*")'';
         };
       };
+
+      # vim-dadbod-ui 只读全局变量,nixvim 的模块没有 settings。
+      dbs = lib.mkIf dev {
+        local = "postgresql://${localPg.user}@${localPg.host}/${localPg.database}";
+      };
+      db_ui_use_nerd_fonts = lib.mkIf dev 1;
+      # 表下面的 List / Columns 等模板点开就执行,不用再 :w 一次。
+      db_ui_auto_execute_table_helpers = lib.mkIf dev 1;
     };
 
     opts = {
@@ -506,380 +522,389 @@ in {
         }
       ];
 
-    keymaps = [
-      {
-        mode = "n";
-        key = "<Esc>";
-        action = "<Cmd>nohlsearch<CR>";
-      }
-      {
-        mode = ["n" "o"];
-        key = "[b";
-        action = "<Cmd>bprev<CR>";
-      }
-      {
-        mode = ["n" "o"];
-        key = "]b";
-        action = "<Cmd>bnext<CR>";
-      }
-      {
-        mode = "n";
-        key = "<leader>c";
-        action = mkRaw ''
-          function()
-            require("snacks").bufdelete()
-          end
-        '';
-        options.desc = "Delete buffer";
-      }
-      {
-        mode = "n";
-        key = "<leader>/";
-        action = "gcc";
-        options = {
-          remap = true;
-          desc = "Toggle comment line";
-        };
-      }
-      {
-        mode = "v";
-        key = "<leader>/";
-        action = "gc";
-        options = {
-          remap = true;
-          desc = "Toggle comment";
-        };
-      }
-      {
-        mode = "n";
-        key = "<leader>q";
-        action = "<Cmd>q<CR>";
-      }
-      {
-        mode = "n";
-        key = "<leader>Q";
-        action = "<Cmd>qa!<CR>";
-      }
-      {
-        mode = "v";
-        key = "J";
-        action = "5j";
-      }
-      {
-        mode = "n";
-        key = "<leader>w";
-        action = "<Cmd>w<CR>";
-      }
-      {
-        # o 也要:operator-pending 序列(`3kj`)里同样是 gj/gk。
-        # 带 count 时退回原生 j/k:`10j` 要的是 10 个缓冲区行,不是屏幕行。
-        mode = ["n" "x" "o"];
-        key = "j";
-        action = "v:count == 0 ? 'gj' : 'j'";
-        options.expr = true;
-      }
-      {
-        mode = ["n" "x" "o"];
-        key = "k";
-        action = "v:count == 0 ? 'gk' : 'k'";
-        options.expr = true;
-      }
-      {
-        mode = "n";
-        key = ";";
-        action = ":";
-      }
-      {
-        mode = "n";
-        key = "<M-m>";
-        action = mkRaw ''
-          function()
-            require("snacks").terminal()
-          end
-        '';
-        options.desc = "Toggle terminal";
-      }
-      {
-        mode = "t";
-        key = "<M-m>";
-        action = mkRaw ''
-          function()
-            require("snacks").terminal()
-          end
-        '';
-        options.desc = "Toggle terminal";
-      }
-      {
-        mode = "n";
-        key = "<leader>th";
-        action = mkRaw ''
-          function()
-            require("snacks").terminal()
-          end
-        '';
-        options.desc = "Toggle terminal";
-      }
-      {
-        mode = "t";
-        key = "<Esc><Esc>";
-        action = "<C-\\><C-n>";
-        options.desc = "Exit terminal mode";
-      }
-      {
-        mode = "n";
-        key = "<C-h>";
-        action = "<C-w><C-h>";
-        options.desc = "Move focus to the left window";
-      }
-      {
-        mode = "n";
-        key = "<C-l>";
-        action = "<C-w><C-l>";
-        options.desc = "Move focus to the right window";
-      }
-      {
-        mode = "n";
-        key = "<C-j>";
-        action = "<C-w><C-j>";
-        options.desc = "Move focus to the lower window";
-      }
-      {
-        mode = "n";
-        key = "<C-k>";
-        action = "<C-w><C-k>";
-        options.desc = "Move focus to the upper window";
-      }
-      {
-        mode = "n";
-        key = "<leader>ui";
-        action = mkRaw ''
-          function()
-            local ok, input = pcall(vim.fn.input, "Set indent value (>0 expandtab, <=0 noexpandtab): ")
-            if not ok then
-              return
+    keymaps =
+      [
+        {
+          mode = "n";
+          key = "<Esc>";
+          action = "<Cmd>nohlsearch<CR>";
+        }
+        {
+          mode = ["n" "o"];
+          key = "[b";
+          action = "<Cmd>bprev<CR>";
+        }
+        {
+          mode = ["n" "o"];
+          key = "]b";
+          action = "<Cmd>bnext<CR>";
+        }
+        {
+          mode = "n";
+          key = "<leader>c";
+          action = mkRaw ''
+            function()
+              require("snacks").bufdelete()
             end
-
-            local indent = tonumber(input)
-            if not indent or indent == 0 then
-              return
+          '';
+          options.desc = "Delete buffer";
+        }
+        {
+          mode = "n";
+          key = "<leader>/";
+          action = "gcc";
+          options = {
+            remap = true;
+            desc = "Toggle comment line";
+          };
+        }
+        {
+          mode = "v";
+          key = "<leader>/";
+          action = "gc";
+          options = {
+            remap = true;
+            desc = "Toggle comment";
+          };
+        }
+        {
+          mode = "n";
+          key = "<leader>q";
+          action = "<Cmd>q<CR>";
+        }
+        {
+          mode = "n";
+          key = "<leader>Q";
+          action = "<Cmd>qa!<CR>";
+        }
+        {
+          mode = "v";
+          key = "J";
+          action = "5j";
+        }
+        {
+          mode = "n";
+          key = "<leader>w";
+          action = "<Cmd>w<CR>";
+        }
+        {
+          # o 也要:operator-pending 序列(`3kj`)里同样是 gj/gk。
+          # 带 count 时退回原生 j/k:`10j` 要的是 10 个缓冲区行,不是屏幕行。
+          mode = ["n" "x" "o"];
+          key = "j";
+          action = "v:count == 0 ? 'gj' : 'j'";
+          options.expr = true;
+        }
+        {
+          mode = ["n" "x" "o"];
+          key = "k";
+          action = "v:count == 0 ? 'gk' : 'k'";
+          options.expr = true;
+        }
+        {
+          mode = "n";
+          key = ";";
+          action = ":";
+        }
+        {
+          mode = "n";
+          key = "<M-m>";
+          action = mkRaw ''
+            function()
+              require("snacks").terminal()
             end
+          '';
+          options.desc = "Toggle terminal";
+        }
+        {
+          mode = "t";
+          key = "<M-m>";
+          action = mkRaw ''
+            function()
+              require("snacks").terminal()
+            end
+          '';
+          options.desc = "Toggle terminal";
+        }
+        {
+          mode = "n";
+          key = "<leader>th";
+          action = mkRaw ''
+            function()
+              require("snacks").terminal()
+            end
+          '';
+          options.desc = "Toggle terminal";
+        }
+        {
+          mode = "t";
+          key = "<Esc><Esc>";
+          action = "<C-\\><C-n>";
+          options.desc = "Exit terminal mode";
+        }
+        {
+          mode = "n";
+          key = "<C-h>";
+          action = "<C-w><C-h>";
+          options.desc = "Move focus to the left window";
+        }
+        {
+          mode = "n";
+          key = "<C-l>";
+          action = "<C-w><C-l>";
+          options.desc = "Move focus to the right window";
+        }
+        {
+          mode = "n";
+          key = "<C-j>";
+          action = "<C-w><C-j>";
+          options.desc = "Move focus to the lower window";
+        }
+        {
+          mode = "n";
+          key = "<C-k>";
+          action = "<C-w><C-k>";
+          options.desc = "Move focus to the upper window";
+        }
+        {
+          mode = "n";
+          key = "<leader>ui";
+          action = mkRaw ''
+            function()
+              local ok, input = pcall(vim.fn.input, "Set indent value (>0 expandtab, <=0 noexpandtab): ")
+              if not ok then
+                return
+              end
 
-            vim.bo.expandtab = indent > 0
-            indent = math.abs(indent)
-            vim.bo.tabstop = indent
-            vim.bo.softtabstop = indent
-            vim.bo.shiftwidth = indent
-          end
-        '';
-      }
-      {
-        mode = "n";
-        key = "<leader>f<space>";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.smart()
-          end
-        '';
-        options.desc = "Smart find files";
-      }
-      {
-        mode = "n";
-        key = "<leader>fb";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.buffers()
-          end
-        '';
-        options.desc = "Buffers";
-      }
-      {
-        mode = "n";
-        key = "<leader>fr";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.recent()
-          end
-        '';
-        options.desc = "Recent files";
-      }
-      {
-        mode = "n";
-        key = "<leader>ff";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.files()
-          end
-        '';
-        options.desc = "Find files";
-      }
-      {
-        mode = "n";
-        key = "<leader>fw";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.grep()
-          end
-        '';
-        options.desc = "Grep files";
-      }
-      {
-        mode = "n";
-        key = "<leader>fi";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.icons()
-          end
-        '';
-        options.desc = "Icons";
-      }
-      {
-        mode = "n";
-        key = "<leader>fk";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.keymaps()
-          end
-        '';
-        options.desc = "Keymaps";
-      }
-      {
-        mode = "n";
-        key = "<leader>fu";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.undo()
-          end
-        '';
-        options.desc = "Undo history";
-      }
-      {
-        mode = "n";
-        key = "<leader>fs";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.lsp_workspace_symbols()
-          end
-        '';
-        options.desc = "LSP symbols";
-      }
-      {
-        mode = "n";
-        key = "<leader>g";
-        action = mkRaw ''
-          function()
-            require("snacks").lazygit()
-          end
-        '';
-        options.desc = "Lazygit";
-      }
-      {
-        mode = "n";
-        key = "<leader>e";
-        action = mkRaw ''
-          function()
-            require("snacks").explorer()
-          end
-        '';
-        options.desc = "Explorer";
-      }
-      {
-        mode = "n";
-        key = "<leader>lD";
-        action = mkRaw ''
-          function()
-            require("snacks").picker.diagnostics()
-          end
-        '';
-        options.desc = "Diagnostics";
-      }
+              local indent = tonumber(input)
+              if not indent or indent == 0 then
+                return
+              end
 
-      # treesitter-textobjects 的 select/move 绑定。它们必须待在这个顶层
-      # keymaps 列表里,不能挂在 plugins.treesitter-textobjects 旁边 ——
-      # 见 docs/incidents.md#nixvim-plugins-keymaps-dropped。
-      # select
-      {
-        mode = ["x" "o"];
-        key = "af";
-        action = mkRaw ''
-          function()
-            require("nvim-treesitter-textobjects.select")
-              .select_textobject("@function.outer", "textobjects")
-          end
-        '';
-      }
-      {
-        mode = ["x" "o"];
-        key = "if";
-        action = mkRaw ''
-          function()
-            require("nvim-treesitter-textobjects.select")
-              .select_textobject("@function.inner", "textobjects")
-          end
-        '';
-      }
-      {
-        mode = ["x" "o"];
-        key = "ac";
-        action = mkRaw ''
-          function()
-            require("nvim-treesitter-textobjects.select")
-              .select_textobject("@class.outer", "textobjects")
-          end
-        '';
-      }
-      {
-        mode = ["x" "o"];
-        key = "ic";
-        action = mkRaw ''
-          function()
-            require("nvim-treesitter-textobjects.select")
-              .select_textobject("@class.inner", "textobjects")
-          end
-        '';
-      }
+              vim.bo.expandtab = indent > 0
+              indent = math.abs(indent)
+              vim.bo.tabstop = indent
+              vim.bo.softtabstop = indent
+              vim.bo.shiftwidth = indent
+            end
+          '';
+        }
+        {
+          mode = "n";
+          key = "<leader>f<space>";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.smart()
+            end
+          '';
+          options.desc = "Smart find files";
+        }
+        {
+          mode = "n";
+          key = "<leader>fb";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.buffers()
+            end
+          '';
+          options.desc = "Buffers";
+        }
+        {
+          mode = "n";
+          key = "<leader>fr";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.recent()
+            end
+          '';
+          options.desc = "Recent files";
+        }
+        {
+          mode = "n";
+          key = "<leader>ff";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.files()
+            end
+          '';
+          options.desc = "Find files";
+        }
+        {
+          mode = "n";
+          key = "<leader>fw";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.grep()
+            end
+          '';
+          options.desc = "Grep files";
+        }
+        {
+          mode = "n";
+          key = "<leader>fi";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.icons()
+            end
+          '';
+          options.desc = "Icons";
+        }
+        {
+          mode = "n";
+          key = "<leader>fk";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.keymaps()
+            end
+          '';
+          options.desc = "Keymaps";
+        }
+        {
+          mode = "n";
+          key = "<leader>fu";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.undo()
+            end
+          '';
+          options.desc = "Undo history";
+        }
+        {
+          mode = "n";
+          key = "<leader>fs";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.lsp_workspace_symbols()
+            end
+          '';
+          options.desc = "LSP symbols";
+        }
+        {
+          mode = "n";
+          key = "<leader>g";
+          action = mkRaw ''
+            function()
+              require("snacks").lazygit()
+            end
+          '';
+          options.desc = "Lazygit";
+        }
+        {
+          mode = "n";
+          key = "<leader>e";
+          action = mkRaw ''
+            function()
+              require("snacks").explorer()
+            end
+          '';
+          options.desc = "Explorer";
+        }
+        {
+          mode = "n";
+          key = "<leader>lD";
+          action = mkRaw ''
+            function()
+              require("snacks").picker.diagnostics()
+            end
+          '';
+          options.desc = "Diagnostics";
+        }
 
-      # move
-      {
-        mode = ["n" "x" "o"];
-        key = "]m";
-        action = mkRaw ''
-          function()
-            require("nvim-treesitter-textobjects.move")
-              .goto_next_start("@function.outer", "textobjects")
-          end
-        '';
-      }
-      {
-        mode = ["n" "x" "o"];
-        key = "[m";
-        action = mkRaw ''
-          function()
-            require("nvim-treesitter-textobjects.move")
-              .goto_previous_start("@function.outer", "textobjects")
-          end
-        '';
-      }
-      {
-        mode = ["n" "x" "o"];
-        key = "]]";
-        action = mkRaw ''
-          function()
-            require("nvim-treesitter-textobjects.move")
-              .goto_next_start("@class.outer", "textobjects")
-          end
-        '';
-      }
-      {
-        mode = ["n" "x" "o"];
-        key = "[[";
-        action = mkRaw ''
-          function()
-            require("nvim-treesitter-textobjects.move")
-              .goto_previous_start("@class.outer", "textobjects")
-          end
-        '';
-      }
-    ];
+        # treesitter-textobjects 的 select/move 绑定。它们必须待在这个顶层
+        # keymaps 列表里,不能挂在 plugins.treesitter-textobjects 旁边 ——
+        # 见 docs/incidents.md#nixvim-plugins-keymaps-dropped。
+        # select
+        {
+          mode = ["x" "o"];
+          key = "af";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.select")
+                .select_textobject("@function.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["x" "o"];
+          key = "if";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.select")
+                .select_textobject("@function.inner", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["x" "o"];
+          key = "ac";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.select")
+                .select_textobject("@class.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["x" "o"];
+          key = "ic";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.select")
+                .select_textobject("@class.inner", "textobjects")
+            end
+          '';
+        }
+
+        # move
+        {
+          mode = ["n" "x" "o"];
+          key = "]m";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.move")
+                .goto_next_start("@function.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["n" "x" "o"];
+          key = "[m";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.move")
+                .goto_previous_start("@function.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["n" "x" "o"];
+          key = "]]";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.move")
+                .goto_next_start("@class.outer", "textobjects")
+            end
+          '';
+        }
+        {
+          mode = ["n" "x" "o"];
+          key = "[[";
+          action = mkRaw ''
+            function()
+              require("nvim-treesitter-textobjects.move")
+                .goto_previous_start("@class.outer", "textobjects")
+            end
+          '';
+        }
+      ]
+      ++ lib.optionals dev [
+        {
+          mode = "n";
+          key = "<leader>D";
+          action = "<Cmd>DBUIToggle<CR>";
+          options.desc = "Database UI";
+        }
+      ];
 
     # Language servers come from the host/profile/devshell, never Nixvim.
     dependencies = {
@@ -1436,6 +1461,11 @@ in {
       };
 
       cornelis.enable = dev;
+
+      # 执行 SQL、看结果、浏览表。补全交给 postgres_lsp,所以不装
+      # vim-dadbod-completion —— 两边一起开,blink 里每个表名会出现两次。
+      vim-dadbod.enable = dev;
+      vim-dadbod-ui.enable = dev;
 
       lean = {
         enable = dev;
