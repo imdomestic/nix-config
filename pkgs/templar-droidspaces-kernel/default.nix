@@ -31,6 +31,8 @@ stdenv.mkDerivation {
   patches = [
     ./droidspaces.patch
     ./gunyah-integration.patch
+    # HyperOS compatibility and validation: docs/incidents.md#marble-epoll-pwait2.
+    ./epoll-pwait2.patch
   ];
 
   nativeBuildInputs = [
@@ -75,6 +77,8 @@ stdenv.mkDerivation {
     export ARCH=arm64
     export LLVM=1
     export LLVM_IAS=1
+    # LLVM's integrated assembler needs an explicit target on x86_64 builders.
+    export CROSS_COMPILE=aarch64-linux-gnu-
     export KBUILD_BUILD_USER=nix
     export KBUILD_BUILD_HOST=nix
     export KBUILD_BUILD_TIMESTAMP="@1772928000"
@@ -125,6 +129,9 @@ stdenv.mkDerivation {
       grep -qx "$option=m" "$buildDir/.config"
     done
     test -s "$buildDir/arch/arm64/boot/Image"
+    for symbol in __arm64_sys_epoll_pwait2 __arm64_compat_sys_epoll_pwait2; do
+      grep -Eq " [Tt] $symbol$" "$buildDir/System.map"
+    done
     for module in gunyah gunyah_vcpu gunyah_irqfd gunyah_ioeventfd; do
       test -s "$buildDir/drivers/virt/gunyah/$module.ko"
     done
@@ -138,6 +145,8 @@ stdenv.mkDerivation {
     buildDir=/tmp/templar-kernel-build
     install -Dm444 "$buildDir/arch/arm64/boot/Image" $out/Image
     install -Dm444 "$buildDir/.config" $out/config
+    install -Dm444 "$buildDir/System.map" $out/System.map
+    install -Dm444 "$buildDir/vmlinux.symvers" $out/Module.symvers
     for module in gunyah gunyah_vcpu gunyah_irqfd gunyah_ioeventfd; do
       install -Dm444 "$buildDir/drivers/virt/gunyah/$module.ko" \
         "$out/modules/$module.ko"
@@ -148,6 +157,7 @@ stdenv.mkDerivation {
     source-revision=012918fa5fda0f62c4db9660da425acf3c746486
     compiler=$(${llvmPackages.clang}/bin/clang --version | head -n1)
     kernel-release=$(make -s O="$buildDir" kernelrelease)
+    epoll-pwait2=upstream-backport-arm64-and-compat
     EOF
 
     runHook postInstall

@@ -9,6 +9,46 @@
 
 ---
 
+## 2026-09-25 · marble 回移 epoll_pwait2，b650 构建与双 ABI 测试 {#marble-epoll-pwait2}
+
+HyperOS 从 4.0.0.26 升至 4.0.0.31 后，旧 Templar 5.10.252 在解锁后反复
+出现 SystemUI/system_server 的 `RenderThread Looper POLL_ERROR!`。
+实际 ROM 库的反汇编显示有限超时路径调用 `epoll_pwait2`；独立 syscall 441
+探针在自编译内核返回 ENOSYS，在包内 5.10.237 内核成功。换包内内核后解锁
+正常，但其 USER_NS/PID_NS 未开启。没有抓到崩溃线程自身的 syscall errno，
+不要把独立探针误写为崩溃现场 strace。
+
+误导点是仅凭补丁版本号认为 5.10.252 比 5.10.237 功能更全，以及最初只验证
+锁屏/SSH/容器就误判系统稳定；厂商回移接口并不随基础版本号排序。
+
+`pkgs/templar-droidspaces-kernel/epoll-pwait2.patch` 基于 Linux 上游
+`7cdf7c20e971`、`58169a52ebc9`、`b0a0c2615f6f`、`450f68e2425e`，
+保留 Templar 已有 epoll 锁/唤醒修复，补齐 ARM64 native 和 AArch32 compat，
+保持纳秒精度及信号掩码语义。已有 syscall 上限 449 不回退到上游旧值 442。
+容器/Gunyah 配置和 ThinLTO 保持不变。
+
+用户指定 b650 构建，不使用本机 Determinate builder。新增 x86_64-linux
+包入口，LLVM 显式设置 ARM64 target，构建产物额外保留 System.map 和
+Module.symvers，并检查两个 epoll_pwait2 入口符号。执行命令（在 b650）：
+
+```sh
+nix build .#packages.x86_64-linux.templar-droidspaces-kernel \
+  --max-jobs 1 --cores 12 --builders '' -L
+```
+
+测试定义在包内 `tests.nix`，用 nixpkgs 的静态链接交叉工具链生成 ARM64 与
+ARM32 测试程序；`run-epoll-tests.sh` 用 QEMU TCG 启动实际 Image，不是用
+宿主内核或 qemu-user 代替。独立稳定版 nixpkgs 构建（Clang 21.1.8）已通过
+66 项检查：两个 ABI 各 33 项，覆盖超时/非法参数/信号中断及恢复/旧接口回归。
+正式 flake 包入口使用主机自己的 pkgs，也已在 b650 编译并再次通过全部 66 项
+检查（编译阶段 2 分 47 秒）。最终输出
+`/nix/store/kvqp290ljsxfwc2bak3aqq8mqhhh05vq-templar-droidspaces-kernel-5.10.252-unstable-2026-03-08`，
+Image SHA256 为 `abd6dab604c115f5c80f4037d22fe14f13e158a9af1f760ae4d50496851f95f4`。
+两个 flake 架构入口均通过求值；本轮只编译 x86_64 主机生成的 ARM64 目标。
+手机尚未刷入；QEMU 通过不等于高通 vendor 模块、HyperOS 图形、KernelSU
+或功耗已经验收。构建有非致命的 Nix compiler-wrapper 跨 target 提示及模块
+patchelf 提示，未把这些警告当作运行时问题，也未为消除它们扩大补丁范围。
+
 ## 2026-09-24 · QUASAR QAT NVFP4 成为唯一模型，保留视觉和 262K {#b650-quasar-nvfp4-262k}
 
 先替换 `qwen3.8-27b-fast` 做对照；功能和容量验收后，按用户要求移除旧 long
