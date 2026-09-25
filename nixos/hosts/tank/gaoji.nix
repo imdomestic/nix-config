@@ -26,7 +26,7 @@ in {
     };
     sandbox = {
       enable = true;
-      backend = "podman";
+      backend = "vm";
       vmImage = pkgs.fetchurl {
         url = "https://cloud.debian.org/images/cloud/trixie/20260525-2489/debian-13-genericcloud-amd64-20260525-2489.qcow2";
         hash = "sha256-YpoEI+UD4rkvuKVpHTMguTphOd7IYYkPhGCPp2tTixA=";
