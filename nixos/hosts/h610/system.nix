@@ -1049,7 +1049,7 @@ in {
     owner = "kenneth";
     group = "users";
     mode = "0400";
-    restartUnits = lib.optionals config.systemd.services.gaoji.enable [
+    restartUnits = lib.optionals config.services.gaoji.runBot [
       "gaoji.service"
     ];
     content = ''
@@ -1124,22 +1124,22 @@ in {
       AI_GROUP_MODEL_PROFILES_JSON='{"201644592":"gpt-5.6-sol"}'
     '';
   };
-  systemd.services.gaoji.serviceConfig.EnvironmentFile = lib.mkAfter [
-    config.sops.templates."qq-deepseek-bot-postgres.env".path
-  ];
-  systemd.services.gaoji.serviceConfig.ReadWritePaths = [
-    "/mnt/kennethbot-archive"
-  ];
-  systemd.services.gaoji.after = lib.mkAfter [
-    "tailscaled.service"
-    "ollama.service"
-    "qq-bot-postgres-bootstrap.service"
-  ];
-  systemd.services.gaoji.wants = lib.mkAfter [
-    "tailscaled.service"
-    "ollama.service"
-    "qq-bot-postgres-node.service"
-  ];
+  systemd.services.gaoji = lib.mkIf config.services.gaoji.runBot {
+    serviceConfig.EnvironmentFile = lib.mkAfter [
+      config.sops.templates."qq-deepseek-bot-postgres.env".path
+    ];
+    serviceConfig.ReadWritePaths = ["/mnt/kennethbot-archive"];
+    after = lib.mkAfter [
+      "tailscaled.service"
+      "ollama.service"
+      "qq-bot-postgres-bootstrap.service"
+    ];
+    wants = lib.mkAfter [
+      "tailscaled.service"
+      "ollama.service"
+      "qq-bot-postgres-node.service"
+    ];
+  };
 
   fileSystems."/mnt/kennethbot-archive" = {
     device = "tank.inner.imdomestic.com:/data/services/kennethbot-archive";

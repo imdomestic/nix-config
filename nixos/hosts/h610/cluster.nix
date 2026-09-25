@@ -45,25 +45,25 @@ in {
         sopsFile = ../../../secrets/gaoji/control.yaml;
         key = "control_token";
         mode = "0400";
-        restartUnits = ["gaoji-cluster-control.service" "gaoji.service"];
+        restartUnits = ["gaoji-cluster-control.service"] ++ lib.optional config.services.gaoji.runBot "gaoji.service";
       };
       "gaoji/authorization_key" = {
         sopsFile = ../../../secrets/gaoji/account-auth.yaml;
         key = "authorization_key";
         mode = "0400";
-        restartUnits = ["gaoji.service"];
+        restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service";
       };
       "gaoji/onebot_access_token" = {
         sopsFile = ../../../secrets/gaoji/account-auth.yaml;
         key = "onebot_access_token";
         mode = "0400";
-        restartUnits = ["gaoji.service" "gaoji-napcat.service"];
+        restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service" ++ ["gaoji-napcat.service"];
       };
       "gaoji/onebot_secret" = {
         sopsFile = ../../../secrets/gaoji/account-auth.yaml;
         key = "onebot_secret";
         mode = "0400";
-        restartUnits = ["gaoji.service"];
+        restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service";
       };
       "kennethbot/worker_token" = {
         sopsFile = ../../../secrets/gaoji/worker-h610.yaml;
