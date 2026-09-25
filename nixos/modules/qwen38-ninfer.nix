@@ -115,7 +115,7 @@ in {
     image = lib.mkOption {
       type = lib.types.str;
       # Artifact pins and measured residency: docs/incidents.md#b650-quasar-nvfp4-262k.
-      default = "localhost/ninfer:qwen38-quasar-bace20dc";
+      default = "localhost/ninfer:qwen38-quasar-bace20dc-vision48k";
       description = "NInfer v3 image for QUASAR; built by scripts/build-qwen38-quasar.sh.";
     };
     stateDirectory = lib.mkOption {
@@ -132,7 +132,7 @@ in {
     };
     imageArchive = lib.mkOption {
       type = lib.types.str;
-      default = "${cfg.stateDirectory}/ninfer-quasar-bace20dc.tar";
+      default = "${cfg.stateDirectory}/ninfer-quasar-bace20dc-vision48k.tar";
       description = "OCI archive imported on demand when the configured image is absent.";
     };
     gatewayPort = lib.mkOption {

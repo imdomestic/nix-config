@@ -9,8 +9,9 @@ fi
 build_dir="$1"
 engine="${CONTAINER_ENGINE:-podman}"
 revision="bace20dc70249eed6402b66d4852c6c3f9612905"
-image="localhost/ninfer:qwen38-quasar-bace20dc"
-jobs="${NINFER_BUILD_JOBS:-2}"
+image="localhost/ninfer:qwen38-quasar-bace20dc-vision48k"
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+jobs="${NINFER_BUILD_JOBS:-$(getconf _NPROCESSORS_ONLN)}"
 memory="${NINFER_BUILD_MEMORY:-8g}"
 
 if [[ -e "$build_dir" || -L "$build_dir" ]]; then
@@ -24,7 +25,9 @@ fi
 
 git clone --filter=blob:none --no-checkout https://github.com/Neroued/ninfer.git "$build_dir"
 git -C "$build_dir" checkout --detach "$revision"
-# Upstream's bare --parallel bypasses our resource limit on the serving host.
+# Keep single-item workspace unchanged: docs/incidents.md#b650-vision-total-48k.
+git -C "$build_dir" apply "$script_dir/patches/qwen38-ninfer-vision48k.patch"
+# Honor an explicit job override; otherwise use every available CPU thread.
 sed -i "s/--parallel --target/--parallel $jobs --target/" "$build_dir/Dockerfile"
 "$engine" build --network=host --memory="$memory" --memory-swap="$memory" \
   --tag "$image" "$build_dir"
