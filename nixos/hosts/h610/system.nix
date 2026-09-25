@@ -12,6 +12,7 @@
   # 跟上,不会重演 ci.yml 那种"名单漂了三台没人发现"。
   lanRoutes = lib.unique (lib.concatMap (h: h.lanRoutes or []) (lib.attrValues (import ../../hosts {inherit inputs;})));
   matrixUpstream = "http://matrix-tailnet";
+  gaojiBotHost = if config.services.gaoji.runBot then "172.17.0.1" else "100.64.0.4";
   mkCliProxyProfile = model: aliases: {
     provider = "cliproxy";
     protocol = "openai-chat";
@@ -884,6 +885,7 @@ in {
       containerName = "napcat-chat-bot";
       dataDirectory = "/var/lib/napcat-chat-bot";
       account = "3580515978";
+      reverseWebsocketUrl = "ws://${gaojiBotHost}:18080/onebot/v11/ws";
       reverseWebsocketTokenFile = config.sops.secrets."gaoji/onebot_access_token".path;
       webuiPort = 6100;
       healthCheck = {
@@ -912,8 +914,8 @@ in {
       scrape_interval = "15s";
       static_configs = [
         {
-          targets = ["172.17.0.1:18080"];
-          labels.instance = "h610";
+          targets = ["${gaojiBotHost}:18080"];
+          labels.instance = if config.services.gaoji.runBot then "h610" else "tank";
         }
       ];
     }
@@ -1468,10 +1470,10 @@ in {
       }
     ];
     locations."/" = {
-      proxyPass = "http://172.17.0.1:18080";
+      proxyPass = "http://${gaojiBotHost}:18080";
       proxyWebsockets = true;
       extraConfig = ''
-        proxy_bind 127.0.0.1;
+        ${lib.optionalString config.services.gaoji.runBot "proxy_bind 127.0.0.1;"}
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
