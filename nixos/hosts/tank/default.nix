@@ -26,11 +26,13 @@ in {
 
   modules = [
     ./system.nix
+    ./gaoji.nix
     ./hardware-configuration.nix
     ../../modules/gaoji-worker.nix
   ];
 
   externalModules = [
+    inputs.qq-bot.nixosModules.gaoji
     inputs.nix-minecraft.nixosModules.minecraft-servers
     inputs.nix-index-database.nixosModules.default
   ];
