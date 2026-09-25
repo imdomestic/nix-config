@@ -2,9 +2,9 @@
   cfg = config.services.gaoji;
   runtimeDir = "/home/kenneth/services/gaoji";
 in {
-  # Staged for a single-active cutover. Never enable this while h610's bot is running.
+  # The h610 host keeps the sole QQ transport; the bot process runs here.
   services.gaoji = {
-    enable = false;
+    enable = true;
     user = "kenneth";
     group = "users";
     stateDirectory = "qq-deepseek-bot";
