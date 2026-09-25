@@ -835,6 +835,7 @@ in {
 
   services.gaoji = {
     enable = true;
+    runBot = false;
     # Keep existing data during the service rename; see docs/decisions.md#gaoji-rename.
     stateDirectory = "qq-deepseek-bot";
     cacheDirectory = "qq-deepseek-bot";
