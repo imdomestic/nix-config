@@ -1012,12 +1012,12 @@ in {
     }
   ];
 
-  # The monitor and preferred writable data node live on h610. Tank joins the
-  # same formation as the lower-priority hot standby. Keep the h610 footprint
-  # bounded: its root filesystem has far less room than Tank.
+  # The monitor remains on h610; tank is the preferred writable data node.
+  # h610 retains a bounded hot replica for failover.
   services.qq-bot-postgres-ha = {
     enable = true;
-    preferredNodeName = "h610";
+    preferredNodeName = "tank";
+    access.applicationClientAddresses = ["100.64.0.3/32" "100.64.0.4/32"];
     passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
     haPasswordFile = config.sops.secrets."qq_bot/ha_password".path;
     monitor.enable = true;
@@ -1027,7 +1027,7 @@ in {
       hostname = config.my.host.tsName;
       stateDir = "/var/lib/qq-bot-postgres-node";
       dataDir = "/var/lib/qq-bot-postgres-node/data";
-      candidatePriority = 100;
+      candidatePriority = 50;
       walKeepSize = "1GB";
       maxSlotWalKeepSize = "16GB";
       maxWalSize = "4GB";

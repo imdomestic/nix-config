@@ -110,8 +110,11 @@
       '')
       cfg.access.peerAddresses}
 
-    # The bot always originates on h610 and must use TLS plus SCRAM.
-    hostssl "qq_bot" "qq_bot" ${cfg.access.applicationClientAddress} scram-sha-256
+    # Only explicitly listed bot hosts may connect, using TLS and SCRAM.
+    ${lib.concatMapStringsSep "\n" (address: ''
+        hostssl "qq_bot" "qq_bot" ${address} scram-sha-256
+      '')
+      cfg.access.applicationClientAddresses}
   '';
   nodePostgresConfig = pkgs.writeText "qq-bot-postgres-node-local.conf" ''
     password_encryption = 'scram-sha-256'
@@ -1114,10 +1117,10 @@ in {
     # Connection names can have service aliases; HBA must not depend on PTR/NSS order.
     # See docs/incidents.md#qq-bot-postgres-hba-reverse-name.
     access = {
-      applicationClientAddress = mkOption {
-        type = exactIPv4;
-        default = "100.64.0.3/32";
-        description = "Exact Tailscale IPv4 client allowed to authenticate as qq_bot over TLS.";
+      applicationClientAddresses = mkOption {
+        type = types.listOf exactIPv4;
+        default = ["100.64.0.3/32"];
+        description = "Exact Tailscale IPv4 clients allowed to authenticate as qq_bot over TLS.";
       };
       monitorAddress = mkOption {
         type = exactIPv4;
