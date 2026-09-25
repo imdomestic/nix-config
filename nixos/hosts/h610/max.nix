@@ -14,7 +14,8 @@
       "token" = config.sops.placeholder."max/admin-token";
     };
     "search" = {
-      "tavily_api_key" = config.sops.placeholder."max/search-tavily-api-key";
+      "enabled" = true;
+      "exa_api_key" = config.sops.placeholder."max/search-exa-api-key";
       "max_results" = 5;
       "timeout_seconds" = 30;
     };
@@ -50,6 +51,8 @@
           "context_window" = 262144;
           "context_budget" = 131072;
           "prompt_cache_breakpoints" = true;
+          "vision_tokens" = 49152;
+          "vision_item_tokens" = 16384;
           "effort" = "xhigh";
         };
         "gpt-5.6-terra" = {
@@ -202,7 +205,7 @@
     };
     "log_color" = "always";
   };
-  secretNames = ["admin-token" "search-tavily-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token"];
+  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token"];
 in {
   sops.secrets =
     lib.genAttrs (map (name: "max/${name}") secretNames) (name: {
@@ -233,6 +236,10 @@ in {
       authKeyFile = config.sops.secrets."max/ops-preauthkey".path;
     };
     configFile = config.sops.templates."max-config.json".path;
+    # Arc A380: decode, frame dropping and scaling for video renditions.
+    videoAcceleration.device = "/dev/dri/renderD128";
+    # And for tools inside command sandboxes (ffmpeg -hwaccel vaapi, ...).
+    sandbox.renderDevice = "/dev/dri/renderD128";
     napcat = {
       enable = true;
       qq = "2107570581";
