@@ -173,9 +173,9 @@ in {
                 "262144"
                 "--kv-capacity"
                 "262144"
-                # Three active lanes share this KV pool: docs/incidents.md#b650-quasar-nvfp4-262k.
+                # Four active lanes share this KV pool: docs/incidents.md#b650-quasar-concurrency-four.
                 "--max-concurrency"
-                "3"
+                "4"
                 # A queued request waits behind a full-length prefill, and the
                 # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
                 "--max-pending-requests"
