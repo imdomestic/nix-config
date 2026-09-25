@@ -3,6 +3,47 @@
 代码里放"这行为什么这么写",这里放"那次到底怎么回事"。
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
+
+## 2026-09-25 · b650 多模态请求总预算升至 48K {#b650-vision-total-48k}
+
+用户要求先增加一条请求能容纳的图片/视频总量。保持单个媒体项目 16384
+视觉 tokens、三并发、262144 context/KV、NVFP4 和 MTP3；仅将 NInfer
+`kMaximumPromptVisionTokens` 从 32768 改为 49152，raw-patch 总量随之增长。
+一个 `video_url` 的全部采样帧仍算一个媒体项目，因此本次不会提高单个视频
+的 16K 上限。视觉工作区仍按单项上限分配，不按请求的图片张数同时扩张。
+
+补丁保存在 `scripts/patches/qwen38-ninfer-vision48k.patch`，由
+`scripts/build-qwen38-quasar.sh` 应用到原有 `bace20dc` revision。镜像改用
+`localhost/ninfer:qwen38-quasar-bace20dc-vision48k`，archive 同样加 `vision48k`
+后缀；旧镜像和 archive 保留供回退。没有改量化权重或客户端模型名称。
+
+误导点是把「单项预算」简称为「单图预算」，容易让人以为视频抽出的每帧都
+能各用 16K；另一个误区是把更多图片和更大单图视为相同的 GPU 工作区增长。
+首次选择 `/v1/responses/input_tokens` 做验收时，网关没有转发该路由；改用
+实际生产的 `/v1/chat/completions`，不能把后端支持等同于网关已暴露。
+
+升级前基线：两张 4096×4096 PNG 共 32768 视觉 tokens，HTTP 200，实际
+prompt 32787 tokens；三张共 49152 视觉 tokens 被 HTTP 400
+`media_budget_exceeded` 拒绝。验收脚本 `scripts/test-qwen38-vision-budget.py`
+对预算内生成、超预算拒绝和多图颜色顺序分别断言。
+
+新实例 `serve-1-1790316836894787` 于 14:14 HKT 就绪：启动日志确认总预算
+49152、单项 16384、C3、262144 context。视觉 encode workspace 仍为
+866648065 bytes，启动可用显存仍为 524943360 bytes（500.6 MiB）。
+三张满尺寸图片 HTTP 200，颜色顺序回答 `Red / Green / Blue` 正确；实际
+prompt 49186 tokens、prefill 16.80 s、端到端 17.06 s（合成大图容量验收，
+不是自然图片准确率或通用速度）。四张共 65536 视觉 tokens 返回预期的
+HTTP 400 `media_budget_exceeded`。
+
+六项文字/SSE/工具/图片回归通过；四秒红蓝视频仍按先红后蓝识别。60 秒、
+300 个 GPU 采样中，最低空闲显存 499 MiB、最高占用 23478 MiB；服务无
+自动重启，无失败 systemd 单元，内核日志无 OOM/Xid。17 台 NixOS 主机求值
+通过，b650 系统闭包构建并激活成功。结果存于 b650
+`/var/lib/qwen38/validation/20260925-vision48k/`。
+
+构建脚本按用户要求改为默认使用全部 CPU 线程，仍可通过
+`NINFER_BUILD_JOBS` 覆盖。收到指令时本轮 Ninja 已到 406/433；它不能热改
+并行度，因此本轮保留两路进程收尾，没有为改并行度重做已完成的编译。
 典型的是根因调查过程、当时的实测数据、试过但走不通的路。代码里只留一行指针。
 
 按时间倒序。每条给一个锚点,代码里用 `docs/incidents.md#<锚点>` 引用。
