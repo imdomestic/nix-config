@@ -74,6 +74,7 @@ in {
   systemd.services.gaoji = lib.mkIf cfg.enable {
     after = ["tailscaled.service" "qq-bot-postgres-node.service"];
     wants = ["tailscaled.service" "qq-bot-postgres-node.service"];
+    unitConfig.RequiresMountsFor = ["/data/services/gaoji" "/data/services/kennethbot-archive"];
     serviceConfig = {
       EnvironmentFile = lib.mkAfter [
         "${runtimeDir}/runtime.env"
