@@ -455,9 +455,10 @@ in {
     };
   };
 
-  systemd.tmpfiles.rules = [
-    "d /var/lib/coturn 0750 root turnserver -"
-  ];
+  systemd.tmpfiles.rules =
+    ["d /var/lib/coturn 0750 root turnserver -"]
+    ++ lib.optional (!config.services.gaoji.napcat.enable)
+    "r ${config.my.telemetry.textfileDir}/gaoji-qq.prom - - - -";
 
   services.dnsmasq.enable = false;
   services.resolved = {
@@ -878,7 +879,8 @@ in {
       timeoutSeconds = 1800;
     };
     napcat = {
-      enable = true;
+      # The sole Gaoji QQ session now lives on tank.
+      enable = false;
       backend = "native";
       nativePackage = config.services.max.napcat.package.napcat;
       # Retain the former image pin for an explicit, backed-up rollback only.
@@ -894,10 +896,10 @@ in {
         metricsFile = "${config.my.telemetry.textfileDir}/gaoji-qq.prom";
       };
       passwordLogin = {
-        enable = true;
+        enable = false;
         passwordFile = "/var/lib/gaoji-qq-login-secret/password";
         notification = {
-          enable = true;
+          enable = false;
           webuiConfigFile = "/var/lib/max/napcat/config/webui.json";
           webuiPort = config.services.max.napcat.webuiPort;
           account = config.services.max.napcat.qq;

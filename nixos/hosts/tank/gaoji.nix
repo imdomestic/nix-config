@@ -1,8 +1,8 @@
-{config, lib, pkgs, ...}: let
+{config, inputs, lib, pkgs, ...}: let
   cfg = config.services.gaoji;
   runtimeDir = "/home/kenneth/services/gaoji";
 in {
-  # The h610 host keeps the sole QQ transport; the bot process runs here.
+  # Bot, QQ transport and KVM workspaces run together on tank.
   services.gaoji = {
     enable = true;
     user = "kenneth";
@@ -42,7 +42,24 @@ in {
       maxDurationMinutes = 60;
       timeoutSeconds = 1800;
     };
-    napcat.enable = false;
+    napcat = {
+      enable = true;
+      backend = "native";
+      nativePackage = (import "${inputs.max}/nix/napcat.nix" {inherit pkgs;}).napcat;
+      dataDirectory = "/var/lib/napcat-gaoji";
+      account = "3580515978";
+      reverseWebsocketUrl = "ws://${cfg.host}:${toString cfg.port}/onebot/v11/ws";
+      reverseWebsocketTokenFile = "${runtimeDir}/onebot-token";
+      webuiPort = 6100;
+      healthCheck = {
+        enable = true;
+        metricsFile = "${config.my.telemetry.textfileDir}/gaoji-qq.prom";
+      };
+      passwordLogin = {
+        enable = true;
+        passwordFile = "/var/lib/gaoji-qq-login-secret/password";
+      };
+    };
     runtimePackages = [pkgs.ffmpeg-headless];
     environment = {
       FORWARDED_ALLOW_IPS = "100.64.0.3";
