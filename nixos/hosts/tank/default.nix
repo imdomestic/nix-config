@@ -12,7 +12,7 @@ in {
   tsName = "tank.inner.imdomestic.com";
   clusterControl = {
     enable = true;
-    manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service" "gaoji-cluster-worker.service"];
+    manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service" "gaoji-cluster-worker.service" "max.service" "max-napcat.service"];
   };
   ip = "10.0.0.66";
   sshUser = "root";
@@ -27,11 +27,13 @@ in {
   modules = [
     ./system.nix
     ./gaoji.nix
+    ./max.nix
     ./hardware-configuration.nix
     ../../modules/gaoji-worker.nix
   ];
 
   externalModules = [
+    inputs.max.nixosModules.max
     inputs.qq-bot.nixosModules.gaoji
     inputs.nix-minecraft.nixosModules.minecraft-servers
     inputs.nix-index-database.nixosModules.default
