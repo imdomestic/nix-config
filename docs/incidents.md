@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-09-27 · tank 高级草稿补发的限定部署 {#tank-gaoji-draft-delivery}
+
+用户仅批准更新高级程序，不重启 QQ、数据库或其他主机。Bot 修复版本为
+`071932d`，本仓库 `4cfbbb3` 已固定该输入。完整 tank 配置已构建，但没有 switch。
+
+部署前发现运行系统 `57rab0b8vf8grd0w1lls2cwd394v25wa` 与仓库原版本
+`fc04ae5` 的求值产物 `9i7qvpd7i0i9250arjjxc2r212460zap` 不同。
+差异涉及独立的 `postgresql.service` / setup、pgvector、accounts-daemon、
+dbus 和 polkit。dry-activate 明确会重启这些额外服务，因此中止整机切换，
+没有为了机器人修复覆盖现存的数据库配置。只比较提交 SHA 不足以发现这种漂移。
+
+临时使用 `/run/systemd/system/gaoji.service.d/90-task177-package.conf`
+替换高级的 ExecStart、ExecStartPre 和 WorkingDirectory，加载已构建的
+`/nix/store/anjaadvriw7d9l268f50ra0828vijral-gaojibot-0.20.0`，仅重启
+`gaoji.service`。GC root 是 `/nix/var/nix/gcroots/gaoji-task177-package`。
+QQ、主库及另一套 PostgreSQL 的 PID/启动时间均保持不变。
+
+这是**运行期部署，不是完整系统切换**：普通高级服务重启继续使用补丁，
+整机重启会清除 `/run` 覆盖并回到当前系统 generation 的旧程序。
+后续必须先确认、同步上述数据库配置漂移，经授权再切换完整系统。
+成功切换到含修复版本的 generation 后，删除上述 drop-in 和临时 GC root，
+daemon-reload 并核实有效 ExecStart；不要让运行期覆盖遮挡后续升级。
+
 ## 2026-09-25 · b650 从三并发提高到四并发 {#b650-quasar-concurrency-four}
 
 用户要求尝试 C4 并与当前 C3 比较。仅将 `--max-concurrency` 从 3 改为 4，
