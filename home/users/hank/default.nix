@@ -279,6 +279,12 @@ in {
       bind -T copy-mode-vi v send-keys -X begin-selection
       bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
 
+      # 每个滚轮事件滚动 2 行，降低默认 5 行的步长。
+      bind -T copy-mode WheelUpPane select-pane \; send-keys -X -N 2 scroll-up
+      bind -T copy-mode WheelDownPane select-pane \; send-keys -X -N 2 scroll-down
+      bind -T copy-mode-vi WheelUpPane select-pane \; send-keys -X -N 2 scroll-up
+      bind -T copy-mode-vi WheelDownPane select-pane \; send-keys -X -N 2 scroll-down
+
       bind -T root C-g \
         set prefix None \;\
         set key-table off \;\
