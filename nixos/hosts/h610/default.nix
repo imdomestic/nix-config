@@ -12,7 +12,6 @@ in {
   clusterControl = {
     enable = true;
     manageableUnits = [
-      "max.service"
       "docker-qwen35-sycl.service"
       "qwen35-sycl-warmup.service"
       "gaoji-cluster-control.service"

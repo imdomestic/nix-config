@@ -108,7 +108,6 @@
   };
 in {
   imports = [
-    ./max.nix
     ../../modules/airport
     ../../modules/imsub
     ../../modules/cliproxy
@@ -128,20 +127,17 @@ in {
     # ../../modules/minecraft/wuxi.nix
   ];
 
-  # Docker 的默认 bridge、Compose bridge 和 Max sandbox bridge 都是转发
-  # 流量的入口。dae 1.0.0 的 lan_interface 支持 path.Match 模式并会
+  # Docker 的默认 bridge 和 Compose bridge 是转发流量的入口(Max 和它的
+  # sandbox 2026-09-27 迁到了 tank)。dae 1.0.0 的 lan_interface 支持 path.Match 模式并会
   # 自动绑定后续新建的网卡;12 个 ? 只匹配 Docker 生成的 br-<id>,
   # 不会与现有 br-lan 重复挂载 eBPF。
-  my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????" "max-sb-egress" "max-sb-native" "max-ops-host"];
+  my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????"];
   # See docs/incidents.md#max-native-runtime-dns.
   my.dae.foreignDnsOverTcp = true;
   # Headscale must start even when proxy exits are unavailable.
   my.dae.bootstrapDomains = ["controlplane.tailscale.com" "api.cloudflare.com"];
   # 崩溃恢复(disable_waiting_network + Restart=on-failure)已经是 dae 模块的默认,
   # 不再每台单写。见 docs/incidents.md#h610-dae-crash-recovery。
-  # Prepare the shared mount before DAE binds its namespace.
-  systemd.services.dae.after = ["max-sandbox-network.service"];
-  systemd.services.dae.wants = ["max-sandbox-network.service"];
 
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
@@ -786,7 +782,7 @@ in {
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
-  my.tailscale.bindServices = ["ollama" "headplane" "cliproxy" "max"];
+  my.tailscale.bindServices = ["ollama" "headplane" "cliproxy"];
 
   services.ollama = {
     enable = true;
@@ -824,7 +820,7 @@ in {
     ];
     enable32Bit = true;
   };
-  users.users.hank.extraGroups = ["video" "render" "docker" "max-service"];
+  users.users.hank.extraGroups = ["video" "render" "docker"];
 
   # Other QQ bot workloads still use Docker. Max has its own native systemd
   # stack and no longer needs access to the Docker daemon.
@@ -1551,7 +1547,13 @@ in {
   # 静态资源(HTML/JS/CSS)是不需要 token 的:<script> 标签带不了
   # Authorization 头。它们不含任何数据,所有状态都要过 /api/,而
   # /api/ 每一条都验 token。
-  services.nginx.virtualHosts."max.imdomestic.com" = {
+  # Max runs on tank since 2026-09-27; its admin listener binds only tank's
+  # tailnet address. The router still forwards :8443 here, so this vhost keeps
+  # terminating TLS and proxies across the tailnet. An address, not a name:
+  # nginx resolves names once at start and would fail without MagicDNS.
+  services.nginx.virtualHosts."max.imdomestic.com" = let
+    maxBackend = "100.64.0.4:7700";
+  in {
     serverName = "max.imdomestic.com";
     useACMEHost = "max.imdomestic.com";
     forceSSL = true;
@@ -1569,7 +1571,7 @@ in {
       }
     ];
     locations."/" = {
-      proxyPass = "http://127.0.0.1:7700";
+      proxyPass = "http://${maxBackend}";
       extraConfig = ''
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -1578,7 +1580,7 @@ in {
       '';
     };
     locations."/hooks/" = {
-      proxyPass = "http://127.0.0.1:7700";
+      proxyPass = "http://${maxBackend}";
       extraConfig = ''
         client_max_body_size 64k;
         limit_req zone=maxapi burst=20 nodelay;
@@ -1588,7 +1590,7 @@ in {
     # 数据面单独限速。burst 给到 20 是因为切一次标签页会并发拉
     # overview + 列表 + 两张图,一次操作打出小几个请求很正常。
     locations."/api/" = {
-      proxyPass = "http://127.0.0.1:7700";
+      proxyPass = "http://${maxBackend}";
       extraConfig = ''
         limit_req zone=maxapi burst=20 nodelay;
         proxy_set_header Host $host;

@@ -1,15 +1,17 @@
 {
   config,
   lib,
-  pkgs,
   ...
 }: let
-  # Configuration/storage migration: docs/incidents.md#max-unified-state
+  # Moved from h610 on 2026-09-27 for memory: codemode guests may reach
+  # 32 × 256 MiB. Configuration/storage history: docs/incidents.md#max-unified-state
   settings = {
     "debug" = false;
     "admin" = {
       "port" = 7700;
-      "host" = "127.0.0.1";
+      # Only the tailnet: h610's nginx still terminates max.imdomestic.com:8443
+      # and proxies here. tank runs no host firewall, so never 0.0.0.0.
+      "host" = config.my.host.tsName;
       "webhook_base_url" = "https://max.imdomestic.com:8443";
       "token" = config.sops.placeholder."max/admin-token";
     };
@@ -272,27 +274,28 @@
     };
     "server" = {
       "host" = "127.0.0.1";
-      "port" = 18080;
+      # Gaoji's bot listens on tank's tailnet address at 18080.
+      "port" = 18081;
       "access_token" = config.sops.placeholder."max/server-access-token";
     };
     "cliproxy" = {
       "base_url" = "http://h610.inner.imdomestic.com:8317";
-      "management_key" = config.sops.placeholder."cliproxy/management_key";
+      "management_key" = config.sops.placeholder."max/cliproxy-management-key";
     };
     "log_color" = "always";
   };
-  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token"];
+  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token" "cliproxy-management-key"];
 in {
   sops.secrets =
     lib.genAttrs (map (name: "max/${name}") secretNames) (name: {
-      sopsFile = ../../../secrets/hosts/h610-max.yaml;
+      sopsFile = ../../../secrets/hosts/tank-max.yaml;
       key = lib.removePrefix "max/" name;
       restartUnits = lib.optional (name == "max/server-access-token") "max-napcat.service";
     })
     // {
       "max/ops-preauthkey" = {
-        sopsFile = ../../../secrets/hosts/h610-ops.yaml;
-        key = "preauthkey";
+        sopsFile = ../../../secrets/hosts/tank-max.yaml;
+        key = "ops-preauthkey";
         mode = "0400";
         restartUnits = ["max-ops-tailscaled.service"];
       };
@@ -312,10 +315,8 @@ in {
       authKeyFile = config.sops.secrets."max/ops-preauthkey".path;
     };
     configFile = config.sops.templates."max-config.json".path;
-    # Arc A380: decode, frame dropping and scaling for video renditions.
-    videoAcceleration.device = "/dev/dri/renderD128";
-    # And for tools inside command sandboxes (ffmpeg -hwaccel vaapi, ...).
-    sandbox.renderDevice = "/dev/dri/renderD128";
+    # tank has no GPU: video renditions decode in software and command
+    # sandboxes get no render node.
     napcat = {
       enable = true;
       qq = "2107570581";
@@ -323,12 +324,15 @@ in {
       accessTokenFile = config.sops.secrets."max/server-access-token".path;
     };
   };
-  systemd.services.max = {
-    after = lib.mkAfter ["tailscaled.service" "ollama.service"];
-    wants = lib.mkAfter ["tailscaled.service" "ollama.service"];
-  };
-  # The host's Headscale loopback alias must use the veth gateway inside maxops.
-  systemd.services.max-ops-tailscaled.serviceConfig.BindReadOnlyPaths = [
-    "${pkgs.writeText "max-ops-hosts" "10.232.0.1 tailscale.imdomestic.com\n"}:/etc/hosts"
-  ];
+  # The admin listener binds tank's MagicDNS address.
+  my.tailscale.bindServices = ["max"];
+
+  # State was copied from h610 with numeric ownership. These are h610's IDs;
+  # only max-service's group moves, because tank's gid 984 is podman's.
+  users.users.max-service.uid = 988;
+  users.groups.max-service.gid = 985;
+  users.users.max-napcat.uid = 982;
+  users.groups.max-napcat.gid = 975;
+  users.groups.max-outbox.gid = 974;
+  users.users.hank.extraGroups = ["max-service"];
 }
