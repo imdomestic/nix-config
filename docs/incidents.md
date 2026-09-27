@@ -27,6 +27,13 @@ QQ、主库及另一套 PostgreSQL 的 PID/启动时间均保持不变。
 成功切换到含修复版本的 generation 后，删除上述 drop-in 和临时 GC root，
 daemon-reload 并核实有效 ExecStart；不要让运行期覆盖遮挡后续升级。
 
+**已完成（2026-09-27 14:23 HKT）。** 上文的"漂移"来自同日 Max 从 h610 迁到 tank
+的暂存部署（先给系统 PostgreSQL 加 pgvector），已随 `273926d` 入库。tank 随后按
+`b397084` 整机切换，`gaoji.service` 重启一次；新 generation 的 gaoji 与 drop-in 用
+同一个 `anjaadvriw7d9l268f50ra0828vijral-gaojibot-0.20.0`。删除 drop-in、
+daemon-reload 后，ExecStart、ExecStartPre 和 WorkingDirectory 不变，随后删除
+临时 GC root；drop-in 备份在 `/root/gaoji-dropin-backup/`。
+
 ## 2026-09-25 · b650 从三并发提高到四并发 {#b650-quasar-concurrency-four}
 
 用户要求尝试 C4 并与当前 C3 比较。仅将 `--max-concurrency` 从 3 改为 4，
