@@ -545,6 +545,7 @@ in {
               cmd: ""
               ipv6reg: ""
               domains:
+                  - h610:imdomestic.com
                   - matrix:imdomestic.com
                   - rtc:imdomestic.com
             dns:
