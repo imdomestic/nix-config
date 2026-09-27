@@ -1111,11 +1111,11 @@
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1790430682,
-        "narHash": "sha256-0EP7jNjGibyFg2Y8gbUyCDbMkZOJWPplS8NtByhwbgc=",
+        "lastModified": 1790489708,
+        "narHash": "sha256-C9XNu1vReQ0AwLEM9e5Sx52HctBLWkUqUuHtc149H2E=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "ac2ba9d314d9c42dd235154e57a2cc9e09778db4",
+        "rev": "07e40304e38e68c666f4be69af732dc73063597f",
         "type": "github"
       },
       "original": {
