@@ -847,6 +847,8 @@ in {
             enabled = true;
             win = {
               position = "float";
+              # winblend 会跳过 Explorer 的下层浮窗,遮罩下只剩空的侧栏容器。
+              backdrop = false;
               width = 0.9;
               height = 0.9;
               border = "rounded";
@@ -860,6 +862,7 @@ in {
           picker = {
             enabled = true;
             ui_select = true;
+            layout.layout.backdrop = false;
             sources.explorer.layout.layout.width = 30;
           };
           terminal = {
