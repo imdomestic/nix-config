@@ -7,6 +7,28 @@
   ...
 }: let
   devenv = inputs.devenv.packages.${pkgs.stdenv.hostPlatform.system}.default;
+
+  # codex 0.157 的 TUI 默认先起后台 app-server daemon,而 daemon 要求一个带
+  # codex-package.json 的完整安装包,llm-agents 的包没有 —— 于是 `codex` 一启动
+  # 就报 "this CLI has no complete local package"(`codex exec` 不受影响)。
+  # 关掉 daemon_auto_start 就是 nixpkgs 的修法(NixOS/nixpkgs#567051),这里用
+  # -c 覆盖,不必重编。用 makeWrapper 而不是 wrapProgram:真二进制不改名,
+  # tmux 里看到的进程名还是 codex。
+  # numtide/llm-agents.nix#9889 合并后删掉这层包装。
+  codex = let
+    upstream = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex;
+  in
+    pkgs.symlinkJoin {
+      name = "codex-${upstream.version}";
+      paths = [upstream];
+      nativeBuildInputs = [pkgs.makeWrapper];
+      postBuild = ''
+        rm $out/bin/codex
+        makeWrapper ${upstream}/bin/codex $out/bin/codex \
+          --add-flags "-c features.daemon_auto_start=false"
+      '';
+      inherit (upstream) meta;
+    };
 in {
   # 用户无关的共享 dev 工具链(LSP / CLI / direnv)。
   # 编辑器(nixvim)是按用户的,放在各自的 home/users/<user>/dev.nix 里,
@@ -114,7 +136,7 @@ in {
 
       # agents
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code
-      inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.codex
+      codex
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.opencode
       inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.pi
       # inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.dsh
