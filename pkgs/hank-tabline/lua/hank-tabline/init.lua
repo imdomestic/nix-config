@@ -71,13 +71,29 @@ local function collect()
     end
     return built, used
   end
+  -- A block is only drawn while one of its panels is open, i.e. while there is
+  -- a sidebar underneath it.
+  local function open(built)
+    for _, b in ipairs(built) do
+      if b.active then return true end
+    end
+    return false
+  end
 
   -- Sidebar blocks cover the sidebar column: fixed width, their own surface, and a
   -- gap toward the buffer tabs so neither the tab row nor the rail runs through.
   local block = S.blocks.left
-  if block then
+  local built, used
+  if block then built, used = inner(block) end
+  if block and not open(built) then
+    -- No sidebar: the project title simply leads the tab row.
+    if block.project then
+      local title = build(block.project, ctx)
+      place(title, left, math.min(title.width, columns))
+      left = left + title.room
+    end
+  elseif block then
     local w = math.min(block.width, columns)
-    local built, used = inner(block)
     -- Title on the outer edge, icons at a fixed spot toward the files (one cell
     -- off the gap), so a longer project name never moves a click target.
     local x = math.max(0, w - used - block.margin)
@@ -95,10 +111,9 @@ local function collect()
   end
   block = S.blocks.right
   if block then
-    local built, used = inner(block)
+    built, used = inner(block)
     local w = math.min(block.width, right - left - block.gap)
-    -- Only shown while one of its panels is available (e.g. a Lean buffer is open).
-    if used > 0 and w > 0 then
+    if open(built) and w > 0 then
       local x = right - w
       zone(x, right, 'surface')
       zone(x - block.gap, x, 'gap')

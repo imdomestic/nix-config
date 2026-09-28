@@ -1000,6 +1000,12 @@ in {
         enable = true;
         settings = {
           attach_mode = "global";
+          # nil 把 attrset 的每个键都报成 Field,而默认只显示下面这几类,
+          # nix 文件的大纲会被整个滤空;其它语言保持 aerial 的默认。
+          filter_kind = {
+            "_" = ["Class" "Constructor" "Enum" "Function" "Interface" "Module" "Method" "Struct"];
+            nix = false;
+          };
           layout = {
             default_direction = "left";
             placement = "edge";
@@ -1821,6 +1827,8 @@ in {
               auto_close = false,
               jump = { close = false },
               layout = { preset = "sidebar", preview = false, layout = { width = ${toString sidebarWidth} } },
+              -- 30 列放不下完整路径，默认格式会把文件名本身截掉；文件名放前面，目录跟在后面变暗。
+              formatters = { file = { filename_first = true } },
             },
           }),
           adapters.window({
