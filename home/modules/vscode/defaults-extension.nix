@@ -4,6 +4,7 @@
   vscode-utils,
   writeText,
   neovim,
+  editorFont,
 }: let
   platform =
     if stdenv.hostPlatform.isDarwin
@@ -40,6 +41,8 @@
     contributes = {
       configurationDefaults = {
         "vscode-neovim.neovimExecutablePaths.${platform}" = "${neovim}/bin/nvim";
+        "editor.fontFamily" = editorFont.family;
+        "editor.fontSize" = editorFont.size;
         "editor.lineNumbers" = "on";
         "editor.cursorSurroundingLines" = 10;
         "editor.renderLineHighlight" = "line";
