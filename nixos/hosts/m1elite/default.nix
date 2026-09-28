@@ -43,6 +43,7 @@ in {
           userModules.hank.module
           userModules.hank.dev
           ../../../home/modules/postgresql
+          {my.vscode.enable = true;}
         ];
       };
     };

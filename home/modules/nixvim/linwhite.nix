@@ -1,6 +1,6 @@
-# linwhite = hank.nix 那套 + 输入法自动切换(macOS)。
+# linwhite = hank/default.nix 那套 + 输入法自动切换(macOS)。
 {pkgs-unstable, ...}: {
-  imports = [./hank.nix];
+  imports = [./hank/default.nix];
 
   programs.nixvim = {
     extraPlugins = [

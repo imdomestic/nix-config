@@ -10,7 +10,7 @@
   javaTestServer = "${pkgs.vscode-extensions.vscjava.vscode-java-test}/share/vscode/extensions/vscjava.vscode-java-test/server";
   vscodeLldbExt = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb";
 in {
-  imports = [./hank.nix];
+  imports = [./hank/default.nix];
 
   programs.nixvim = {
     globals.maplocalleader = lib.mkForce ",";
@@ -326,7 +326,7 @@ in {
         # blink search_paths 就不生效了,仓库自带的 snippets 得由 luasnip 加载。
         # friendly-snippets 不用列:它的 nixvim 模块自己会往 fromVscode 塞一条。
         fromVscode = [
-          {paths = ./nvim-snippets;}
+          {paths = ./hank/snippets;}
         ];
       };
 
