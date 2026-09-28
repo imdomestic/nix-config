@@ -78,15 +78,13 @@ local function collect()
   if block then
     local w = math.min(block.width, columns)
     local built, used = inner(block)
-    -- Title on the outer edge; icons centred in whatever it leaves.
-    local x = 0
+    -- Title on the outer edge, icons at a fixed spot toward the files (one cell
+    -- off the gap), so a longer project name never moves a click target.
+    local x = math.max(0, w - used - block.margin)
     if block.project then
-      local room = math.max(0, w - used)
-      local title = build(block.project, { columns = columns, width = room }, true)
-      place(title, 0, math.min(title.width, room))
-      x = title.room
+      local title = build(block.project, { columns = columns, width = x }, true)
+      place(title, 0, math.min(title.width, x))
     end
-    x = x + math.floor(math.max(0, w - x - used) / 2)
     for _, b in ipairs(built) do
       place(b, x, math.min(b.width, w - x))
       x = x + b.room
@@ -105,7 +103,7 @@ local function collect()
       zone(x, right, 'surface')
       zone(x - block.gap, x, 'gap')
       right = x - block.gap
-      x = x + math.floor(math.max(0, w - used) / 2)
+      x = x + math.min(block.margin, math.max(0, w - used))
       for _, b in ipairs(built) do
         place(b, x, math.min(b.width, columns - x))
         x = x + b.room
@@ -396,7 +394,7 @@ function M.setup(opts)
     if not spec then return nil end
     local sections = {}
     for i, section in ipairs(spec.sections or {}) do sections[i] = add(section, 'block', side .. '-block-' .. i) end
-    return { width = spec.width, gap = spec.gap or 1, sections = sections }
+    return { width = spec.width, gap = spec.gap or 1, margin = spec.margin or 1, sections = sections }
   end
   S.blocks.left = block(S.opts.sidebars.left, 'left')
   if S.opts.project then
