@@ -78,9 +78,15 @@ local function collect()
   if block then
     local w = math.min(block.width, columns)
     local built, used = inner(block)
-    -- Title on the outer edge, icons toward the files.
-    local x = math.max(0, w - used)
-    if block.project then place(build(block.project, { columns = columns, width = x }, true), 0, x) end
+    -- Title on the outer edge; icons centred in whatever it leaves.
+    local x = 0
+    if block.project then
+      local room = math.max(0, w - used)
+      local title = build(block.project, { columns = columns, width = room }, true)
+      place(title, 0, math.min(title.width, room))
+      x = title.room
+    end
+    x = x + math.floor(math.max(0, w - x - used) / 2)
     for _, b in ipairs(built) do
       place(b, x, math.min(b.width, w - x))
       x = x + b.room
@@ -99,6 +105,7 @@ local function collect()
       zone(x, right, 'surface')
       zone(x - block.gap, x, 'gap')
       right = x - block.gap
+      x = x + math.floor(math.max(0, w - used) / 2)
       for _, b in ipairs(built) do
         place(b, x, math.min(b.width, columns - x))
         x = x + b.room

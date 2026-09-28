@@ -127,15 +127,18 @@ try:
         assert prefix_width==block_width+1,prefix_width
         block=row(1)[:block_width]
         icons=panel_icons()
-        assert block.endswith(icons),(block,icons)
-        assert block.startswith('  nix-config ') if args.project else '' not in row(1),row(1)
+        title=' \uf07b nix-config ' if args.project else ''
+        # Icons sit centred in whatever the title leaves of the block.
+        start=len(title)+(block_width-len(title)-len(icons))//2
+        assert block[start:start+len(icons)]==icons,(block,icons,start)
+        assert block.startswith(title) if args.project else '\uf07b' not in row(1),row(1)
         assert row(1)[block_width]==' ',row(1)
         assert row(1)[prefix_width:].startswith(' flake.nix  Justfile  home-utils.nix '),row(1)
-        blank_surface=block_width-len(icons)  # 1-based column of the last blank cell before the icons
+        blank_surface=start  # 1-based column of the last blank cell before the icons
         assert attr(1,blank_surface)!=attr(1,100),'sidebar block shares the tab row background'
         if bare:
             info=next(item for item in layout() if item['id']=='info')
-            assert info['col']==120-12 and row(1)[info['col']-1]==' ',(info,row(1))
+            assert info['col']==120-12+(12-3)//2 and row(1)[info['col']-1]==' ',(info,row(1))
         check_track()
         # No panel is open yet, so the first cell of the rail is plain block track.
         track_attr=attr(2,1)
@@ -178,7 +181,7 @@ try:
             project=Path(directory)/'项目%name'
             project.mkdir()
             lua('vim.cmd.tcd({args={vim.fn.fnameescape(...)},mods={silent=true}})',str(project));settle()
-            assert '项目%name' in row(1)[:block_width].replace('\0','') and row(1)[:block_width].endswith(icons),row(1)
+            assert '项目%name' in row(1)[:block_width].replace('\0','') and icons in row(1)[:block_width],row(1)
             lua('vim.cmd.tcd({args={vim.fn.fnameescape(...)},mods={silent=true}})',original_cwd);settle()
             assert row(1)[:block_width]==block
         print('PASS: fixed block, directory changes, inert gaps, offset clicks and modified indicators')
