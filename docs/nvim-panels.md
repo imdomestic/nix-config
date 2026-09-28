@@ -6,6 +6,7 @@
 1. 登记面板：每个面板说明自己在哪一侧、怎么打开、怎么关闭、现在是否打开。
 2. 同一侧同时只开一个：打开一个面板前，先关掉同侧已开的那个。
 3. 给 [顶栏](nvim-tabline.md) 提供图标分组：`section("left")` / `section("right")`。
+   图标只在该侧有面板打开时显示（顶栏的侧栏区块跟着面板出现、消失）。
 
 面板的位置和宽度仍由各插件自己的设置决定，这里不移动窗口。为什么没有交给
 edgy.nvim，见 `docs/decisions.md#no-edgy`。
@@ -23,8 +24,14 @@ edgy.nvim，见 `docs/decisions.md#no-edgy`。
 左侧四个统一 30 列（`sidebarWidth`，顶栏左区块也用它），切换时正文不跳；
 底色统一为 NormalFloat（mantle），和顶栏左区块连成一列，与正文区分开。
 
-`infoview` 只在当前 tabpage 里有 Lean buffer（或 infoview 本身）时才出现在
-顶栏右端；lean.nvim 按 filetype 懒加载，没加载时这个面板不存在。
+`infoview` 的图标只在 infoview 打开时出现在顶栏右端（和左侧一样：区块跟着
+面板出现、消失）。它只在当前 tabpage 有 Lean buffer 时才算可用；lean.nvim
+按 filetype 懒加载，没加载时这个面板不存在。
+
+大纲在 nix 文件里靠 nil 的 documentSymbol：它把 attrset 的每个键都报成
+`Field`，而 aerial 默认只显示类、函数、模块等几类，所以 `filter_kind` 对 nix
+关掉过滤，其它语言保持默认。git 面板只有 30 列，默认的路径格式会把文件名本身
+截掉，所以用 `filename_first`：文件名在前，目录跟在后面。
 
 图标用 Material 的实心 / 空心成对码位：打开时实心、关闭时空心。git 分支图标
 没有空心版，两种状态同形，只靠颜色区分。粗体对 Nerd Font 图标无效（各字重里

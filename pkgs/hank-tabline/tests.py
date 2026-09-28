@@ -64,12 +64,18 @@ def panel_icons(side='left'):
 def lit(accent):
     return lua('local t={} for c=1,vim.o.columns do if vim.fn.screenattr(2,c)==... then t[#t+1]=c end end return t',accent)
 
+def block_open():
+    return any(str(item['section']).startswith('left-block') for item in layout())
+
 def check_track():
     bars=lua('local t={} for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.bo[vim.api.nvim_win_get_buf(w)].filetype=="hank_tabline" then t[#t+1]=w end end return t')
     if args.underline:
         assert len(bars)==1 and set(row(2)) <= set('━╸╺ '),row(2)
-        # The rail breaks in the gap between the sidebar block and the buffer tabs.
-        assert row(2)[block_width]==' ' and ' ' not in row(2)[:block_width],row(2)
+        if block_open():
+            # The rail breaks in the gap between the sidebar block and the buffer tabs.
+            assert row(2)[block_width]==' ' and ' ' not in row(2)[:block_width],row(2)
+        else:
+            assert ' ' not in row(2),row(2)
     else:
         assert not bars,bars
 
@@ -124,29 +130,18 @@ try:
         settle()
         assert len(ordinary_windows())==1
         prefix_width=tabs_col()
-        assert prefix_width==block_width+1,prefix_width
-        block=row(1)[:block_width]
-        icons=panel_icons()
         title=' \uf07b nix-config ' if args.project else ''
-        # Icons keep a fixed spot one cell off the gap, whatever the title's length.
-        start=block_width-len(icons)-1
-        assert block[start:start+len(icons)]==icons,(block,icons,start)
-        assert block.startswith(title) if args.project else '\uf07b' not in row(1),row(1)
-        assert row(1)[block_width]==' ',row(1)
-        assert row(1)[prefix_width:].startswith(' flake.nix  Justfile  home-utils.nix '),row(1)
-        blank_surface=start  # 1-based column of the last blank cell before the icons
-        assert attr(1,blank_surface)!=attr(1,100),'sidebar block shares the tab row background'
-        if bare:
-            info=next(item for item in layout() if item['id']=='info')
-            assert info['col']==120-12+1 and row(1)[info['col']-1]==' ',(info,row(1))
+        # With every sidebar closed there is no block: the title leads the row.
+        assert prefix_width==len(title) and row(1).startswith(title+' flake.nix  Justfile  home-utils.nix '),row(1)
+        assert args.project or '\uf07b' not in row(1),row(1)
+        icons=panel_icons()
+        assert not block_open() and not any(glyph in row(1) for glyph in icons.split()),row(1)
         check_track()
-        # No panel is open yet, so the first cell of the rail is plain block track.
         track_attr=attr(2,1)
-        if args.underline:assert track_attr!=attr(2,100),'sidebar block shares the rail background'
         assert 'first line is visible' in row(header_rows+1),row(header_rows+1)
         selected=n.api.get_hl(0,{'name':'HankTablineSelected','link':False})
         assert selected['bg']==int('cbe3b3',16) and selected['bold']
-        print('PASS: sidebar block width, surface and gap, optional project title, Evergarden palette, unobstructed first file line')
+        print('PASS: no sidebar block while sidebars are closed, title leads the row, Evergarden palette, unobstructed first file line')
         original=n.api.get_current_win()
         n.command('wincmd k');settle()
         assert n.api.get_current_win()==original
@@ -168,23 +163,23 @@ try:
         assert 'Justfile ●' in row(1)
         lua('vim.bo.modified=false');settle()
         assert '●' not in row(1)
-        assert row(1)[:block_width]==block,row(1)
-        # The project title, blank block cells, the gap and the empty stretch are inert.
-        inert=[blank_surface-1,block_width,100]+([2] if args.project else [])
+        assert row(1)[:prefix_width]==title,row(1)
+        # The project title and the empty stretch are inert.
+        inert=[100]+([2] if args.project else [])
         for screenrow in range(header_rows):
             for col in inert:
                 before=n.api.get_current_buf().number
                 click(screenrow,col)
                 assert n.api.get_current_buf().number==before and len(ordinary_windows())==1,(screenrow,col)
+        original_cwd=lua('return vim.fn.getcwd(-1,0)')
+        project=Path(directory)/'项目%name'
+        project.mkdir()
         if args.project:
-            original_cwd=lua('return vim.fn.getcwd(-1,0)')
-            project=Path(directory)/'项目%name'
-            project.mkdir()
             lua('vim.cmd.tcd({args={vim.fn.fnameescape(...)},mods={silent=true}})',str(project));settle()
-            assert '项目%name' in row(1)[:block_width].replace('\0','') and row(1)[start:start+len(icons)]==icons,row(1)
+            assert row(1).replace('\0','').startswith(' \uf07b 项目%name  flake.nix'),row(1)
             lua('vim.cmd.tcd({args={vim.fn.fnameescape(...)},mods={silent=true}})',original_cwd);settle()
-            assert row(1)[:block_width]==block
-        print('PASS: fixed block, directory changes, inert gaps, offset clicks and modified indicators')
+            assert row(1)[:prefix_width]==title
+        print('PASS: title placement, directory changes, inert gaps, offset clicks and modified indicators')
         if args.underline:
             n.command(f'buffer {buffers[0]}');settle()
             accent=attr(2,prefix_width+4)
@@ -198,25 +193,44 @@ try:
             settle();assert lit(accent)==last
             print('PASS: rail', 'jumps without animation' if args.no_animate else 'glides between tabs')
         if bare:
-            tree,outline,info=panel_col('tree'),panel_col('outline'),panel_col('info')
             tabs=row(1)[prefix_width:prefix_width+30]
-            click(0,tree)
-            assert 'faketree' in filetypes() and row(1)[tree]=='\U000f024b',(filetypes(),row(1))
-            assert row(1)[prefix_width:prefix_width+30]==tabs and tabs_col()==prefix_width,row(1)
+            lua("require('hank-panels').open('tree')");settle()
+            assert block_open() and tabs_col()==block_width+1,(layout(),row(1))
+            block=row(1)[:block_width]
+            # Icons keep a fixed spot one cell off the gap, whatever the title's length.
+            start=block_width-len(icons)-1
+            tree,outline=panel_col('tree'),panel_col('outline')
+            assert block.startswith(title) and row(1)[start:start+len(icons)]!='' and row(1)[tree]=='\U000f024b',(block,icons)
+            assert block[start:start+len(icons)].replace('\U000f024b','\U000f0256')==icons,(block,icons)
+            assert row(1)[block_width]==' ' and row(1)[block_width+1:].startswith(tabs[:20]),row(1)
+            assert attr(1,start)!=attr(1,100),'sidebar block shares the tab row background'
             # The sidebar's own column starts right under the gap.
             assert n.api.win_get_width(ordinary_windows()[0])==block_width
-            if args.underline:assert attr(2,tree+1)!=track_attr,'panel segment not lit'
+            check_track()
+            if args.underline:
+                assert attr(2,start)!=attr(2,100),'sidebar block shares the rail background'
+                assert attr(2,tree+1)!=attr(2,start),'panel segment not lit'
+            for col in (start-1,block_width):
+                click(0,col)
+                assert 'faketree' in filetypes() and len(ordinary_windows())==2,col
+            if args.project:
+                lua('vim.cmd.tcd({args={vim.fn.fnameescape(...)},mods={silent=true}})',str(project));settle()
+                assert '项目%name' in row(1)[:block_width].replace('\0','') and panel_col('tree')==tree,row(1)
+                lua('vim.cmd.tcd({args={vim.fn.fnameescape(...)},mods={silent=true}})',original_cwd);settle()
             click(0,outline)
             assert 'fakeoutline' in filetypes() and 'faketree' not in filetypes(),filetypes()
-            assert row(1)[tree]=='\U000f0256' and row(1)[outline]=='\U000f0645',row(1)
-            click(0,info)
+            assert row(1)[tree]=='\U000f0256' and row(1)[outline]=='\U000f0645' and panel_col('outline')==outline,row(1)
+            lua("require('hank-panels').open('info')");settle()
+            info=next(item for item in layout() if item['id']=='info')
+            assert info['col']==120-12+1 and row(1)[info['col']-1]==' ',(info,row(1))
             assert {'fakeoutline','fakeinfo'} <= set(filetypes()),filetypes()
+            click(0,info['col']+1)
+            assert 'fakeinfo' not in filetypes() and not any(item['id']=='info' for item in layout()),filetypes()
             click(header_rows-1,outline)
-            assert 'fakeoutline' not in filetypes() and 'fakeinfo' in filetypes(),filetypes()
-            lua("require('hank-panels').toggle('info')");settle()
-            assert len(ordinary_windows())==1 and row(1)[prefix_width:prefix_width+30]==tabs
+            assert 'fakeoutline' not in filetypes() and not block_open(),filetypes()
+            assert len(ordinary_windows())==1 and tabs_col()==prefix_width and row(1)[prefix_width:prefix_width+30]==tabs,row(1)
             check_track()
-            print('PASS: panel icons toggle, one panel per side, both sides, header clicks and rail clicks')
+            print('PASS: sidebar block only with a panel open: width, surface, gap, fixed icons, one panel per side, both sides, header and rail clicks')
             owner="local p=require('hank-panels').at() return p and p.id"
             assert not lua("return require('hank-panels').cycle(1)")
             lua("require('hank-panels').open('tree')");settle()
@@ -249,28 +263,29 @@ try:
                 position=lua('return vim.api.nvim_win_get_position(hank_test_explorer.input.win.win)')
                 assert position==[header_rows,0],position
                 assert 'Explorer' in row(header_rows+1)[:left],row(header_rows+1)
-                assert tabs_col()==prefix_width and row(1)[block_width]==' ',row(1)
+                assert tabs_col()==block_width+1 and row(1)[block_width]==' ',row(1)
                 assert row(1)[panel_col('explorer')]=='\U000f024b',row(1)
-                assert row(1)[prefix_width:].startswith(' flake.nix  Justfile '),row(1)
+                assert row(1)[block_width+1:].startswith(' flake.nix  Justfile '),row(1)
                 check_track()
                 assert 'first line is visible' in row(header_rows+1)[left:],row(header_rows+1)
                 assert lua('local w=hank_test_explorer.list.win.win; return vim.api.nvim_win_get_position(w)[1]+vim.api.nvim_win_get_height(w)')==30
                 assert len(ordinary_windows())==2
                 return left
             # Buffer tabs start exactly where the file window does.
-            assert check_sidebar()==prefix_width
+            assert check_sidebar()==block_width+1
             assert lua("return require('hank-panels').is_open('explorer')")
             lua('hank_test_explorer.layout:update()');settle()
             check_sidebar()
             for screenrow,col,expected in ((0,3,buffers[0]),(header_rows-1,14,buffers[1])):
-                click(screenrow,prefix_width+col)
+                click(screenrow,tabs_col()+col)
                 assert n.api.get_current_buf().number==expected
             lua('vim.api.nvim_win_set_width(hank_test_explorer.layout.root.win,40)');settle()
             assert check_sidebar()==41
             n.ui_try_resize(100,32);settle();check_sidebar()
             n.ui_try_resize(120,32);settle();check_sidebar()
             n.command('tabnew');settle()
-            assert row(1)[prefix_width:].startswith(' flake.nix'),row(1)
+            # A new tabpage has no sidebar, so its header has no block.
+            assert not block_open() and row(1)[prefix_width:].startswith(' flake.nix'),row(1)
             n.command('tabclose');settle();check_sidebar()
             for expression in ('Snacks.picker.files()','Snacks.lazygit({configure=false,interactive=false})'):
                 lua('_G.hank_test_float='+expression);settle()
@@ -283,18 +298,20 @@ try:
             assert len(ordinary_windows())==1
             check_track()
             assert 'Error' not in n.command_output('messages'),n.command_output('messages')
-            print('PASS: full-width header above Explorer, fixed block, resize, tabpages, close, Picker and LazyGit')
+            assert not block_open() and tabs_col()==prefix_width
+            print('PASS: full-width header above Explorer, block while it is open, resize, tabpages, close, Picker and LazyGit')
             if lua("return package.loaded['hank-panels'] ~= nil and require('hank-panels').get('git') ~= nil"):
                 is_open="return require('hank-panels').is_open(...)"
-                click(0,panel_col('explorer'));lua('vim.wait(300)');settle()
-                assert lua(is_open,'explorer')
+                assert not block_open()
+                lua("require('hank-panels').open('explorer')");lua('vim.wait(300)');settle()
+                assert lua(is_open,'explorer') and block_open()
                 click(0,panel_col('git'));lua('vim.wait(300)');settle()
                 assert lua(is_open,'git') and not lua(is_open,'explorer')
-                assert tabs_col()==prefix_width and row(1)[prefix_width:].startswith(' flake.nix'),row(1)
+                assert tabs_col()==block_width+1 and row(1)[block_width+1:].startswith(' flake.nix'),row(1)
                 if args.underline:
                     assert lua('return vim.wo[vim.fn.win_getid(1)].winbar')==' '
                 click(0,panel_col('git'));settle()
-                assert not lua(is_open,'git') and len(ordinary_windows())==1
+                assert not lua(is_open,'git') and len(ordinary_windows())==1 and not block_open()
                 assert 'Error' not in n.command_output('messages'),n.command_output('messages')
                 print('PASS: configured panels switch Explorer and Git from the header')
                 owner="local p=require('hank-panels').at() return p and p.id"
