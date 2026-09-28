@@ -866,12 +866,9 @@ in {
             layout.layout.backdrop = false;
             sources.explorer = {
               layout.layout.width = 30;
-              # Snacks reapplies its root options during every sidebar layout update.
               on_show = mkRaw ''
                 function(picker)
-                  picker.layout.root.opts.wo.winbar = " "
-                  vim.wo[picker.layout.root.win].winbar = " "
-                  picker.layout:update()
+                  require("hank-tabline").attach_explorer(picker)
                 end
               '';
             };
