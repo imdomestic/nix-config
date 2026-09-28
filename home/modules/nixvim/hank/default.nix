@@ -527,15 +527,30 @@ in {
 
     keymaps =
       [
+        # 侧栏里轮换同侧面板,而不是把文件换进侧栏窗口。
         {
           mode = ["n" "o"];
           key = "[b";
-          action = "<Cmd>bprev<CR>";
+          action = mkRaw ''
+            function()
+              if not require("hank-panels").cycle(-vim.v.count1) then
+                vim.cmd(vim.v.count1 .. "bprevious")
+              end
+            end
+          '';
+          options.desc = "Previous buffer / sidebar panel";
         }
         {
           mode = ["n" "o"];
           key = "]b";
-          action = "<Cmd>bnext<CR>";
+          action = mkRaw ''
+            function()
+              if not require("hank-panels").cycle(vim.v.count1) then
+                vim.cmd(vim.v.count1 .. "bnext")
+              end
+            end
+          '';
+          options.desc = "Next buffer / sidebar panel";
         }
         {
           mode = "n";

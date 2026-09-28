@@ -84,6 +84,33 @@ function M.toggle(id)
   if M.is_open(id) then M.close(id) else M.open(id) end
 end
 
+-- The open panel that owns `win` (default: the current window), if any.
+function M.at(win)
+  win = win or api.nvim_get_current_win()
+  for _, panel in ipairs(P.list) do
+    if panel.owns and is_open(panel) then
+      local ok, yes = pcall(panel.owns, win)
+      if ok and yes then return panel end
+    end
+  end
+end
+
+-- Inside a sidebar, step through the panels on its side (wrapping around).
+-- Returns false outside a sidebar so callers can fall back to buffer switching.
+function M.cycle(step)
+  local current = M.at()
+  if not current then return false end
+  local ring, index = {}, nil
+  for _, panel in ipairs(P.list) do
+    if panel.side == current.side and available(panel) then
+      ring[#ring + 1] = panel
+      if panel == current then index = #ring end
+    end
+  end
+  if index and #ring > 1 then M.open(ring[(index - 1 + step) % #ring + 1].id) end
+  return true
+end
+
 -- A hank-tabline section: one icon per available panel on `side`, filled when open.
 function M.section(side)
   return {
