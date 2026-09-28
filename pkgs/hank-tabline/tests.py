@@ -10,6 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--nvim', default='nvim')
 parser.add_argument('--init', default='NONE')
 parser.add_argument('--capture-json')
+parser.add_argument('--capture-explorer-json')
 args = parser.parse_args()
 n = pynvim.attach('child', argv=[args.nvim, '--embed', '--headless', '-u', args.init, '-i', 'NONE'])
 n.ui_attach(120,32, rgb=True, ext_linegrid=True)
@@ -26,6 +27,16 @@ def row(number):
 
 def ordinary_windows():
     return lua('local t={} for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.api.nvim_win_get_config(w).relative=="" then t[#t+1]=w end end return t')
+
+def capture(path):
+    cells=lua('local rows={} for r=1,12 do rows[r]={} for c=1,vim.o.columns do rows[r][c]={vim.fn.screenstring(r,c),vim.fn.screenattr(r,c)} end end return rows')
+    attrs={0:{}}
+    for msg in n._session._pending_messages:
+        if msg.type=='notification' and msg.name=='redraw':
+            for event in msg.args:
+                if event[0]=='hl_attr_define':
+                    for entry in event[1:]:attrs[entry[0]]=entry[1]
+    Path(path).write_text(json.dumps({'cells':cells,'attrs':attrs}))
 
 try:
     if args.init != 'NONE':
@@ -94,28 +105,49 @@ try:
         n.api.set_current_buf(buffers[-1]);settle()
         print('PASS: overflow, Unicode and statusline escaping')
         if lua('return _G.Snacks ~= nil'):
+            lua('for _,b in ipairs(vim.api.nvim_list_bufs()) do if vim.bo[b].buftype=="" then vim.bo[b].buflisted=vim.tbl_contains(...,b) end end',buffers)
             lua('_G.hank_test_explorer=Snacks.picker.explorer(); vim.wait(300)');settle()
-            assert set(row(2)) <= set('━╸╺'),row(2)
+            def check_sidebar():
+                left=lua('return vim.api.nvim_win_get_width(hank_test_explorer.layout.root.win)+1')
+                position=lua('return vim.api.nvim_win_get_position(hank_test_explorer.input.win.win)')
+                assert position==[0,0],position
+                assert 'Explorer' in row(1)[:left],row(1)
+                assert row(1)[left:].startswith(' flake.nix  Justfile '),row(1)
+                assert set(row(2)[left:]) <= set('━╸╺'),row(2)
+                assert 'first line is visible' in row(3)[left:],row(3)
+                assert lua('local w=hank_test_explorer.list.win.win; return vim.api.nvim_win_get_position(w)[1]+vim.api.nvim_win_get_height(w)')==30
+                assert len(ordinary_windows())==2
+                return left
+            left=check_sidebar()
             lua('hank_test_explorer.layout:update()');settle()
-            assert set(row(2)) <= set('━╸╺'),row(2)
+            check_sidebar()
+            for screenrow,col,expected in ((0,3,buffers[0]),(1,14,buffers[1])):
+                n.api.input_mouse('left','press','',0,screenrow,left+col)
+                n.api.input_mouse('left','release','',0,screenrow,left+col)
+                settle();assert n.api.get_current_buf().number==expected
+            lua('vim.api.nvim_win_set_width(hank_test_explorer.layout.root.win,40)');settle()
+            assert check_sidebar()==41
+            n.ui_try_resize(100,32);settle();check_sidebar()
+            n.ui_try_resize(120,32);settle();check_sidebar()
+            n.command('tabnew');settle()
+            assert row(1).startswith(' flake.nix'),row(1)
+            n.command('tabclose');settle();check_sidebar()
             for expression in ('Snacks.picker.files()','Snacks.lazygit({configure=false,interactive=false})'):
                 lua('_G.hank_test_float='+expression);settle()
                 assert not lua('local x={} for _,w in ipairs(vim.api.nvim_list_wins()) do if vim.bo[vim.api.nvim_win_get_buf(w)].filetype=="snacks_win_backdrop" then x[#x+1]=w end end return next(x)~=nil')
                 lua('hank_test_float:close()');settle()
+                check_sidebar()
+            if args.capture_explorer_json:capture(args.capture_explorer_json)
             lua('hank_test_explorer:close()');settle()
-            print('PASS: Snacks Explorer layout refresh, Picker and LazyGit')
+            assert row(1).startswith(' flake.nix') and set(row(2)) <= set('━╸╺')
+            assert len(ordinary_windows())==1
+            assert 'Error' not in n.command_output('messages'),n.command_output('messages')
+            print('PASS: top-left Explorer, offset clicks, sidebar/UI resize, tabpages, close, Picker and LazyGit')
         if args.capture_json:
             # Keep only the three demonstration buffers for a readable preview.
             lua('for _,b in ipairs(vim.api.nvim_list_bufs()) do if vim.bo[b].buftype=="" then vim.bo[b].buflisted=vim.tbl_contains(...,b) end end',buffers)
             settle()
-            cells=lua('local rows={} for r=1,8 do rows[r]={} for c=1,vim.o.columns do rows[r][c]={vim.fn.screenstring(r,c),vim.fn.screenattr(r,c)} end end return rows')
-            attrs={0:{}}
-            for msg in n._session._pending_messages:
-                if msg.type=='notification' and msg.name=='redraw':
-                    for event in msg.args:
-                        if event[0]=='hl_attr_define':
-                            for entry in event[1:]:attrs[entry[0]]=entry[1]
-            Path(args.capture_json).write_text(json.dumps({'cells':cells,'attrs':attrs}))
+            capture(args.capture_json)
         lua('for _,b in ipairs(vim.api.nvim_list_bufs()) do vim.bo[b].modified=false end')
         try:
             n.command('quit')
