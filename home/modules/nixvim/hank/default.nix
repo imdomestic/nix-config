@@ -251,6 +251,7 @@ in {
 
     extraPlugins = [
       pkgs.vimPlugins."evergarden-nvim"
+      (pkgs.callPackage ../../../../pkgs/hank-tabline {})
       # pkgs.vimPlugins.kanso-nvim
     ];
 
@@ -863,7 +864,17 @@ in {
             enabled = true;
             ui_select = true;
             layout.layout.backdrop = false;
-            sources.explorer.layout.layout.width = 30;
+            sources.explorer = {
+              layout.layout.width = 30;
+              # Snacks reapplies its root options during every sidebar layout update.
+              on_show = mkRaw ''
+                function(picker)
+                  picker.layout.root.opts.wo.winbar = " "
+                  vim.wo[picker.layout.root.win].winbar = " "
+                  picker.layout:update()
+                end
+              '';
+            };
           };
           terminal = {
             enabled = true;
@@ -944,7 +955,6 @@ in {
         mockDevIcons = true;
         modules = {
           icons = {};
-          tabline = {};
           pairs = {};
           comment = lib.optionalAttrs dev {
             options.custom_commentstring = mkRaw ''
@@ -1729,6 +1739,9 @@ in {
         },
       })
       vim.cmd.colorscheme("evergarden")
+      require("hank-tabline").setup({
+        palette = function() return require("evergarden.colors").get() end,
+      })
     '';
   };
 }
