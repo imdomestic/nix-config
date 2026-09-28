@@ -44,12 +44,13 @@ local function collect()
   local cwd = vim.fn.getcwd(-1, 0)
   local name = vim.fn.fnamemodify(cwd, ':t')
   local label = '  ' .. (name == '' and cwd or name):gsub('%c', '?')
-  S.left = math.min(20, math.floor(vim.o.columns / 4))
-  local room = math.max(0, S.left - 2)
+  local limit = math.floor(vim.o.columns / 4)
+  local room = math.max(0, limit - 1)
   if vim.fn.strdisplaywidth(label) > room then
     label = slice(label, 0, math.max(0, room - 1)) .. (room > 0 and '…' or '')
   end
-  S.prefix = slice(label .. string.rep(' ', math.max(0, room - vim.fn.strdisplaywidth(label))) .. '│ ', 0, S.left)
+  S.prefix = slice(label .. ' ', 0, limit)
+  S.left = vim.fn.strdisplaywidth(S.prefix)
   local bufs, names, counts = {}, {}, {}
   for _, b in ipairs(api.nvim_list_bufs()) do
     if vim.bo[b].buflisted and vim.bo[b].buftype == '' then

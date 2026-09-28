@@ -63,9 +63,10 @@ try:
         lua('if vim.api.nvim_buf_is_valid(1) and vim.api.nvim_buf_get_name(1)=="" then vim.bo[1].buflisted=false end')
         settle()
         assert len(ordinary_windows())==1
-        prefix=row(1)[:20]
-        assert prefix.startswith('  nix-config') and prefix.endswith('│ '),prefix
-        assert row(1)[20:].startswith(' flake.nix  Justfile  home-utils.nix '), row(1)
+        prefix='  nix-config '
+        prefix_width=lua('return vim.fn.strdisplaywidth(...)',prefix)
+        assert row(1).startswith(prefix+' flake.nix'),row(1)
+        assert row(1)[prefix_width:].startswith(' flake.nix  Justfile  home-utils.nix '), row(1)
         assert len(row(2))==120 and set(row(2)) <= set('━╸╺'), row(2)
         track_attr=lua('return vim.fn.screenattr(2,1)')
         assert 'first line is visible' in row(3),row(3)
@@ -87,14 +88,14 @@ try:
         print('PASS: split navigation, :only, and tabpage lifecycle add no ordinary windows')
         # Actual mouse input exercises the native tab callback and the second-row map.
         for screenrow, col, expected in ((0,3,buffers[0]),(1,14,buffers[1])):
-            n.api.input_mouse('left','press','',0,screenrow,20+col)
-            n.api.input_mouse('left','release','',0,screenrow,20+col)
+            n.api.input_mouse('left','press','',0,screenrow,prefix_width+col)
+            n.api.input_mouse('left','release','',0,screenrow,prefix_width+col)
             settle();assert n.api.get_current_buf().number==expected,(screenrow,n.api.get_current_buf().number)
         lua('vim.api.nvim_buf_set_lines(0,-1,-1,false,{"modified"})');settle()
         assert 'Justfile ●' in row(1)
         lua('vim.bo.modified=false');settle()
         assert '●' not in row(1)
-        assert row(1)[:20]==prefix,row(1)
+        assert row(1)[:prefix_width]==prefix,row(1)
         for screenrow in (0,1):
             before=n.api.get_current_buf().number
             n.api.input_mouse('left','press','',0,screenrow,2)
@@ -104,9 +105,9 @@ try:
         project=Path(directory)/'项目%name'
         project.mkdir()
         lua('vim.cmd.tcd({args={vim.fn.fnameescape(...)},mods={silent=true}})',str(project));settle()
-        assert '项目%name' in row(1)[:20],row(1)
+        assert '项目%name' in row(1)[:prefix_width],row(1)
         lua('vim.cmd.tcd({args={vim.fn.fnameescape(...)},mods={silent=true}})',original_cwd);settle()
-        assert row(1)[:20]==prefix
+        assert row(1)[:prefix_width]==prefix
         print('PASS: fixed project label, directory changes, inert prefix, offset clicks and modified indicators')
         # Narrow view, wide characters, literal percent signs and duplicate basenames.
         for name in ('a/shared.txt','b/shared.txt','目录/宽字符%very-long-name.txt'):
@@ -129,8 +130,8 @@ try:
                 position=lua('return vim.api.nvim_win_get_position(hank_test_explorer.input.win.win)')
                 assert position==[2,0],position
                 assert 'Explorer' in row(3)[:left],row(3)
-                assert row(1)[:20]==prefix,row(1)
-                assert row(1)[20:].startswith(' flake.nix  Justfile '),row(1)
+                assert row(1)[:prefix_width]==prefix,row(1)
+                assert row(1)[prefix_width:].startswith(' flake.nix  Justfile '),row(1)
                 assert set(row(2)) <= set('━╸╺'),row(2)
                 assert 'first line is visible' in row(3)[left:],row(3)
                 assert lua('local w=hank_test_explorer.list.win.win; return vim.api.nvim_win_get_position(w)[1]+vim.api.nvim_win_get_height(w)')==30
@@ -140,15 +141,15 @@ try:
             lua('hank_test_explorer.layout:update()');settle()
             check_sidebar()
             for screenrow,col,expected in ((0,3,buffers[0]),(1,14,buffers[1])):
-                n.api.input_mouse('left','press','',0,screenrow,20+col)
-                n.api.input_mouse('left','release','',0,screenrow,20+col)
+                n.api.input_mouse('left','press','',0,screenrow,prefix_width+col)
+                n.api.input_mouse('left','release','',0,screenrow,prefix_width+col)
                 settle();assert n.api.get_current_buf().number==expected
             lua('vim.api.nvim_win_set_width(hank_test_explorer.layout.root.win,40)');settle()
             assert check_sidebar()==41
             n.ui_try_resize(100,32);settle();check_sidebar()
             n.ui_try_resize(120,32);settle();check_sidebar()
             n.command('tabnew');settle()
-            assert row(1)[:20]==prefix and row(1)[20:].startswith(' flake.nix'),row(1)
+            assert row(1)[:prefix_width]==prefix and row(1)[prefix_width:].startswith(' flake.nix'),row(1)
             n.command('tabclose');settle();check_sidebar()
             for expression in ('Snacks.picker.files()','Snacks.lazygit({configure=false,interactive=false})'):
                 lua('_G.hank_test_float='+expression);settle()
@@ -157,7 +158,7 @@ try:
                 check_sidebar()
             if args.capture_explorer_json:capture(args.capture_explorer_json)
             lua('hank_test_explorer:close()');settle()
-            assert row(1)[:20]==prefix and row(1)[20:].startswith(' flake.nix') and set(row(2)) <= set('━╸╺')
+            assert row(1)[:prefix_width]==prefix and row(1)[prefix_width:].startswith(' flake.nix') and set(row(2)) <= set('━╸╺')
             assert len(ordinary_windows())==1
             assert 'Error' not in n.command_output('messages'),n.command_output('messages')
             print('PASS: full-width header above Explorer, sidebar-independent project label, resize, tabpages, close, Picker and LazyGit')
