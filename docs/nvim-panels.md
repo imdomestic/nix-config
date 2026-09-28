@@ -20,9 +20,11 @@ edgy.nvim，见 `docs/decisions.md#no-edgy`。
 | `database` | 左 | vim-dadbod-ui（仅 dev） | `<leader>D` | `globals.db_ui_winwidth` |
 | `infoview` | 右 | lean.nvim infoview（仅 dev） | lean.nvim 自带 | `plugins.lean.settings.infoview` |
 
-左侧四个统一 30 列，切换时正文不跳。`infoview` 只在当前 tabpage 里有 Lean
-buffer（或 infoview 本身）时才出现在顶栏右端；lean.nvim 按 filetype 懒加载，
-没加载时这个面板不存在。
+左侧四个统一 30 列（`sidebarWidth`，顶栏左区块也用它），切换时正文不跳；
+底色统一为 NormalFloat（mantle），和顶栏左区块连成一列，与正文区分开。
+
+`infoview` 只在当前 tabpage 里有 Lean buffer（或 infoview 本身）时才出现在
+顶栏右端；lean.nvim 按 filetype 懒加载，没加载时这个面板不存在。
 
 图标用 Material 的实心 / 空心成对码位：打开时实心、关闭时空心。git 分支图标
 没有空心版，两种状态同形，只靠颜色区分。粗体对 Nerd Font 图标无效（各字重里

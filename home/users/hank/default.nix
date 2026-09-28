@@ -19,8 +19,9 @@ in {
     ../../modules/token-theme
   ];
 
-  # Posting 式顶栏的第二行横线(docs/nvim-tabline.md)。
+  # Posting 式顶栏的第二行横线,侧栏那块以项目名开头(docs/nvim-tabline.md)。
   my.nixvim.tabline.underline.enable = true;
+  my.nixvim.tabline.project.enable = true;
 
   programs.git = {
     enable = true;
