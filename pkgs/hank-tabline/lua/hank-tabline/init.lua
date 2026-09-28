@@ -1,7 +1,7 @@
 local M = {}
 local api = vim.api
 local ns = api.nvim_create_namespace('hank_tabline')
-local S = { tabs = {}, editors = {}, reserved = {}, explorers = {}, offset = 0, left = 0, generation = 0 }
+local S = { tabs = {}, editors = {}, reserved = {}, offset = 0, left = 0, prefix = '', generation = 0 }
 
 local function valid(win)
   return win and api.nvim_win_is_valid(win)
@@ -19,6 +19,7 @@ local function palette()
   api.nvim_set_hl(0, 'HankTablineInactive', { fg = p.overlay2, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineTrack', { fg = p.overlay0, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineAccent', { fg = p.green, bg = p.base })
+  api.nvim_set_hl(0, 'HankTablineProject', { fg = p.green, bg = p.base, bold = true })
 end
 
 -- Slice by screen cells, retaining composing characters and padding split wide glyphs.
@@ -39,6 +40,16 @@ local function slice(text, from, width)
 end
 
 local function collect()
+  -- Use the tab's working directory, so changing buffers cannot move the label.
+  local cwd = vim.fn.getcwd(-1, 0)
+  local name = vim.fn.fnamemodify(cwd, ':t')
+  local label = '  ' .. (name == '' and cwd or name):gsub('%c', '?')
+  S.left = math.min(20, math.floor(vim.o.columns / 4))
+  local room = math.max(0, S.left - 2)
+  if vim.fn.strdisplaywidth(label) > room then
+    label = slice(label, 0, math.max(0, room - 1)) .. (room > 0 and '…' or '')
+  end
+  S.prefix = slice(label .. string.rep(' ', math.max(0, room - vim.fn.strdisplaywidth(label))) .. '│ ', 0, S.left)
   local bufs, names, counts = {}, {}, {}
   for _, b in ipairs(api.nvim_list_bufs()) do
     if vim.bo[b].buflisted and vim.bo[b].buftype == '' then
@@ -70,14 +81,14 @@ local function collect()
   if selected then
     -- Match Posting's scroll-to-center behavior while keeping short lists left aligned.
     S.offset = math.max(0, math.min(math.floor((selected.start + selected.finish - width) / 2), col - width))
-    S.target = { selected.start + 1 - S.offset, selected.finish - 1 - S.offset }
+    S.target = { selected.start + 1 - S.offset + S.left, selected.finish - 1 - S.offset + S.left }
   else
     S.offset, S.target = 0, { 0, 0 }
   end
 end
 
 function M.render()
-  local parts = { '%#HankTablineInactive#', string.rep(' ', S.left) }
+  local parts = { '%#HankTablineProject#%0@v:lua.HankTablineNoop@', S.prefix:gsub('%%', '%%%%'), '%X' }
   for _, tab in ipairs(S.tabs) do
     local left, right = math.max(tab.start, S.offset), math.min(tab.finish, S.offset + vim.o.columns - S.left)
     if left < right then
@@ -111,7 +122,7 @@ local function draw(start, finish)
   if not valid(S.bar) then return end
   local cells, first, last = {}, nil, nil
   start, finish = math.floor(start * 2 + 0.5) / 2, math.floor(finish * 2 + 0.5) / 2
-  for col = 0, vim.o.columns - S.left - 1 do
+  for col = 0, vim.o.columns - 1 do
     local char, accent = '━', false
     if col >= start and col + 1 <= finish then
       accent = true
@@ -124,6 +135,7 @@ local function draw(start, finish)
     elseif col == finish then
       char = '╺'
     end
+    if col < S.left then char, accent = '━', false end
     cells[#cells + 1] = char
     if accent then first, last = first or col, col + 1 end
   end
@@ -157,25 +169,11 @@ end
 
 local function geometry()
   local current_tab = api.nvim_get_current_tabpage()
-  local layout = S.explorers[current_tab]
-  local root = layout and not layout.closed and layout.root.win
-  local sidebar = valid(root) and not layout.opts.fullscreen
-    and api.nvim_win_get_config(root).relative == ''
-    and vim.deep_equal(api.nvim_win_get_position(root), { 1, 0 })
-  S.left = sidebar and math.min(api.nvim_win_get_width(root) + 1, vim.o.columns - 1) or 0
-  -- Nvim can clamp editor-relative floats below the tabline during UI resize.
-  if sidebar and valid(layout.wins.input.win)
-    and api.nvim_win_get_position(layout.wins.input.win)[1] ~= 0 then
-    layout:update()
-  end
   for win in pairs(S.reserved) do
     if not valid(win) then S.reserved[win] = nil end
   end
   for tab in pairs(S.editors) do
     if not api.nvim_tabpage_is_valid(tab) then S.editors[tab] = nil end
-  end
-  for tab, explorer in pairs(S.explorers) do
-    if explorer.closed or not api.nvim_tabpage_is_valid(tab) then S.explorers[tab] = nil end
   end
   local enough_room = vim.o.lines >= 6
   for _, win in ipairs(api.nvim_tabpage_list_wins(current_tab)) do
@@ -186,7 +184,7 @@ local function geometry()
   end
   for _, win in ipairs(api.nvim_tabpage_list_wins(current_tab)) do
     if api.nvim_win_get_config(win).relative == '' then
-      local top = enough_room and api.nvim_win_get_position(win)[1] == 1 and not (sidebar and win == root)
+      local top = enough_room and api.nvim_win_get_position(win)[1] == 1
       if top then
         if S.reserved[win] == nil then S.reserved[win] = vim.wo[win].winbar end
         if vim.wo[win].winbar ~= ' ' then vim.wo[win].winbar = ' ' end
@@ -207,7 +205,7 @@ local function geometry()
     vim.bo[S.buf].bufhidden = 'hide'
     vim.bo[S.buf].undolevels = -1
   end
-  local config = { relative = 'editor', row = 1, col = S.left, width = vim.o.columns - S.left, height = 1,
+  local config = { relative = 'editor', row = 1, col = 0, width = vim.o.columns, height = 1,
     focusable = false, mouse = true, style = 'minimal', border = 'none', zindex = 20 }
   if valid(S.bar) then
     api.nvim_win_set_config(S.bar, config)
@@ -246,45 +244,6 @@ local function queue(instant)
   end)
 end
 
--- Snacks owns these floating children; extend them only after its normal layout pass.
-function M.attach_explorer(picker)
-  local layout = picker.layout
-  if layout.hank_tabline then return end
-  layout.hank_tabline = true
-  S.explorers[api.nvim_get_current_tabpage()] = layout
-  S.reserved[layout.root.win] = nil
-  layout.root.opts.wo.winbar = ''
-  vim.wo[layout.root.win].winbar = ''
-  local on_update = layout.opts.on_update
-  layout.opts.on_update = function(l)
-    if on_update then on_update(l) end
-    local root = l.root.win
-    if valid(root) and l.split and not l.opts.fullscreen
-      and vim.deep_equal(api.nvim_win_get_position(root), { 1, 0 }) then
-      local bottom = 1 + api.nvim_win_get_height(root)
-      for _, win in ipairs(l:get_wins()) do
-        if win.win ~= root and win:win_valid() then
-          local cfg = api.nvim_win_get_config(win.win)
-          if cfg.relative ~= '' then
-            local pos = api.nvim_win_get_position(win.win)
-            local border = win:border_size()
-            local height = api.nvim_win_get_height(win.win)
-            local extra = pos[1] + height + border.top + border.bottom == bottom and 1 or 0
-            api.nvim_win_set_config(win.win, {
-              relative = 'editor', row = pos[1] - 1, col = pos[2], height = height + extra,
-            })
-            -- Snacks uses this value to distinguish a user resize from its own layout.
-            win.opts.height = height + extra
-          end
-        end
-      end
-    end
-    queue(true)
-  end
-  layout:update()
-  queue(true)
-end
-
 function M.setup(opts)
   S.opts = vim.tbl_extend('force', { duration = 0.3 }, opts)
   local group = api.nvim_create_augroup('hank_tabline', { clear = true })
@@ -294,7 +253,8 @@ function M.setup(opts)
   _G.HankTablineClick = function(buf, _, button)
     if button == 'l' then M.select(buf) end
   end
-  api.nvim_create_autocmd({ 'UIEnter', 'VimEnter', 'VimResized', 'WinResized', 'TabEnter', 'WinNew', 'WinClosed' }, {
+  _G.HankTablineNoop = function() end
+  api.nvim_create_autocmd({ 'UIEnter', 'VimEnter', 'VimResized', 'WinResized', 'TabEnter', 'WinNew', 'WinClosed', 'DirChanged' }, {
     group = group, callback = function() queue(true) end,
   })
   api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'BufAdd', 'BufDelete', 'BufFilePost', 'BufModifiedSet', 'BufWritePost' }, {
@@ -309,6 +269,7 @@ function M.setup(opts)
     local mouse = vim.fn.getmousepos()
     if valid(S.bar) and mouse.winid == S.bar then
       local col = mouse.screencol - 1 - S.left + S.offset
+      if mouse.screencol <= S.left then return '' end
       for _, tab in ipairs(S.tabs) do
         if col >= tab.start and col < tab.finish then M.select(tab.buf); break end
       end

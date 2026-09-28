@@ -868,7 +868,9 @@ in {
               layout.layout.width = 30;
               on_show = mkRaw ''
                 function(picker)
-                  require("hank-tabline").attach_explorer(picker)
+                  picker.layout.root.opts.wo.winbar = " "
+                  vim.wo[picker.layout.root.win].winbar = " "
+                  picker.layout:update()
                 end
               '';
             };
