@@ -1,9 +1,19 @@
-# Hank 的两行 buffer 顶栏
+# Hank 的 buffer 顶栏
 
 自写插件源码在 `pkgs/hank-tabline/`，通过 `vimUtils.buildVimPlugin` 打包，
 由 `home/modules/nixvim/hank/default.nix` 的 `extraPlugins` 安装；不再加载
 `mini.tabline`。这是一份插件实现，不是复制进仓库的个人 Lua 配置。
 VS Code 的嵌入 Neovim 不加载此插件。
+
+默认只显示一行标签，不绘制下方横线，也不占用第二行。要启用横线，在 Home
+Manager 配置中设置：
+
+```nix
+my.nixvim.tabline.underline.enable = true;
+```
+
+对应插件选项为 `require("hank-tabline").setup({ underline = true, ... })`，
+插件本身也默认关闭。以下两行布局与动画说明均指开启后的行为。
 
 ## Posting 源码对应
 
@@ -53,3 +63,4 @@ UI 实例检查两行渲染、鼠标点击、修改标记、Unicode/溢出、分
 同时覆盖固定项目名、目录变化、Explorer 位于顶栏下方、侧栏宽度变化、终端缩放、两行点击、
 tabpage 切换、侧栏关闭和 Picker/LazyGit；不传参数时使用无配置 Neovim。
 `--capture-explorer-json /tmp/sidebar.json` 可导出真实 UI 字符与配色作视觉检查。
+默认验证单行模式；`--underline` 验证横线开启的模式，完整配置的 init 也须开启该选项。
