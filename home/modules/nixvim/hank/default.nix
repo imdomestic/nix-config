@@ -864,16 +864,19 @@ in {
             enabled = true;
             ui_select = true;
             layout.layout.backdrop = false;
-            sources.explorer = {
-              layout.layout.width = 30;
-              on_show = mkRaw ''
-                function(picker)
-                  picker.layout.root.opts.wo.winbar = " "
-                  vim.wo[picker.layout.root.win].winbar = " "
-                  picker.layout:update()
-                end
-              '';
-            };
+            sources.explorer =
+              {
+                layout.layout.width = 30;
+              }
+              // lib.optionalAttrs config.my.nixvim.tabline.underline.enable {
+                on_show = mkRaw ''
+                  function(picker)
+                    picker.layout.root.opts.wo.winbar = " "
+                    vim.wo[picker.layout.root.win].winbar = " "
+                    picker.layout:update()
+                  end
+                '';
+              };
           };
           terminal = {
             enabled = true;
@@ -1739,6 +1742,7 @@ in {
       })
       vim.cmd.colorscheme("evergarden")
       require("hank-tabline").setup({
+        underline = ${lib.boolToString config.my.nixvim.tabline.underline.enable},
         palette = function() return require("evergarden.colors").get() end,
       })
     '';

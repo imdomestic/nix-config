@@ -9,9 +9,11 @@ import pynvim
 parser = argparse.ArgumentParser()
 parser.add_argument('--nvim', default='nvim')
 parser.add_argument('--init', default='NONE')
+parser.add_argument('--underline', action='store_true')
 parser.add_argument('--capture-json')
 parser.add_argument('--capture-explorer-json')
 args = parser.parse_args()
+header_rows = 2 if args.underline else 1
 n = pynvim.attach('child', argv=[args.nvim, '--embed', '--headless', '-u', args.init, '-i', 'NONE'])
 n.ui_attach(120,32, rgb=True, ext_linegrid=True)
 
@@ -28,6 +30,13 @@ def row(number):
 def ordinary_windows():
     return lua('local t={} for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.api.nvim_win_get_config(w).relative=="" then t[#t+1]=w end end return t')
 
+def check_track():
+    bars=lua('local t={} for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.bo[vim.api.nvim_win_get_buf(w)].filetype=="hank_tabline" then t[#t+1]=w end end return t')
+    if args.underline:
+        assert len(bars)==1 and set(row(2)) <= set('━╸╺'),row(2)
+    else:
+        assert not bars,bars
+
 def capture(path):
     cells=lua('local rows={} for r=1,12 do rows[r]={} for c=1,vim.o.columns do rows[r][c]={vim.fn.screenstring(r,c),vim.fn.screenattr(r,c)} end end return rows')
     attrs={0:{}}
@@ -43,13 +52,14 @@ try:
         assert lua("return package.loaded['hank-tabline'] ~= nil and _G.MiniTabline == nil"), n.command_output('messages')
     lua('vim.opt.rtp:prepend(...)', str(Path(__file__).parent))
     lua('''
+      local underline=...
       vim.o.laststatus=3; vim.o.hidden=true; vim.o.mouse='a'; vim.o.cmdheight=1
       if not package.loaded['hank-tabline'] then
-        require('hank-tabline').setup({palette=function() return {
+        require('hank-tabline').setup({underline=underline,palette=function() return {
           crust='#171c1f',base='#1e2528',green='#cbe3b3',overlay2='#839e9a',overlay0='#58686d'
         } end})
       end
-    ''')
+    ''',args.underline)
     buffers=[]
     with tempfile.TemporaryDirectory(prefix='hank-tabline-') as directory:
         for name in ('flake.nix','Justfile','home-utils.nix'):
@@ -67,12 +77,12 @@ try:
         prefix_width=lua('return vim.fn.strdisplaywidth(...)',prefix)
         assert row(1).startswith(prefix+' flake.nix'),row(1)
         assert row(1)[prefix_width:].startswith(' flake.nix  Justfile  home-utils.nix '), row(1)
-        assert len(row(2))==120 and set(row(2)) <= set('━╸╺'), row(2)
+        check_track()
         track_attr=lua('return vim.fn.screenattr(2,1)')
-        assert 'first line is visible' in row(3),row(3)
+        assert 'first line is visible' in row(header_rows+1),row(header_rows+1)
         selected=n.api.get_hl(0,{'name':'HankTablineSelected','link':False})
         assert selected['bg']==int('cbe3b3',16) and selected['bold']
-        print('PASS: two rows, Evergarden palette, file content starts below the track')
+        print('PASS: configured header height, Evergarden palette, unobstructed first file line')
         original=n.api.get_current_win()
         n.command('wincmd k');settle()
         assert n.api.get_current_win()==original
@@ -81,13 +91,13 @@ try:
         assert len(ordinary_windows())==3
         for w in ordinary_windows():
             pos=n.api.win_get_position(w)
-            assert n.api.get_option_value('winbar',{'win':w})==(' ' if pos[0]==1 else '')
+            assert n.api.get_option_value('winbar',{'win':w})==(' ' if args.underline and pos[0]==1 else '')
         n.command('only');settle();assert len(ordinary_windows())==1
         n.command('tabnew');settle();assert len(ordinary_windows())==1
         n.command('tabclose');settle();assert len(ordinary_windows())==1
         print('PASS: split navigation, :only, and tabpage lifecycle add no ordinary windows')
         # Actual mouse input exercises the native tab callback and the second-row map.
-        for screenrow, col, expected in ((0,3,buffers[0]),(1,14,buffers[1])):
+        for screenrow, col, expected in ((0,3,buffers[0]),(header_rows-1,14,buffers[1])):
             n.api.input_mouse('left','press','',0,screenrow,prefix_width+col)
             n.api.input_mouse('left','release','',0,screenrow,prefix_width+col)
             settle();assert n.api.get_current_buf().number==expected,(screenrow,n.api.get_current_buf().number)
@@ -96,7 +106,7 @@ try:
         lua('vim.bo.modified=false');settle()
         assert '●' not in row(1)
         assert row(1)[:prefix_width]==prefix,row(1)
-        for screenrow in (0,1):
+        for screenrow in range(header_rows):
             before=n.api.get_current_buf().number
             n.api.input_mouse('left','press','',0,screenrow,2)
             n.api.input_mouse('left','release','',0,screenrow,2)
@@ -118,7 +128,8 @@ try:
         assert 'Error' not in n.command_output('messages'),n.command_output('messages')
         assert '%' in row(1),row(1)
         assert len(row(2))==35
-        assert lua('return vim.fn.screenattr(2,1)')==track_attr
+        if args.underline:assert lua('return vim.fn.screenattr(2,1)')==track_attr
+        check_track()
         n.ui_try_resize(120,32);settle()
         n.api.set_current_buf(buffers[-1]);settle()
         print('PASS: overflow, Unicode and statusline escaping')
@@ -128,19 +139,19 @@ try:
             def check_sidebar():
                 left=lua('return vim.api.nvim_win_get_width(hank_test_explorer.layout.root.win)+1')
                 position=lua('return vim.api.nvim_win_get_position(hank_test_explorer.input.win.win)')
-                assert position==[2,0],position
-                assert 'Explorer' in row(3)[:left],row(3)
+                assert position==[header_rows,0],position
+                assert 'Explorer' in row(header_rows+1)[:left],row(header_rows+1)
                 assert row(1)[:prefix_width]==prefix,row(1)
                 assert row(1)[prefix_width:].startswith(' flake.nix  Justfile '),row(1)
-                assert set(row(2)) <= set('━╸╺'),row(2)
-                assert 'first line is visible' in row(3)[left:],row(3)
+                check_track()
+                assert 'first line is visible' in row(header_rows+1)[left:],row(header_rows+1)
                 assert lua('local w=hank_test_explorer.list.win.win; return vim.api.nvim_win_get_position(w)[1]+vim.api.nvim_win_get_height(w)')==30
                 assert len(ordinary_windows())==2
                 return left
             left=check_sidebar()
             lua('hank_test_explorer.layout:update()');settle()
             check_sidebar()
-            for screenrow,col,expected in ((0,3,buffers[0]),(1,14,buffers[1])):
+            for screenrow,col,expected in ((0,3,buffers[0]),(header_rows-1,14,buffers[1])):
                 n.api.input_mouse('left','press','',0,screenrow,prefix_width+col)
                 n.api.input_mouse('left','release','',0,screenrow,prefix_width+col)
                 settle();assert n.api.get_current_buf().number==expected
@@ -158,8 +169,9 @@ try:
                 check_sidebar()
             if args.capture_explorer_json:capture(args.capture_explorer_json)
             lua('hank_test_explorer:close()');settle()
-            assert row(1)[:prefix_width]==prefix and row(1)[prefix_width:].startswith(' flake.nix') and set(row(2)) <= set('━╸╺')
+            assert row(1)[:prefix_width]==prefix and row(1)[prefix_width:].startswith(' flake.nix')
             assert len(ordinary_windows())==1
+            check_track()
             assert 'Error' not in n.command_output('messages'),n.command_output('messages')
             print('PASS: full-width header above Explorer, sidebar-independent project label, resize, tabpages, close, Picker and LazyGit')
         if args.capture_json:

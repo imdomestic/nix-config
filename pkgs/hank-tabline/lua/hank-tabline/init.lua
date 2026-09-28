@@ -176,7 +176,7 @@ local function geometry()
   for tab in pairs(S.editors) do
     if not api.nvim_tabpage_is_valid(tab) then S.editors[tab] = nil end
   end
-  local enough_room = vim.o.lines >= 6
+  local enough_room = S.opts.underline and vim.o.lines >= 6
   for _, win in ipairs(api.nvim_tabpage_list_wins(current_tab)) do
     if api.nvim_win_get_config(win).relative == '' then
       local top = api.nvim_win_get_position(win)[1] == 1
@@ -189,7 +189,7 @@ local function geometry()
       if top then
         if S.reserved[win] == nil then S.reserved[win] = vim.wo[win].winbar end
         if vim.wo[win].winbar ~= ' ' then vim.wo[win].winbar = ' ' end
-      elseif S.reserved[win] ~= nil or vim.wo[win].winbar == ' ' then
+      elseif S.reserved[win] ~= nil or (S.opts.underline and vim.wo[win].winbar == ' ') then
         vim.wo[win].winbar = S.reserved[win] or ''
         S.reserved[win] = nil
       end
@@ -226,7 +226,7 @@ function M.refresh(instant)
     geometry()
     collect()
     vim.cmd.redrawtabline()
-    animate(instant)
+    if valid(S.bar) then animate(instant) end
   end)
   S.updating = false
   if not ok then vim.notify('hank-tabline: ' .. tostring(err), vim.log.levels.ERROR) end
@@ -246,7 +246,7 @@ local function queue(instant)
 end
 
 function M.setup(opts)
-  S.opts = vim.tbl_extend('force', { duration = 0.3 }, opts)
+  S.opts = vim.tbl_extend('force', { duration = 0.3, underline = false }, opts)
   local group = api.nvim_create_augroup('hank_tabline', { clear = true })
   palette()
   vim.o.showtabline = 2
