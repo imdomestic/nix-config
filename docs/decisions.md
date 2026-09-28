@@ -11,6 +11,21 @@
 
 ---
 
+## 2026-09-28 · 侧栏面板不交给 edgy.nvim {#no-edgy}
+
+Neovim 侧栏（explorer、git、大纲、数据库、lean infoview）由自写的 `hank-panels`
+登记和切换，没有引入 edgy.nvim。Snacks 也没有现成的轮子：`Snacks.win` /
+`Snacks.layout` 只管 Snacks 自己创建的窗口，aerial、dbui、infoview 都是自己
+`:vsplit` 出来的。
+
+edgy 解决的是「别人开的窗口放到哪、多宽」，而这里缺的是「同侧一次只开一个」和
+「顶栏上的图标」，这两件 edgy 都不做。位置和宽度在各插件自己的选项里设成一致
+（左侧 30 列）就够了。另外 edgy 会在侧栏窗口的 `winbar` 上写标题，和顶栏横线
+占用顶层窗口 `winbar` 的做法冲突。
+
+如果以后几个插件抢同一条边的位置或顺序，再考虑用 edgy 只做摆放。见
+[侧栏面板](nvim-panels.md)。
+
 ## 2026-09-28 · VS Code 声明默认值，GUI 保留用户覆盖 {#vscode-user-overrides}
 
 Hank 的 VS Code 设置不由 Home Manager 的 `userSettings` / `keybindings`

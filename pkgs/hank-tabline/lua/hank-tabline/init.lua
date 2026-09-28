@@ -1,16 +1,14 @@
+-- Posting-style header: a row of tab sections and an optional underline rail.
+-- Sections only supply items; buffers, the project label and anything registered
+-- through `sections` (e.g. hank-panels) are rendered the same way.
 local M = {}
 local api = vim.api
 local ns = api.nvim_create_namespace('hank_tabline')
-local S = { tabs = {}, editors = {}, reserved = {}, offset = 0, left = 0, prefix = '', generation = 0 }
+local slice = require('hank-tabline.slice')
+local S = { sections = {}, placed = {}, clicks = {}, target = {}, reserved = {}, generation = 0 }
 
 local function valid(win)
   return win and api.nvim_win_is_valid(win)
-end
-
-local function editor(win)
-  if not valid(win) or api.nvim_win_get_config(win).relative ~= '' then return false end
-  local buf = api.nvim_win_get_buf(win)
-  return vim.bo[buf].buftype == '' and vim.bo[buf].buflisted
 end
 
 local function palette()
@@ -20,134 +18,157 @@ local function palette()
   api.nvim_set_hl(0, 'HankTablineTrack', { fg = p.overlay0, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineAccent', { fg = p.green, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineProject', { fg = p.green, bg = p.base, bold = true })
+  api.nvim_set_hl(0, 'HankTablineIcon', { fg = p.green, bg = p.base, bold = true })
 end
 
--- Slice by screen cells, retaining composing characters and padding split wide glyphs.
-local function slice(text, from, width)
-  local out, col = {}, 0
-  for i = 0, vim.fn.strchars(text, true) - 1 do
-    local char = vim.fn.strcharpart(text, i, 1, true)
-    local w = vim.fn.strdisplaywidth(char)
-    if col >= from and col + w <= from + width then
-      out[#out + 1] = char
-    elseif col < from + width and col + w > from then
-      out[#out + 1] = string.rep(' ', math.min(col + w, from + width) - math.max(col, from))
-    end
-    col = col + w
-    if col >= from + width then break end
-  end
-  return table.concat(out)
+-- 'block' sections mark the active item with a filled label, 'icon' sections only
+-- recolour it (the rail and the filled/outline glyph carry the rest).
+local function highlight(section, item)
+  if item.hl then return item.hl end
+  if section.style == 'label' then return 'HankTablineProject' end
+  if not item.active then return 'HankTablineInactive' end
+  return section.style == 'icon' and 'HankTablineIcon' or 'HankTablineSelected'
 end
 
 local function collect()
-  -- Use the tab's working directory, so changing buffers cannot move the label.
-  local cwd = vim.fn.getcwd(-1, 0)
-  local name = vim.fn.fnamemodify(cwd, ':t')
-  local label = '  ' .. (name == '' and cwd or name):gsub('%c', '?')
-  local limit = math.floor(vim.o.columns / 4)
-  local room = math.max(0, limit - 1)
-  if vim.fn.strdisplaywidth(label) > room then
-    label = slice(label, 0, math.max(0, room - 1)) .. (room > 0 and '…' or '')
+  local columns = vim.o.columns
+  local ctx = { columns = columns }
+  local built = {}
+  for key, section in ipairs(S.sections) do
+    local items, width, active = {}, 0, nil
+    for _, item in ipairs(section.items(ctx) or {}) do
+      local w = vim.fn.strdisplaywidth(item.text)
+      local entry = { id = item.id, text = item.text, active = item.active, hl = highlight(section, item),
+        start = width, finish = width + w }
+      items[#items + 1] = entry
+      width = width + w
+      if item.active then active = entry end
+    end
+    built[key] = { key = key, section = section, items = items, width = width, active = active, offset = 0 }
   end
-  S.prefix = slice(label .. ' ', 0, limit)
-  S.left = vim.fn.strdisplaywidth(S.prefix)
-  local bufs, names, counts = {}, {}, {}
-  for _, b in ipairs(api.nvim_list_bufs()) do
-    if vim.bo[b].buflisted and vim.bo[b].buftype == '' then
-      local path = api.nvim_buf_get_name(b)
-      local name = path == '' and '[No Name]' or vim.fn.fnamemodify(path, ':t')
-      bufs[#bufs + 1], names[b] = b, name
-      counts[name] = (counts[name] or 0) + 1
+  -- Fixed sections claim both edges; the fill section (buffers) scrolls in between.
+  local left, right, placed = 0, columns, {}
+  for _, b in ipairs(built) do
+    if b.section.align == 'left' and b.width > 0 then
+      b.x, b.room = left, math.max(0, math.min(b.width, columns - left))
+      left = left + b.room
+      placed[#placed + 1] = b
     end
   end
-  local win = S.editors[api.nvim_get_current_tabpage()]
-  local active = editor(win) and api.nvim_win_get_buf(win) or bufs[1]
-  S.tabs = {}
-  local col, selected = 0, nil
-  for _, b in ipairs(bufs) do
-    local label = names[b]
-    if counts[label] > 1 then
-      local path = api.nvim_buf_get_name(b)
-      label = path == '' and ('[No Name:' .. b .. ']') or vim.fn.fnamemodify(path, ':~:.')
+  for i = #built, 1, -1 do
+    local b = built[i]
+    if b.section.align == 'right' and b.width > 0 and right - b.width >= left then
+      right = right - b.width
+      b.x, b.room = right, b.width
+      placed[#placed + 1] = b
     end
-    label = label:gsub('%c', '?') .. (vim.bo[b].modified and ' ●' or '')
-    local text = ' ' .. label .. ' '
-    local width = vim.fn.strdisplaywidth(text)
-    local tab = { buf = b, text = text, start = col, finish = col + width, active = b == active }
-    S.tabs[#S.tabs + 1] = tab
-    if tab.active then selected = tab end
-    col = col + width
   end
-  local width = vim.o.columns - S.left
-  if selected then
-    -- Match Posting's scroll-to-center behavior while keeping short lists left aligned.
-    S.offset = math.max(0, math.min(math.floor((selected.start + selected.finish - width) / 2), col - width))
-    S.target = { selected.start + 1 - S.offset + S.left, selected.finish - 1 - S.offset + S.left }
-  else
-    S.offset, S.target = 0, { 0, 0 }
+  for _, b in ipairs(built) do
+    if b.section.align == 'fill' then
+      b.x, b.room = math.min(left, columns), math.max(0, right - left)
+      if b.active then
+        -- Match Posting's scroll-to-center behavior while keeping short lists left aligned.
+        b.offset = math.max(0, math.min(math.floor((b.active.start + b.active.finish - b.room) / 2), b.width - b.room))
+      end
+      placed[#placed + 1] = b
+    end
+  end
+  table.sort(placed, function(a, b) return a.x < b.x end)
+  S.placed, S.target = placed, {}
+  for _, b in ipairs(placed) do
+    if b.active then
+      local pad = b.section.pad or 1
+      local s = math.max(b.x, b.x + b.active.start - b.offset + pad)
+      local f = math.min(b.x + b.room, b.x + b.active.finish - b.offset - pad)
+      if f > s then S.target[b.key] = { s, f } end
+    end
   end
 end
 
+-- Visible part of an item, in screen columns.
+local function visible(b, item)
+  local left, right = math.max(item.start, b.offset), math.min(item.finish, b.offset + b.room)
+  return b.x + left - b.offset, b.x + right - b.offset, left, right
+end
+
 function M.render()
-  local parts = { '%#HankTablineProject#%0@v:lua.HankTablineNoop@', S.prefix:gsub('%%', '%%%%'), '%X' }
-  for _, tab in ipairs(S.tabs) do
-    local left, right = math.max(tab.start, S.offset), math.min(tab.finish, S.offset + vim.o.columns - S.left)
-    if left < right then
-      local text = slice(tab.text, left - tab.start, right - left):gsub('%%', '%%%%')
-      parts[#parts + 1] = ('%%#%s#%%%d@v:lua.HankTablineClick@%s%%X'):format(
-        tab.active and 'HankTablineSelected' or 'HankTablineInactive', tab.buf, text)
+  local parts, col = {}, 0
+  S.clicks = {}
+  for _, b in ipairs(S.placed) do
+    if b.x > col then
+      parts[#parts + 1] = '%#HankTablineInactive#%0@v:lua.HankTablineNoop@' .. string.rep(' ', b.x - col) .. '%X'
+      col = b.x
+    end
+    for _, item in ipairs(b.items) do
+      local _, screen_right, left, right = visible(b, item)
+      if left < right then
+        local text = slice(item.text, left - item.start, right - left):gsub('%%', '%%%%')
+        local nr, handler = 0, 'HankTablineNoop'
+        if b.section.click then
+          S.clicks[#S.clicks + 1] = { section = b.section, id = item.id }
+          nr, handler = #S.clicks, 'HankTablineClick'
+        end
+        parts[#parts + 1] = ('%%#%s#%%%d@v:lua.%s@%s%%X'):format(item.hl, nr, handler, text)
+        col = math.max(col, screen_right)
+      end
     end
   end
   parts[#parts + 1] = '%#HankTablineInactive#%='
   return table.concat(parts)
 end
 
-function M.select(buf)
-  vim.schedule(function()
-    if not api.nvim_buf_is_valid(buf) or not vim.bo[buf].buflisted then return end
-    local tab = api.nvim_get_current_tabpage()
-    local win = S.editors[tab]
-    if not editor(win) then
-      for _, w in ipairs(api.nvim_tabpage_list_wins(tab)) do
-        if editor(w) then win = w; break end
-      end
+local function item_at(col)
+  for _, b in ipairs(S.placed) do
+    for _, item in ipairs(b.items) do
+      local left, right = visible(b, item)
+      if col >= left and col < right then return b.section, item end
     end
-    if not editor(win) then return end
-    api.nvim_set_current_win(win)
-    -- :buffer retains Neovim's modified-buffer/hidden handling.
-    vim.cmd.buffer(buf)
-  end)
+  end
 end
 
-local function draw(start, finish)
+local function draw(spans)
   if not valid(S.bar) then return end
-  local cells, first, last = {}, nil, nil
-  start, finish = math.floor(start * 2 + 0.5) / 2, math.floor(finish * 2 + 0.5) / 2
+  local list = {}
+  for _, span in pairs(spans) do
+    local s, f = math.floor(span[1] * 2 + 0.5) / 2, math.floor(span[2] * 2 + 0.5) / 2
+    if f > s then list[#list + 1] = { s, f } end
+  end
+  local cells, runs = {}, {}
   for col = 0, vim.o.columns - 1 do
-    local char, accent = '━', false
-    if col >= start and col + 1 <= finish then
-      accent = true
-    elseif col < start and col + 1 > start and col + 1 <= finish then
-      char, accent = '╺', true
-    elseif col >= start and col < finish and col + 1 > finish then
-      char, accent = '╸', true
-    elseif col + 1 == start then
-      char = '╸'
-    elseif col == finish then
-      char = '╺'
+    local char, accent
+    for _, span in ipairs(list) do
+      local s, f = span[1], span[2]
+      if col >= s and col + 1 <= f then
+        char, accent = '━', true
+      elseif col < s and col + 1 > s and col + 1 <= f then
+        char, accent = '╺', true
+      elseif col >= s and col < f and col + 1 > f then
+        char, accent = '╸', true
+      end
+      if accent then break end
     end
-    if col < S.left then char, accent = '━', false end
-    cells[#cells + 1] = char
-    if accent then first, last = first or col, col + 1 end
+    if not accent then
+      -- Half-cell gaps on either side of a lit segment, as Textual's Bar draws them.
+      for _, span in ipairs(list) do
+        if col + 1 == span[1] then char = '╸'; break end
+        if col == span[2] then char = '╺'; break end
+      end
+    end
+    cells[#cells + 1] = char or '━'
+    if accent then
+      local run = runs[#runs]
+      if run and run[2] == col then run[2] = col + 1 else runs[#runs + 1] = { col, col + 1 } end
+    end
   end
   vim.bo[S.buf].modifiable = true
   api.nvim_buf_set_lines(S.buf, 0, -1, false, { table.concat(cells) })
   vim.bo[S.buf].modifiable = false
   api.nvim_buf_clear_namespace(S.buf, ns, 0, -1)
-  if first then
-    api.nvim_buf_set_extmark(S.buf, ns, 0, first * 3, { end_col = last * 3, hl_group = 'HankTablineAccent' })
+  for _, run in ipairs(runs) do
+    -- Every rail glyph is three bytes in UTF-8.
+    api.nvim_buf_set_extmark(S.buf, ns, 0, run[1] * 3, { end_col = run[2] * 3, hl_group = 'HankTablineAccent' })
   end
-  S.position = { start, finish }
+  S.position = vim.deepcopy(spans)
 end
 
 local function animate(instant)
@@ -156,13 +177,19 @@ local function animate(instant)
   S.destination = vim.deepcopy(target)
   S.generation = S.generation + 1
   local generation = S.generation
-  if instant or not S.position or S.opts.duration == 0 then draw(unpack(target)); return end
+  if instant or not S.opts.animate or S.opts.duration == 0 or not S.position then draw(target); return end
   local origin, begun = S.position, vim.uv.hrtime()
   local function step()
     if generation ~= S.generation or not valid(S.bar) then return end
     local t = math.min(1, (vim.uv.hrtime() - begun) / (S.opts.duration * 1e9))
     local eased = t < 0.5 and 4 * t ^ 3 or 1 - (-2 * t + 2) ^ 3 / 2
-    draw(origin[1] + (target[1] - origin[1]) * eased, origin[2] + (target[2] - origin[2]) * eased)
+    -- Segments that exist on both ends glide; new ones appear in place.
+    local frame = {}
+    for key, to in pairs(target) do
+      local from = origin[key]
+      frame[key] = from and { from[1] + (to[1] - from[1]) * eased, from[2] + (to[2] - from[2]) * eased } or to
+    end
+    draw(frame)
     if t < 1 then vim.defer_fn(step, 16) end
   end
   step()
@@ -172,9 +199,6 @@ local function geometry()
   local current_tab = api.nvim_get_current_tabpage()
   for win in pairs(S.reserved) do
     if not valid(win) then S.reserved[win] = nil end
-  end
-  for tab in pairs(S.editors) do
-    if not api.nvim_tabpage_is_valid(tab) then S.editors[tab] = nil end
   end
   local enough_room = S.opts.underline and vim.o.lines >= 6
   for _, win in ipairs(api.nvim_tabpage_list_wins(current_tab)) do
@@ -221,8 +245,9 @@ function M.refresh(instant)
   if S.updating or S.exiting then return end
   S.updating = true
   local ok, err = pcall(function()
-    local win = api.nvim_get_current_win()
-    if editor(win) then S.editors[api.nvim_get_current_tabpage()] = win end
+    for _, section in ipairs(S.sections) do
+      if section.update then section.update() end
+    end
     geometry()
     collect()
     vim.cmd.redrawtabline()
@@ -244,15 +269,38 @@ local function queue(instant)
     M.refresh(now)
   end)
 end
+M.queue = queue
+
+-- Snacks re-applies its own window options on every layout pass, so a sidebar
+-- picker has to carry the reserved winbar itself. Use as a picker `on_show`.
+function M.reserve_snacks(picker)
+  if not (S.opts and S.opts.underline and picker.layout and picker.layout.split) then return end
+  picker.layout.root.opts.wo.winbar = ' '
+  vim.wo[picker.layout.root.win].winbar = ' '
+  picker.layout:update()
+end
+
+local function aligned(section, align)
+  return setmetatable({ align = align }, { __index = section })
+end
 
 function M.setup(opts)
-  S.opts = vim.tbl_extend('force', { duration = 0.3, underline = false }, opts)
+  S.opts = vim.tbl_extend('force', {
+    duration = 0.3, animate = true, underline = false, project = false, sections = {},
+  }, opts or {})
+  S.sections = {}
+  if S.opts.project then S.sections[#S.sections + 1] = aligned(require('hank-tabline.project'), 'left') end
+  for _, section in ipairs(S.opts.sections.left or {}) do S.sections[#S.sections + 1] = aligned(section, 'left') end
+  S.sections[#S.sections + 1] = aligned(require('hank-tabline.buffers'), 'fill')
+  for _, section in ipairs(S.opts.sections.right or {}) do S.sections[#S.sections + 1] = aligned(section, 'right') end
+
   local group = api.nvim_create_augroup('hank_tabline', { clear = true })
   palette()
   vim.o.showtabline = 2
   vim.o.tabline = "%!v:lua.require('hank-tabline').render()"
-  _G.HankTablineClick = function(buf, _, button)
-    if button == 'l' then M.select(buf) end
+  _G.HankTablineClick = function(nr, _, button)
+    local entry = S.clicks[nr]
+    if entry then entry.section.click(entry.id, button) end
   end
   _G.HankTablineNoop = function() end
   api.nvim_create_autocmd({ 'UIEnter', 'VimEnter', 'VimResized', 'WinResized', 'TabEnter', 'WinNew', 'WinClosed', 'DirChanged' }, {
@@ -269,15 +317,12 @@ function M.setup(opts)
   vim.keymap.set({ 'n', 'i', 'v', 't' }, '<LeftMouse>', function()
     local mouse = vim.fn.getmousepos()
     if valid(S.bar) and mouse.winid == S.bar then
-      local col = mouse.screencol - 1 - S.left + S.offset
-      if mouse.screencol <= S.left then return '' end
-      for _, tab in ipairs(S.tabs) do
-        if col >= tab.start and col < tab.finish then M.select(tab.buf); break end
-      end
+      local section, item = item_at(mouse.screencol - 1)
+      if section and section.click then section.click(item.id, 'l') end
       return ''
     end
     return '<LeftMouse>'
-  end, { expr = true, desc = 'Select a buffer from the tab underline' })
+  end, { expr = true, desc = 'Select a tab from the header underline' })
   queue(true)
 end
 

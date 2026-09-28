@@ -252,6 +252,7 @@ in {
     extraPlugins = [
       pkgs.vimPlugins."evergarden-nvim"
       (pkgs.callPackage ../../../../pkgs/hank-tabline {})
+      (pkgs.callPackage ../../../../pkgs/hank-panels {})
       # pkgs.vimPlugins.kanso-nvim
     ];
 
@@ -275,6 +276,8 @@ in {
       db_ui_use_nerd_fonts = lib.mkIf dev 1;
       # 表下面的 List / Columns 等模板点开就执行,不用再 :w 一次。
       db_ui_auto_execute_table_helpers = lib.mkIf dev 1;
+      # 和其它左侧面板(explorer、git、大纲)同宽,切换时编辑区不跳。
+      db_ui_winwidth = lib.mkIf dev 30;
     };
 
     opts = {
@@ -779,10 +782,30 @@ in {
           key = "<leader>e";
           action = mkRaw ''
             function()
-              require("snacks").explorer()
+              require("hank-panels").toggle("explorer")
             end
           '';
           options.desc = "Explorer";
+        }
+        {
+          mode = "n";
+          key = "<leader>G";
+          action = mkRaw ''
+            function()
+              require("hank-panels").toggle("git")
+            end
+          '';
+          options.desc = "Git status sidebar";
+        }
+        {
+          mode = "n";
+          key = "<leader>o";
+          action = mkRaw ''
+            function()
+              require("hank-panels").toggle("outline")
+            end
+          '';
+          options.desc = "Outline";
         }
         {
           mode = "n";
@@ -799,7 +822,11 @@ in {
         {
           mode = "n";
           key = "<leader>D";
-          action = "<Cmd>DBUIToggle<CR>";
+          action = mkRaw ''
+            function()
+              require("hank-panels").toggle("database")
+            end
+          '';
           options.desc = "Database UI";
         }
       ];
@@ -860,24 +887,22 @@ in {
             enabled = true;
             animate.enabled = false;
           };
-          picker = {
-            enabled = true;
-            ui_select = true;
-            layout.layout.backdrop = false;
-            sources.explorer =
-              {
-                layout.layout.width = 30;
-              }
-              // lib.optionalAttrs config.my.nixvim.tabline.underline.enable {
-                on_show = mkRaw ''
-                  function(picker)
-                    picker.layout.root.opts.wo.winbar = " "
-                    vim.wo[picker.layout.root.win].winbar = " "
-                    picker.layout:update()
-                  end
-                '';
-              };
-          };
+          picker =
+            {
+              enabled = true;
+              ui_select = true;
+              layout.layout.backdrop = false;
+              sources.explorer.layout.layout.width = 30;
+            }
+            // lib.optionalAttrs config.my.nixvim.tabline.underline.enable {
+              # 侧栏 picker(explorer、hank-panels 的 git)要自己带着顶栏横线的留白,
+              # 否则 Snacks 每次重排都会把 winbar 抹掉。浮动 picker 由它自己跳过。
+              on_show = mkRaw ''
+                function(picker)
+                  require("hank-tabline").reserve_snacks(picker)
+                end
+              '';
+            };
           terminal = {
             enabled = true;
             win = {
@@ -944,6 +969,21 @@ in {
           ];
         };
         settings.ignored_filetypes = ["SnacksExplorer"];
+      };
+
+      # hank-panels 的「大纲」面板:贴左边缘、和 explorer 同宽,跟着当前窗口换 buffer。
+      aerial = {
+        enable = true;
+        settings = {
+          attach_mode = "global";
+          layout = {
+            default_direction = "left";
+            placement = "edge";
+            # 默认 max_width = { 40, 0.2 },120 列的终端会被压到 24。
+            min_width = 30;
+            max_width = 30;
+          };
+        };
       };
 
       persistence = {
@@ -1741,9 +1781,47 @@ in {
         },
       })
       vim.cmd.colorscheme("evergarden")
+      -- 图标是 Material 的实心/空心成对码位:打开时实心,关闭时空心。
+      local panels, adapters = require("hank-panels"), require("hank-panels.adapters")
+      panels.setup({
+        panels = {
+          adapters.snacks({ id = "explorer", icon = 0xf024b, icon_inactive = 0xf0256 }),
+          adapters.snacks({
+            id = "git",
+            icon = 0xf062c,
+            source = "git_status",
+            opts = {
+              focus = "list",
+              auto_close = false,
+              jump = { close = false },
+              layout = { preset = "sidebar", preview = false, layout = { width = 30 } },
+            },
+          }),
+          adapters.window({
+            id = "outline",
+            icon = 0xf0645,
+            icon_inactive = 0xf13d2,
+            ft = "aerial",
+            open = function() require("aerial").open({ direction = "left" }) end,
+          }),
+          ${lib.optionalString dev ''
+        adapters.window({
+          id = "database",
+          icon = 0xf01bc,
+          icon_inactive = 0xf1632,
+          ft = "dbui",
+          open = function() vim.cmd("DBUI") end,
+        }),
+        adapters.lean_infoview({ id = "infoview", icon = 0xf02fc, icon_inactive = 0xf02fd }),
+      ''}
+        },
+      })
       require("hank-tabline").setup({
         underline = ${lib.boolToString config.my.nixvim.tabline.underline.enable},
+        animate = ${lib.boolToString config.my.nixvim.tabline.animation.enable},
+        project = ${lib.boolToString config.my.nixvim.tabline.project.enable},
         palette = function() return require("evergarden.colors").get() end,
+        sections = { left = { panels.section("left") }, right = { panels.section("right") } },
       })
     '';
   };
