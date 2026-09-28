@@ -32,14 +32,14 @@ Textual 6.1.0。普通模式使用 Textual 的 `Tabs`；Posting 的 compact 模�
 只有最上方窗口需要预留行，下面的水平分屏不加空白行。过小的终端暂时隐藏
 第二行。顶部已有的自定义 `winbar` 在预留期间让给轨道，窗口移至下方时恢复。
 
-Snacks Explorer 打开在最左侧时，标签和轨道按侧栏实际宽度向右让位，
-侧栏关闭后恢复全宽。Explorer 的根 split 不预留 `winbar`；它现有的
-输入框和列表浮层在每次 Snacks 布局结束后上移一行，列表底部补回一行，
-让标题框占据屏幕左上角。没有添加侧栏或导航窗口。
-`on_show` 调用插件的 `attach_explorer`，保留 Snacks 原有 `on_update`
-回调，只调整这个 Explorer 实例；普通 Picker、LazyGit 和全屏布局不作此调整。
-终端缩放时 Neovim 可能把浮层夹回原生 tabline 下方，插件在延后的布局检查中
-恢复其位置。此适配依赖当前锁定的 Snacks 布局结构，升级时应运行下述 UI 检查。
+顶栏全宽置顶，Explorer 和正文都从它下面开始。Snacks Explorer 每次布局
+会重新应用自身的窗口选项，所以 `on_show` 把根窗口的 `winbar` 留白同步进
+Snacks 选项，再由 Snacks 自己计算子窗口大小。不移动它的浮窗，不接管
+`on_update`，也不修改其窗口高度。
+
+标签行左侧固定显示实心文件夹图标和当前 tabpage 工作目录的项目名，占 20 个字符单元，
+与 buffer 列表之间用细竖线分隔。切换文件、开关或调整 Explorer 不改变它的位置。
+长名称截短，窄终端最多占四分之一宽度；只有 buffer 标签参与横向滚动和点击切换。
 
 配色直接读取 Evergarden 当前 palette：绿色选中背景与轨道、crust 色选中文字、
 overlay2 色非选中文字、overlay0 色轨道、base 色底色。修改状态显示 `●`，
@@ -50,6 +50,6 @@ overlay2 色非选中文字、overlay0 色轨道、base 色底色。修改状态
 `pkgs/hank-tabline/tests.py` 需要 Python `pynvim` 和 Neovim 0.12+，会启动隔离
 UI 实例检查两行渲染、鼠标点击、修改标记、Unicode/溢出、分屏和退出行为。
 可通过 `--nvim /path/to/nvim --init /path/to/evaluated-init.lua` 验证完整配置，
-同时覆盖 Explorer 左上角位置、侧栏宽度变化、终端缩放、偏移后的两行点击、
+同时覆盖固定项目名、目录变化、Explorer 位于顶栏下方、侧栏宽度变化、终端缩放、两行点击、
 tabpage 切换、侧栏关闭和 Picker/LazyGit；不传参数时使用无配置 Neovim。
 `--capture-explorer-json /tmp/sidebar.json` 可导出真实 UI 字符与配色作视觉检查。
