@@ -276,6 +276,17 @@ in {
       # 无参 swap-pane = 跟 `select-pane -m` 标记的那个交换,和上面不冲突,留着。
       bind | swap-pane
 
+      # i3 式 scratchpad:所有 session 共用一个叫 scratch 的 session,prefix g
+      # 弹成浮窗;在浮窗里再按一次就 detach,浮窗随之关闭,里面的东西都还在。
+      # TMUX= 绕过嵌套检查;socket 从 $TMUX 的第一段取,保证连回同一个 server
+      # —— display-popup 不展开 #{socket_path},写它会拿字面路径另起一个 server。
+      bind g if -F '#{==:#{session_name},scratch}' {
+        detach-client
+      } {
+        display-popup -E -w 80% -h 75% -b rounded -T ' scratch ' \
+          'TMUX= tmux -S "''${TMUX%%,*}" new-session -A -s scratch \; set status off'
+      }
+
       bind -T copy-mode-vi v send-keys -X begin-selection
       bind -T copy-mode-vi y send-keys -X copy-selection-and-cancel
 
