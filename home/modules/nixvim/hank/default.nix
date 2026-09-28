@@ -309,6 +309,8 @@ in {
       templ = "templ";
     };
 
+    highlight.HankEndOfBuffer.fg = "#303a3d";
+
     diagnostic.settings = {
       virtual_lines = false;
       virtual_text = true;
@@ -841,7 +843,15 @@ in {
           image.enabled = true;
           input.enabled = true;
           notifier.enabled = true;
-          lazygit.enabled = true;
+          lazygit = {
+            enabled = true;
+            win = {
+              position = "float";
+              width = 0.9;
+              height = 0.9;
+              border = "rounded";
+            };
+          };
           words.enabled = true;
           indent = {
             enabled = true;
@@ -1634,11 +1644,41 @@ in {
       ];
     };
 
-    # 内置 document_color 的渲染把 extmark 写死在 range 起始列,只能画在
-    # token 前面。style 传函数就由我们接管渲染,才能和 highlight-colors 的
-    # eow 一样落在 token 之后。代价:自定义函数下内置不再提供 hl_group,
-    # 高亮组和 extmark 清理都得自己管。
     extraConfigLuaPre = ''
+      -- fillchars.eob 只能画左侧字符;虚拟行锚定在 EOF 之后,避免被末尾折叠隐藏。
+      do
+        local ns = vim.api.nvim_create_namespace("hank_end_of_buffer")
+        vim.api.nvim_set_decoration_provider(ns, {
+          on_win = function(_, _, buf)
+            if vim.bo[buf].buftype ~= "" then
+              vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
+              vim.b[buf].hank_eof_stamp = nil
+              return false
+            end
+            local stamp = table.concat({ vim.api.nvim_buf_get_changedtick(buf), vim.o.lines, vim.o.columns }, ":")
+            if vim.b[buf].hank_eof_stamp ~= stamp then
+              local lines = {}
+              local stripe = { { string.rep("╱", vim.o.columns), "HankEndOfBuffer" } }
+              for row = 1, vim.o.lines do
+                lines[row] = stripe
+              end
+              vim.api.nvim_buf_set_extmark(buf, ns, vim.api.nvim_buf_line_count(buf), 0, {
+                id = 1,
+                virt_lines = lines,
+                virt_lines_above = true,
+                virt_lines_leftcol = true,
+                right_gravity = true,
+                undo_restore = false,
+              })
+              vim.b[buf].hank_eof_stamp = stamp
+            end
+            return false
+          end,
+        })
+      end
+
+      -- document_color 的内置 extmark 只能画在 token 前面;自定义渲染才能
+      -- 把色块放到 token 之后,高亮组和 extmark 清理也由这里负责。
       do
         local ns = vim.api.nvim_create_namespace("hank_lsp_document_color")
         -- 内置逻辑每个 buffer version 只 apply 一批,所以拿 changedtick 判批次:
