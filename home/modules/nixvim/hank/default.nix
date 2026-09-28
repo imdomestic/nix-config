@@ -10,6 +10,9 @@
   # Dev machines (importing home/users/<user>/dev.nix) get the full setup;
   # everything gated on `dev` below stays out of the closure elsewhere.
   dev = config.my.nixvim.dev.enable;
+  # 左侧栏(explorer、git、大纲、数据库)和顶栏上方那块共用的宽度;右侧是 lean infoview。
+  sidebarWidth = 30;
+  infoviewWidth = 40;
   toLua = inputs.nixvim.lib.nixvim.toLuaObject;
   # React 那几个插件共用的 filetype 列表。
   reactFiletypes = [
@@ -277,7 +280,7 @@ in {
       # 表下面的 List / Columns 等模板点开就执行,不用再 :w 一次。
       db_ui_auto_execute_table_helpers = lib.mkIf dev 1;
       # 和其它左侧面板(explorer、git、大纲)同宽,切换时编辑区不跳。
-      db_ui_winwidth = lib.mkIf dev 30;
+      db_ui_winwidth = lib.mkIf dev sidebarWidth;
     };
 
     opts = {
@@ -522,6 +525,12 @@ in {
               end, { silent = true, buffer = args.buf })
             end
           '';
+        }
+        {
+          # dadbod-ui 没有窗口选项,抽屉打开时补上和其它侧栏一样的浮窗底色。
+          event = "FileType";
+          pattern = "dbui";
+          command = "setlocal winhighlight=Normal:NormalFloat,EndOfBuffer:NormalFloat,SignColumn:NormalFloat";
         }
       ];
 
@@ -907,7 +916,7 @@ in {
               enabled = true;
               ui_select = true;
               layout.layout.backdrop = false;
-              sources.explorer.layout.layout.width = 30;
+              sources.explorer.layout.layout.width = sidebarWidth;
             }
             // lib.optionalAttrs config.my.nixvim.tabline.underline.enable {
               # 侧栏 picker(explorer、hank-panels 的 git)要自己带着顶栏横线的留白,
@@ -995,8 +1004,10 @@ in {
             default_direction = "left";
             placement = "edge";
             # 默认 max_width = { 40, 0.2 },120 列的终端会被压到 24。
-            min_width = 30;
-            max_width = 30;
+            min_width = sidebarWidth;
+            max_width = sidebarWidth;
+            # 和 explorer 一样用浮窗底色,侧栏整列与正文区分开。
+            win_opts.winhighlight = "Normal:NormalFloat,EndOfBuffer:NormalFloat,SignColumn:NormalFloat";
           };
         };
       };
@@ -1424,7 +1435,7 @@ in {
           mappings = true;
           infoview = {
             orientation = "vertical";
-            width = 40;
+            width = infoviewWidth;
           };
         };
       };
@@ -1809,7 +1820,7 @@ in {
               focus = "list",
               auto_close = false,
               jump = { close = false },
-              layout = { preset = "sidebar", preview = false, layout = { width = 30 } },
+              layout = { preset = "sidebar", preview = false, layout = { width = ${toString sidebarWidth} } },
             },
           }),
           adapters.window({
@@ -1836,7 +1847,10 @@ in {
         animate = ${lib.boolToString config.my.nixvim.tabline.animation.enable},
         project = ${lib.boolToString config.my.nixvim.tabline.project.enable},
         palette = function() return require("evergarden.colors").get() end,
-        sections = { left = { panels.section("left") }, right = { panels.section("right") } },
+        sidebars = {
+          left = { width = ${toString sidebarWidth}, sections = { panels.section("left") } },
+          right = { width = ${toString infoviewWidth}, sections = { panels.section("right") } },
+        },
       })
     '';
   };

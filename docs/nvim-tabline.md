@@ -6,15 +6,16 @@
 VS Code 的嵌入 Neovim 不加载此插件。
 
 插件只负责画：一行由若干「分组」拼成的标签，外加可选的第二行横线。分组自己
-提供条目，插件不关心条目代表什么。现在的分组从左到右是：
+提供条目，插件不关心条目代表什么。从左到右：
 
-| 分组 | 来源 | 对齐 | 当前项样式 |
+| 区域 | 内容 | 宽度 | 底色 |
 |---|---|---|---|
-| 项目名（可选） | `hank-tabline.project` | 左，固定 | 绿色粗体文字，不可点击 |
-| 左侧面板图标 | `hank-panels` 的 `section("left")` | 左，固定 | 实心绿色图标 |
-| buffer 标签 | `hank-tabline.buffers` | 填满中间，可滚动 | 绿底块 |
-| 右侧面板图标 | `hank-panels` 的 `section("right")` | 右，固定 | 实心绿色图标 |
+| 左侧栏区块 | 项目名（可选，靠左）+ `hank-panels` 左侧图标（靠右，朝向正文） | 固定，等于左侧栏宽度（30） | 侧栏底色 mantle |
+| 空一列 | —— 顶栏和横线都在这里断开，正好落在侧栏与正文的分隔线上方 | 1 | 正文底色 |
+| buffer 标签 | `hank-tabline.buffers` | 余下宽度，可滚动 | 正文底色 |
+| 右侧栏区块 | `hank-panels` 右侧图标（lean infoview），只在有 Lean buffer 时出现 | 固定，等于 infoview 宽度（40） | 侧栏底色 |
 
+buffer 标签的起点与正文窗口左边缘对齐；侧栏开、关、切换面板都不移动它。
 面板图标见 [侧栏面板](nvim-panels.md)。
 
 ## 选项
@@ -31,18 +32,30 @@ my.nixvim.tabline.project.enable = true;    # 左端固定项目名，默认关
 
 ## 分组接口
 
-`setup({ sections = { left = {...}, right = {...} } })` 接收分组表。每个分组：
+```lua
+require("hank-tabline").setup({
+  sidebars = {
+    left = { width = 30, sections = { panels.section("left") } },
+    right = { width = 40, sections = { panels.section("right") } },
+  },
+  sections = { left = {...}, right = {...} }, -- 不进区块的普通分组，可选
+})
+```
 
-- `items(ctx)`：返回 `{ id, text, active }` 列表；`ctx.columns` 是终端宽度。
-  `text` 自带左右留白。
+`sidebars` 的区块宽度固定、自带底色，与中间之间留 `gap`（默认 1）列；开启
+`project` 时项目名成为左区块的标题。没有左区块时项目名退回为行首的普通分组。
+
+每个分组：
+
+- `items(ctx)`：返回 `{ id, text, active }` 列表；`ctx.columns` 是终端宽度，
+  区块内的项目名另有 `ctx.width`（图标占剩下的宽度）。`text` 自带左右留白。
 - `click(id, button)`：可选。没有它的分组整段不可点击。
 - `style`：`"block"`（默认，当前项绿底块）、`"icon"`（只变色）、`"label"`。
 - `pad`：横线亮段比条目两端各缩进多少格，默认 1；可以是半格（图标组用 0.5，
   亮段正好落在图标下方，两侧各留半格空）。
 - `update()`：可选，每次刷新前调用（buffer 分组用它记住最近的正文窗口）。
 
-固定分组先占左右两端，buffer 分组在剩下的宽度里滚动；打开或关闭侧栏、切换
-面板都不会让 buffer 标签移动。
+`require("hank-tabline").layout()` 返回每个可见条目的屏幕列，测试用它定位点击。
 
 ## Posting 源码对应
 
@@ -80,11 +93,12 @@ Textual 6.1.0。普通模式使用 Textual 的 `Tabs`；Posting 的 compact 模�
 同步进 Snacks 选项，再由 Snacks 自己计算子窗口大小。浮动 picker 直接跳过。
 不移动它的浮窗，不接管 `on_update`，也不修改其窗口高度。
 
-项目名分组显示实心文件夹图标和当前 tabpage 工作目录的项目名，按内容宽度显示，
-长名称截短，最多占终端四分之一宽度。
+项目名显示实心文件夹图标和当前 tabpage 工作目录的项目名。在左区块里它只能用
+图标剩下的宽度，没有区块时最多占终端四分之一；超长时截短并补 `…`。
 
 配色直接读取 Evergarden 当前 palette：绿色选中背景与轨道、crust 色选中文字、
-overlay2 色非选中文字、overlay0 色轨道、base 色底色。修改状态显示 `●`，
+overlay2 色非选中文字、overlay0 色轨道、base 色底色；侧栏区块用 mantle，
+与 Snacks 侧栏（NormalFloat）以及设成同色的 aerial / dbui 窗口连成一列。修改状态显示 `●`，
 重名文件补路径，长标签按屏幕字符宽度裁切，文字中的 `%` 转义后交给 tabline。
 
 ## 验证

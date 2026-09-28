@@ -1,11 +1,11 @@
 -- Posting-style header: a row of tab sections and an optional underline rail.
 -- Sections only supply items; buffers, the project label and anything registered
--- through `sections` (e.g. hank-panels) are rendered the same way.
+-- through `sections` / `sidebars` (e.g. hank-panels) are rendered the same way.
 local M = {}
 local api = vim.api
 local ns = api.nvim_create_namespace('hank_tabline')
 local slice = require('hank-tabline.slice')
-local S = { sections = {}, placed = {}, clicks = {}, target = {}, reserved = {}, generation = 0 }
+local S = { sections = {}, blocks = {}, placed = {}, zones = {}, clicks = {}, target = {}, reserved = {}, generation = 0 }
 
 local function valid(win)
   return win and api.nvim_win_is_valid(win)
@@ -13,68 +13,129 @@ end
 
 local function palette()
   local p = S.opts.palette()
+  local surface = p.mantle or p.base
   api.nvim_set_hl(0, 'HankTablineSelected', { fg = p.crust, bg = p.green, bold = true })
   api.nvim_set_hl(0, 'HankTablineInactive', { fg = p.overlay2, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineTrack', { fg = p.overlay0, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineAccent', { fg = p.green, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineProject', { fg = p.green, bg = p.base, bold = true })
   api.nvim_set_hl(0, 'HankTablineIcon', { fg = p.green, bg = p.base, bold = true })
+  -- Sidebar blocks sit on the sidebar's own surface (NormalFloat is mantle in Evergarden).
+  api.nvim_set_hl(0, 'HankTablinePanel', { fg = p.overlay2, bg = surface })
+  api.nvim_set_hl(0, 'HankTablinePanelIcon', { fg = p.green, bg = surface, bold = true })
+  api.nvim_set_hl(0, 'HankTablinePanelLabel', { fg = p.green, bg = surface, bold = true })
+  api.nvim_set_hl(0, 'HankTablinePanelTrack', { fg = p.overlay0, bg = surface })
+  api.nvim_set_hl(0, 'HankTablinePanelAccent', { fg = p.green, bg = surface })
 end
 
 -- 'block' sections mark the active item with a filled label, 'icon' sections only
 -- recolour it (the rail and the filled/outline glyph carry the rest).
-local function highlight(section, item)
+local function highlight(section, item, surface)
   if item.hl then return item.hl end
-  if section.style == 'label' then return 'HankTablineProject' end
-  if not item.active then return 'HankTablineInactive' end
-  return section.style == 'icon' and 'HankTablineIcon' or 'HankTablineSelected'
+  if section.style == 'label' then return surface and 'HankTablinePanelLabel' or 'HankTablineProject' end
+  if not item.active then return surface and 'HankTablinePanel' or 'HankTablineInactive' end
+  if section.style == 'icon' then return surface and 'HankTablinePanelIcon' or 'HankTablineIcon' end
+  return 'HankTablineSelected'
+end
+
+local function build(section, ctx, surface)
+  local items, width, active = {}, 0, nil
+  for _, item in ipairs(section.items(ctx) or {}) do
+    local w = vim.fn.strdisplaywidth(item.text)
+    local entry = { id = item.id, text = item.text, active = item.active, hl = highlight(section, item, surface),
+      start = width, finish = width + w }
+    items[#items + 1] = entry
+    width = width + w
+    if item.active then active = entry end
+  end
+  return { key = section.key, section = section, items = items, width = width, active = active, offset = 0 }
 end
 
 local function collect()
   local columns = vim.o.columns
   local ctx = { columns = columns }
-  local built = {}
-  for key, section in ipairs(S.sections) do
-    local items, width, active = {}, 0, nil
-    for _, item in ipairs(section.items(ctx) or {}) do
-      local w = vim.fn.strdisplaywidth(item.text)
-      local entry = { id = item.id, text = item.text, active = item.active, hl = highlight(section, item),
-        start = width, finish = width + w }
-      items[#items + 1] = entry
-      width = width + w
-      if item.active then active = entry end
-    end
-    built[key] = { key = key, section = section, items = items, width = width, active = active, offset = 0 }
+  local placed, zones, left, right, fill_to = {}, {}, 0, columns, 0
+  local function place(b, x, room)
+    b.x, b.room = x, math.max(0, room)
+    placed[#placed + 1] = b
   end
-  -- Fixed sections claim both edges; the fill section (buffers) scrolls in between.
-  local left, right, placed = 0, columns, {}
-  for _, b in ipairs(built) do
-    if b.section.align == 'left' and b.width > 0 then
-      b.x, b.room = left, math.max(0, math.min(b.width, columns - left))
-      left = left + b.room
-      placed[#placed + 1] = b
+  local function zone(from, to, kind)
+    for col = math.max(0, from), math.min(columns, to) - 1 do zones[col] = kind end
+    if kind == 'surface' then fill_to = math.max(fill_to, math.min(columns, to)) end
+  end
+  local function inner(block)
+    local built, used = {}, 0
+    for _, section in ipairs(block.sections) do
+      built[#built + 1] = build(section, ctx, true)
+      used = used + built[#built].width
+    end
+    return built, used
+  end
+
+  -- Sidebar blocks cover the sidebar column: fixed width, their own surface, and a
+  -- gap toward the buffer tabs so neither the tab row nor the rail runs through.
+  local block = S.blocks.left
+  if block then
+    local w = math.min(block.width, columns)
+    local built, used = inner(block)
+    -- Title on the outer edge, icons toward the files.
+    local x = math.max(0, w - used)
+    if block.project then place(build(block.project, { columns = columns, width = x }, true), 0, x) end
+    for _, b in ipairs(built) do
+      place(b, x, math.min(b.width, w - x))
+      x = x + b.room
+    end
+    zone(0, w, 'surface')
+    zone(w, w + block.gap, 'gap')
+    left = math.min(columns, w + block.gap)
+  end
+  block = S.blocks.right
+  if block then
+    local built, used = inner(block)
+    local w = math.min(block.width, right - left - block.gap)
+    -- Only shown while one of its panels is available (e.g. a Lean buffer is open).
+    if used > 0 and w > 0 then
+      local x = right - w
+      zone(x, right, 'surface')
+      zone(x - block.gap, x, 'gap')
+      right = x - block.gap
+      for _, b in ipairs(built) do
+        place(b, x, math.min(b.width, columns - x))
+        x = x + b.room
+      end
     end
   end
-  for i = #built, 1, -1 do
-    local b = built[i]
-    if b.section.align == 'right' and b.width > 0 and right - b.width >= left then
-      right = right - b.width
-      b.x, b.room = right, b.width
-      placed[#placed + 1] = b
+  for _, section in ipairs(S.sections) do
+    if section.align == 'left' then
+      local b = build(section, ctx)
+      if b.width > 0 then
+        place(b, left, math.min(b.width, right - left))
+        left = left + b.room
+      end
     end
   end
-  for _, b in ipairs(built) do
-    if b.section.align == 'fill' then
-      b.x, b.room = math.min(left, columns), math.max(0, right - left)
+  for i = #S.sections, 1, -1 do
+    local section = S.sections[i]
+    if section.align == 'right' then
+      local b = build(section, ctx)
+      if b.width > 0 and right - b.width >= left then
+        right = right - b.width
+        place(b, right, b.width)
+      end
+    end
+  end
+  for _, section in ipairs(S.sections) do
+    if section.align == 'fill' then
+      local b = build(section, ctx)
+      place(b, left, right - left)
       if b.active then
         -- Match Posting's scroll-to-center behavior while keeping short lists left aligned.
         b.offset = math.max(0, math.min(math.floor((b.active.start + b.active.finish - b.room) / 2), b.width - b.room))
       end
-      placed[#placed + 1] = b
     end
   end
   table.sort(placed, function(a, b) return a.x < b.x end)
-  S.placed, S.target = placed, {}
+  S.placed, S.zones, S.fill_to, S.target = placed, zones, fill_to, {}
   for _, b in ipairs(placed) do
     if b.active then
       local pad = b.section.pad or 1
@@ -92,13 +153,21 @@ local function visible(b, item)
 end
 
 function M.render()
-  local parts, col = {}, 0
+  local parts, col, zones = {}, 0, S.zones
   S.clicks = {}
-  for _, b in ipairs(S.placed) do
-    if b.x > col then
-      parts[#parts + 1] = '%#HankTablineInactive#%0@v:lua.HankTablineNoop@' .. string.rep(' ', b.x - col) .. '%X'
-      col = b.x
+  -- Blank cells take the colour of the zone they sit in.
+  local function blank(to)
+    while col < to do
+      local surface = zones[col] == 'surface'
+      local stop = col + 1
+      while stop < to and (zones[stop] == 'surface') == surface do stop = stop + 1 end
+      parts[#parts + 1] = ('%%#%s#%%0@v:lua.HankTablineNoop@%s%%X'):format(
+        surface and 'HankTablinePanel' or 'HankTablineInactive', string.rep(' ', stop - col))
+      col = stop
     end
+  end
+  for _, b in ipairs(S.placed) do
+    blank(b.x)
     for _, item in ipairs(b.items) do
       local _, screen_right, left, right = visible(b, item)
       if left < right then
@@ -113,8 +182,21 @@ function M.render()
       end
     end
   end
+  blank(S.fill_to or 0)
   parts[#parts + 1] = '%#HankTablineInactive#%='
   return table.concat(parts)
+end
+
+-- Screen layout of the visible items, for tests and integrations.
+function M.layout()
+  local out = {}
+  for _, b in ipairs(S.placed) do
+    for _, item in ipairs(b.items) do
+      local left, right = visible(b, item)
+      if right > left then out[#out + 1] = { section = b.key, id = item.id, col = left, width = right - left } end
+    end
+  end
+  return out
 end
 
 local function item_at(col)
@@ -128,46 +210,59 @@ end
 
 local function draw(spans)
   if not valid(S.bar) then return end
-  local list = {}
+  local zones, list = S.zones, {}
   for _, span in pairs(spans) do
     local s, f = math.floor(span[1] * 2 + 0.5) / 2, math.floor(span[2] * 2 + 0.5) / 2
     if f > s then list[#list + 1] = { s, f } end
   end
-  local cells, runs = {}, {}
+  local cells, groups = {}, {}
   for col = 0, vim.o.columns - 1 do
     local char, accent
-    for _, span in ipairs(list) do
-      local s, f = span[1], span[2]
-      if col >= s and col + 1 <= f then
-        char, accent = '━', true
-      elseif col < s and col + 1 > s and col + 1 <= f then
-        char, accent = '╺', true
-      elseif col >= s and col < f and col + 1 > f then
-        char, accent = '╸', true
-      end
-      if accent then break end
-    end
-    if not accent then
-      -- Half-cell gaps on either side of a lit segment, as Textual's Bar draws them.
+    if zones[col] == 'gap' then
+      char = ' '
+    else
       for _, span in ipairs(list) do
-        if col + 1 == span[1] then char = '╸'; break end
-        if col == span[2] then char = '╺'; break end
+        local s, f = span[1], span[2]
+        if col >= s and col + 1 <= f then
+          char, accent = '━', true
+        elseif col < s and col + 1 > s and col + 1 <= f then
+          char, accent = '╺', true
+        elseif col >= s and col < f and col + 1 > f then
+          char, accent = '╸', true
+        end
+        if accent then break end
+      end
+      if not accent then
+        -- Half-cell gaps on either side of a lit segment, as Textual's Bar draws them.
+        for _, span in ipairs(list) do
+          if col + 1 == span[1] then char = '╸'; break end
+          if col == span[2] then char = '╺'; break end
+        end
       end
     end
     cells[#cells + 1] = char or '━'
+    local surface = zones[col] == 'surface'
     if accent then
-      local run = runs[#runs]
-      if run and run[2] == col then run[2] = col + 1 else runs[#runs + 1] = { col, col + 1 } end
+      groups[#groups + 1] = surface and 'HankTablinePanelAccent' or 'HankTablineAccent'
+    else
+      -- Plain track outside blocks is the window's own Normal (HankTablineTrack).
+      groups[#groups + 1] = surface and 'HankTablinePanelTrack' or false
     end
   end
   vim.bo[S.buf].modifiable = true
   api.nvim_buf_set_lines(S.buf, 0, -1, false, { table.concat(cells) })
   vim.bo[S.buf].modifiable = false
   api.nvim_buf_clear_namespace(S.buf, ns, 0, -1)
-  for _, run in ipairs(runs) do
-    -- Every rail glyph is three bytes in UTF-8.
-    api.nvim_buf_set_extmark(S.buf, ns, 0, run[1] * 3, { end_col = run[2] * 3, hl_group = 'HankTablineAccent' })
+  -- Rail glyphs are three bytes and gap spaces one, so walk byte offsets.
+  local byte, group, from = 0, false, 0
+  for i, cell in ipairs(cells) do
+    if groups[i] ~= group then
+      if group then api.nvim_buf_set_extmark(S.buf, ns, 0, from, { end_col = byte, hl_group = group }) end
+      group, from = groups[i], byte
+    end
+    byte = byte + #cell
   end
+  if group then api.nvim_buf_set_extmark(S.buf, ns, 0, from, { end_col = byte, hl_group = group }) end
   S.position = vim.deepcopy(spans)
 end
 
@@ -280,19 +375,32 @@ function M.reserve_snacks(picker)
   picker.layout:update()
 end
 
-local function aligned(section, align)
-  return setmetatable({ align = align }, { __index = section })
-end
-
 function M.setup(opts)
   S.opts = vim.tbl_extend('force', {
-    duration = 0.3, animate = true, underline = false, project = false, sections = {},
+    duration = 0.3, animate = true, underline = false, project = false, sections = {}, sidebars = {},
   }, opts or {})
-  S.sections = {}
-  if S.opts.project then S.sections[#S.sections + 1] = aligned(require('hank-tabline.project'), 'left') end
-  for _, section in ipairs(S.opts.sections.left or {}) do S.sections[#S.sections + 1] = aligned(section, 'left') end
-  S.sections[#S.sections + 1] = aligned(require('hank-tabline.buffers'), 'fill')
-  for _, section in ipairs(S.opts.sections.right or {}) do S.sections[#S.sections + 1] = aligned(section, 'right') end
+  S.sections, S.blocks = {}, {}
+  local function add(section, align, key)
+    local wrapped = setmetatable({ align = align, key = key }, { __index = section })
+    S.sections[#S.sections + 1] = wrapped
+    return wrapped
+  end
+  local function block(spec, side)
+    if not spec then return nil end
+    local sections = {}
+    for i, section in ipairs(spec.sections or {}) do sections[i] = add(section, 'block', side .. '-block-' .. i) end
+    return { width = spec.width, gap = spec.gap or 1, sections = sections }
+  end
+  S.blocks.left = block(S.opts.sidebars.left, 'left')
+  if S.opts.project then
+    -- With a left sidebar block the label becomes its title; otherwise it leads the row.
+    local project = add(require('hank-tabline.project'), S.blocks.left and 'block' or 'left', 'project')
+    if S.blocks.left then S.blocks.left.project = project end
+  end
+  for i, section in ipairs(S.opts.sections.left or {}) do add(section, 'left', 'left-' .. i) end
+  add(require('hank-tabline.buffers'), 'fill', 'buffers')
+  for i, section in ipairs(S.opts.sections.right or {}) do add(section, 'right', 'right-' .. i) end
+  S.blocks.right = block(S.opts.sidebars.right, 'right')
 
   local group = api.nvim_create_augroup('hank_tabline', { clear = true })
   palette()
