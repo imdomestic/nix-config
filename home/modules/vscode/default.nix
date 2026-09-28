@@ -9,7 +9,13 @@
     inherit pkgs;
     module = ../nixvim/hank/vscode.nix;
   };
-  defaultsExtension = pkgs.callPackage ./defaults-extension.nix {inherit neovim;};
+  defaultsExtension = pkgs.callPackage ./defaults-extension.nix {
+    inherit neovim;
+    editorFont = {
+      family = lib.concatMapStringsSep ", " builtins.toJSON (lib.toList config.programs.ghostty.settings.font-family);
+      size = lib.last (lib.toList config.programs.ghostty.settings.font-size);
+    };
+  };
 in {
   options.my.vscode.enable = lib.mkEnableOption "VS Code with shared Nixvim editing and GUI-overridable defaults";
 

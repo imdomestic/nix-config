@@ -23,6 +23,10 @@ Home Manager 接线在 `home/modules/vscode/`，目前只在 m1elite 的 hank ho
 Home Manager 不生成、不覆盖、不合并用户的 `settings.json` / `keybindings.json`。
 扩展目录保持可写，可以继续从 GUI 安装其他扩展。
 
+代码字体与字号默认读取同一份 Home Manager 中的 Ghostty 设置；m1elite 当前为
+`RecMonoSmCasual Nerd Font Mono`，后备 `Menlo` / `PingFang SC`，字号 `15`。
+GUI 中手动设置的字体和字号仍优先。
+
 - GUI 设置和快捷键覆盖扩展默认值，之后的 Home Manager activation 仍保留覆盖。
 - 在 GUI 中重置设置，会回到仓库当前提供的默认值。
 - 想把 GUI 试出的设置带到其他机器时，需要手动把它整理进仓库；不会自动写回 Nix。
