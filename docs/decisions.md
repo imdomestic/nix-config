@@ -11,6 +11,17 @@
 
 ---
 
+## 2026-09-28 · VS Code 声明默认值，GUI 保留用户覆盖 {#vscode-user-overrides}
+
+Hank 的 VS Code 设置不由 Home Manager 的 `userSettings` / `keybindings`
+生成文件：这些文件如果链接到 Nix store，GUI 就无法正常保存个人修改。
+使用原生 VS Code 扩展贡献点声明默认值，再通过 Home Manager 的 `extensions`
+选项安装本地扩展。用户设置和快捷键优先，重新 activation 不会覆盖它们。
+
+没有采用“每次 activation 复制成可写文件”的做法，因为可写不代表 GUI 修改能在
+下一次 activation 后保留。也没有维护一套读写 JSONC 的合并脚本；优先级交给
+VS Code 本身处理。具体路径、使用方式与快捷键见 [VS Code / Neovim](vscode-neovim.md)。
+
 ## 2026-09-27 · 高级 QQ 接入迁到 tank，h610 不再登录同一账号 {#gaoji-qq-tank}
 
 高级的 Bot、QQ/NapCat、主数据库、媒体和 KVM 沙盒集中在 tank。h610 关闭

@@ -226,13 +226,15 @@
 in {
   imports = [
     inputs.nixvim.homeModules.nixvim
-    ./options.nix
+    ../options.nix
   ];
 
   # nixvim replaces the plain neovim enabled by home/profiles/base.nix
   programs.neovim.enable = lib.mkForce false;
 
   programs.nixvim = {
+    imports = [./editing.nix];
+
     enable = true;
     enableMan = true;
     defaultEditor = true;
@@ -253,8 +255,6 @@ in {
     ];
 
     globals = {
-      mapleader = " ";
-      maplocalleader = "\\";
       clipboard = {
         name = "OSC 52";
         copy = {
@@ -285,11 +285,8 @@ in {
       autoread = true;
       breakindent = true;
       undofile = true;
-      ignorecase = true;
-      smartcase = true;
       signcolumn = "yes:1";
       updatetime = 125;
-      timeoutlen = 300;
       splitright = true;
       splitbelow = true;
       inccommand = "split";
@@ -525,11 +522,6 @@ in {
     keymaps =
       [
         {
-          mode = "n";
-          key = "<Esc>";
-          action = "<Cmd>nohlsearch<CR>";
-        }
-        {
           mode = ["n" "o"];
           key = "[b";
           action = "<Cmd>bprev<CR>";
@@ -578,11 +570,6 @@ in {
           action = "<Cmd>qa!<CR>";
         }
         {
-          mode = "v";
-          key = "J";
-          action = "5j";
-        }
-        {
           mode = "n";
           key = "<leader>w";
           action = "<Cmd>w<CR>";
@@ -600,11 +587,6 @@ in {
           key = "k";
           action = "v:count == 0 ? 'gk' : 'k'";
           options.expr = true;
-        }
-        {
-          mode = "n";
-          key = ";";
-          action = ":";
         }
         {
           mode = "n";
@@ -809,93 +791,6 @@ in {
           '';
           options.desc = "Diagnostics";
         }
-
-        # treesitter-textobjects 的 select/move 绑定。它们必须待在这个顶层
-        # keymaps 列表里,不能挂在 plugins.treesitter-textobjects 旁边 ——
-        # 见 docs/incidents.md#nixvim-plugins-keymaps-dropped。
-        # select
-        {
-          mode = ["x" "o"];
-          key = "af";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.select")
-                .select_textobject("@function.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["x" "o"];
-          key = "if";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.select")
-                .select_textobject("@function.inner", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["x" "o"];
-          key = "ac";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.select")
-                .select_textobject("@class.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["x" "o"];
-          key = "ic";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.select")
-                .select_textobject("@class.inner", "textobjects")
-            end
-          '';
-        }
-
-        # move
-        {
-          mode = ["n" "x" "o"];
-          key = "]m";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.move")
-                .goto_next_start("@function.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["n" "x" "o"];
-          key = "[m";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.move")
-                .goto_previous_start("@function.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["n" "x" "o"];
-          key = "]]";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.move")
-                .goto_next_start("@class.outer", "textobjects")
-            end
-          '';
-        }
-        {
-          mode = ["n" "x" "o"];
-          key = "[[";
-          action = mkRaw ''
-            function()
-              require("nvim-treesitter-textobjects.move")
-                .goto_previous_start("@class.outer", "textobjects")
-            end
-          '';
-        }
       ]
       ++ lib.optionals dev [
         {
@@ -1006,18 +901,9 @@ in {
       };
 
       flash = {
-        enable = true;
         lazyLoad.settings = {
           event = "DeferredUIEnter";
-          keys = [
-            (mkRaw ''{ "s", function() require("flash").jump() end, mode = { "n", "x", "o" }, desc = "Flash" }'')
-            (mkRaw ''{ "S", function() require("flash").treesitter() end, mode = { "n", "x", "o" }, desc = "Flash Treesitter" }'')
-            (mkRaw ''{ "r", function() require("flash").remote() end, mode = "o", desc = "Remote Flash" }'')
-            (mkRaw ''{ "R", function() require("flash").treesitter_search() end, mode = { "o", "x" }, desc = "Treesitter Search" }'')
-            (mkRaw ''{ "<C-s>", function() require("flash").toggle() end, mode = "c", desc = "Toggle Flash Search" }'')
-          ];
         };
-        settings = {};
       };
 
       smart-splits = {
@@ -1047,7 +933,6 @@ in {
           icons = {};
           tabline = {};
           pairs = {};
-          surround = {};
           comment = lib.optionalAttrs dev {
             options.custom_commentstring = mkRaw ''
               function()
@@ -1193,22 +1078,7 @@ in {
         ]);
       };
 
-      # 它的 af/if/ac/ic 和 ]m/[m/]]/[[ 绑定在上面那个顶层 keymaps 列表里。
-      treesitter-textobjects = {
-        enable = true;
-        lazyLoad.settings.event = "DeferredUIEnter";
-
-        settings = {
-          select = {
-            lookahead = true;
-            include_surrounding_whitespace = false;
-          };
-
-          move = {
-            set_jumps = true;
-          };
-        };
-      };
+      treesitter-textobjects.lazyLoad.settings.event = "DeferredUIEnter";
 
       # 前端(React + Tailwind)。LSP 在下面 plugins.lsp.servers 里统一声明,
       # 这里只管编辑体验,全部跟着 dev 走。
@@ -1406,7 +1276,7 @@ in {
             # `friendly.snippets` 的目录。nixvim 把 stdpath('config') 从 rtp
             # 里摘掉了,extraFiles 生成的目录又叫 nvim-config —— 两条都不匹配,
             # 所以自带的 snippets 必须把 store 路径直接喂给它。
-            providers.snippets.opts.search_paths = ["${./nvim-snippets}"];
+            providers.snippets.opts.search_paths = ["${./snippets}"];
           };
           fuzzy.implementation = "prefer_rust_with_warning";
         };
