@@ -213,6 +213,16 @@ try:
             assert len(ordinary_windows())==1 and row(1)[prefix_width:prefix_width+30]==tabs
             check_track()
             print('PASS: panel icons toggle, one panel per side, both sides, header clicks and rail clicks')
+            owner="local p=require('hank-panels').at() return p and p.id"
+            assert not lua("return require('hank-panels').cycle(1)")
+            lua("require('hank-panels').open('tree')");settle()
+            assert lua(owner)=='tree'
+            for step,expected in ((1,'outline'),(1,'tree'),(-1,'outline'),(3,'tree')):
+                assert lua("return require('hank-panels').cycle(...)",step);settle()
+                assert lua(owner)==expected and len(ordinary_windows())==2,(step,lua(owner),filetypes())
+            lua("require('hank-panels').close('tree')");settle()
+            assert len(ordinary_windows())==1
+            print('PASS: cycling inside a sidebar walks its side and wraps; outside it reports false')
         # Narrow view, wide characters, literal percent signs and duplicate basenames.
         for name in ('a/shared.txt','b/shared.txt','目录/宽字符%very-long-name.txt'):
             b=n.api.create_buf(True,False)
@@ -281,6 +291,23 @@ try:
                 assert not lua(is_open,'git') and len(ordinary_windows())==1
                 assert 'Error' not in n.command_output('messages'),n.command_output('messages')
                 print('PASS: configured panels switch Explorer and Git from the header')
+                owner="local p=require('hank-panels').at() return p and p.id"
+                editor_buf=n.api.get_current_buf().number
+                lua("require('hank-panels').open('explorer')");lua('vim.wait(300)');settle()
+                assert lua(owner)=='explorer',lua(owner)
+                n.input(']b');lua('vim.wait(300)');settle()
+                assert lua(owner)=='git' and not lua(is_open,'explorer'),(lua(owner),filetypes())
+                n.input('[b');lua('vim.wait(300)');settle()
+                assert lua(owner)=='explorer' and not lua(is_open,'git'),(lua(owner),filetypes())
+                assert lua('local t={} for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do local b=vim.api.nvim_win_get_buf(w) if vim.bo[b].buftype=="" then t[#t+1]=b end end return t')==[editor_buf]
+                lua("for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.api.nvim_win_get_config(w).relative=='' and vim.bo[vim.api.nvim_win_get_buf(w)].buftype=='' then vim.api.nvim_set_current_win(w) break end end");settle()
+                assert lua(owner) is None
+                n.input(']b');settle()
+                assert n.api.get_current_buf().number!=editor_buf
+                lua("require('hank-panels').close('explorer')");settle()
+                assert len(ordinary_windows())==1
+                assert 'Error' not in n.command_output('messages'),n.command_output('messages')
+                print('PASS: ]b / [b cycle panels inside the sidebar and switch buffers elsewhere')
         if args.capture_json:
             # Keep only the three demonstration buffers for a readable preview.
             lua('for _,b in ipairs(vim.api.nvim_list_bufs()) do if vim.bo[b].buftype=="" then vim.bo[b].buflisted=vim.tbl_contains(...,b) end end',buffers)

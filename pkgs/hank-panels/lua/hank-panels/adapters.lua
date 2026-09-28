@@ -21,6 +21,7 @@ end
 function A.window(spec)
   local match = filetype(assert(spec.ft, 'hank-panels: window adapter needs ft'))
   spec.is_open = function() return #windows(match) > 0 end
+  spec.owns = function(win) return match(api.nvim_win_get_buf(win)) end
   spec.close = spec.close or function()
     for _, win in ipairs(windows(match)) do api.nvim_win_close(win, false) end
   end
@@ -35,6 +36,16 @@ function A.snacks(spec)
     return snacks and snacks.picker.get({ source = source }) or {}
   end
   spec.is_open = function() return #active() > 0 end
+  -- The list and input are floats over the root split; any of them counts.
+  spec.owns = function(win)
+    for _, picker in ipairs(active()) do
+      if picker.layout.root and picker.layout.root.win == win then return true end
+      for _, w in pairs(picker.layout.wins or {}) do
+        if w.win == win then return true end
+      end
+    end
+    return false
+  end
   spec.open = function() require('snacks').picker.pick(source, vim.deepcopy(spec.opts or {})) end
   spec.close = function()
     for _, picker in ipairs(active()) do picker:close() end
@@ -47,10 +58,15 @@ function A.lean_infoview(spec)
   local lean = filetype('lean')
   local info = filetype('leaninfo')
   spec.side = spec.side or 'right'
-  spec.is_open = function()
+  local function window()
     local infoview = package.loaded['lean.infoview']
     local current = infoview and infoview.get_current_infoview()
-    return current ~= nil and current.window ~= nil
+    return current and current.window
+  end
+  spec.is_open = function() return window() ~= nil end
+  spec.owns = function(win)
+    local current = window()
+    return current ~= nil and current.id == win
   end
   -- lean.nvim is lazy-loaded on the lean filetype; offer the panel only around Lean.
   spec.available = function()

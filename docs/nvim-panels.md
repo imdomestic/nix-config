@@ -44,6 +44,14 @@ buffer（或 infoview 本身）时才出现在顶栏右端；lean.nvim 按 filet
 可选 `side`（默认 `"left"`）、`icon_inactive`、`available`。图标可以写成码位
 数字（`0xf024b`）或字符串。
 
+## 在侧栏里切换
+
+焦点在某个面板里时，`]b` / `[b` 在**同一侧**的面板之间轮换（首尾相接，
+支持计数），而不是 `:bnext` —— 否则文件会被换进侧栏窗口。焦点在普通窗口时
+仍然是 `:bnext` / `:bprevious`。判断「当前窗口属于哪个面板」靠适配器的
+`owns(win)`：Snacks 侧栏检查 picker 的根窗口和各子浮窗，`window` 适配器看
+filetype，infoview 看它记下的窗口 id。
+
 面板在打开前会先回到一个普通文件窗口，因为 aerial 和 infoview 都附着在「当前
 buffer」上；从另一个侧栏里点开时，它们否则会附着到侧栏自己的 buffer。
 
@@ -51,5 +59,7 @@ buffer」上；从另一个侧栏里点开时，它们否则会附着到侧栏�
 
 ```lua
 require("hank-panels").toggle(id)  -- open / close / is_open(id) 同理
+require("hank-panels").at(win)     -- 拥有该窗口的面板（默认当前窗口），没有则 nil
+require("hank-panels").cycle(step) -- 侧栏内轮换；不在侧栏里返回 false
 require("hank-panels").section(side) -- 交给 hank-tabline 的分组
 ```
