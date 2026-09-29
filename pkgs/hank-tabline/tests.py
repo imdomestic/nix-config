@@ -67,6 +67,26 @@ def lit(accent):
 def block_open():
     return any(str(item['section']).startswith('left-block') for item in layout())
 
+def strips():
+    return lua('local t={} for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.bo[vim.api.nvim_win_get_buf(w)].filetype=="hank_tabline_strip" then t[#t+1]=w end end return t')
+
+def bottom_layout():
+    return lua("return require('hank-tabline').layout('bottom')")
+
+def check_bottom():
+    # The tabs cover the separator row above the bottom panel; with the rail, its winbar too.
+    win=lua("return require('hank-panels').window('bottom')")
+    top,left=n.api.win_get_position(win)
+    width=n.api.win_get_width(win)
+    strip=strips()
+    assert len(strip)==1,strip
+    assert n.api.win_get_position(strip[0])==[top-1,left] and n.api.win_get_width(strip[0])==width,(top,left,width)
+    assert n.api.win_get_height(strip[0])==header_rows
+    assert n.api.get_option_value('winbar',{'win':win})==(' ' if args.underline else '')
+    if args.underline:
+        assert set(row(top+1)[left:left+width]) <= set('━╸╺'),row(top+1)
+    return win,top,left,width
+
 def check_track():
     bars=lua('local t={} for _,w in ipairs(vim.api.nvim_tabpage_list_wins(0)) do if vim.bo[vim.api.nvim_win_get_buf(w)].filetype=="hank_tabline" then t[#t+1]=w end end return t')
     if args.underline:
@@ -108,9 +128,13 @@ try:
           a.window({id='tree',icon=0xf024b,icon_inactive=0xf0256,ft='faketree',open=fake('faketree','topleft '..width..'vnew')}),
           a.window({id='outline',icon=0xf0645,icon_inactive=0xf13d2,ft='fakeoutline',open=fake('fakeoutline','topleft '..width..'vnew')}),
           a.window({id='info',side='right',icon=0xf02fc,icon_inactive=0xf02fd,ft='fakeinfo',open=fake('fakeinfo','botright 12vnew')}),
+          a.window({id='logs',side='bottom',icon=0xf018d,label='Logs',ft='fakelogs',open=fake('fakelogs','botright 8new')}),
+          a.window({id='errors',side='bottom',icon=0xf0028,icon_inactive=0xf05d6,label=function() return 'Errors 3' end,
+            ft='fakeerrors',open=fake('fakeerrors','botright 8new')}),
         }})
         require('hank-tabline').setup({underline=underline,project=project,animate=animate,
           sidebars={left={width=width,sections={panels.section('left')}},right={width=12,sections={panels.section('right')}}},
+          bottom={sections={panels.section('bottom')},anchor=function() return panels.window('bottom') end},
           palette=function() return {
             crust='#171c1f',mantle='#191e21',base='#1e2528',green='#cbe3b3',overlay2='#839e9a',overlay0='#58686d'
           } end})
@@ -241,6 +265,42 @@ try:
             lua("require('hank-panels').close('tree')");settle()
             assert len(ordinary_windows())==1
             print('PASS: cycling inside a sidebar walks its side and wraps; outside it reports false')
+            assert not strips() and not bottom_layout()
+            lua("require('hank-panels').open('logs')");settle()
+            win,top,left,width=check_bottom()
+            lua("vim.api.nvim_buf_set_lines(vim.api.nvim_win_get_buf(...),0,-1,false,{'bottom first line'})",win);settle()
+            labels=row(top)
+            logs,errors=(next(item for item in bottom_layout() if item['id']==id) for id in ('logs','errors'))
+            assert labels[logs['col']:logs['col']+logs['width']]==' \U000f018d Logs ',labels
+            assert labels[errors['col']:errors['col']+errors['width']]==' \U000f05d6 Errors 3 ',labels
+            # The strip is the panel's surface, and the panel's first line stays visible.
+            assert attr(top,width-2)!=attr(top-1,width-2),'bottom tabs share the editor background'
+            assert 'bottom first line' in row(top+header_rows),row(top+header_rows)
+            if args.underline:
+                assert attr(top+1,logs['col']+3)!=attr(top+1,errors['col']+3),'bottom tab not lit'
+            click(top-1,errors['col']+3)
+            assert 'fakeerrors' in filetypes() and 'fakelogs' not in filetypes(),filetypes()
+            check_bottom()
+            assert row(top)[errors['col']+1]=='\U000f0028',row(top)
+            if args.underline:
+                click(top,logs['col']+3)
+                assert 'fakelogs' in filetypes() and 'fakeerrors' not in filetypes(),filetypes()
+            else:
+                lua("require('hank-panels').open('logs')");settle()
+            # ]b inside a bottom panel walks the bottom side only.
+            lua("vim.api.nvim_set_current_win(require('hank-panels').window('bottom'))")
+            assert lua(owner)=='logs'
+            assert lua("return require('hank-panels').cycle(1)");settle()
+            assert lua(owner)=='errors' and 'fakelogs' not in filetypes(),filetypes()
+            # Beside a sidebar the strip still spans the bottom panel only.
+            lua("require('hank-panels').open('tree')");settle()
+            check_bottom();check_track()
+            assert block_open() and len(ordinary_windows())==3
+            lua("require('hank-panels').close('tree')");lua("require('hank-panels').close('errors')");settle()
+            assert not strips() and not bottom_layout() and len(ordinary_windows())==1
+            assert all(n.api.get_option_value('winbar',{'win':w})==(' ' if args.underline else '') for w in ordinary_windows())
+            check_track()
+            print('PASS: bottom panels: tabs over the separator, rail in the winbar, clicks, one panel at a time, ]b, next to a sidebar')
         # Narrow view, wide characters, literal percent signs and duplicate basenames.
         for name in ('a/shared.txt','b/shared.txt','目录/宽字符-very-long-name.txt','100%.txt'):
             b=n.api.create_buf(True,False)
@@ -331,6 +391,22 @@ try:
                 assert len(ordinary_windows())==1
                 assert 'Error' not in n.command_output('messages'),n.command_output('messages')
                 print('PASS: ]b / [b cycle panels inside the sidebar and switch buffers elsewhere')
+                n.input('<M-m>');lua('vim.wait(600)');settle()
+                assert lua(is_open,'terminal') and lua(owner)=='terminal',filetypes()
+                win,top,left,width=check_bottom()
+                assert all(label in row(top) for label in ('Problems','Terminal','Quickfix')),row(top)
+                assert n.api.win_get_height(win)==12
+                n.input('<C-\\><C-n>');n.input(']b');lua('vim.wait(400)');settle()
+                assert lua(is_open,'quickfix') and not lua(is_open,'terminal') and lua(owner)=='quickfix',filetypes()
+                check_bottom()
+                lua("require('hank-panels').open('problems')");lua('vim.wait(600)');settle()
+                assert lua(is_open,'problems') and not lua(is_open,'quickfix'),filetypes()
+                win,top,left,width=check_bottom()
+                assert 'Problems' in row(top) and n.api.win_get_height(win)==12,row(top)
+                lua("require('hank-panels').close('problems')");settle()
+                assert not strips() and len(ordinary_windows())==1,filetypes()
+                assert 'Error' not in n.command_output('messages'),n.command_output('messages')
+                print('PASS: bottom panels: terminal from <M-m>, ]b to quickfix, problems picker, one shared strip')
         if args.capture_json:
             # Keep only the three demonstration buffers for a readable preview.
             lua('for _,b in ipairs(vim.api.nvim_list_bufs()) do if vim.bo[b].buftype=="" then vim.bo[b].buflisted=vim.tbl_contains(...,b) end end',buffers)

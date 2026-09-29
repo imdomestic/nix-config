@@ -53,6 +53,23 @@ function A.snacks(spec)
   return spec
 end
 
+-- A Snacks terminal in a split. Closing hides it, so the shell keeps running and
+-- comes back on the next open.
+function A.snacks_terminal(spec)
+  local match = filetype('snacks_terminal')
+  spec.side = spec.side or 'bottom'
+  spec.is_open = function() return #windows(match) > 0 end
+  spec.owns = function(win) return match(api.nvim_win_get_buf(win)) end
+  spec.open = function() require('snacks').terminal.toggle(spec.cmd, vim.deepcopy(spec.opts)) end
+  spec.close = function()
+    local tab = api.nvim_get_current_tabpage()
+    for _, terminal in ipairs(require('snacks').terminal.list()) do
+      if terminal:win_valid() and api.nvim_win_get_tabpage(terminal.win) == tab then terminal:hide() end
+    end
+  end
+  return spec
+end
+
 -- lean.nvim keeps one infoview per tabpage and opens it with `botright vsplit`.
 function A.lean_infoview(spec)
   local lean = filetype('lean')

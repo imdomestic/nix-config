@@ -13,6 +13,9 @@
   # 左侧栏(explorer、git、大纲、数据库)和顶栏上方那块共用的宽度;右侧是 lean infoview。
   sidebarWidth = 30;
   infoviewWidth = 40;
+  # 底部面板(终端、问题、quickfix、消息)统一高度,切换时正文不跳。含 hank-tabline
+  # 占用的 winbar 那一行。
+  bottomHeight = 12;
   toLua = inputs.nixvim.lib.nixvim.toLuaObject;
   # React 那几个插件共用的 filetype 列表。
   reactFiletypes = [
@@ -527,9 +530,9 @@ in {
           '';
         }
         {
-          # dadbod-ui 没有窗口选项,抽屉打开时补上和其它侧栏一样的浮窗底色。
+          # dadbod-ui 和 quickfix 没有窗口选项,打开时补上和其它面板一样的浮窗底色。
           event = "FileType";
-          pattern = "dbui";
+          pattern = ["dbui" "qf"];
           command = "setlocal winhighlight=Normal:NormalFloat,EndOfBuffer:NormalFloat,SignColumn:NormalFloat";
         }
       ];
@@ -626,7 +629,7 @@ in {
           key = "<M-m>";
           action = mkRaw ''
             function()
-              require("snacks").terminal()
+              require("hank-panels").toggle("terminal")
             end
           '';
           options.desc = "Toggle terminal";
@@ -636,7 +639,7 @@ in {
           key = "<M-m>";
           action = mkRaw ''
             function()
-              require("snacks").terminal()
+              require("hank-panels").toggle("terminal")
             end
           '';
           options.desc = "Toggle terminal";
@@ -646,7 +649,7 @@ in {
           key = "<leader>th";
           action = mkRaw ''
             function()
-              require("snacks").terminal()
+              require("hank-panels").toggle("terminal")
             end
           '';
           options.desc = "Toggle terminal";
@@ -840,10 +843,30 @@ in {
           key = "<leader>lD";
           action = mkRaw ''
             function()
-              require("snacks").picker.diagnostics()
+              require("hank-panels").toggle("problems")
             end
           '';
-          options.desc = "Diagnostics";
+          options.desc = "Diagnostics panel";
+        }
+        {
+          mode = "n";
+          key = "<leader>tq";
+          action = mkRaw ''
+            function()
+              require("hank-panels").toggle("quickfix")
+            end
+          '';
+          options.desc = "Toggle quickfix panel";
+        }
+        {
+          mode = "n";
+          key = "<leader>tm";
+          action = mkRaw ''
+            function()
+              require("hank-panels").toggle("messages")
+            end
+          '';
+          options.desc = "Toggle message history panel";
         }
       ]
       ++ lib.optionals dev [
@@ -934,7 +957,7 @@ in {
           terminal = {
             enabled = true;
             win = {
-              height = 10;
+              height = bottomHeight;
               position = "bottom";
               style = "minimal";
             };
@@ -969,6 +992,8 @@ in {
             }
           ];
           notify.enabled = false;
+          # 消息历史(hank-panels 的 messages 面板)和长消息都走 split,和其它底部面板同高。
+          views.split.size = bottomHeight;
           presets = {
             bottom_search = true;
             command_palette = true;
@@ -1804,6 +1829,9 @@ in {
             opts = {
               focus = "list",
               auto_close = false,
+              -- 面板要常驻:结果为空时 snacks 默认弹一条 No results 就把 picker 关掉,
+              -- 工作区干净时 git 面板会一闪即逝。
+              show_empty = true,
               jump = { close = false },
               layout = { preset = "sidebar", preview = false, layout = { width = ${toString sidebarWidth} } },
               -- 30 列放不下完整路径，默认格式会把文件名本身截掉；文件名放前面，目录跟在后面变暗。
@@ -1816,6 +1844,58 @@ in {
             icon_inactive = 0xf13d2,
             ft = "aerial",
             open = function() require("aerial").open({ direction = "left" }) end,
+          }),
+          -- 底部面板:页签画在 hank-tabline 的底部两行里,同一时间只开一个。
+          adapters.snacks({
+            id = "problems",
+            side = "bottom",
+            icon = 0xf0028,
+            icon_inactive = 0xf05d6,
+            label = function()
+              local count = #vim.diagnostic.get()
+              return count > 0 and ("Problems " .. count) or "Problems"
+            end,
+            source = "diagnostics",
+            opts = {
+              focus = "list",
+              auto_close = false,
+              show_empty = true,
+              jump = { close = false },
+              layout = {
+                preview = false,
+                hidden = { "input" },
+                layout = {
+                  position = "bottom",
+                  height = ${toString bottomHeight},
+                  backdrop = false,
+                  border = "none",
+                  box = "vertical",
+                  { win = "input", height = 1, border = "none" },
+                  { win = "list", border = "none" },
+                },
+              },
+            },
+          }),
+          adapters.snacks_terminal({ id = "terminal", icon = 0xf018d, label = "Terminal" }),
+          adapters.window({
+            id = "quickfix",
+            side = "bottom",
+            icon = 0xf0279,
+            label = "Quickfix",
+            ft = "qf",
+            open = function() vim.cmd("botright copen ${toString bottomHeight}") end,
+          }),
+          adapters.window({
+            id = "messages",
+            side = "bottom",
+            icon = 0xf0369,
+            icon_inactive = 0xf036a,
+            label = "Messages",
+            ft = "noice",
+            -- noice 在 DeferredUIEnter 才加载。用 all 而不是 history:history 按消息
+            -- 类型过滤,:echomsg 之类进不去,列表为空时它不开窗口,只弹一条通知。
+            available = function() return package.loaded["noice"] ~= nil end,
+            open = function() require("noice").cmd("all") end,
           }),
           ${lib.optionalString dev ''
         adapters.window({
@@ -1837,6 +1917,10 @@ in {
         sidebars = {
           left = { width = ${toString sidebarWidth}, sections = { panels.section("left") } },
           right = { width = ${toString infoviewWidth}, sections = { panels.section("right") } },
+        },
+        bottom = {
+          sections = { panels.section("bottom") },
+          anchor = function() return panels.window("bottom") end,
         },
       })
     '';
