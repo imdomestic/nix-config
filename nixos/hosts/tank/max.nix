@@ -68,6 +68,22 @@
           # queue in Max (turns first) instead of the server's FIFO.
           "max_concurrency" = 4;
         };
+        # Same endpoint for lingo learning at low effort: on a real 60-line
+        # batch it wrote 1.8k instead of 7.7k tokens with the same result.
+        # Profiles on one base_url must declare the same limit.
+        "qwen3.8-27b-lingo" = {
+          "protocol" = "openai";
+          "api_key" = config.sops.placeholder."max/llm-profiles-qwen3.8-27b-api-key";
+          "base_url" = "http://b650.inner.imdomestic.com:8000/v1";
+          "model" = "qwen3.8-27b";
+          "price_input" = 3;
+          "price_cached_input" = 0.6;
+          "price_output" = 12;
+          "price_currency" = "CNY";
+          "context_window" = 262144;
+          "effort" = "low";
+          "max_concurrency" = 4;
+        };
         "gpt-5.6-terra" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-terra-api-key";
@@ -261,7 +277,7 @@
     # Learns group expressions and jargon behind the Historian cursor; the
     # first run relearns the whole history on b650's local model.
     "lingo" = {
-      "profile" = "qwen3.8-27b";
+      "profile" = "qwen3.8-27b-lingo";
     };
     "stickers" = {
       "caption_profile" = "gpt-5.6-luna";
