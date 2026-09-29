@@ -374,6 +374,7 @@ in {
       indent-four.clear = true;
       haskell-extra.clear = true;
       rust-extra.clear = true;
+      hank-look.clear = true;
     };
 
     autoCmd =
@@ -544,6 +545,52 @@ in {
           event = "FileType";
           pattern = ["dbui" "qf"];
           command = "setlocal winhighlight=Normal:HankSunk,NormalNC:HankSunk,EndOfBuffer:HankSunk,SignColumn:HankSunk";
+        }
+        {
+          # 失焦变暗只在正文窗口之间:焦点去了侧栏、面板或浮层时,最近用过的正文窗口
+          # 保持原色(它的 NormalNC 映射回 Normal),其它正文窗口照常变暗。延后到
+          # 事件处理完再看:新开的侧栏 split 会先短暂显示当前文件,像个正文窗口。
+          event = ["VimEnter" "WinEnter" "BufWinEnter"];
+          group = "hank-look";
+          desc = "Keep the last editor window undimmed while a panel has focus";
+          callback = mkRaw ''
+            function()
+              vim.schedule(function()
+                local function editor(win)
+                  return vim.api.nvim_win_get_config(win).relative == ""
+                    and vim.list_contains({ "", "help" }, vim.bo[vim.api.nvim_win_get_buf(win)].buftype)
+                end
+                local current = vim.api.nvim_get_current_win()
+                if not editor(current) then return end
+                for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+                  if editor(win) then
+                    local parts = vim.tbl_filter(function(part)
+                      return not vim.startswith(part, "NormalNC:")
+                    end, vim.split(vim.wo[win].winhighlight, ",", { trimempty = true }))
+                    if win == current then parts[#parts + 1] = "NormalNC:Normal" end
+                    local value = table.concat(parts, ",")
+                    if vim.wo[win].winhighlight ~= value then vim.wo[win].winhighlight = value end
+                  end
+                end
+              end)
+            end
+          '';
+        }
+        {
+          # 补全菜单选中项左边的强调色竖条。blink 只在有选中项时打开 cursorline,
+          # 光标就在选中项上;statuscolumn 在被绘制的窗口里求值。
+          event = "User";
+          pattern = "BlinkCmpMenuOpen";
+          group = "hank-look";
+          callback = mkRaw ''
+            function()
+              _G.HankMenuBar = _G.HankMenuBar or function()
+                return (vim.wo.cursorline and vim.v.relnum == 0) and "%#HankSelBar#▎" or "%#Pmenu# "
+              end
+              local win = require("blink.cmp.completion.windows.menu").win:get_win()
+              if win then vim.wo[win].statuscolumn = "%{%v:lua.HankMenuBar()%}" end
+            end
+          '';
         }
       ];
 
@@ -957,7 +1004,8 @@ in {
               '';
               layout.backdrop = false;
             };
-            # 浮动 picker:左边结果浮起(输入行两端半格收边,下面空一行),右边预览下沉。
+            # 浮动 picker:左上三行(标题、输入、空行)是输入色的一整块,下面的结果浮起,
+            # 右边预览下沉。输入框的 solid 边框就是那三行里的上下两行和两侧留白。
             layouts.hank = mkRaw ''
               {
                 layout = {
@@ -967,11 +1015,8 @@ in {
                   height = 0.8,
                   {
                     box = "vertical",
-                    border = "solid",
-                    title = "{title} {live} {flags}",
-                    { win = "input", height = 1,
-                      border = { "", "", "", { "▌", "HankCapField" }, "", "", "", { "▐", "HankCapField" } } },
-                    { win = "list", border = { "", " ", "", "", "", "", "", "" } },
+                    { win = "input", height = 1, border = "solid", title = "{title} {live} {flags}", title_pos = "center" },
+                    { win = "list", border = { "", "", "", " ", " ", " ", " ", " " } },
                   },
                   { win = "preview", title = "{preview}", border = "solid", width = 0.5 },
                 },
@@ -1038,20 +1083,11 @@ in {
                 NormalNC = "HankSunk";
               };
             };
-            # 命令行是一条输入行,补全列表是它下面另一块浮层,上下都用半格边收住。
+            # 命令行和 picker 的输入区一样:标题、输入、空行三行输入色,边框就是那两行留白。
+            # 补全列表由 blink 画在它下面(见 blink 的 cmdline_position)。
             cmdline_popup.border = {
-              style = mkRaw ''{ "", "▄", "", "", "", "▀", "", "" }'';
+              style = "solid";
               padding = [0 1];
-            };
-            cmdline_popupmenu = {
-              border = {
-                style = mkRaw ''{ "", "▄", "", "", "", "▀", "", "" }'';
-                padding = [0 1];
-              };
-              win_options.winhighlight = {
-                Normal = "NormalFloat";
-                FloatBorder = "HankEdgeRaised";
-              };
             };
           };
           presets = {
@@ -1366,6 +1402,19 @@ in {
               auto_show = mkRaw ''
                 function(ctx)
                   return ctx.mode ~= "cmdline"
+                end
+              '';
+              # noice 的命令行浮在屏幕中间时,底下还有一行输入色的留白;菜单往下挪一行,
+              # 不压在上面。底部的命令行(/ 搜索)照旧。
+              cmdline_position = mkRaw ''
+                function()
+                  local pos = vim.g.ui_cmdline_pos
+                  if pos == nil then
+                    return { vim.o.lines - math.max(vim.o.cmdheight, 1), 0 }
+                  end
+                  local row = pos[1] - 1
+                  if row < vim.o.lines - 2 then row = row + 1 end
+                  return { row, pos[2] }
                 end
               '';
               # 候选列表浮起,上下各用半格边收住;文档窗下沉(见下)。
@@ -1914,8 +1963,8 @@ in {
             -- 小浮层上下的半格边(▄ ▀)和输入行两端的半格收边(▐ ▌)。
             HankEdgeRaised = { t.surface0, t.base },
             HankEdgeSunk = { t.mantle, t.base },
-            HankEdgeField = { t.surface1, t.base },
-            HankCapField = { t.surface1, t.surface0 },
+            -- 补全菜单选中项左边的竖条,底色同 PmenuSel。
+            HankSelBar = { t.accent, t.surface1 },
             FloatTitle = { t.text, t.surface0, style = { "bold" } },
             WinSeparator = { t.base, t.base },
             NormalNC = { bg = blend(t.mantle, t.base, 0.5) },
@@ -1930,6 +1979,9 @@ in {
             BlinkCmpDocSeparator = { link = "HankSunkBorder" },
             BlinkCmpMenuBorder = { link = "HankEdgeRaised" },
             SnacksPickerInput = { link = "HankField" },
+            -- 边框是空格,前景只影响标题:标题跟着边框组走。
+            SnacksPickerInputBorder = { t.subtext0, t.surface1 },
+            SnacksPickerInputTitle = { t.text, t.surface1, style = { "bold" } },
             SnacksPickerPreview = { link = "HankSunk" },
             SnacksPickerPreviewBorder = { t.mantle, t.mantle },
             SnacksPickerPreviewTitle = { t.subtext0, t.mantle, style = { "bold" } },
@@ -1937,7 +1989,8 @@ in {
             SnacksPickerMatch = { t.accent, style = { "bold" } },
             PmenuMatch = { t.accent, style = { "bold" } },
             NoiceCmdlinePopup = { link = "HankField" },
-            NoiceCmdlinePopupBorder = { link = "HankEdgeField" },
+            -- noice 各格式的标题组都链接到边框组,所以边框组的前景就是标题色。
+            NoiceCmdlinePopupBorder = { t.subtext0, t.surface1 },
             NoiceCmdlineIcon = { t.accent },
             -- 状态栏不用色块:模式只换字色。
             MiniStatuslineModeNormal = mode(t.subtext0),
