@@ -4,6 +4,7 @@ in {
   h610 = callHost "h610";
   h310 = callHost "h310";
   b650 = callHost "b650";
+  "268v" = callHost "268v";
   tank = callHost "tank";
   r5s = callHost "r5s";
   rpi4 = callHost "rpi4";
