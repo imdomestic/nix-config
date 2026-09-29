@@ -21,13 +21,16 @@ end
 local function palette()
   local p = S.opts.palette()
   local surface = p.mantle or p.base
-  api.nvim_set_hl(0, 'HankTablineSelected', { fg = p.crust, bg = p.green, bold = true })
+  -- With the rail the lit segment already marks the active tab, so its label only
+  -- brightens; without it the label carries the mark as a filled block.
+  api.nvim_set_hl(0, 'HankTablineSelected', S.opts.underline and { fg = p.text or p.green, bg = p.base, bold = true }
+    or { fg = p.crust, bg = p.green, bold = true })
   api.nvim_set_hl(0, 'HankTablineInactive', { fg = p.overlay2, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineTrack', { fg = p.overlay0, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineAccent', { fg = p.green, bg = p.base })
   api.nvim_set_hl(0, 'HankTablineProject', { fg = p.green, bg = p.base, bold = true })
   api.nvim_set_hl(0, 'HankTablineIcon', { fg = p.green, bg = p.base, bold = true })
-  -- Sidebar blocks sit on the sidebar's own surface (NormalFloat is mantle in Evergarden).
+  -- Sidebar blocks and bottom tabs sit on the panels' own surface (mantle).
   api.nvim_set_hl(0, 'HankTablinePanel', { fg = p.overlay2, bg = surface })
   api.nvim_set_hl(0, 'HankTablinePanelIcon', { fg = p.green, bg = surface, bold = true })
   api.nvim_set_hl(0, 'HankTablinePanelLabel', { fg = p.green, bg = surface, bold = true })

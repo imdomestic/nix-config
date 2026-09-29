@@ -127,9 +127,10 @@ Textual 6.1.0。普通模式使用 Textual 的 `Tabs`；Posting 的 compact 模�
 项目名显示实心文件夹图标和当前 tabpage 工作目录的项目名。在左区块里它只能用
 图标剩下的宽度，没有区块时最多占终端四分之一；超长时截短并补 `…`。
 
-配色直接读取 Evergarden 当前 palette：绿色选中背景与轨道、crust 色选中文字、
-overlay2 色非选中文字、overlay0 色轨道、base 色底色；侧栏区块用 mantle，
-与 Snacks 侧栏（NormalFloat）以及设成同色的 aerial / dbui 窗口连成一列。修改状态显示 `●`，
+配色直接读取 Evergarden 当前 palette：绿色轨道亮段、overlay2 色非选中文字、
+overlay0 色轨道、base 色底色。开了横线时当前标签只是文字变亮加粗，亮段已经标出了
+位置；没有横线时它是绿底块（crust 色文字）。侧栏区块和底部页签用 mantle，与侧栏、
+底部面板（`HankSunk`，见 [界面分层](nvim-look.md)）连成一片。修改状态显示 `●`，
 重名文件补路径，长标签按屏幕字符宽度裁切，文字中的 `%` 转义后交给 tabline。
 
 ## 验证

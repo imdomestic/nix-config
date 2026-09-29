@@ -29,7 +29,8 @@ edgy.nvim，见 `docs/decisions.md#no-edgy`。
 
 左侧四个统一 30 列（`sidebarWidth`，顶栏左区块也用它），底部四个统一 12 行
 （`bottomHeight`，含顶栏插件占用的 winbar 那一行），切换时正文不跳。底色统一为
-NormalFloat（mantle），和顶栏区块、底部页签连成一片，与正文区分开。
+`HankSunk`（mantle，比正文暗一级），和顶栏区块、底部页签连成一片，与正文区分开；
+为什么 Snacks 的面板要单独处理，见 [界面分层](nvim-look.md)。
 
 `infoview` 的图标只在 infoview 打开时出现在顶栏右端（和左侧一样：区块跟着
 面板出现、消失）。它只在当前 tabpage 有 Lean buffer 时才算可用；lean.nvim
@@ -71,6 +72,8 @@ quickfix 没有空心版，两种状态同形，只靠颜色区分。粗体对 N
   `layout.preset = "sidebar"`，底部在 `layout.layout` 里写 `position = "bottom"`。
 - `snacks_terminal({ cmd?, opts? })`：Snacks terminal，默认放在底部；关闭时隐藏。
 - `lean_infoview({})`：lean.nvim 每个 tabpage 一个 infoview，默认放在右侧。
+- `snacks_surface(picker, winhl)`：不是面板定义，而是在 picker 的 `on_show` 里调用，
+  让 split 形态的 picker 换一组窗口高亮（Hank 的配置用它换成 `HankSunk`）。
 
 也可以不用适配器，直接给出 `id`、`icon`、`open`、`close`、`is_open`，
 可选 `side`（默认 `"left"`）、`icon_inactive`、`label`（底部页签的文字，字符串
