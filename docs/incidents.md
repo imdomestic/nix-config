@@ -4,6 +4,14 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-09-29 · 268v 内屏 EDID 与光标闪烁 {#268v-display-edid}
+
+268v 首次原生启动后 GNOME 只有 1024×768，移动鼠标闪屏。只读提取的原生系统 journal 显示 `EDID has corrupt header`，错误数据恰是屏幕 DisplayID 扩展块；Mutter 同时记录 `Cursor update failed: drmModeAtomicCommit: Invalid argument`。xe、DMC、GuC、HuC 和 GSC 固件已加载，GNOME 使用 xe 的 GBM 渲染器，独立 Home Manager 激活也已完成。
+
+最初怀疑安装环境的 nomodeset 遗留，但正式系统的 kernel command line 没有该参数；安装器日志不能替代原生系统日志。Windows 当前活动内屏为 LEN8AC3（LEN140WQ+）。从本机 Windows EDID 缓存读取 384 字节的三块数据，所有块校验和为零，DisplayID 提供 2880×1800 的 60/120 Hz 时序。厂商原始 EDID 有 edid-decode 一致性警告和错误（包括旧式基础时序占位符、缺少部分 CTA/DisplayID 元数据），保留原始数据，不自行编造时序。
+
+`nixos/hosts/268v/display.nix` 通过原生 hardware.display 选项对 eDP-1 提供该 EDID，并显式加入 initrd。Mutter 临时禁用硬件光标以绕过已观察到的 cursor-plane 提交失败，GPU 加速保持启用。此修复仅适用于本机 LEN8AC3 内屏；更换屏幕应重新读取 EDID。构建完成，实机修复效果仍待下一次启动验证。
+
 ## 2026-09-27 · tank 高级草稿补发的限定部署 {#tank-gaoji-draft-delivery}
 
 用户仅批准更新高级程序，不重启 QQ、数据库或其他主机。Bot 修复版本为
