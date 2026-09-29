@@ -593,16 +593,19 @@ in {
           mode = "n";
           key = "<leader>q";
           action = "<Cmd>q<CR>";
+          options.desc = "Quit window";
         }
         {
           mode = "n";
           key = "<leader>Q";
           action = "<Cmd>qa!<CR>";
+          options.desc = "Quit all (discard changes)";
         }
         {
           mode = "n";
           key = "<leader>w";
           action = "<Cmd>w<CR>";
+          options.desc = "Write";
         }
         {
           # o 也要:operator-pending 序列(`3kj`)里同样是 gj/gk。
@@ -700,6 +703,7 @@ in {
               vim.bo.shiftwidth = indent
             end
           '';
+          options.desc = "Set indent width";
         }
         {
           mode = "n";
@@ -1091,63 +1095,38 @@ in {
               end
             '';
           };
-          clue = {
-            triggers = [
-              {
-                mode = ["n" "x"];
-                keys = "<Leader>";
-              }
-              {
-                mode = "n";
-                keys = "[";
-              }
-              {
-                mode = "n";
-                keys = "]";
-              }
-              {
-                mode = "i";
-                keys = "<C-x>";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "g";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "'";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "`";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "\"";
-              }
-              {
-                mode = ["i" "c"];
-                keys = "<C-r>";
-              }
-              {
-                mode = "n";
-                keys = "<C-w>";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "z";
-              }
-            ];
-            clues = [
-              (mkRaw ''require("mini.clue").gen_clues.square_brackets()'')
-              (mkRaw ''require("mini.clue").gen_clues.builtin_completion()'')
-              (mkRaw ''require("mini.clue").gen_clues.g()'')
-              (mkRaw ''require("mini.clue").gen_clues.marks()'')
-              (mkRaw ''require("mini.clue").gen_clues.registers()'')
-              (mkRaw ''require("mini.clue").gen_clues.windows()'')
-              (mkRaw ''require("mini.clue").gen_clues.z()'')
-            ];
-          };
+        };
+      };
+
+      # 按键提示。helix 布局:右下角一列,不挡正文。前缀组的名字在这里,
+      # 单个按键的说明来自各 keymap 自己的 desc。
+      which-key = {
+        enable = true;
+        settings = {
+          preset = "helix";
+          icons.mappings = false;
+          spec = [
+            {
+              __unkeyed-1 = "<leader>f";
+              group = "Find";
+            }
+            {
+              __unkeyed-1 = "<leader>h";
+              group = "Git hunks";
+            }
+            {
+              __unkeyed-1 = "<leader>l";
+              group = "LSP";
+            }
+            {
+              __unkeyed-1 = "<leader>t";
+              group = "Toggle";
+            }
+            {
+              __unkeyed-1 = "<leader>u";
+              group = "UI";
+            }
+          ];
         };
       };
 
