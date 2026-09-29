@@ -5,6 +5,9 @@
   imports = [
     ../../profiles/dev.nix
     ../../modules/nixvim/hank/default.nix
+    ../../modules/claude-code
+    ../../modules/lazygit
+    ../../modules/codex
     ../../modules/opencode
   ];
 
