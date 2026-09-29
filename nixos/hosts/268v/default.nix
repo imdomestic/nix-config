@@ -12,6 +12,7 @@ in {
     ./system.nix
     ./hardware-configuration.nix
     ./desktop.nix
+    ./display.nix
   ];
   hardwareModules = [inputs.nixos-hardware.nixosModules.lenovo-yoga-7-14ILL10];
   externalModules = [inputs.nix-index-database.nixosModules.default];
