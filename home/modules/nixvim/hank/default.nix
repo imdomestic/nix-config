@@ -321,8 +321,6 @@ in {
         vertright = " ";
         verthoriz = " ";
       };
-      # 没指定边框的浮层(LSP hover 等)四周留一格同色空白。
-      winborder = "solid";
     };
 
     filetype.extension = {
@@ -336,7 +334,7 @@ in {
       virtual_text = true;
       severity_sort = true;
       float = {
-        border = "solid";
+        border = "rounded";
         source = "if_many";
       };
       underline.severity = mkRaw "vim.diagnostic.severity.ERROR";
@@ -998,30 +996,7 @@ in {
           picker = {
             enabled = true;
             ui_select = true;
-            layout = {
-              preset = mkRaw ''
-                function() return vim.o.columns >= 120 and "hank" or "vertical" end
-              '';
-              layout.backdrop = false;
-            };
-            # 浮动 picker:左上三行(标题、输入、空行)是输入色的一整块,下面的结果浮起,
-            # 右边预览下沉。输入框的 solid 边框就是那三行里的上下两行和两侧留白。
-            layouts.hank = mkRaw ''
-              {
-                layout = {
-                  box = "horizontal",
-                  width = 0.8,
-                  min_width = 120,
-                  height = 0.8,
-                  {
-                    box = "vertical",
-                    { win = "input", height = 1, border = "solid", title = "{title} {live} {flags}", title_pos = "center" },
-                    { win = "list", border = { "", "", "", " ", " ", " ", " ", " " } },
-                  },
-                  { win = "preview", title = "{preview}", border = "solid", width = 0.5 },
-                },
-              }
-            '';
+            layout.layout.backdrop = false;
             sources.explorer.layout.layout.width = sidebarWidth;
             # 侧栏和底部的 picker(explorer、git、problems)是 split,改用退后底色;
             # 开了顶栏横线时还要自己带着 winbar 留白,否则 Snacks 每次重排都会把它抹掉。
@@ -1082,12 +1057,6 @@ in {
                 Normal = "HankSunk";
                 NormalNC = "HankSunk";
               };
-            };
-            # 命令行和 picker 的输入区一样:标题、输入、空行三行输入色,边框就是那两行留白。
-            # 补全列表由 blink 画在它下面(见 blink 的 cmdline_position)。
-            cmdline_popup.border = {
-              style = "solid";
-              padding = [0 1];
             };
           };
           presets = {
@@ -1226,10 +1195,6 @@ in {
         settings = {
           preset = "helix";
           icons.mappings = false;
-          win = {
-            border = mkRaw ''{ "", { "▄", "HankEdgeRaised" }, "", "", "", { "▀", "HankEdgeRaised" }, "", "" }'';
-            padding = [0 2];
-          };
           spec = [
             {
               __unkeyed-1 = "<leader>f";
@@ -1404,8 +1369,8 @@ in {
                   return ctx.mode ~= "cmdline"
                 end
               '';
-              # noice 的命令行浮在屏幕中间时,底下还有一行输入色的留白;菜单往下挪一行,
-              # 不压在上面。底部的命令行(/ 搜索)照旧。
+              # noice 的命令行浮在屏幕中间时,输入行下面还有一行边框;菜单往下挪一行,
+              # 不压在边框上。底部的命令行(/ 搜索)照旧。
               cmdline_position = mkRaw ''
                 function()
                   local pos = vim.g.ui_cmdline_pos
@@ -1417,9 +1382,8 @@ in {
                   return { row, pos[2] }
                 end
               '';
-              # 候选列表浮起,上下各用半格边收住;文档窗下沉(见下)。
-              border = mkRaw ''{ "", "▄", "", "", "", "▀", "", "" }'';
-              winhighlight = "Normal:Pmenu,FloatBorder:HankEdgeRaised,CursorLine:PmenuSel,Search:None";
+              border = "rounded";
+              winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:PmenuSel,Search:None";
               draw = {
                 treesitter = ["lsp"];
                 # 颜色类的补全项(tailwind 的类名、cssls 的颜色值)用一个上色的
@@ -1466,26 +1430,15 @@ in {
             documentation = {
               auto_show = true;
               auto_show_delay_ms = 0;
-              # 文档是详情,下沉一级;两侧各留一格同色空白。
               window = {
-                border = mkRaw ''
-                  {
-                    { "▄", "HankEdgeSunk" }, { "▄", "HankEdgeSunk" }, { "▄", "HankEdgeSunk" }, { " ", "HankSunk" },
-                    { "▀", "HankEdgeSunk" }, { "▀", "HankEdgeSunk" }, { "▀", "HankEdgeSunk" }, { " ", "HankSunk" },
-                  }
-                '';
-                winhighlight = "Normal:HankSunk,FloatBorder:HankEdgeSunk,CursorLine:PmenuSel,Search:None";
+                border = "rounded";
+                winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:PmenuSel,Search:None";
               };
             };
           };
           signature.window = {
-            border = mkRaw ''
-              {
-                { "▄", "HankEdgeSunk" }, { "▄", "HankEdgeSunk" }, { "▄", "HankEdgeSunk" }, { " ", "HankSunk" },
-                { "▀", "HankEdgeSunk" }, { "▀", "HankEdgeSunk" }, { "▀", "HankEdgeSunk" }, { " ", "HankSunk" },
-              }
-            '';
-            winhighlight = "Normal:HankSunk,FloatBorder:HankEdgeSunk";
+            border = "rounded";
+            winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder";
           };
           appearance = {
             use_nvim_cmp_as_default = true;
@@ -1927,9 +1880,8 @@ in {
         pcall(vim.keymap.del, "n", key)
       end
 
-      -- 界面分层(docs/nvim-look.md):正文 base;侧栏、底部面板和浮层里的详情退后一级
-      -- (mantle,HankSunk);浮层浮起一级(surface0);输入行再亮一级(surface1)。
-      -- 强调色只标位置和查询。
+      -- 界面分层(docs/nvim-look.md):正文 base;侧栏和底部面板退后一级(mantle,
+      -- HankSunk);浮层用主题默认的 mantle 底加圆角边框。强调色只标位置和查询。
       require("evergarden").setup({
         theme = {
           variant = "winter",
@@ -1937,9 +1889,6 @@ in {
         },
         editor = {
           transparent_background = false,
-          -- solid_border 让所有边框字符和底色同色:圆角框变成一格留白。
-          float = { color = "surface0", solid_border = true },
-          completion = { color = "surface0", selected = { color = "surface1", style = { "bold" } } },
           statusline = {
             active = { fg = "subtext0", bg = "crust" },
             inactive = { fg = "overlay1", bg = "crust" },
@@ -1959,13 +1908,8 @@ in {
             HankSunk = { t.text, t.mantle },
             HankSunkBorder = { t.surface1, t.mantle },
             HankSunkTitle = { t.subtext0, t.mantle, style = { "bold" } },
-            HankField = { t.text, t.surface1 },
-            -- 小浮层上下的半格边(▄ ▀)和输入行两端的半格收边(▐ ▌)。
-            HankEdgeRaised = { t.surface0, t.base },
-            HankEdgeSunk = { t.mantle, t.base },
             -- 补全菜单选中项左边的竖条,底色同 PmenuSel。
-            HankSelBar = { t.accent, t.surface1 },
-            FloatTitle = { t.text, t.surface0, style = { "bold" } },
+            HankSelBar = { t.accent, t.surface0 },
             WinSeparator = { t.base, t.base },
             NormalNC = { bg = blend(t.mantle, t.base, 0.5) },
             CursorLine = { bg = blend(t.surface0, t.base, 0.45) },
@@ -1974,24 +1918,8 @@ in {
             -- 语法收着用:关键字降成次要色,名字和字面量才上色。
             ["@keyword"] = { t.subtext0 },
             ["@keyword.operator"] = { t.subtext0 },
-            BlinkCmpDoc = { link = "HankSunk" },
-            BlinkCmpDocBorder = { link = "HankEdgeSunk" },
-            BlinkCmpDocSeparator = { link = "HankSunkBorder" },
-            BlinkCmpMenuBorder = { link = "HankEdgeRaised" },
-            SnacksPickerInput = { link = "HankField" },
-            -- 边框是空格,前景只影响标题:标题跟着边框组走。
-            SnacksPickerInputBorder = { t.subtext0, t.surface1 },
-            SnacksPickerInputTitle = { t.text, t.surface1, style = { "bold" } },
-            SnacksPickerPreview = { link = "HankSunk" },
-            SnacksPickerPreviewBorder = { t.mantle, t.mantle },
-            SnacksPickerPreviewTitle = { t.subtext0, t.mantle, style = { "bold" } },
-            SnacksPickerListCursorLine = { bg = t.surface1 },
             SnacksPickerMatch = { t.accent, style = { "bold" } },
             PmenuMatch = { t.accent, style = { "bold" } },
-            NoiceCmdlinePopup = { link = "HankField" },
-            -- noice 各格式的标题组都链接到边框组,所以边框组的前景就是标题色。
-            NoiceCmdlinePopupBorder = { t.subtext0, t.surface1 },
-            NoiceCmdlineIcon = { t.accent },
             -- 状态栏不用色块:模式只换字色。
             MiniStatuslineModeNormal = mode(t.subtext0),
             MiniStatuslineModeInsert = mode(t.accent),
