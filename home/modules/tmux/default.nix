@@ -16,16 +16,18 @@
           set -g @resurrect-pane-contents-area 'full'
         '';
       }
+      vim-tmux-navigator
+      yank
+      catppuccin
       {
         plugin = continuum;
         extraConfig = ''
           set -g @continuum-restore 'on'
           set -g @continuum-save-interval '15'
+          # continuum 加载时会向 status-right 添加自动保存命令。
+          set -g status-right "#[fg=#9aa5ce] #{pane_current_path} #[fg=#565f89]|#[fg=#bb9af7] %Y-%m-%d %H:%M:%S "
         '';
       }
-      vim-tmux-navigator
-      yank
-      catppuccin
     ];
 
     extraConfig = ''
@@ -65,7 +67,6 @@
       set -g status-left "#[fg=#7aa2f7,bold] #S #[fg=#565f89]|#[fg=#89b4fa] #(whoami)@#H "
 
       set -g status-right-length 120
-      set -g status-right "#[fg=#9aa5ce] #{pane_current_path} #[fg=#565f89]|#[fg=#bb9af7] %Y-%m-%d %H:%M:%S "
 
       set -g pane-border-style fg=#2f3549
       set -g pane-active-border-style fg=#ff9e64
