@@ -64,6 +64,9 @@
           "vision_tokens" = 49152;
           "vision_item_tokens" = 16384;
           "effort" = "xhigh";
+          # Matches NInfer's --max-concurrency on b650, so excess requests
+          # queue in Max (turns first) instead of the server's FIFO.
+          "max_concurrency" = 4;
         };
         "gpt-5.6-terra" = {
           "protocol" = "responses";
