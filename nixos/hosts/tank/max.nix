@@ -255,6 +255,11 @@
     "memory" = {
       "extract_profile" = "gpt-5.6-luna";
     };
+    # Learns group expressions and jargon behind the Historian cursor; the
+    # first run relearns the whole history on b650's local model.
+    "lingo" = {
+      "profile" = "qwen3.8-27b";
+    };
     "stickers" = {
       "caption_profile" = "gpt-5.6-luna";
     };
