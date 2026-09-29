@@ -53,6 +53,31 @@ function A.snacks(spec)
   return spec
 end
 
+-- Snacks gives every picker the same highlight groups, so a picker shown as a panel
+-- (a split) gets its own `winhl` mapping, e.g. `{ NormalFloat = 'MyPanel' }`. Call it
+-- from the picker's on_show. Layout passes rebuild child window options from
+-- `layout.win_opts`, so the mapping goes there as well. The split also takes the
+-- global 'fillchars' (vim.go: vim.o would read Snacks' own window-local value), which
+-- would otherwise bring the separator line back.
+function A.snacks_surface(picker, winhl)
+  local layout = picker.layout
+  if not (layout and layout.split) then return end
+  local function patch(opts)
+    opts.wo = opts.wo or {}
+    opts.wo.winhighlight = Snacks.util.winhl(opts.wo.winhighlight or '', winhl)
+  end
+  patch(layout.root.opts)
+  layout.root.opts.wo.fillchars = vim.go.fillchars
+  for name, win in pairs(layout.wins or {}) do
+    patch(win.opts)
+    if layout.win_opts and layout.win_opts[name] then patch(layout.win_opts[name]) end
+  end
+  for _, win in ipairs(vim.list_extend({ layout.root }, vim.tbl_values(layout.wins or {}))) do
+    if win:win_valid() then Snacks.util.wo(win.win, { winhighlight = win.opts.wo.winhighlight }) end
+  end
+  if layout.root:win_valid() then vim.wo[layout.root.win].fillchars = vim.go.fillchars end
+end
+
 -- A Snacks terminal in a split. Closing hides it, so the shell keeps running and
 -- comes back on the next open.
 function A.snacks_terminal(spec)

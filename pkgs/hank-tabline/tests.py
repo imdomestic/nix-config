@@ -164,7 +164,8 @@ try:
         track_attr=attr(2,1)
         assert 'first line is visible' in row(header_rows+1),row(header_rows+1)
         selected=n.api.get_hl(0,{'name':'HankTablineSelected','link':False})
-        assert selected['bg']==int('cbe3b3',16) and selected['bold']
+        # With the rail the active label only brightens; without it, it is a green block.
+        assert selected['bg']==int('1e2528' if args.underline else 'cbe3b3',16) and selected['bold'],selected
         print('PASS: no sidebar block while sidebars are closed, title leads the row, Evergarden palette, unobstructed first file line')
         original=n.api.get_current_win()
         n.command('wincmd k');settle()
