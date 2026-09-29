@@ -44,62 +44,119 @@
     "@zenobius/opencode-skillful@1.2.5"
     sidebarBridge
   ];
-  both = color: {
+  # 两套都只是暗色主题,dark / light 填同一个值。
+  bothModes = lib.mapAttrs (_: color: {
     dark = color;
     light = color;
-  };
-  evergardenWinter = {
-    primary = both "#cbe3b3";
-    secondary = both "#b2caed";
-    accent = both "#f7a182";
-    error = both "#f57f82";
-    warning = both "#f5d098";
-    success = both "#cbe3b3";
-    info = both "#b3e3ca";
-    text = both "#f8f9e8";
-    textMuted = both "#96b4aa";
-    background = both "#1e2528";
-    backgroundPanel = both "#191e21";
-    backgroundElement = both "#262f33";
-    border = both "#374145";
-    borderActive = both "#4a585c";
-    borderSubtle = both "#262f33";
-    diffAdded = both "#cbe3b3";
-    diffRemoved = both "#f57f82";
-    diffContext = both "#96b4aa";
-    diffHunkHeader = both "#6f8788";
-    diffHighlightAdded = both "#4e5a4f";
-    diffHighlightRemoved = both "#5a3e41";
-    diffAddedBg = both "#36403b";
-    diffRemovedBg = both "#3c3235";
-    diffContextBg = both "#1e2528";
-    diffLineNumber = both "#6f8788";
-    diffAddedLineNumberBg = both "#4e5a4f";
-    diffRemovedLineNumberBg = both "#5a3e41";
-    markdownText = both "#f8f9e8";
-    markdownHeading = both "#cbe3b3";
-    markdownLink = both "#b2caed";
-    markdownLinkText = both "#b3e6db";
-    markdownCode = both "#dbe6af";
-    markdownBlockQuote = both "#839e9a";
-    markdownEmph = both "#f7a182";
-    markdownStrong = both "#fae6ef";
-    markdownHorizontalRule = both "#6f8788";
-    markdownListItem = both "#f8f9e8";
-    markdownListEnumeration = both "#b3e3ca";
-    markdownImage = both "#b2caed";
-    markdownImageText = both "#b3e6db";
-    markdownCodeBlock = both "#dbe6af";
-    syntaxComment = both "#839e9a";
-    syntaxKeyword = both "#f57f82";
-    syntaxFunction = both "#cbe3b3";
-    syntaxVariable = both "#f8f9e8";
-    syntaxString = both "#dbe6af";
-    syntaxNumber = both "#f3c0e5";
-    syntaxType = both "#f5d098";
-    syntaxOperator = both "#96b4aa";
-    syntaxPunctuation = both "#6f8788";
-  };
+  });
+  evergardenWinter = with (import ../palettes/evergarden-winter.nix).colors;
+    bothModes {
+      primary = green;
+      secondary = blue;
+      accent = orange;
+      error = red;
+      warning = yellow;
+      success = green;
+      info = aqua;
+      inherit text;
+      textMuted = subtext0;
+      background = base;
+      backgroundPanel = mantle;
+      backgroundElement = surface0;
+      border = surface1;
+      borderActive = surface2;
+      borderSubtle = surface0;
+      diffAdded = green;
+      diffRemoved = red;
+      diffContext = subtext0;
+      diffHunkHeader = overlay1;
+      diffHighlightAdded = diffAddWord;
+      diffHighlightRemoved = diffDelWord;
+      diffAddedBg = diffAddBg;
+      diffRemovedBg = diffDelBg;
+      diffContextBg = base;
+      diffLineNumber = overlay1;
+      diffAddedLineNumberBg = diffAddWord;
+      diffRemovedLineNumberBg = diffDelWord;
+      markdownText = text;
+      markdownHeading = green;
+      markdownLink = blue;
+      markdownLinkText = skye;
+      markdownCode = lime;
+      markdownBlockQuote = overlay2;
+      markdownEmph = orange;
+      markdownStrong = cherry;
+      markdownHorizontalRule = overlay1;
+      markdownListItem = text;
+      markdownListEnumeration = aqua;
+      markdownImage = blue;
+      markdownImageText = skye;
+      markdownCodeBlock = lime;
+      syntaxComment = overlay2;
+      syntaxKeyword = red;
+      syntaxFunction = green;
+      syntaxVariable = text;
+      syntaxString = lime;
+      syntaxNumber = pink;
+      syntaxType = yellow;
+      syntaxOperator = subtext0;
+      syntaxPunctuation = overlay1;
+    };
+  # 按 kanso.nvim 的 extras/opencode/kanso-zen.json 逐项对应。
+  kansoZen = with (import ../palettes/kanso-zen.nix).colors;
+    bothModes {
+      primary = blue3;
+      secondary = violet2;
+      accent = yellow3;
+      error = red;
+      warning = yellow;
+      success = green;
+      info = blue2;
+      text = fg;
+      textMuted = gray2;
+      background = zenBg0;
+      backgroundPanel = zenBg1;
+      backgroundElement = zenBg2;
+      border = zenBg1;
+      borderActive = zenBg2;
+      borderSubtle = zenBg1;
+      diffAdded = gitGreen;
+      diffRemoved = gitRed;
+      # 上游这两项是 zenBg1,与 diffContextBg 同色,文字直接看不见。
+      diffContext = gray2;
+      diffHunkHeader = gray4;
+      diffHighlightAdded = diffGreen;
+      diffHighlightRemoved = diffRed;
+      diffAddedBg = diffGreen;
+      diffRemovedBg = diffRed;
+      diffContextBg = zenBg1;
+      diffLineNumber = gray2;
+      diffAddedLineNumberBg = diffGreen;
+      diffRemovedLineNumberBg = diffRed;
+      markdownText = fg;
+      markdownHeading = violet2;
+      markdownLink = blue3;
+      markdownLinkText = blue3;
+      markdownCode = green3;
+      markdownBlockQuote = gray2;
+      markdownEmph = yellow3;
+      markdownStrong = violet2;
+      markdownHorizontalRule = gray2;
+      markdownListItem = fg;
+      markdownListEnumeration = gray2;
+      markdownImage = blue3;
+      markdownImageText = blue3;
+      markdownCodeBlock = green3;
+      syntaxComment = gray4;
+      syntaxKeyword = violet2;
+      syntaxFunction = blue3;
+      syntaxVariable = fg;
+      syntaxString = green3;
+      syntaxNumber = pink;
+      syntaxType = aqua;
+      syntaxOperator = gray3;
+      syntaxPunctuation = gray3;
+    };
 in {
   programs.opencode = {
     enable = true;
@@ -138,7 +195,10 @@ in {
         sidebarBridge
       ];
     };
-    themes."evergarden-winter".theme = evergardenWinter;
+    themes = {
+      "evergarden-winter".theme = evergardenWinter;
+      "kanso-zen".theme = kansoZen;
+    };
   };
 
   # opencode-notificator invokes these programs directly on Linux.

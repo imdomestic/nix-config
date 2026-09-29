@@ -434,6 +434,8 @@ in {
   };
 
   programs.zsh = {
+    # stateVersion ≥ 26.05 时 xdg.enable 会把默认 dotDir 改成 ~/.config/zsh,这里保持原位。
+    dotDir = config.home.homeDirectory;
     enableCompletion = true;
     autocd = true;
     defaultKeymap = "viins";
@@ -900,6 +902,10 @@ in {
     };
   };
 
+  # 导出 XDG_*_HOME,同时让 HM 模块在 darwin 上也写 ~/.config;两者必须出自这一处,
+  # 否则 lazygit / nushell 这类模块写进 Library,程序却按环境变量读 ~/.config。
+  xdg.enable = true;
+
   xdg.configFile = {
     fastfetch = {
       source = ../../modules/fastfetch;
@@ -971,11 +977,6 @@ in {
     # 原来在 programs.zsh.envExtra 里,只有 zsh 看得见。
     KUBECONFIG = "${config.home.homeDirectory}/.config/k3s.yaml";
     TERMINAL = "ghostty";
-
-    XDG_CONFIG_HOME = "${config.home.homeDirectory}/.config";
-    XDG_CACHE_HOME = "${config.home.homeDirectory}/.cache";
-    XDG_DATA_HOME = "${config.home.homeDirectory}/.local/share";
-    XDG_STATE_HOME = "${config.home.homeDirectory}/.local/state";
 
     LESS = "--RAW-CONTROL-CHARS";
     MANPAGER = "less -s -M +Gg";
