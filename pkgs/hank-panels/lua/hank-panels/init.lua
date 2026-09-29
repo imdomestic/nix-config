@@ -1,5 +1,6 @@
--- Registry of sidebar panels (explorer, git, outline, lean infoview, ...): one open
--- panel per side, toggled by id. Placement stays with each plugin's own settings.
+-- Registry of side panels (explorer, git, outline, lean infoview, terminal, ...): one
+-- open panel per side ('left', 'right' or 'bottom'), toggled by id. Placement stays
+-- with each plugin's own settings.
 local M = {}
 local api = vim.api
 local P = { list = {}, by_id = {} }
@@ -20,6 +21,12 @@ end
 local function is_open(panel)
   local ok, open = pcall(panel.is_open)
   return ok and open == true
+end
+
+local function label(panel)
+  if type(panel.label) ~= 'function' then return panel.label or panel.id end
+  local ok, text = pcall(panel.label)
+  return ok and text or panel.id
 end
 
 local function available(panel)
@@ -95,6 +102,20 @@ function M.at(win)
   end
 end
 
+-- The split an open panel on `side` occupies in the current tabpage, if any.
+function M.window(side)
+  for _, panel in ipairs(P.list) do
+    if panel.side == side and panel.owns and is_open(panel) then
+      for _, win in ipairs(api.nvim_tabpage_list_wins(0)) do
+        if api.nvim_win_get_config(win).relative == '' then
+          local ok, yes = pcall(panel.owns, win)
+          if ok and yes then return win end
+        end
+      end
+    end
+  end
+end
+
 -- Inside a sidebar, step through the panels on its side (wrapping around).
 -- Returns false outside a sidebar so callers can fall back to buffer switching.
 function M.cycle(step)
@@ -112,19 +133,23 @@ function M.cycle(step)
 end
 
 -- A hank-tabline section: one icon per available panel on `side`, filled when open.
+-- Bottom panels are wide enough for a label next to the icon.
 function M.section(side)
+  local tabs = side == 'bottom'
   return {
     name = 'panels-' .. side,
-    style = 'icon',
-    -- Light the rail under the glyph only, with half-cell gaps either side.
-    pad = 0.5,
+    style = tabs and 'tab' or 'icon',
+    -- Icons light the rail under the glyph only, with half-cell gaps either side;
+    -- tabs light it under the icon and label.
+    pad = tabs and 1 or 0.5,
     items = function()
       local items = {}
       for _, panel in ipairs(P.list) do
         if panel.side == side and available(panel) then
           local open = is_open(panel)
           local icon = glyph(open and panel.icon or (panel.icon_inactive or panel.icon))
-          items[#items + 1] = { id = panel.id, text = ' ' .. icon .. ' ', active = open }
+          local text = tabs and (' ' .. icon .. ' ' .. label(panel) .. ' ') or (' ' .. icon .. ' ')
+          items[#items + 1] = { id = panel.id, text = text, active = open }
         end
       end
       return items

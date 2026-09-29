@@ -6,7 +6,8 @@
 VS Code 的嵌入 Neovim 不加载此插件。
 
 插件只负责画：一行由若干「分组」拼成的标签，外加可选的第二行横线。分组自己
-提供条目，插件不关心条目代表什么。从左到右：
+提供条目，插件不关心条目代表什么。同一套标签也画在底部面板顶上，见
+[底部面板的页签](#底部面板的页签)。顶栏从左到右：
 
 | 区域 | 内容 | 宽度 | 底色 |
 |---|---|---|---|
@@ -20,7 +21,26 @@ VS Code 的嵌入 Neovim 不加载此插件。
 面板后 buffer 标签移到正文左边缘（开启横线时亮段滑过去）。侧栏关着时要用快捷键
 打开面板，顶栏上没有可点的图标。
 
-面板图标见 [侧栏面板](nvim-panels.md)。
+面板图标见 [侧栏和底部面板](nvim-panels.md)。
+
+## 底部面板的页签
+
+`bottom = { sections, anchor }` 让同样的标签出现在底部面板顶上。`anchor()` 返回
+面板所在的 split（Hank 的配置里是 `hank-panels` 的 `window("bottom")`），插件在
+它上面开一个两行的浮层：
+
+| 行 | 盖住的是 | 内容 |
+|---|---|---|
+| 第一行 | 面板上方的横向分隔线（`laststatus = 3` 时上下两个窗口之间都有这一行） | 页签：图标加文字 |
+| 第二行 | 面板自己的 `winbar`（留成一个空格） | 横线，和顶栏同一套亮段与滑动动画 |
+
+这和顶栏「tabline 加顶层窗口的 winbar」是同一个做法：不新增普通 split，面板内容
+一行都不挡。没开横线时只有第一行，也不占 winbar。浮层整块用侧栏底色（mantle），
+和面板内容连成一片。锚点窗口上面必须还有窗口，否则没有分隔线可盖；开横线时它
+至少要两行高。条件不满足时不画。
+
+页签分组用 `style = "tab"`：当前项文字变亮加粗，其余用次要色；`pad = 1`，亮段
+落在图标和文字下方。点页签或它下面的横线都能切换。
 
 ## 选项
 
@@ -43,6 +63,10 @@ require("hank-tabline").setup({
     right = { width = 40, sections = { panels.section("right") } },
   },
   sections = { left = {...}, right = {...} }, -- 不进区块的普通分组，可选
+  bottom = {                                  -- 底部面板的页签，可选
+    sections = { panels.section("bottom") },
+    anchor = function() return panels.window("bottom") end,
+  },
 })
 ```
 
@@ -55,12 +79,14 @@ require("hank-tabline").setup({
 - `items(ctx)`：返回 `{ id, text, active }` 列表；`ctx.columns` 是终端宽度，
   区块内的项目名另有 `ctx.width`（图标占剩下的宽度）。`text` 自带左右留白。
 - `click(id, button)`：可选。没有它的分组整段不可点击。
-- `style`：`"block"`（默认，当前项绿底块）、`"icon"`（只变色）、`"label"`。
+- `style`：`"block"`（默认，当前项绿底块）、`"icon"`（只变色）、`"label"`、
+  `"tab"`（底部页签，当前项变亮加粗）。
 - `pad`：横线亮段比条目两端各缩进多少格，默认 1；可以是半格（图标组用 0.5，
   亮段正好落在图标下方，两侧各留半格空）。
 - `update()`：可选，每次刷新前调用（buffer 分组用它记住最近的正文窗口）。
 
-`require("hank-tabline").layout()` 返回每个可见条目的屏幕列，测试用它定位点击。
+`require("hank-tabline").layout()` 返回每个可见条目的屏幕列，测试用它定位点击；
+`layout("bottom")` 返回底部页签的，列同样是屏幕列。
 
 ## Posting 源码对应
 
@@ -111,13 +137,15 @@ overlay2 色非选中文字、overlay0 色轨道、base 色底色；侧栏区块
 `pkgs/hank-tabline/tests.py` 需要 Python `pynvim` 和 Neovim 0.12+，会启动隔离
 UI 实例检查两行渲染、鼠标点击、修改标记、Unicode/溢出、分屏和退出行为。
 
-不传 `--init` 时使用无配置 Neovim，并注册三个假面板（左侧两个、右侧一个），
-检查点击图标开关、同侧互斥、两侧共存、点击横线切换，以及开关面板时 buffer
-标签不移动。
+不传 `--init` 时使用无配置 Neovim，并注册五个假面板（左侧两个、右侧一个、底部
+两个），检查点击图标开关、同侧互斥、两侧共存、点击横线切换、区块出现时 buffer
+标签移到正文左边缘，以及底部页签的位置、winbar 预留、点击切换、`]b` 轮换和
+与侧栏共存。
 
 `--nvim /path/to/nvim --init /path/to/evaluated-init.lua` 验证完整配置，额外覆盖
 Explorer 位于顶栏下方、侧栏宽度变化、终端缩放、tabpage 切换、侧栏关闭、
-Picker/LazyGit，以及从顶栏切换 Explorer 与 git 面板（须在 git 仓库里运行）。
+Picker/LazyGit、从顶栏切换 Explorer 与 git 面板（须在 git 仓库里运行），以及
+`<M-m>` 打开终端、`]b` 切到 quickfix、问题列表共用一条底部页签。
 
 `--underline`、`--project`、`--no-animate` 分别对应三个选项；验证完整配置时
 这几个参数必须与该 init 的设置一致。`--capture-explorer-json /tmp/sidebar.json`

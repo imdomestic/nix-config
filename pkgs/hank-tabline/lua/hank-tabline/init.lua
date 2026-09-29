@@ -1,11 +1,18 @@
 -- Posting-style header: a row of tab sections and an optional underline rail.
 -- Sections only supply items; buffers, the project label and anything registered
 -- through `sections` / `sidebars` (e.g. hank-panels) are rendered the same way.
+-- The same tabs can also head a bottom panel (`bottom`), drawn over the separator
+-- above that panel and its winbar.
 local M = {}
 local api = vim.api
 local ns = api.nvim_create_namespace('hank_tabline')
 local slice = require('hank-tabline.slice')
-local S = { sections = {}, blocks = {}, placed = {}, zones = {}, clicks = {}, target = {}, reserved = {}, generation = 0 }
+-- A rail is one buffer line of track in a float: `top` under the tab row, `bottom`
+-- under the bottom panel's tabs (its first line holds the tabs themselves).
+local function rail(line, ft) return { line = line, ft = ft, target = {}, generation = 0 } end
+local S = { sections = {}, blocks = {}, placed = {}, zones = {}, clicks = {}, reserved = {},
+  top = rail(0, 'hank_tabline'), bottom = rail(1, 'hank_tabline_strip') }
+S.bottom.placed, S.bottom.sections = {}, {}
 
 local function valid(win)
   return win and api.nvim_win_is_valid(win)
@@ -26,13 +33,16 @@ local function palette()
   api.nvim_set_hl(0, 'HankTablinePanelLabel', { fg = p.green, bg = surface, bold = true })
   api.nvim_set_hl(0, 'HankTablinePanelTrack', { fg = p.overlay0, bg = surface })
   api.nvim_set_hl(0, 'HankTablinePanelAccent', { fg = p.green, bg = surface })
+  api.nvim_set_hl(0, 'HankTablinePanelTab', { fg = p.text or p.green, bg = surface, bold = true })
 end
 
 -- 'block' sections mark the active item with a filled label, 'icon' sections only
--- recolour it (the rail and the filled/outline glyph carry the rest).
+-- recolour it (the rail and the filled/outline glyph carry the rest), 'tab'
+-- sections (bottom panels) brighten the active label.
 local function highlight(section, item, surface)
   if item.hl then return item.hl end
   if section.style == 'label' then return surface and 'HankTablinePanelLabel' or 'HankTablineProject' end
+  if section.style == 'tab' then return item.active and 'HankTablinePanelTab' or 'HankTablinePanel' end
   if not item.active then return surface and 'HankTablinePanel' or 'HankTablineInactive' end
   if section.style == 'icon' then return surface and 'HankTablinePanelIcon' or 'HankTablineIcon' end
   return 'HankTablineSelected'
@@ -49,6 +59,20 @@ local function build(section, ctx, surface)
     if item.active then active = entry end
   end
   return { key = section.key, section = section, items = items, width = width, active = active, offset = 0 }
+end
+
+-- Lit rail segments: the active item of each placed section, minus its padding.
+local function targets(placed)
+  local out = {}
+  for _, b in ipairs(placed) do
+    if b.active then
+      local pad = b.section.pad or 1
+      local s = math.max(b.x, b.x + b.active.start - b.offset + pad)
+      local f = math.min(b.x + b.room, b.x + b.active.finish - b.offset - pad)
+      if f > s then out[b.key] = { s, f } end
+    end
+  end
+  return out
 end
 
 local function collect()
@@ -155,15 +179,25 @@ local function collect()
     end
   end
   table.sort(placed, function(a, b) return a.x < b.x end)
-  S.placed, S.zones, S.fill_to, S.target = placed, zones, fill_to, {}
-  for _, b in ipairs(placed) do
-    if b.active then
-      local pad = b.section.pad or 1
-      local s = math.max(b.x, b.x + b.active.start - b.offset + pad)
-      local f = math.min(b.x + b.room, b.x + b.active.finish - b.offset - pad)
-      if f > s then S.target[b.key] = { s, f } end
+  S.placed, S.zones, S.fill_to = placed, zones, fill_to
+  S.top.zones, S.top.width, S.top.target = zones, columns, targets(placed)
+end
+
+-- The bottom panel's tabs, left aligned inside the strip.
+local function collect_bottom()
+  local B = S.bottom
+  B.placed, B.target = {}, {}
+  if not valid(B.win) then return end
+  local ctx, x = { columns = B.width }, 1
+  for _, section in ipairs(B.sections) do
+    local b = build(section, ctx, true)
+    if b.width > 0 and x < B.width then
+      b.x, b.room = x, math.min(b.width, B.width - x)
+      B.placed[#B.placed + 1] = b
+      x = x + b.room
     end
   end
+  B.target = targets(B.placed)
 end
 
 -- Visible part of an item, in screen columns.
@@ -207,20 +241,22 @@ function M.render()
   return table.concat(parts)
 end
 
--- Screen layout of the visible items, for tests and integrations.
-function M.layout()
-  local out = {}
-  for _, b in ipairs(S.placed) do
+-- Screen layout of the visible items, for tests and integrations. `which` is 'top'
+-- (default) or 'bottom'; bottom columns are screen columns too.
+function M.layout(which)
+  local out, placed, dx = {}, S.placed, 0
+  if which == 'bottom' then placed, dx = S.bottom.placed, S.bottom.col or 0 end
+  for _, b in ipairs(placed) do
     for _, item in ipairs(b.items) do
       local left, right = visible(b, item)
-      if right > left then out[#out + 1] = { section = b.key, id = item.id, col = left, width = right - left } end
+      if right > left then out[#out + 1] = { section = b.key, id = item.id, col = left + dx, width = right - left } end
     end
   end
   return out
 end
 
-local function item_at(col)
-  for _, b in ipairs(S.placed) do
+local function item_at(placed, col)
+  for _, b in ipairs(placed) do
     for _, item in ipairs(b.items) do
       local left, right = visible(b, item)
       if col >= left and col < right then return b.section, item end
@@ -228,17 +264,18 @@ local function item_at(col)
   end
 end
 
-local function draw(spans)
-  if not valid(S.bar) then return end
-  local zones, list = S.zones, {}
+local function draw(R, spans)
+  if not valid(R.win) then return end
+  local zones, list = R.zones or {}, {}
   for _, span in pairs(spans) do
     local s, f = math.floor(span[1] * 2 + 0.5) / 2, math.floor(span[2] * 2 + 0.5) / 2
     if f > s then list[#list + 1] = { s, f } end
   end
   local cells, groups = {}, {}
-  for col = 0, vim.o.columns - 1 do
+  for col = 0, R.width - 1 do
     local char, accent
-    if zones[col] == 'gap' then
+    local kind = R.surface and 'surface' or zones[col]
+    if kind == 'gap' then
       char = ' '
     else
       for _, span in ipairs(list) do
@@ -261,7 +298,7 @@ local function draw(spans)
       end
     end
     cells[#cells + 1] = char or '━'
-    local surface = zones[col] == 'surface'
+    local surface = kind == 'surface'
     if accent then
       groups[#groups + 1] = surface and 'HankTablinePanelAccent' or 'HankTablineAccent'
     else
@@ -269,33 +306,33 @@ local function draw(spans)
       groups[#groups + 1] = surface and 'HankTablinePanelTrack' or false
     end
   end
-  vim.bo[S.buf].modifiable = true
-  api.nvim_buf_set_lines(S.buf, 0, -1, false, { table.concat(cells) })
-  vim.bo[S.buf].modifiable = false
-  api.nvim_buf_clear_namespace(S.buf, ns, 0, -1)
+  vim.bo[R.buf].modifiable = true
+  api.nvim_buf_set_lines(R.buf, R.line, R.line + 1, false, { table.concat(cells) })
+  vim.bo[R.buf].modifiable = false
+  api.nvim_buf_clear_namespace(R.buf, ns, R.line, R.line + 1)
   -- Rail glyphs are three bytes and gap spaces one, so walk byte offsets.
   local byte, group, from = 0, false, 0
   for i, cell in ipairs(cells) do
     if groups[i] ~= group then
-      if group then api.nvim_buf_set_extmark(S.buf, ns, 0, from, { end_col = byte, hl_group = group }) end
+      if group then api.nvim_buf_set_extmark(R.buf, ns, R.line, from, { end_col = byte, hl_group = group }) end
       group, from = groups[i], byte
     end
     byte = byte + #cell
   end
-  if group then api.nvim_buf_set_extmark(S.buf, ns, 0, from, { end_col = byte, hl_group = group }) end
-  S.position = vim.deepcopy(spans)
+  if group then api.nvim_buf_set_extmark(R.buf, ns, R.line, from, { end_col = byte, hl_group = group }) end
+  R.position = vim.deepcopy(spans)
 end
 
-local function animate(instant)
-  local target = S.target
-  if not instant and S.destination and vim.deep_equal(target, S.destination) then return end
-  S.destination = vim.deepcopy(target)
-  S.generation = S.generation + 1
-  local generation = S.generation
-  if instant or not S.opts.animate or S.opts.duration == 0 or not S.position then draw(target); return end
-  local origin, begun = S.position, vim.uv.hrtime()
+local function animate(R, instant)
+  local target = R.target
+  if not instant and R.destination and vim.deep_equal(target, R.destination) then return end
+  R.destination = vim.deepcopy(target)
+  R.generation = R.generation + 1
+  local generation = R.generation
+  if instant or not S.opts.animate or S.opts.duration == 0 or not R.position then draw(R, target); return end
+  local origin, begun = R.position, vim.uv.hrtime()
   local function step()
-    if generation ~= S.generation or not valid(S.bar) then return end
+    if generation ~= R.generation or not valid(R.win) then return end
     local t = math.min(1, (vim.uv.hrtime() - begun) / (S.opts.duration * 1e9))
     local eased = t < 0.5 and 4 * t ^ 3 or 1 - (-2 * t + 2) ^ 3 / 2
     -- Segments that exist on both ends glide; new ones appear in place.
@@ -304,10 +341,81 @@ local function animate(instant)
       local from = origin[key]
       frame[key] = from and { from[1] + (to[1] - from[1]) * eased, from[2] + (to[2] - from[2]) * eased } or to
     end
-    draw(frame)
+    draw(R, frame)
     if t < 1 then vim.defer_fn(step, 16) end
   end
   step()
+end
+
+-- The bottom tabs' first line: labels on the panel surface (the float's Normal).
+local function paint_bottom()
+  local B = S.bottom
+  if not valid(B.win) then return end
+  local parts, marks, col, bytes = {}, {}, 0, 0
+  local function put(text, group)
+    if group then marks[#marks + 1] = { bytes, bytes + #text, group } end
+    parts[#parts + 1] = text
+    bytes = bytes + #text
+  end
+  for _, b in ipairs(B.placed) do
+    for _, item in ipairs(b.items) do
+      local screen_left, screen_right, left, right = visible(b, item)
+      if left < right then
+        if screen_left > col then put(string.rep(' ', screen_left - col)) end
+        put(slice(item.text, left - item.start, right - left), item.hl)
+        col = screen_right
+      end
+    end
+  end
+  if col < B.width then put(string.rep(' ', B.width - col)) end
+  vim.bo[B.buf].modifiable = true
+  api.nvim_buf_set_lines(B.buf, 0, 1, false, { table.concat(parts) })
+  vim.bo[B.buf].modifiable = false
+  api.nvim_buf_clear_namespace(B.buf, ns, 0, 1)
+  for _, m in ipairs(marks) do api.nvim_buf_set_extmark(B.buf, ns, 0, m[1], { end_col = m[2], hl_group = m[3] }) end
+end
+
+local function scratch(R, lines)
+  if R.buf and api.nvim_buf_is_valid(R.buf) then return end
+  R.buf = api.nvim_create_buf(false, true)
+  vim.bo[R.buf].filetype = R.ft
+  vim.bo[R.buf].bufhidden = 'hide'
+  vim.bo[R.buf].undolevels = -1
+  api.nvim_buf_set_lines(R.buf, 0, -1, false, lines)
+  vim.bo[R.buf].modifiable = false
+end
+
+local function hide(R)
+  if valid(R.win) then api.nvim_win_close(R.win, true) end
+  R.win = nil
+end
+
+-- Floats belong to a tabpage, so a rail from another tabpage is replaced.
+local function show(R, config, surface)
+  if valid(R.win) and api.nvim_win_get_tabpage(R.win) ~= api.nvim_get_current_tabpage() then hide(R) end
+  config = vim.tbl_extend('force', { relative = 'editor', height = 1, focusable = false, mouse = true,
+    style = 'minimal', border = 'none', zindex = 20 }, config)
+  if valid(R.win) then
+    api.nvim_win_set_config(R.win, config)
+    return false
+  end
+  R.win = api.nvim_open_win(R.buf, false, config)
+  local group = surface and 'HankTablinePanel' or 'HankTablineTrack'
+  vim.wo[R.win].winhighlight = ('Normal:%s,EndOfBuffer:%s'):format(group, group)
+  R.destination = nil
+  return true
+end
+
+-- The split the bottom tabs sit on: it needs a window above it (whose separator
+-- row takes the labels) and, with the rail, a text line below its winbar.
+local function bottom_anchor()
+  if not S.opts.bottom then return nil end
+  local ok, win = pcall(S.opts.bottom.anchor)
+  if not ok or not valid(win) or api.nvim_win_get_config(win).relative ~= '' then return nil end
+  if api.nvim_win_get_tabpage(win) ~= api.nvim_get_current_tabpage() then return nil end
+  if api.nvim_win_get_position(win)[1] < 2 then return nil end
+  if api.nvim_win_get_height(win) < (S.opts.underline and 2 or 1) then return nil end
+  return win
 end
 
 local function geometry()
@@ -322,10 +430,12 @@ local function geometry()
       if top and api.nvim_win_get_height(win) < 2 then enough_room = false end
     end
   end
+  local anchor = bottom_anchor()
   for _, win in ipairs(api.nvim_tabpage_list_wins(current_tab)) do
     if api.nvim_win_get_config(win).relative == '' then
       local top = enough_room and api.nvim_win_get_position(win)[1] == 1
-      if top then
+      -- The bottom rail lives in the anchor's winbar, as the top one does in the top windows'.
+      if top or (win == anchor and S.opts.underline) then
         if S.reserved[win] == nil then S.reserved[win] = vim.wo[win].winbar end
         if vim.wo[win].winbar ~= ' ' then vim.wo[win].winbar = ' ' end
       elseif S.reserved[win] ~= nil or (S.opts.underline and vim.wo[win].winbar == ' ') then
@@ -334,25 +444,23 @@ local function geometry()
       end
     end
   end
-  if valid(S.bar) and (not enough_room or api.nvim_win_get_tabpage(S.bar) ~= current_tab) then
-    api.nvim_win_close(S.bar, true)
-    S.bar = nil
-  end
-  if not enough_room then return end
-  if not S.buf or not api.nvim_buf_is_valid(S.buf) then
-    S.buf = api.nvim_create_buf(false, true)
-    vim.bo[S.buf].filetype = 'hank_tabline'
-    vim.bo[S.buf].bufhidden = 'hide'
-    vim.bo[S.buf].undolevels = -1
-  end
-  local config = { relative = 'editor', row = 1, col = 0, width = vim.o.columns, height = 1,
-    focusable = false, mouse = true, style = 'minimal', border = 'none', zindex = 20 }
-  if valid(S.bar) then
-    api.nvim_win_set_config(S.bar, config)
+  if enough_room then
+    scratch(S.top, { '' })
+    show(S.top, { row = 1, col = 0, width = vim.o.columns })
   else
-    S.bar = api.nvim_open_win(S.buf, false, config)
-    vim.wo[S.bar].winhighlight = 'Normal:HankTablineTrack,EndOfBuffer:HankTablineTrack'
-    S.destination = nil
+    hide(S.top)
+  end
+  local B = S.bottom
+  if anchor then
+    scratch(B, { '', '' })
+    local position = api.nvim_win_get_position(anchor)
+    B.col, B.width = position[2], api.nvim_win_get_width(anchor)
+    local created = show(B, { row = position[1] - 1, col = B.col, width = B.width,
+      height = S.opts.underline and 2 or 1 }, true)
+    -- A freshly opened panel lights its tab in place instead of gliding in.
+    if created then B.position = nil end
+  else
+    hide(B)
   end
 end
 
@@ -360,13 +468,20 @@ function M.refresh(instant)
   if S.updating or S.exiting then return end
   S.updating = true
   local ok, err = pcall(function()
-    for _, section in ipairs(S.sections) do
-      if section.update then section.update() end
+    for _, list in ipairs({ S.sections, S.bottom.sections }) do
+      for _, section in ipairs(list) do
+        if section.update then section.update() end
+      end
     end
     geometry()
     collect()
+    collect_bottom()
     vim.cmd.redrawtabline()
-    if valid(S.bar) then animate(instant) end
+    if valid(S.top.win) then animate(S.top, instant) end
+    if valid(S.bottom.win) then
+      paint_bottom()
+      if S.opts.underline then animate(S.bottom, instant) end
+    end
   end)
   S.updating = false
   if not ok then vim.notify('hank-tabline: ' .. tostring(err), vim.log.levels.ERROR) end
@@ -399,6 +514,13 @@ function M.setup(opts)
   S.opts = vim.tbl_extend('force', {
     duration = 0.3, animate = true, underline = false, project = false, sections = {}, sidebars = {},
   }, opts or {})
+  S.bottom.surface = true
+  S.bottom.sections = {}
+  -- `bottom = { sections = {...}, anchor = function() return win end }`: tabs over
+  -- the split that anchor() returns (e.g. hank-panels' open bottom panel).
+  for i, section in ipairs(S.opts.bottom and S.opts.bottom.sections or {}) do
+    S.bottom.sections[i] = setmetatable({ align = 'bottom', key = 'bottom-' .. i }, { __index = section })
+  end
   S.sections, S.blocks = {}, {}
   local function add(section, align, key)
     local wrapped = setmetatable({ align = align, key = key }, { __index = section })
@@ -434,23 +556,31 @@ function M.setup(opts)
   api.nvim_create_autocmd({ 'UIEnter', 'VimEnter', 'VimResized', 'WinResized', 'TabEnter', 'WinNew', 'WinClosed', 'DirChanged' }, {
     group = group, callback = function() queue(true) end,
   })
-  api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'BufAdd', 'BufDelete', 'BufFilePost', 'BufModifiedSet', 'BufWritePost' }, {
+  api.nvim_create_autocmd({ 'BufEnter', 'WinEnter', 'BufAdd', 'BufDelete', 'BufFilePost', 'BufModifiedSet', 'BufWritePost',
+    'FileType', 'DiagnosticChanged' }, {
     group = group, callback = function() queue(false) end,
   })
   api.nvim_create_autocmd('OptionSet', {
     group = group, pattern = { 'winbar', 'buflisted', 'modified' }, callback = function() queue(true) end,
   })
   api.nvim_create_autocmd('ColorScheme', { group = group, callback = function() palette(); queue(true) end })
-  api.nvim_create_autocmd('VimLeavePre', { group = group, callback = function() S.exiting = true; S.generation = S.generation + 1 end })
+  api.nvim_create_autocmd('VimLeavePre', { group = group, callback = function()
+    S.exiting = true
+    S.top.generation, S.bottom.generation = S.top.generation + 1, S.bottom.generation + 1
+  end })
   vim.keymap.set({ 'n', 'i', 'v', 't' }, '<LeftMouse>', function()
     local mouse = vim.fn.getmousepos()
-    if valid(S.bar) and mouse.winid == S.bar then
-      local section, item = item_at(mouse.screencol - 1)
-      if section and section.click then section.click(item.id, 'l') end
-      return ''
+    local section, item
+    if valid(S.top.win) and mouse.winid == S.top.win then
+      section, item = item_at(S.placed, mouse.screencol - 1)
+    elseif valid(S.bottom.win) and mouse.winid == S.bottom.win then
+      section, item = item_at(S.bottom.placed, mouse.wincol - 1)
+    else
+      return '<LeftMouse>'
     end
-    return '<LeftMouse>'
-  end, { expr = true, desc = 'Select a tab from the header underline' })
+    if section and section.click then section.click(item.id, 'l') end
+    return ''
+  end, { expr = true, desc = 'Select a tab from the header underline or the bottom panel tabs' })
   queue(true)
 end
 
