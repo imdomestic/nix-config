@@ -4,6 +4,23 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-01 · GNOME 滚动配置覆盖 PATH，应用网格消失 {#gnome-shell-dropin-path}
+
+268v 用 `org.gnome.Shell@.service` 的 drop-in 加载 wayland-scroll-factor，
+将双指滚动缩放为 0.5。NixOS 的 `systemd.user.services` 同时隐式生成了
+只含 coreutils 等服务工具的 `PATH`，覆盖登录会话的程序路径。
+GNOME 的 GIO 无法解析 desktop 文件里的 `Exec`，因此隐藏了大部分应用。
+
+最初容易误判为 Flatpak 导出目录或应用网格设置丢失；实际 desktop 文件和
+`XDG_DATA_DIRS` 都完整。用运行中 Shell 的环境调用 GIO，只得到 5 个可见应用；
+仅将 `PATH` 换成用户 systemd manager 的正常值，就得到 43 个，Zen 和计算器
+的 desktop 入口也从加载失败变为成功。先前只验证了 Nix 求值及预加载库能启动，
+没有检查 Shell 环境下的应用枚举，漏掉了这个副作用。
+
+修复是在原生模块里设置 `environment.PATH = lib.mkForce null`，让 drop-in
+不再生成 `PATH`，继承会话环境。保留滚动系数与 `restartIfChanged = false`；
+部署后需正常注销、重新登录，已运行的 Shell 不会自动更换环境。
+
 ## 2026-09-29 · 268v 内屏 EDID 与光标闪烁 {#268v-display-edid}
 
 268v 首次原生启动后 GNOME 只有 1024×768，移动鼠标闪屏。只读提取的原生系统 journal 显示 `EDID has corrupt header`，错误数据恰是屏幕 DisplayID 扩展块；Mutter 同时记录 `Cursor update failed: drmModeAtomicCommit: Invalid argument`。xe、DMC、GuC、HuC 和 GSC 固件已加载，GNOME 使用 xe 的 GBM 渲染器，独立 Home Manager 激活也已完成。
