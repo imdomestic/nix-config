@@ -16,7 +16,10 @@ in {
     ./display.nix
   ];
   hardwareModules = [inputs.nixos-hardware.nixosModules.lenovo-yoga-7-14ILL10];
-  externalModules = [inputs.nix-index-database.nixosModules.default];
+  externalModules = [
+    inputs.nix-index-database.nixosModules.default
+    inputs.wayland-scroll-factor.nixosModules.default
+  ];
 
   users.hank.home = {
     profiles = with homeProfiles; [core base interactive];
