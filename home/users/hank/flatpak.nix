@@ -47,15 +47,6 @@ in {
         Context.sockets = ["wayland"];
         Environment.QT_QPA_PLATFORM = "wayland;xcb";
       };
-
-      # Chromium's Wayland title bar ignores GNOME styling (upstream issue #317).
-      "com.spotify.Client" = {
-        Context.sockets = ["x11" "!wayland"];
-        Environment = {
-          WAYLAND_DISPLAY = "";
-          XDG_SESSION_TYPE = "x11";
-        };
-      };
     };
   };
 }
