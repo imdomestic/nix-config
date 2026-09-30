@@ -4,6 +4,20 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-01 · 默认浏览器入口与 BROWSER 指向不同的 Zen {#zen-flatpak-browser-environment}
+
+Zen 迁到 Flatpak 后，HTTP/HTTPS/HTML 的 MIME 默认项已指向 Flatpak，但 GNOME、
+Vicinae、portal 和终端继承的 `BROWSER` 仍是旧 Nix 版的绝对路径。
+`nixos-help` 优先调用 `BROWSER`，因此会启动旧版并使用另外生成的
+`~/.config/zen/1te0q6wc.Default Profile`；正在使用的 Flatpak 则打开迁移后的
+`~/.var/app/app.zen_browser.zen/.zen/default`。
+
+误导点是 `xdg-mime query default` 完全正确，且 Home Manager 的 session-vars
+脚本已更新，但运行会话仍保留旧变量。为 Flatpak 启动器同时声明
+`home.sessionVariables.BROWSER` 与 `systemd.user.sessionVariables.BROWSER`，
+并开启本地文件转发以支持 NixOS Manual。激活后须刷新会话环境并重启调用浏览器
+的旧进程；不修改或删除任何 profile。
+
 ## 2026-10-01 · GNOME 滚动配置覆盖 PATH，应用网格消失 {#gnome-shell-dropin-path}
 
 268v 用 `org.gnome.Shell@.service` 的 drop-in 加载 wayland-scroll-factor，
