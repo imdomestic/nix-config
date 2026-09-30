@@ -6,6 +6,7 @@
 
   i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
   services = {
+    flatpak.enable = true;
     displayManager.gdm.enable = true;
     desktopManager.gnome.enable = true;
     pipewire = {
