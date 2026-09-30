@@ -5,7 +5,7 @@
   ...
 }: let
   zen = pkgs.writeShellScriptBin "zen" ''
-    exec ${lib.getExe pkgs.flatpak} run app.zen_browser.zen "$@"
+    exec ${lib.getExe pkgs.flatpak} run --file-forwarding app.zen_browser.zen @@u "$@" @@
   '';
 in {
   imports = [inputs.nix-flatpak.homeManagerModules.nix-flatpak];
@@ -13,6 +13,7 @@ in {
   programs.zen-browser.enable = false;
   home.packages = [zen];
   home.sessionVariables.BROWSER = lib.getExe zen;
+  systemd.user.sessionVariables.BROWSER = lib.getExe zen;
   xdg.mimeApps = {
     enable = true;
     defaultApplications = lib.genAttrs [

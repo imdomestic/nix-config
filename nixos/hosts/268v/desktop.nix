@@ -22,8 +22,8 @@
       # Inherit the session PATH; see docs/incidents.md#gnome-shell-dropin-path.
       PATH = lib.mkForce null;
       LD_PRELOAD = "${config.programs.wsf.package}/lib/wayland-scroll-factor/libwsf_preload.so";
-      WSF_SCROLL_VERTICAL_FACTOR = "0.5";
-      WSF_SCROLL_HORIZONTAL_FACTOR = "0.5";
+      WSF_SCROLL_VERTICAL_FACTOR = "0.25";
+      WSF_SCROLL_HORIZONTAL_FACTOR = "0.25";
       WSF_PINCH_ZOOM_FACTOR = "1.0";
       WSF_PINCH_ROTATE_FACTOR = "1.0";
     };
