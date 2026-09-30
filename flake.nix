@@ -175,6 +175,8 @@
 
     llm-agents.url = "github:numtide/llm-agents.nix";
 
+    nix-flatpak.url = "github:gmodena/nix-flatpak/v0.7.0";
+
     llama-swap-proxy = {
       url = "github:emanspeaks/llama-swap-proxy/272260e56f4a47911dd46c5b2adf315df07c9938";
       flake = false;

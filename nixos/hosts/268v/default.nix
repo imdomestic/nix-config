@@ -24,6 +24,7 @@ in {
       userModules.hank.module
       userModules.hank.dev
       ../../../home/users/hank/gnome.nix
+      ../../../home/users/hank/flatpak.nix
       ../../../home/modules/ibus
     ];
   };

@@ -32,6 +32,7 @@ in {
   };
 
   programs.gnome-shell.extensions = [
+    {package = pkgs.gnomeExtensions.appindicator;}
     {package = pkgs.gnomeExtensions.blur-my-shell;}
     {package = pkgs.gnomeExtensions.just-perfection;}
   ];
