@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{config, pkgs, ...}: {
   boot = {
     kernelPackages = pkgs.linuxPackages_latest;
     loader = {
@@ -24,6 +24,12 @@
   services.fstrim.enable = true;
   zramSwap.enable = true;
   powerManagement.enable = true;
+
+  security.sudo-rs = {
+    enable = true;
+    # Preserve the shared max operator rule when replacing sudo.
+    extraRules = config.security.sudo.extraRules;
+  };
 
   # The installer supplies a prebuilt standalone home for the first GNOME login.
   systemd.services."268v-home-bootstrap" = {
@@ -63,5 +69,13 @@
   environment.systemPackages = with pkgs; [git pciutils usbutils vim];
   time.timeZone = "Asia/Shanghai";
   i18n.defaultLocale = "en_US.UTF-8";
+
+  my = {
+    tailscale = {
+      enable = true;
+      ssh = true;
+    };
+    host.useChinaMirror = false;
+  };
   system.stateVersion = "26.05";
 }

@@ -6,6 +6,7 @@ in {
   system = "x86_64-linux";
   kind = "nixos";
   roles = ["desktop" "gui"];
+  tsName = "268v.inner.imdomestic.com";
 
   profiles = with nixosProfiles; [base];
   modules = [
