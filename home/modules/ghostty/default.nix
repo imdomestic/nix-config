@@ -65,7 +65,7 @@ in {
       theme = lib.mkDefault "kanso";
       font-size =
         if isLinux
-        then 11.5
+        then 11
         else 15;
       window-decoration = true;
       font-family =

@@ -15,6 +15,8 @@
   ]) (lib.range 1 10));
 in {
   imports = [
+    ../../modules/appmenu
+    ../../modules/top-bar-organizer
     ../../modules/forge
     ../../modules/ghostty
     ../../modules/vicinae
