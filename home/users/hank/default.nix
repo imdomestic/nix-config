@@ -24,7 +24,7 @@ in {
   my.nixvim.tabline.underline.enable = false;
   my.nixvim.tabline.project.enable = true;
   # macOS shader redraw cost: docs/incidents.md#ghostty-shader-vsync.
-  my.ghostty.neovideCursor.enable = !pkgs.stdenv.isDarwin;
+  my.ghostty.neovideCursor.enable = false;
 
   programs.git = {
     enable = true;

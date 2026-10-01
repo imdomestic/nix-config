@@ -9,6 +9,8 @@
       # Keep kernels on XBOOTLDR; the Windows ESP is only 300 MiB.
       systemd-boot = {
         enable = true;
+        # Try a lower-resolution firmware console for the HiDPI panel.
+        consoleMode = "0";
         configurationLimit = 5;
         xbootldrMountPoint = "/boot";
       };
