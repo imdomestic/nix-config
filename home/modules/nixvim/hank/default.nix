@@ -574,22 +574,6 @@ in {
             end
           '';
         }
-        {
-          # 补全菜单选中项左边的强调色竖条。blink 只在有选中项时打开 cursorline,
-          # 光标就在选中项上;statuscolumn 在被绘制的窗口里求值。
-          event = "User";
-          pattern = "BlinkCmpMenuOpen";
-          group = "hank-look";
-          callback = mkRaw ''
-            function()
-              _G.HankMenuBar = _G.HankMenuBar or function()
-                return (vim.wo.cursorline and vim.v.relnum == 0) and "%#HankSelBar#▎" or "%#Pmenu# "
-              end
-              local win = require("blink.cmp.completion.windows.menu").win:get_win()
-              if win then vim.wo[win].statuscolumn = "%{%v:lua.HankMenuBar()%}" end
-            end
-          '';
-        }
       ];
 
     keymaps =
@@ -1369,19 +1353,6 @@ in {
                   return ctx.mode ~= "cmdline"
                 end
               '';
-              # noice 的命令行浮在屏幕中间时,输入行下面还有一行边框;菜单往下挪一行,
-              # 不压在边框上。底部的命令行(/ 搜索)照旧。
-              cmdline_position = mkRaw ''
-                function()
-                  local pos = vim.g.ui_cmdline_pos
-                  if pos == nil then
-                    return { vim.o.lines - math.max(vim.o.cmdheight, 1), 0 }
-                  end
-                  local row = pos[1] - 1
-                  if row < vim.o.lines - 2 then row = row + 1 end
-                  return { row, pos[2] }
-                end
-              '';
               border = "rounded";
               winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder,CursorLine:PmenuSel,Search:None";
               draw = {
@@ -1881,7 +1852,7 @@ in {
       end
 
       -- 界面分层(docs/nvim-look.md):正文 base;侧栏和底部面板退后一级(mantle,
-      -- HankSunk);浮层用主题默认的 mantle 底加圆角边框。强调色只标位置和查询。
+      -- HankSunk);浮层用主题默认的 mantle 底加圆角边框。
       require("evergarden").setup({
         theme = {
           variant = "winter",
@@ -1889,10 +1860,6 @@ in {
         },
         editor = {
           transparent_background = false,
-          statusline = {
-            active = { fg = "subtext0", bg = "crust" },
-            inactive = { fg = "overlay1", bg = "crust" },
-          },
         },
         style = {
           types = {},
@@ -1902,35 +1869,16 @@ in {
         },
         overrides = function(t)
           local blend = require("evergarden.utils").blend
-          local bar = t.crust
-          local function mode(fg) return { fg, bar, style = { "bold" } } end
           return {
             HankSunk = { t.text, t.mantle },
             HankSunkBorder = { t.surface1, t.mantle },
             HankSunkTitle = { t.subtext0, t.mantle, style = { "bold" } },
-            -- 补全菜单选中项左边的竖条,底色同 PmenuSel。
-            HankSelBar = { t.accent, t.surface0 },
             WinSeparator = { t.base, t.base },
             NormalNC = { bg = blend(t.mantle, t.base, 0.5) },
             CursorLine = { bg = blend(t.surface0, t.base, 0.45) },
             CursorLineNr = { t.accent, style = { "bold" } },
             LineNr = { t.overlay0 },
-            -- 语法收着用:关键字降成次要色,名字和字面量才上色。
-            ["@keyword"] = { t.subtext0 },
-            ["@keyword.operator"] = { t.subtext0 },
             SnacksPickerMatch = { t.accent, style = { "bold" } },
-            PmenuMatch = { t.accent, style = { "bold" } },
-            -- 状态栏不用色块:模式只换字色。
-            MiniStatuslineModeNormal = mode(t.subtext0),
-            MiniStatuslineModeInsert = mode(t.accent),
-            MiniStatuslineModeVisual = mode(t.purple),
-            MiniStatuslineModeReplace = mode(t.red),
-            MiniStatuslineModeCommand = mode(t.yellow),
-            MiniStatuslineModeOther = mode(t.aqua),
-            MiniStatuslineDevinfo = { t.subtext0, bar },
-            MiniStatuslineFilename = { t.overlay1, bar },
-            MiniStatuslineFileinfo = { t.overlay1, bar },
-            MiniStatuslineInactive = { t.overlay1, bar },
           }
         end,
       })
