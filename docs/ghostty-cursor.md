@@ -7,9 +7,10 @@ underline 形状和原有光标文字。默认不添加辉光、彩虹或全屏�
 
 ## 配置与启用
 
-Hank 的 home 导入 `home/modules/ghostty/neovide-cursor.nix`，并设置
-`my.ghostty.neovideCursor.enable = true`。模块只在 `programs.ghostty.enable`
-时生成 `programs.ghostty.settings.custom-shader` 和
+Hank 的 home 导入 `home/modules/ghostty/neovide-cursor.nix`，Linux 启用
+`my.ghostty.neovideCursor.enable`，macOS 因持续重绘成本停用。
+模块只在该开关与 `programs.ghostty.enable` 同时启用时生成
+`programs.ghostty.settings.custom-shader` 和
 `custom-shader-animation = true`；其他用户不受影响。
 
 GLSL 是程序资源，Nix 将其写入 store；Ghostty 配置仍全部使用 Home Manager
@@ -17,7 +18,6 @@ GLSL 是程序资源，Nix 将其写入 store；Ghostty 配置仍全部使用 Ho
 
 按仓库的 freshness 检查流程确认 checkout 后，运行 `just hm m1elite hank`
 激活本机 home，再在 Ghostty 按 `Cmd+Shift+,` 重载配置。
-此次实现没有执行 Home Manager switch，也没有修改正在运行的 Ghostty 配置。
 
 关闭：将 `my.ghostty.neovideCursor.enable` 改为 `false`，重新激活并重载。
 该开关保留其他模块提供的 shader。
@@ -30,7 +30,13 @@ custom-shader-animation = true
 ```
 
 Linux 独立使用时将源文件默认的 `PIXIE_Y_SIGN` 改为 `-1.0`。
-动画设置为 `true`，所以只在聚焦时持续渲染；它仍有空闲重绘成本。
+动画设置为 `false` 按配置文档应只在终端更新时渲染，但本机
+`1.3.2-main-+91f66da24` 的 macOS vsync 路径仍会因加载了 shader 而持续重绘，
+不能把这个设置当作已经验证有效的省电措施。实测和源码分析见
+[事故记录](incidents.md#ghostty-shader-vsync)。
+这个开关也不提供“光标移动后播放完动画再停止”的调度；在真正按需渲染的
+路径上，拖尾可能停留到下一次刷新。shader 内提前返回只能减少计算，
+不能停止渲染循环。
 
 ## 调节
 
