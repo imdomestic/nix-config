@@ -4,6 +4,39 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-01 · Ghostty 关闭 shader 动画后 GPU 负载仍高 {#ghostty-shader-vsync}
+
+M1 Pro、macOS 27.0.1、Ghostty `1.3.2-main-+91f66da24`，加载光标拖尾
+shader，背景不透明度 0.85、模糊 20。GPU 驱动利用率 10 次一秒间隔采样
+平均 55.6%；将 `custom-shader-animation` 改为 `false`、用户激活 Home
+Manager 并确认重载后，平均仍为 55.3%。
+
+最小化全部 Ghostty 窗口后，10 个采样为
+`56,4,0,0,0,0,2,0,0,0`（包含切换过渡，整段平均 6.2%）；恢复原窗口后
+平均回到 52.4%。恢复后 10.388 秒内，AGX 客户端的累计 GPU 时间计数增量为
+WindowServer 4,668,201,375、Ghostty 1,131,226,292。窗口合成是主要消费者。
+GPU 利用率不是瓦数；`powermetrics` 因缺少 sudo 认证未取得功耗。
+
+误导点是直接相信选项文档的“false 时仅在终端更新时渲染”，且把 GLSL
+动画结束后的提前返回等同于停止 GPU 渲染。匹配版本的
+[`Thread.zig`](https://github.com/ghostty-org/ghostty/blob/91f66da24/src/renderer/Thread.zig)
+只用该选项控制 `syncDrawTimer`；macOS DisplayLink 仍通过 `draw_now`
+触发绘制。[`generic.zig`](https://github.com/ghostty-org/ghostty/blob/91f66da24/src/renderer/generic.zig)
+的 `hasAnimations()` 直接返回 `has_custom_shaders`，`needs_redraw` 又包含
+该值，因此聚焦、开启 vsync 且加载 shader 时仍会重绘。这解释了本机设置
+修改无效的现象；不能把它推广为所有 Ghostty 版本或 Linux 后端的行为。
+
+最终在 Hank 的 home 中仅停用 Darwin 上的光标 shader，Linux 保留原来的
+动画设置。`just hm-dry m1elite hank`、`just hm m1elite hank`、
+`ghostty +validate-config` 通过；生成的 Ghostty 配置只删除两条 shader
+设置，透明度和模糊保持原值。用户重载后，两轮各 10 个一秒间隔采样的整段
+GPU 平均值分别为 17.7%、16.4%（都保留过渡/尖峰，没有挑掉高值）。第二轮
+采样为 `16,13,14,14,13,14,11,42,20,7`；10.332 秒内 WindowServer 的
+GPU 时间计数增量为 797,469,000，Ghostty 为 449,245,750。相较恢复窗口时
+52.4% 的整段平均，第二轮降低约 69%。这是用户保持窗口和 btop 画面的交互
+对照，并非固定输入的严格基准；btop 期间重新启动，仍有动态刷新和桌面噪声。
+没有测量省下多少瓦，也没有单独量化模糊的成本。
+
 ## 2026-10-01 · 默认浏览器入口与 BROWSER 指向不同的 Zen {#zen-flatpak-browser-environment}
 
 Zen 迁到 Flatpak 后，HTTP/HTTPS/HTML 的 MIME 默认项已指向 Flatpak，但 GNOME、
