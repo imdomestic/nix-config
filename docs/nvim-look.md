@@ -1,6 +1,6 @@
 # 界面分层
 
-Neovim 界面的外观规则：窗口之间靠底色区分，焦点靠一个强调色。配置在
+Neovim 界面的外观规则：窗口之间靠底色区分，焦点用强调色标记。配置在
 `home/modules/nixvim/hank/default.nix`，颜色全部从 Evergarden 当前调色板取
 （`evergarden.setup` 的 `editor` 开关加 `overrides` 函数），换色板不用改规则。
 
@@ -15,23 +15,19 @@ Neovim 界面的外观规则：窗口之间靠底色区分，焦点靠一个强�
 | 正文 | base | 编辑窗口 | `Normal`、`WinSeparator`（前景背景都是 base，分隔线留空） |
 | 退后 | mantle | 侧栏、底部面板、顶栏的侧栏区块和底部页签 | `HankSunk`，边线 `HankSunkBorder`，标题 `HankSunkTitle` |
 | 失焦 | base 与 mantle 各半 | 没有焦点的正文窗口（只在正文窗口之间，见下） | `NormalNC` |
-| 底栏 | crust | 状态栏 | `StatusLine`、`MiniStatusline*` |
+| 底栏 | Evergarden 默认配色 | 状态栏与模式色块 | `StatusLine`、`MiniStatusline*` |
 
-文字只有三级：正文、次要（subtext0：路径、说明、关键字）、淡（overlay0：行号）。
-强调色（accent，绿）只用在「你在哪」和「你在找什么」：顶栏和底部页签的横线亮段、
-光标行号、模式名、补全选中竖条、补全和 picker 的匹配字符。状态栏不用色块，模式
-只换字色。git 标记是贴着行号左侧的 `▎`，删除是贴底 / 贴顶的 `▁` / `▔`。
+界面文字分正文、次要（subtext0：路径、说明）、淡（overlay0：行号）。
+关键词和其它语法颜色使用 Evergarden 默认值；状态栏也使用主题默认的模式色块
+及各段配色。强调色（accent，绿）用于顶栏和底部页签的横线亮段、光标行号、
+picker 的匹配字符。
+git 标记是贴着行号左侧的 `▎`，删除是贴底 / 贴顶的 `▁` / `▔`。
 
 ## 补全
 
-补全菜单选中项左边有一格强调色的 `▎`（`HankSelBar`，底色同 `PmenuSel`）。blink
-只在有选中项时打开菜单窗口的 `cursorline`，并把光标放在选中项上；
-`BlinkCmpMenuOpen` 时给菜单窗口设 `statuscolumn`，它在被绘制的窗口里求值，光标行
-且开着 `cursorline` 时画竖条。
-
-命令行的补全列表是 blink 画的，位置取自 noice 公布的 `vim.g.ui_cmdline_pos`（输入
-那一行）。blink 的 `cmdline_position` 在命令行浮在屏幕中间时把它往下挪一行，让
-列表落在命令行浮层的下边框下面，而不是压在边框上；底部的命令行（`/` 搜索）不挪。
+blink.cmp 的补全菜单、文档和签名弹窗使用原来的圆角边框与 Evergarden 默认
+浮窗配色，选中项使用 `PmenuSel`，匹配文字使用主题默认高亮。
+菜单不添加选中项竖条；命令行补全位置交给 blink 默认逻辑。
 
 ## Snacks 的侧栏和底部面板
 
