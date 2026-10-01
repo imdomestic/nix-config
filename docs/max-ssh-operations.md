@@ -7,12 +7,15 @@ Max 的 `services.max.operations` 模块提供专用 tailscaled、`maxops` netns
 
 - `nixos/modules/max-operator.nix`：NixOS / nix-darwin 的 `max` 运维账户，完整免密 sudo。
   macOS 使用 UID 550；首次激活前核对本机该 UID 未被其他账户占用。
-- `nixos/hosts/h610/max.nix`：开启 QQ 群 611798505、650536599 的 SSH 运维网络；
-  Max 进程及渲染配置的所有者是 `max-service`。
-- `nixos/hosts/h610/system.nix`：`max@imdomestic.com` 加入 `group:imdomestic`，
-  专用 veth `max-ops-host` 加入 DAE 的转发入口，沿用现有内网直连与外网代理规则。
-- `secrets/hosts/h610-ops.yaml`：sops-nix 管理的独立 preauthkey；由 systemd
-  `LoadCredential` 交付给专用客户端。节点状态保存在 `/var/lib/max/tailscale`。
+- `nixos/hosts/tank/max.nix`：开启 QQ 群 611798505、650536599 的 SSH 运维网络；
+  Max 进程及渲染配置的所有者是 `max-service`。Max 于 2026-09-27 从 h610 迁到
+  tank（`273926d`），下文「首次切换顺序」和「2026-09-15 fleet rollout」记的是迁移前
+  在 h610 上的操作。
+- `nixos/hosts/h610/system.nix`：Headscale 仍在 h610，策略里 `max@imdomestic.com`
+  加入 `group:imdomestic`。
+- `secrets/hosts/tank-max.yaml` 的 `ops-preauthkey`：sops-nix 管理的独立
+  preauthkey，交付给专用客户端（`max-ops-tailscaled`）。节点状态保存在
+  `/var/lib/max/tailscale`。
 
 群内成员均可发起运维。模型加载 `operations` skill 后使用普通 `ssh hostname`，
 默认登录 `max`。Tailscale SSH 目标必须已在自己的客户端上开启 SSH；这里不替换
@@ -23,7 +26,7 @@ macOS 的现有 VPN 客户端或更改它的服务管理方式。
 `flake.lock` 将 Max 固定到已发布的 SSH 运维实现。正常求值无需本地覆盖：
 
 ```sh
-nix eval --raw .#nixosConfigurations.h610.config.system.build.toplevel.drvPath
+nix eval --raw .#nixosConfigurations.tank.config.system.build.toplevel.drvPath
 ```
 
 所有 NixOS 与 nix-darwin 系统分别求值。Max 仓库提供真实 Headscale/Tailscale
@@ -43,7 +46,8 @@ h610 worker 的密钥分别迁到 `secrets/gaoji/control.yaml`、`worker-h610.ya
 
 ## 首次切换顺序
 
-下面仅用于尚未迁移的安装。已经运行 `max-service` 的 h610 不要重复账号迁移。
+下面仅用于尚未迁移的安装，写于 Max 仍在 h610 的时候。已经运行 `max-service`
+的主机（现在是 tank）不要重复账号迁移。
 
 1. 构建新的 h610 系统，记录新 store path 和原 generation。
 2. 显式停止并等待 `max-stack.target`、`max.service`、`max-runtime.service` 和

@@ -3,8 +3,10 @@
 2026-07-29 那轮凭据轮换之后剩下的几件事，都不紧急，但每件都有取舍，记在这里
 免得下次从头推一遍。
 
-拓扑速记：r5sjp（日本，唯一出口）作为 bridge 主动拨向各 portal 的 `interconn2`；
-客户端连 portal 的 `client-in2`，流量经反向隧道从 r5sjp 出去。**r5sjp 只能经
+拓扑速记：r5sjp（日本，主出口）作为 bridge 主动拨向各 portal 的 `interconn2`；
+客户端连 portal 的 `client-in2`，流量经反向隧道从 r5sjp 出去。2026-09-01 起 rpi4
+（悉尼）也是 bridge，只接 h610 和 sh，作冗余出口，见
+`docs/decisions.md#rpi4-portal-to-bridge`。**r5sjp 只能经
 tailscale `100.64.0.16` 访问**，它的公网 IPv6 有防火墙，从外面连不进来。
 
 ---
@@ -40,8 +42,9 @@ GFW 不检查境内互通流量，那一段换不换伪装意义不大。
 ## 2. v6 节点从高端口搬到 443
 
 已实测**电信不封 IPv6 入站 443**（从外部直连 `r5s.imdomestic.com:443` 成功）。
-r5s / r6s / rpi4 / r5sjp 都是纯 v6，可以把 `interconn2` 从 2444 搬到 443，同时
-消掉 xray 那条 `REALITY: Listening on non-443 ports` 告警。
+r5s / r6s / r2s 三台 portal 都只有 v6（rpi4 已不是 portal），可以把它们的
+`interconn2` 从 2444 搬到 443，同时消掉 xray 那条
+`REALITY: Listening on non-443 ports` 告警。
 
 优先搬 `interconn2` 而不是 `client-in2`——r5sjp 拨进来这一跳是跨境的，才是 GFW
 看得到的那段。h610 是 IPv4 且 443 入站被电信劫持（TCP 能 SYN-ACK 但不回数据），
@@ -49,7 +52,11 @@ r5s / r6s / rpi4 / r5sjp 都是纯 v6，可以把 `interconn2` 从 2444 搬到 4
 
 需要 portal 的监听端口和 r5sjp 的拨号端口同步改，没有只加不改的路径。
 
-## 3. r2s（配置已补齐，待设备上线验证）
+## 3. r2s（已上线，隧道验证未记录）
+
+r2s 已在 2026-09-15 的 fleet rollout 中构建、激活并通过 SSH 验收（见
+`docs/max-ssh-operations.md`）。下面 ddns-go 和 `interconn-r2s` 两项检查没有
+留下记录，仍待确认。
 
 2026-08-14 已用原 SSH host key 恢复 `host_r2s` 的 SOPS recipient，并新建
 `secrets/hosts/r2s.yaml`。WireGuard、DDNS 和全新轮换的 Xray 凭据都改由 SOPS

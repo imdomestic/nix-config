@@ -87,17 +87,15 @@ up:
 upp input:
   nix flake update {{input}}
 
-# -------- deploy-rs (push servers/routers over the wireguard mesh) --------
-# 目标是每台设了 `tsName` 的机器(lib/mkDeployNodes.nix):h610 tank r6s r5s
-# rpi4 r2s shanghai r5sjp。走 tailscale 地址,所以从哪台机器发起都行。
+# -------- deploy-rs (push servers/routers over tailscale) --------
+# 目标是每台设了 `tsName` 的 NixOS 机器(lib/mkDeployNodes.nix),名单以
+# `nix eval .#deploy.nodes --apply builtins.attrNames` 为准。走 MagicDNS 名,
+# 所以从哪台机器发起都行。
 #
-# **构建发生在目标机上**(节点配置里 remoteBuild = true)。发起方只做求值,
-# 不再把整个目标平台的闭包在本地物化一遍 —— 实测那会让发起方下载 641 MiB,
-# 而目标机自己已经有其中 88%。ARM 机器原生编也比拿 x86 机器 QEMU 模拟快
-# 3.7 倍。
-#
-# 遇到目标机太弱扛不住的大构建,用 `deploy .#<host> --no-remote-build` 覆盖回
-# 发起方构建。
+# **构建发生在发起方**:节点没设 remoteBuild(0645dfa 注释掉了),deploy-rs
+# 默认 false。从 mac 部署 linux 主机要加 `--remote-build`,否则会尝试本地构建
+# 然后失败。小内存机器两种都不行,走 AGENTS.md 里指定的构建机。
+# 来龙去脉见 docs/incidents.md#deploy-remote-build。
 #
 # Each node carries a `system` profile plus one `home-<user>` profile per account
 # (lib/mkDeployNodes.nix) — the users on servers do not run home-manager

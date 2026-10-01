@@ -1,162 +1,98 @@
 # nix-config
 
 One flake, four evaluators: NixOS, nix-darwin, standalone Home Manager, and
-system-manager. Every machine is a single entry in a shared host registry; the
-builders in `lib/` turn that entry into whichever configuration kinds it asks
-for.
+system-manager. Every machine is a single entry in a shared host registry, and
+every user's home is its own closure, separate from the system it runs on.
 
-**System and home are separate closures everywhere.** Home Manager is never a
-NixOS or nix-darwin module — not even on machines this repo also owns the OS of.
-A host's users become standalone `homeConfigurations`, so `just switch` /
-`just darwin` rebuild the machine and nothing else, and a user changing their own
-config runs `just home` without a system rebuild or root. The two sides meet only
-at `config.my.host` and at `nixos/modules/users.nix`, which creates the accounts.
+## How I Work
 
-New here and only responsible for your own account? Read
-[`docs/home-quickstart.md`](docs/home-quickstart.md) instead of this file.
+This repository is my machines, not a template. It isn't meant to be a turnkey
+way to copy my setup or to learn Nix, and a lot of it only makes sense if you
+live on my network. I'm not a Nix expert either. I value the fleet staying up
+over the config being pretty, so when something here looks strange, there is
+usually a dated entry in `docs/` about the afternoon that made it that way.
 
-## Host registry
+My main machine is a Mac (`m1elite`). Day to day I live in three apps: Arc for
+browsing, Raycast for launching everything, and Ghostty for the terminal. The
+actual work happens inside Ghostty with tmux + Neovim (nixvim), either locally
+or over SSH on whichever box has the hardware the job needs.
 
-`nixos/hosts/default.nix` maps a name to `nixos/hosts/<name>/default.nix`, which
-returns **metadata, not a module**:
+Behind that is a small fleet, spread over a few places on purpose:
 
-```nix
-{inputs}: {
-  system = "x86_64-linux";
-  kind = "nixos";                 # nixos | darwin | home
-  roles = ["desktop" "gui"];
-  tsName = "example.inner.imdomestic.com"; # deployment and telemetry opt-in
-  ip = "10.0.0.68";               # optional separate WireGuard address
-  sshUser = "root";
+* `tank` is the home server: storage, PostgreSQL, Matrix, Prometheus/Grafana,
+  and the bots.
+* `b650` has the GPU and serves local models.
+* `h610` runs the second copy of monitoring. It lives in a different failure
+  domain from `tank` deliberately; when `tank`'s side lost power for a whole
+  day, `h610` stayed up the entire time.
+* `shanghai` is a 2 GB box that fronts Grafana and runs a DERP relay.
+* `r2s`, `r5s`, `r6s` and `rpi4` are small ARM boxes that keep the network
+  running.
 
-  profiles = [...];               # from {nixos,darwin,home}/profiles/default.nix
-  modules = [./system.nix ./hardware-configuration.nix];
-  externalModules = [...];        # third-party modules out of flake inputs
+Inevitably I get asked **why isn't Home Manager a NixOS module?** Because
+other people log into my machines. They should be able to change their own
+shell without root and without rebuilding my system, and a broken home
+shouldn't be able to break the host it lives on. It costs two commands
+instead of one. Worth it.
 
-  systemManager = {               # optional, Linux only
-    enable = true;
-    modules = [...];
-    overlays = [...];             # overlays go here, NOT nixpkgs.overlays
-  };
+I edit this repo from whichever machine I'm sitting at, so `origin/main` moves
+under me constantly. The rule is: fetch, rebase, eval every host, push. A
+machine running a commit that isn't on the remote gets quietly reverted by the
+next deploy from a clean checkout, and nobody notices until something's
+missing.
 
-  users.hank.home = {
-    profiles = [...];
-    modules = [...];
-  };
-}
-```
+A fair share of the commits here are written by coding agents (Claude Code,
+Codex) working in this checkout. [`AGENTS.md`](AGENTS.md) is the rulebook I
+hand them, and some of its rules point straight at the incident that
+produced them. Separately, Max, an LLM bot, sits in a couple of group chats and
+does ops on the fleet over plain SSH as the `max` account; see
+[Max SSH operations](docs/max-ssh-operations.md).
 
-The same metadata reaches every evaluator as `config.my.host`
-(`modules/shared/host-options.nix`): `name`, `system`, `roles`, `users`,
-`usernames`, `homeOverlays`. Read it instead of re-deriving host facts.
+### Common Questions Related To This Workflow
 
-## Outputs
+**Where are your dotfiles?** Mostly, there aren't any. Programs are
+configured through their module options (`programs.tmux.*`, nixvim instead of
+a tree of `.lua` files). When a module can't express something, only that
+fragment goes through its escape hatch, e.g. `home/users/hank/init-extra.zsh`
+spliced into zsh's init. The other raw files aren't config at all, like the
+Claude Code statusline script.
 
-| Attribute | Built by |
-| --- | --- |
-| `nixosConfigurations.<host>`, `darwinConfigurations.<host>` | `lib/mkConfigurations.nix` |
-| `homeConfigurations."hosts/<host>/<user>"`, also `"<user>@<host>"` | `lib/mkHomeConfigurations.nix` |
-| `systemConfigs.<host>` (also `.hosts.<host>`, `.<system>.<host>`) | `lib/mkSystemManagerConfigurations.nix` |
-| `deploy.nodes.<host>` — `profiles.system` + one `profiles.home-<user>` per account | `lib/mkDeployNodes.nix` — hosts with a `tsName` and `kind = "nixos"` |
-| `checks` | deploy-rs `deployChecks` |
+**Do you build on the small boxes?** No. Once was enough: a full input update
+built locally knocked three ARM boxes off the network
+([`docs/incidents.md#arm-boxes-oom-on-local-build`](docs/incidents.md#arm-boxes-oom-on-local-build)).
+Now `r6s` builds for the ARM boxes and `tank` builds for `shanghai`. The target
+only receives a closure and runs `switch-to-configuration`.
 
-## Layout
+**How do you deploy?** deploy-rs over Tailscale, addressed by the MagicDNS
+names in `tsName`. Each node gets its system profile plus one home profile per
+account, because nobody is going to log into a router to run `home-manager`.
+`autoRollback` and `magicRollback` are on, which matters a lot when the box
+you're deploying is the one routing your packets.
 
-```text
-flake.nix
-justfile                        # every rebuild/deploy command
-lib/                            # builders + nixpkgs-registry.nix pins
-modules/shared/host-options.nix # config.my.host schema
-nixos/hosts/<name>/             # default.nix (metadata) + system.nix + hardware-configuration.nix
-nixos/profiles/                 # base, desktop, server, virtualisation
-nixos/modules/                  # system modules: nix*, users, mihomo, vfio, …
-darwin/profiles/                # macOS base (pulls in nixos/modules/nix.nix, users, home-manager-cli)
-home/profiles/                  # core, base, interactive, gui/{linux,darwin}
-home/modules/                   # forge, vicinae, nixvim, ghostty, starship, …
-home/users/<name>/              # default.nix + dev.nix (dev is per-user, not a shared profile)
-secrets/                        # sops-nix: secrets.yaml + hosts/<host>.yaml
-```
+**Your fleet is a hundred commits behind. Isn't that scary?** Not really.
+That's the normal state of affairs. I judge a rebuild by its closure
+(`nix store diff-closures`), not by the commit count.
 
-## Commands
+**Does this work from China?** Yes. Hosts default to the SJTU mirror
+(`my.host.useChinaMirror`); my Mac opts out.
 
-```bash
-just switch <host>          # nixos-rebuild        — system only
-just darwin <host>          # darwin-rebuild       — system only
-just home                   # home-manager for this machine's own account
-just hm <host> <user>       # home-manager, resolves hosts/<host>/<user>
-just check                  # nix flake check
-just up / just upp <input>  # flake update, all inputs or one
-just deploy / just deploy-host <host>
-just deploy-system <host> / just deploy-home <host> <user>
-```
+**Twenty-six hosts in one flake? Doesn't one change break everything?**
+Sometimes it breaks something. CI dry-builds nearly every host that has a
+system config on every push, and since homes are separate closures, a broken home no
+longer takes its host's system eval down with it. It works for me.
 
-system-manager has no recipe: `sudo system-manager switch --flake .#<host>`.
+**Can I use this?** Read the source first. Hosts here have hard-coded IPs,
+uids, Tailscale names and secrets you can't decrypt. Steal modules, not hosts.
 
-## Things that will bite you
+## Where Things Are
 
-- **New files are invisible to Nix until `git add`ed.** The flake reads the git
-  tree, so an untracked module silently does not exist.
-- **Determinate hosts** (`m1elite`, `m1pro`) set `nix.enable = false`, which
-  drops nix-darwin's entire nix module — `nix.settings` and `nix.registry`
-  evaluate to nothing, with no error. `nixos/modules/nix-settings.nix` and
-  `nix-registry.nix` detect this and route the same values to
-  `determinateNix.customSettings` / `determinateNix.registry`. Put shared
-  nix.conf values there, never on a host directly.
-- **`determinateNix.customSettings` is written verbatim** into
-  `nix.custom.conf`, so use the `extra-*` forms. A plain `trusted-public-keys`,
-  `substituters` or `trusted-users` replaces rather than merges, dropping
-  `cache.nixos.org-1`, `cache.flakehub.com` or `root` respectively.
-- **system-manager imports only nixpkgs' `config/nix.nix`.** `nix.settings`
-  exists there; `nix.registry`, `nixPath`, `channel` and `distributedBuilds` do
-  not — hence `nix.nix` (full) vs `nix-settings.nix` (portable). It also cannot
-  take `nixpkgs.overlays`: its pkgs comes from `makeSystemConfig`, and defining
-  overlays on top recurses through `users-groups.nix`'s `pkgs.shadow`.
-- **`mkIf` does not guard option existence.** A definition inside a false `mkIf`
-  still counts as a definition, so platform-specific options need
-  `lib.optional (options ? foo) (...)` around the whole block.
-- **Registry pins live in `lib/nixpkgs-registry.nix`** and are spelled as github
-  refs on purpose. The `flake = inputs.nixpkgs` shorthand resolves to
-  `type = "path"`, which leaks a machine-local `path:/nix/store/...` entry into
-  the flake.lock of any project whose input reads `nixpkgs.url = "nixpkgs"`.
-- **A system switch no longer activates any home.** Adding a package to
-  `home/` and running `just switch` changes nothing — that used to work and
-  quietly does not any more. Run `just home` (or `just hm <host> <user>`).
-- **Home modules cannot read `osConfig`.** It only exists when Home Manager is a
-  submodule of a system evaluation, which it never is here. Anything a home needs
-  to know about its machine goes through `config.my.host`, which every evaluator
-  gets from `modules/shared/host-options.nix`.
-- **The first standalone activation collides with existing dotfiles.** As a NixOS
-  module this was handled by `home-manager.backupFileExtension`; standalone it is
-  the `-b backup` flag, which the `just home` / `just hm` recipes pass.
+If you want the actual mechanics (the host registry, the outputs, the
+commands, how deploys and CI work, and the traps), read
+[`AGENTS.md`](AGENTS.md). It's written for the coding agents, but it's the
+real reference and it works fine for humans too.
 
-## Deploys
-
-Servers and routers are deployed with deploy-rs using the MagicDNS names in
-`tsName`. The initiator must resolve `*.inner.imdomestic.com`; see
-[the Tailscale name migration](docs/tailscale-names.md). `autoRollback` and
-`magicRollback` are enabled. Small targets still use the designated builders
-listed in `AGENTS.md`.
-
-Each node carries a `system` profile plus one `home-<user>` profile per account,
-activated in that order. Homes are separate closures now, so without those
-profiles the accounts on servers — whose owners never log in to run
-`home-manager` themselves — would stop being updated. They activate as the target
-user via `sudo -H -u <user>`; the `-H` matters, since Home Manager resolves every
-path relative to `$HOME` and deploy-rs' default `sudo -u` would leave it pointing
-at root's.
-
-Current targets: `b650, h310, h610, r2s, r5s, r5sjp, r6s, rpi4, shanghai, tank`.
-
-Max operates these targets through ordinary SSH as the full-sudo `max` account,
-using its own Tailscale client. The bot service runs as `max-service`. Configuration,
-builder assignments and dated rollout evidence: [Max SSH operations](docs/max-ssh-operations.md).
-
-## CI
-
-`.github/workflows/ci.yml` dry-builds a 15-host matrix on push/PR — Linux hosts
-on `ubuntu-latest` (aarch64 via QEMU), `m1elite` and `m1pro` on `macos-latest`.
-Pulling the private flake inputs needs the `SSH_PRIVATE_KEY` repo secret (a key
-with read access to the private `imdomestic/*` and `HCHogan/*` repos).
+[`docs/incidents.md`](docs/incidents.md) is what went wrong and what misled me
+first. [`docs/decisions.md`](docs/decisions.md) is why something isn't there.
 
 ## License
 
