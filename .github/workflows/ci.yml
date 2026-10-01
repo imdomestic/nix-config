@@ -63,7 +63,7 @@ jobs:
 
       # **必须排在 flake check 前面。**
       #
-      # h610 引的 inputs.max 是 cabal2nix 生成的 Haskell 包,也就是说**求值它
+      # tank 上的 services.max 是 cabal2nix 生成的 Haskell 包,也就是说**求值它
       # 之前必须先把 cabal2nix-max 构建出来**(import-from-derivation)。而
       # `--no-build` 恰恰不肯建,于是直接报:
       #
@@ -74,14 +74,16 @@ jobs:
       # 本地跑不出来这个错 —— 那条路径早就在 store 里了,`--no-build` 根本不需要
       # 建。只有干净的 runner 才会撞上(2026-08-12 第一次跑就挂在这)。
       #
-      # `--dry-run` 是允许 IFD 的(矩阵里 h610 那个 job 一直绿就是证据),拿它把
-      # IFD 的产物预热进 store。它自己不构建 h610 的闭包,所以很快。
+      # `--dry-run` 是允许 IFD 的(矩阵里 tank 那个 job 一直绿就是证据),拿它把
+      # IFD 的产物预热进 store。它自己不构建 tank 的闭包,所以很快。
       #
-      # 以后别处再冒出 IFD,症状一样("path ... is not valid"),在这儿多加一台
-      # 的 dry-run 即可。仓库里 IFD 是显式开着的,见 nixos/modules/nix-settings.nix
-      # 的 allow-import-from-derivation。
-      - name: 预热 IFD(h610 的 cabal2nix)
-        run: nix build .#nixosConfigurations.h610.config.system.build.toplevel --dry-run
+      # **预热的必须是真正启用 Max 的那台**,Max 搬家要同步改这一行
+      # (docs/incidents.md#ci-ifd-warmup-stale-host)。查哪些 host 用到 IFD:
+      #   nix eval --option allow-import-from-derivation false \
+      #     .#nixosConfigurations.<host>.config.system.build.toplevel.drvPath
+      # 报 "import-from-derivation is disabled" 的就是。
+      - name: 预热 IFD(tank 的 cabal2nix)
+        run: nix build .#nixosConfigurations.tank.config.system.build.toplevel --dry-run
 
       # --no-build:这里只要求值通过。真正的构建归 cachix.yml 和下面的 dry-run。
       #

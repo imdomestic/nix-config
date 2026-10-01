@@ -4,6 +4,30 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-01 · flake-check 连红四天:IFD 预热还在 h610 {#ci-ifd-warmup-stale-host}
+
+`flake-check` 的 `nix flake check` job 从 2026-09-27 的 `273926d`(Max 从 h610
+搬到 tank)起每次都失败,到修好前连续四十多次。报错停在
+`nixosConfigurations.tank`:
+
+```
+error: path '/nix/store/...-cabal2nix-max.drv' is not valid
+```
+
+这和 2026-08-12 第一次跑 CI 时的报错一模一样:Max 是 cabal2nix 打包的,求值要先
+构建 `cabal2nix-max`(IFD),而 `--no-build` 不肯建。当时的解法是在 flake check
+前 dry-run 一遍 h610,把 IFD 产物预热进 store。Max 搬走后 h610 的
+`services.max.enable = false`,dry-run 照样成功,只是不再碰 `cabal2nix-max`。
+
+对每台 NixOS host 用 `--option allow-import-from-derivation false` 求值
+toplevel,只有 tank 报 IFD,h610 已经没有。修法是把预热目标改成 tank。
+
+**什么让它拖了四天:** 预热那一步自己是绿的 —— dry-run 一个不再需要 IFD 的
+host 当然成功,于是红叉只出现在后面的 flake check 上,看起来像那一步自己的问题。
+同时 21 个逐台 dry-run job 全绿(它们允许 IFD),整条 workflow 看上去只有一个
+"老毛病"在红,很容易被当成噪音。搬 Max 那个提交没有动 `ci.yml`,因为预热步骤
+和 Max 所在的 host 之间没有任何东西把它们连起来。
+
 ## 2026-10-01 · Ghostty 关闭 shader 动画后 GPU 负载仍高 {#ghostty-shader-vsync}
 
 M1 Pro、macOS 27.0.1、Ghostty `1.3.2-main-+91f66da24`，加载光标拖尾
