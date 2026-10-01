@@ -5,12 +5,16 @@
 机器人使用一套独立的 PostgreSQL 17 集群，不再依赖 Tank 上同时承载
 Matrix、Minecraft 的 5432 集群。
 
-- h610 是首选主数据节点，Tailscale 地址 `100.64.0.3:55432`，优先级 100。
-- Tank 是热备数据节点，Tailscale 地址 `100.64.0.4:55432`，优先级 50。
+- Tank 是首选主数据节点，`tank.inner.imdomestic.com:55432`，优先级 100。
+- h610 是热备数据节点，`h610.inner.imdomestic.com:55432`，优先级 50。
 - h610 同时运行 `pg_auto_failover` monitor，端口为 `55431`。
 - 两个数据节点都在线时使用同步流复制。
-- Tank 离线时 h610 继续提供写入；连接串会自动选择当前可写节点。
-- Tank 恢复后只作为副本追平，不自动提升为主库。
+- Tank 离线时 h610 被提升并继续提供写入；连接串会自动选择当前可写节点。
+- Tank 恢复后只作为副本追平，不自动切回。确认它是健康的同步副本后，在 h610
+  上运行 `sudo qq-bot-postgres-prefer-tank` 显式切回（它会拒绝不健康的目标）。
+
+2026-09-25 起首选主库从 h610 换成 Tank（`c9571cf`，配合高级 Bot 迁到 Tank，
+见 `docs/decisions.md#gaoji-qq-tank`）。下文「首次迁移顺序」写于此前，h610 当时是主库。
 
 应用连接串同时列出两个节点，并带有
 `target_session_attrs=read-write`。机器人不会把只读副本误认为主库。
@@ -77,8 +81,9 @@ python3 scripts/test-qq-bot-postgres-sockets.py --postgres-bin /run/current-syst
   和 SCRAM-SHA-256。
 - `postgres` 超级用户只允许通过本机 Unix socket 的 peer 认证登录，所有网络登录
   会在 HBA 第一层被拒绝，即使上游工具以后又追加了宽松规则也不会绕过。
-- `qq_bot` 是无建库、无建角色、无复制权限的应用账号，只允许从 h610 的精确
-  Tailscale 地址访问 `qq_bot` 数据库。
+- `qq_bot` 是无建库、无建角色、无复制权限的应用账号，只允许从
+  `access.applicationClientAddresses` 列出的精确 Tailscale 地址（现为 h610 和
+  Tank）访问 `qq_bot` 数据库。
 
 自签名证书在当前 Tailscale 私网中负责链路加密；节点身份还依赖 Tailscale。
 未来把 monitor 迁往第三台主机时，建议同时换成私有 CA 签发的证书和
@@ -216,8 +221,8 @@ rejoin 会拒绝以下危险情况：monitor 仍注册着同名节点、没有�
 4. 启动 keeper，最多等待一小时，直到本机与 monitor 一致且成为健康副本。
 5. 输出旧 PGDATA 的保留路径，供人工确认稳定后再择期清理。
 
-恢复只有在 `sudo qq-bot-postgres-health` 成功、monitor 同时显示 h610 为可写主库且
-Tank 为 `secondary` 后才算完成。不能把单节点 `single` 状态当作长期恢复成功。
+恢复只有在 `sudo qq-bot-postgres-health` 成功、monitor 同时显示一个可写主库和一个
+`secondary` 后才算完成；之后按需用 `qq-bot-postgres-prefer-tank` 切回 Tank。不能把单节点 `single` 状态当作长期恢复成功。
 
 手动验证逻辑备份：
 

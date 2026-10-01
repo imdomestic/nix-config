@@ -1,8 +1,86 @@
 # AGENTS.md
 
-Guidance for AI agents working in this repo. Read `README.md` first for the
-architecture (host registry in `nixos/hosts/`, builders in `lib/`, host
-metadata exposed as `config.my.host`).
+Guidance for AI agents working in this repo, and the operational reference for
+it. `README.md` is the human introduction; architecture, commands, deploys and
+the traps all live here.
+
+## Architecture
+
+One flake, four evaluators: NixOS, nix-darwin, standalone Home Manager, and
+system-manager. Every machine is a single entry in a shared host registry; the
+builders in `lib/` turn that entry into whichever configuration kinds it asks
+for.
+
+### Host registry
+
+`nixos/hosts/default.nix` maps a name to `nixos/hosts/<name>/default.nix`, which
+returns **metadata, not a module**:
+
+```nix
+{inputs}: {
+  system = "x86_64-linux";
+  kind = "nixos";                 # nixos | darwin | home
+  roles = ["desktop" "gui"];
+  tsName = "example.inner.imdomestic.com"; # deployment and telemetry opt-in
+  ip = "10.0.0.68";               # optional separate WireGuard address
+  sshUser = "root";
+
+  profiles = [...];               # from {nixos,darwin,home}/profiles/default.nix
+  modules = [./system.nix ./hardware-configuration.nix];
+  hardwareModules = [...];        # nixos-hardware modules
+  externalModules = [...];        # third-party modules out of flake inputs
+
+  systemManager = {               # optional, Linux only
+    enable = true;
+    modules = [...];
+    overlays = [...];             # overlays go here, NOT nixpkgs.overlays
+  };
+
+  users.hank.home = {
+    profiles = [...];
+    modules = [...];
+  };
+}
+```
+
+`lib/my-host.nix` forwards the metadata to every evaluator as `config.my.host`
+(schema in `modules/shared/host-options.nix`): `name`, `system`, `roles`,
+`tsName`, `lanRoutes`, `gpuMonitoring`, `clusterControl`, `users`, `usernames`,
+`homeOverlays`, plus `useChinaMirror` (defaults on; hosts opt out in
+`system.nix`). Read it instead of re-deriving host facts.
+
+### Outputs
+
+| Attribute | Built by |
+| --- | --- |
+| `nixosConfigurations.<host>`, `darwinConfigurations.<host>` | `lib/mkConfigurations.nix` |
+| `homeConfigurations."hosts/<host>/<user>"`, also `"<user>@<host>"` | `lib/mkHomeConfigurations.nix` |
+| `systemConfigs.<host>` (also `.hosts.<host>`, `.<system>.<host>`) | `lib/mkSystemManagerConfigurations.nix` |
+| `deploy.nodes.<host>` — `profiles.system` + one `profiles.home-<user>` per account | `lib/mkDeployNodes.nix` — hosts with a `tsName` and a `nixosConfigurations` entry |
+| `deployChecks` | deploy-rs checks, one per node; deliberately not `checks` (see `flake.nix`) |
+| `ciMatrix` | the CI host list, derived by rule from the registry |
+| `packages` | the few local builds pushed to `imdomestic.cachix.org` |
+| `hosts` | the raw registry |
+
+### Layout
+
+```text
+flake.nix
+Justfile                        # every rebuild/deploy command
+lib/                            # builders, my-host.nix, nixpkgs-registry.nix pins
+modules/shared/host-options.nix # config.my.host schema
+nixos/hosts/<name>/             # default.nix (metadata) + system.nix + hardware-configuration.nix
+nixos/profiles/                 # base, desktop, server, netdiag, virtualisation
+nixos/modules/                  # system modules: nix*, users, mihomo, monitoring, vfio, …
+darwin/profiles/                # macOS base (pulls in nixos/modules/nix.nix, users, home-manager-cli)
+home/profiles/                  # core, base, interactive, gui/{linux,darwin}; dev.nix is imported per user
+home/modules/                   # one directory per app: nixvim, ghostty, tmux, vicinae, …
+home/users/<name>/              # default.nix (+ dev.nix where the user has one)
+pkgs/                           # local packages (hank-tabline, tmux-agent-sidebar, …)
+scripts/                        # check-* scripts behind the just recipes, plus model/bench tooling
+secrets/                        # sops-nix: secrets.yaml + hosts/<host>.yaml
+docs/                           # incidents.md, decisions.md, topic docs, runbooks/
+```
 
 ## Core rule: use native module options, never copy dotfiles
 
@@ -41,14 +119,16 @@ Import these entry files explicitly.
 ## Layout conventions
 
 - `home/modules/<app>/` — one directory per app, Home Manager modules.
-- `home/profiles/` — bundles of modules (`base`, `core`, `dev`, `gui`).
+- `home/profiles/` — bundles of modules (`core`, `base`, `interactive`, `gui`).
+  `dev.nix` is not a registry profile: each user's `home/users/<user>/dev.nix`
+  imports it.
 - `nixos/{hosts,modules,profiles}/`, `darwin/profiles/`, `modules/shared/` —
   system-level equivalents.
 - New machines are added as metadata in `nixos/hosts/<name>/default.nix` and
   registered in `nixos/hosts/default.nix`. Read host facts from
   `config.my.host` instead of re-deriving them.
 - Overlays for system-manager hosts go in `systemManager.overlays`, not
-  `nixpkgs.overlays` (see README).
+  `nixpkgs.overlays` (see "Things that will bite you" below).
 
 ## Where prose goes: `docs/`, not a 40-line comment block
 
@@ -111,9 +191,6 @@ adds no home-manager module at all.
   (`lib/mkDeployNodes.nix`), because server accounts have no one to run
   `home-manager` interactively.
 
-`docs/home-quickstart.md` is the human-facing version of this for users who only
-own their own home. If you change how activation works, update it too.
-
 ## Build & verify
 
 Use the `Justfile` recipes:
@@ -122,10 +199,18 @@ Use the `Justfile` recipes:
 just check                # nix flake check (with mirror substituters)
 just switch <host>        # nixos-rebuild switch   — system only, no homes
 just darwin <host>        # darwin-rebuild switch  — system only, no homes
-just home                 # home-manager switch for this machine's account
-just hm <host> <user>     # home-manager switch
+just home / home-dry      # home-manager switch for this machine's own account
+just hm <host> <user>     # home-manager switch, resolves hosts/<host>/<user>
 just hm-dry <host> <user> # home-manager dry run
+just up / just upp <input>            # flake update, all inputs or one
+just deploy / just deploy-host <host> # deploy-rs, see "Deploys" below
+just deploy-system <host> / just deploy-home <host> <user>
+just check-sops / check-xray / check-singbox [host...]; just check-tunnels
 ```
+
+system-manager has no recipe: `sudo system-manager switch --flake .#<host>`.
+`just push` commits everything as "update" — don't use it; write a real
+commit message.
 
 Before claiming a change works, at minimum make sure evaluation passes
 (`just check` or an `nix eval`/`--dry-run` of the affected configuration).
@@ -218,3 +303,83 @@ Why it matters, in order of how much it bites:
 If a change is deployed but deliberately not committed yet (mid-investigation,
 say), say so explicitly in the handoff rather than leaving it implicit — a
 deployed-but-uncommitted generation is a landmine for the next rebuild.
+
+## Deploys
+
+Servers and routers are deployed with deploy-rs using the MagicDNS names in
+`tsName`. The initiator must resolve `*.inner.imdomestic.com`; see
+`docs/tailscale-names.md`. `autoRollback` and `magicRollback` are enabled.
+
+Targets are every host with a `tsName` and a NixOS configuration. List them
+from the flake instead of trusting a hand-written list:
+
+```sh
+nix eval --json .#deploy.nodes --apply builtins.attrNames
+```
+
+**Builds happen on the initiator.** Nodes do not set `remoteBuild` (commit
+`0645dfa` commented it out, and deploy-rs defaults to false), so deploying a
+Linux host from a Mac needs `--remote-build`; without it deploy-rs tries to
+build x86_64-linux locally and fails. The measurements that once argued for
+target-side builds, and this contradiction, are in
+`docs/incidents.md#deploy-remote-build`. `--remote-build` means building on the
+target, so it is **not** an option for the small boxes — they go through their
+designated builders (table above).
+
+Each node carries a `system` profile plus one `home-<user>` profile per account,
+activated in that order. Homes are separate closures, so without those profiles
+the accounts on servers — whose owners never log in to run `home-manager`
+themselves — would stop being updated. They activate as the target user via
+`sudo -H -u <user>`; the `-H` matters, since Home Manager resolves every path
+relative to `$HOME` and deploy-rs' default `sudo -u` would leave it pointing at
+root's.
+
+Max operates these targets through ordinary SSH as the full-sudo `max` account,
+using its own Tailscale client. The bot runs on `tank` as `max-service`.
+Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
+
+## CI
+
+`.github/workflows/ci.yml` runs `nix flake check`, then dry-builds one job per
+host from the flake's `ciMatrix` output: every registry host with a system
+configuration (`kind != "home"`), except `x86_64-darwin`, which has no runner.
+x86_64-linux runs on `ubuntu-latest`, aarch64-linux on native
+`ubuntu-24.04-arm`, darwin on `macos-latest`. A new host joins CI
+automatically; never hand-copy a host list into the workflow.
+
+Pulling the private flake inputs needs the `SSH_PRIVATE_KEY` repo secret (a key
+with read access to the private `imdomestic/*` and `HCHogan/*` repos).
+`.github/workflows/cachix.yml` builds the flake's `packages` output and pushes
+it to `imdomestic.cachix.org`.
+
+## Things that will bite you
+
+- **New files are invisible to Nix until `git add`ed.** The flake reads the git
+  tree, so an untracked module silently does not exist.
+- **Determinate hosts** (`m1elite`, `m1pro`, `alex`) set `nix.enable = false`,
+  which drops nix-darwin's entire nix module — `nix.settings` and `nix.registry`
+  evaluate to nothing, with no error. `nixos/modules/nix-settings.nix` and
+  `nix-registry.nix` detect this and route the same values to
+  `determinateNix.customSettings` / `determinateNix.registry`. Put shared
+  nix.conf values there, never on a host directly.
+- **`determinateNix.customSettings` is written verbatim** into
+  `nix.custom.conf`, so use the `extra-*` forms. A plain `trusted-public-keys`,
+  `substituters` or `trusted-users` replaces rather than merges, dropping
+  `cache.nixos.org-1`, `cache.flakehub.com` or `root` respectively.
+- **system-manager imports only nixpkgs' `config/nix.nix`.** `nix.settings`
+  exists there; `nix.registry`, `nixPath`, `channel` and `distributedBuilds` do
+  not — hence `nix.nix` (full) vs `nix-settings.nix` (portable). It also cannot
+  take `nixpkgs.overlays`: its pkgs comes from `makeSystemConfig`, and defining
+  overlays on top recurses through `users-groups.nix`'s `pkgs.shadow`.
+- **`mkIf` does not guard option existence.** A definition inside a false `mkIf`
+  still counts as a definition, so platform-specific options need
+  `lib.optional (options ? foo) (...)` around the whole block.
+- **Registry pins live in `lib/nixpkgs-registry.nix`** and are spelled as github
+  refs on purpose. The `flake = inputs.nixpkgs` shorthand resolves to
+  `type = "path"`, which leaks a machine-local `path:/nix/store/...` entry into
+  the flake.lock of any project whose input reads `nixpkgs.url = "nixpkgs"`.
+- **A system switch does not activate any home.** Adding a package to `home/`
+  and running `just switch` changes nothing. Run `just home` (or
+  `just hm <host> <user>`).
+- **The first standalone activation collides with existing dotfiles.** That is
+  what the `-b backup` flag is for; the `just home` / `just hm` recipes pass it.
