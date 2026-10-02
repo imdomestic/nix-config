@@ -62,7 +62,7 @@ in {
     };
     runtimePackages = [pkgs.ffmpeg-headless];
     environment = {
-      FORWARDED_ALLOW_IPS = "100.64.0.3,100.64.0.4";
+      FORWARDED_ALLOW_IPS = "100.64.0.3";
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
       AI_PROMETHEUS_URL = "http://tank.inner.imdomestic.com:9009";
@@ -75,56 +75,6 @@ in {
       AI_EMBEDDING_DIMENSIONS = "1024";
       AI_EMBEDDING_TIMEOUT_SECONDS = "60";
       OTEL_SERVICE_NAME = "gaoji";
-    };
-  };
-
-  sops.templates."gaoji-acme.env".content = ''
-    CF_DNS_API_TOKEN=${config.sops.placeholder."ddns/cloudflare_token_imdomestic"}
-  '';
-  security.acme = {
-    acceptTerms = true;
-    defaults.email = lib.mkDefault "hankchogan@gmail.com";
-    certs."gaoji.inner.imdomestic.com" = {
-      dnsProvider = "cloudflare";
-      dnsResolver = "1.1.1.1:53";
-      environmentFile = config.sops.templates."gaoji-acme.env".path;
-      extraLegoFlags = ["--dns.propagation-wait" "120s"];
-      extraDomainNames = ["kennethbot.inner.imdomestic.com"];
-      group = "nginx";
-      reloadServices = ["nginx.service"];
-    };
-  };
-
-  # Keep the existing LAN WebDAV port 80 accessible; HTTPS is tailnet-only.
-  my.tailscale.guardedTCPServices.nginx = [443];
-  services.nginx.virtualHosts = let
-    listen = [
-      {addr = "0.0.0.0"; port = 80;}
-      {addr = "0.0.0.0"; port = 443; ssl = true;}
-    ];
-  in {
-    "gaoji.inner.imdomestic.com" = {
-      inherit listen;
-      useACMEHost = "gaoji.inner.imdomestic.com";
-      forceSSL = true;
-      locations."/" = {
-        proxyPass = "http://${cfg.host}:${toString cfg.port}";
-        proxyWebsockets = true;
-        extraConfig = ''
-          proxy_set_header Host $host;
-          proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_buffering off;
-          proxy_read_timeout 3600s;
-        '';
-      };
-    };
-    "kennethbot.inner.imdomestic.com" = {
-      inherit listen;
-      useACMEHost = "gaoji.inner.imdomestic.com";
-      forceSSL = true;
-      locations."/".return = "308 https://gaoji.inner.imdomestic.com$request_uri";
     };
   };
 
@@ -162,5 +112,5 @@ in {
     "d /data/services/gaoji 0750 kenneth users -"
     "d /data/services/gaoji/media 0750 kenneth users -"
   ];
-  networking.firewall.interfaces.tailscale0.allowedTCPPorts = lib.optionals cfg.enable [443 cfg.port];
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = lib.optionals cfg.enable [cfg.port];
 }
