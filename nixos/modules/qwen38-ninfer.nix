@@ -28,6 +28,7 @@
     };
 
   qwenRunner = modelUnitRunner "run-qwen38" "podman-qwen38.service";
+  abliteratedRunner = modelUnitRunner "run-qwen38-abliterated" "podman-qwen38-abliterated.service";
 
   commonModel = {
     checkEndpoint = "/health";
@@ -60,6 +61,20 @@
           description = "QUASAR QAT NVFP4 weights, NVFP4 KV cache, vision and MTP3";
           cmd = lib.getExe qwenRunner;
           proxy = "http://127.0.0.1:8100";
+          metadata = {
+            model_type = "vlm";
+            context = 262144;
+          };
+          capabilities = commonModel.capabilities // {context = 262144;};
+        };
+      "qwen3.8-27b-abliterated" =
+        commonModel
+        // {
+          name = "qwen3.8-27b-abliterated";
+          description = "Swift-1.5 ajgazin ablation, NVFP4 weights and KV cache, vision and MTP3";
+          useModelName = "qwen3.8-27b-abliterated";
+          cmd = lib.getExe abliteratedRunner;
+          proxy = "http://127.0.0.1:8101";
           metadata = {
             model_type = "vlm";
             context = 262144;
@@ -155,6 +170,62 @@ in {
       oci-containers = {
         backend = "podman";
         containers = {
+          qwen38-abliterated =
+            commonContainer
+            // {
+              # Pins and 24 GB profile: docs/incidents.md#b650-swift15-abliterated.
+              cmd = [
+                "ninfer-serve"
+                "/models/qwen3_8_27b_swift15abl_nvfp4full-dflash2-d52441e7.ninfer"
+                "--model-id"
+                "qwen3.8-27b-abliterated"
+                "--host"
+                "127.0.0.1"
+                "--port"
+                "8101"
+                "--max-context"
+                "262144"
+                "--default-max-tokens"
+                "32768"
+                "--kv-capacity"
+                "262144"
+                "--max-concurrency"
+                "1"
+                "--max-pending-requests"
+                "16"
+                "--pending-timeout-ms"
+                "600000"
+                "--prefill-chunk"
+                "1024"
+                "--kv-dtype"
+                "nvfp4"
+                "--device-state-slots"
+                "0"
+                "--host-state-slots"
+                "8"
+                "--host-kv-mib"
+                "8192"
+                "--max-private-continuations"
+                "8"
+                "--max-shared-prefixes"
+                "1"
+                "--max-long-anchors-per-continuation"
+                "1"
+                "--media-cache-mib"
+                "256"
+                "--media-live-mib"
+                "2048"
+                "--vision"
+                "--spec"
+                "mtp"
+                "--draft-tokens"
+                "3"
+                "--lm-head-draft"
+                "--preserve-thinking"
+                "--request-log-jsonl"
+                "/logs/qwen38-abliterated.jsonl"
+              ];
+            };
           qwen38 =
             commonContainer
             // {
@@ -245,6 +316,17 @@ in {
         };
       };
       podman-qwen38 = {
+        after = [
+          "network-online.target"
+          "nvidia-container-toolkit-cdi-generator.service"
+          "qwen38-image-import.service"
+        ];
+        requires = [
+          "nvidia-container-toolkit-cdi-generator.service"
+          "qwen38-image-import.service"
+        ];
+      };
+      podman-qwen38-abliterated = {
         after = [
           "network-online.target"
           "nvidia-container-toolkit-cdi-generator.service"
