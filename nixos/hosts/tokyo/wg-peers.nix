@@ -1,4 +1,4 @@
-# Generated from wg-config server.conf (public keys + allowed IPs only; PSKs live in secrets/hosts/shanghai.yaml).
+# Generated from wg-config server.conf (public keys + allowed IPs only; PSKs live in secrets/hosts/tokyo.yaml).
 # Index order must match the wireguard/psk/<n> secrets.
 [
   {

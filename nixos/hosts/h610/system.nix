@@ -90,13 +90,13 @@
     regions:
       611:
         regionid: 611
-        regioncode: shanghai
-        regionname: Shanghai
+        regioncode: tokyo
+        regionname: Tokyo
         nodes:
           - name: 611a
             regionid: 611
             hostname: sh.imdomestic.com
-            ipv4: 101.132.183.117
+            ipv4: 43.130.229.141
             ipv6: none
             derpport: 8443
             stunport: 3478
@@ -1231,7 +1231,7 @@ in {
           }
 
           # 放行经 exit node 的出网流量。shanghai 广播 --advertise-exit-node
-          # (见 hosts/shanghai/system.nix),没有这条的话策略层面就把出网挡掉,
+          # (见 hosts/tokyo/system.nix),没有这条的话策略层面就把出网挡掉,
           # 广播了也用不了。
           #
           # autogroup:internet **只能出现在 ACL 的 dst**,headscale 源码里有
