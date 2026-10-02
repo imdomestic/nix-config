@@ -7,12 +7,31 @@
 本次已通过普通/VFIO 系统完整构建、三份 domain XML schema 校验和 ROM 构建。
 另以普通用户启动了隔离的 QEMU/KVM + OVMF + TPM 2.0 测试，确认固件正常到达
 “无可启动设备”画面，随后结束测试进程；该测试没有接触实体核显或物理磁盘。
-系统尚未激活：`sudo -n` 返回需要交互认证，连 dry-activate 都未执行。
-没有创建持久 Windows VM 或磁盘；声明会在首次成功应用系统配置时创建它们。
+普通系统配置已通过 `just switch 268v` 激活，`libvirtd` 运行正常，
+`nixvirt` 声明应用成功，已创建并启动持久 `windows11` VM、独立磁盘与 NAT 网络。
+运行参数为 6 vCPU、16 GiB；宿主 GNOME 保持运行，没有切换至 VFIO 启动项。
+通过 `b650` 的 Tailscale SSH 回连 `268v` 并运行 `virsh list` 已成功，确认远程
+管理链路可用。本机使用 Tailscale SSH，`sshd.service` 不运行并不代表 SSH 不可达。
 随后用户下载了 `Windows11_Client_x64_en-us_26300_9457.iso`（9,047,330,816 字节），
 SHA256 `bd4307df32bc8af33b39ccecb1174aeb345386630f89a2b86c7a4e36b55ea650`
-与 Microsoft 下载页英文 x64 项一致。`system.nix` 已接入运行时路径
-`/var/lib/libvirt/iso/windows11.iso`；仍需以 sudo 复制镜像并首次应用系统配置。
+与 Microsoft 下载页英文 x64 项一致。已复制到运行时路径
+`/var/lib/libvirt/iso/windows11.iso` 并再次校验 SHA256。
+安装器已加载 VirtIO 光盘的 `viostor/w11/amd64` 驱动，确认唯一安装目标为
+240 GiB 空白虚拟磁盘。Windows 11 Pro（英文，26300.9457，跳过产品密钥）
+已安装并到达 OOBE 首次设置；地区、键盘和账户由用户继续完成。
+OOBE 中已用 `pnputil` 安装 `NetKVM/w11/amd64/netkvm.inf`，获得 NAT DHCP 地址，
+`curl.exe -I https://www.microsoft.com` 返回 HTTP 200。
+正常关闭客户机后，已移除安装光盘声明（`installISO` 恢复默认 `null`）；
+再次应用配置并启动客户机，确认能从虚拟硬盘回到 OOBE，网卡驱动保留。
+VirtIO 驱动光盘保留。物理 Windows 分区没有挂载或传入。
+
+已从 [Intel 官方 Arc 驱动页](https://www.intel.com/content/www/us/en/download/785597/intel-arc-graphics-windows.html)
+下载明确列出 Arc 140V / 268V 的 `gfx_win_101.9033.exe` 到宿主 `~/Downloads/`，
+SHA512 与官方值一致：
+`e36933d5af3bed5cd39290eab29ec2e0fe7995b3f9ecfe8c4ef396c7e16b06f02fe97651e44f79f787bf143b45b63d4460fa6399d3235daa69b6d953dc5b8987`。
+安装包也已复制到客户机 `C:\Users\Public\Downloads\Intel.exe`，客户机内
+`certutil -hashfile ... SHA512` 再次校验一致。传输时仅在 VM 网桥地址临时监听，
+传输结束已停止该 HTTP 服务。显卡驱动尚未安装或验证，待核显实际传入后执行。
 
 ## 命运 2 的限制与证据
 
@@ -124,7 +143,7 @@ Windows 默认不自动启动，重新应用配置保留其运行状态且不强
    sudo install -D -m 0644 /home/hank/Downloads/Windows11_Client_x64_en-us_26300_9457.iso /var/lib/libvirt/iso/windows11.iso
    ```
 
-   `system.nix` 已声明：
+   重新安装时在 `system.nix` 临时声明（当前安装完成，已恢复 `null`）：
 
    ```nix
    my.windowsVM.installISO = "/var/lib/libvirt/iso/windows11.iso";
@@ -147,6 +166,7 @@ Windows 默认不自动启动，重新应用配置保留其运行状态且不强
    完成安装后把 `installISO` 改回 `null` 并在 VM 关机状态应用配置。
 
 3. 确认另一台设备能 SSH 到 `hank@268v.inner.imdomestic.com`。
+   Tailscale CLI 可用时也可使用 `tailscale ssh hank@268v`，它处理 tailnet 主机密钥。
    关闭 VM，重新启动宿主，在 systemd-boot 菜单选择带 `vfio` 标记的条目。
    这个启动阶段宿主屏幕可能黑屏，普通条目始终保留。
 
