@@ -12,7 +12,13 @@
       homeConfigurations = homes;
     };
   in {
-    inherit (systems) nixosConfigurations darwinConfigurations;
+    inherit (systems) darwinConfigurations;
+    nixosConfigurations = systems.nixosConfigurations // {
+      m16-installer = inputs.nixpkgs.lib.nixosSystem {
+        system = "x86_64-linux";
+        modules = [./nixos/installers/m16.nix];
+      };
+    };
     homeConfigurations = homes;
     systemConfigs = systemManagers;
     hosts = hosts;
