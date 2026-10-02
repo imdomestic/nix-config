@@ -4,6 +4,48 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-02 · Swift 四并发、模型改名及单路测速 {#b650-swift15-concurrency-four}
+
+后续试用将 Swift-1.5 abliterated 的公开 ID 改为 `qwen3.8-27b`，原 QUASAR
+改为 `qwen3.8-27b-aligned`。网关、NInfer 的响应 ID 和 OpenCode 配置同步；
+OpenCode 默认仍选 `ninfer/qwen3.8-27b`，现在对应 Swift。两份模型继续互斥加载。
+
+Swift 保留 NVFP4 权重 / KV、MTP3、视觉和 262,144-token KV pool，
+`max-concurrency` 从 1 增至 4。262K 是共享池容量，并不是四路各有 262K。
+首次四并发文本测试通过，但三路长文字加一路三图时，8 个 host state 槽
+限制了 admission，日志一度只有两路运行、两路等待。误导之处是把
+`max-concurrency=4` 和纯文本吞吐通过当成所有混合负载都能四路同时运行。
+将 host state 槽增到 24 后，同一混合测试确认三路 decode 和一路视觉 prefill
+同时运行，期间实际占用达到 10 个 host state 槽。三路文字均输出 8,192 tokens；
+三图 49,152 visual tokens 被接受、颜色识别正确，四图按预算返回 HTTP 400。
+
+GPU runtime 从单并发 5.83 GiB 增至约 6.53 GiB，权重仍为 16.3 GiB。
+最终配置实测显存占用约 23,670 MiB、余量约 304 MiB，主机可用内存约 14 GiB。
+四并发文本排队测试使用每批 12 请求、每项两轮、每请求输出 2,048 tokens：
+数数任务合计吞吐 843.2 token/s，代码 / 中文小说 / JSON 混合任务 467.7 token/s。
+这是最初 8 host state 槽配置下的测量，不能当作每一路的速度；最终 24 槽配置
+另行通过上述混合视觉并发测试。
+
+单路测速保留最终四并发服务配置，但暂时关闭对外网关，通过 SSH 转发直连后端，
+串行发送六个请求，收尾时恢复网关。每次使用唯一前缀，确认 cached tokens 为 0；
+输入用重复 `neutral` 填充，分别约 7,930 和 63,630 tokens，输出任务为代码、
+中文小说和 JSON，每项生成 2,048 tokens，temperature=1、thinking off。
+下表使用 API 返回的 prompt / predicted timings，含 MTP3 加速。
+
+| 输入长度 | Prefill token/s | Prefill 耗时 | 代码 decode | 中文小说 decode | JSON decode |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 约 8K | 13,805–13,914 | 0.57–0.58 s | 193.7 | 109.4 | 176.0 |
+| 约 64K | 7,099–7,141 | 8.91–8.96 s | 172.9 | 102.8 | 172.5 |
+
+Decode 单位均为 token/s。这是固定任务的单次实测，不是所有提示词的保证；
+重复填充用于测长度开销，不是长文理解评测。MTP 接受率随内容变化，
+例如 8K 的代码约 76.6%，中文小说约 28.7%，两者 decode 速度明显不同。
+最终配置下，算术、Python、SQL、SSE、工具调用、视觉六项验收已通过。
+约 259K 的补充回归在用户要求停止测试时取消，未作为此次通过项；
+前一节的 259K 成功记录来自先前单并发配置。
+原始报告、测试脚本和遥测归档在 b650 的
+`/var/lib/qwen38/validation/20261002-swift-c4/`。
+
 ## 2026-10-02 · b650 试用 Swift-1.5 abliterated NVFP4 {#b650-swift15-abliterated}
 
 新增对外模型 `qwen3.8-27b-abliterated`，保留 `qwen3.8-27b` QUASAR。
