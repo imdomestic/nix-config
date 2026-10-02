@@ -4,6 +4,24 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-03 · 268V 首次直通在 QEMU 属性解析阶段失败 {#268v-vfio-qemu-property-type}
+
+10 月 2 日 21:34 的远端自动测试成功重启至 VFIO 特化，`8086:64a0`
+绑定到 `vfio-pci`，NixVirt 声明应用成功。但 Windows VM 未能启动，QEMU
+报告 `Invalid parameter type for 'x-igd-legacy-mode', expected: string`。
+21:36 已自动回到普通 NixOS，显示管理器恢复，核显重新由 `xe` 驱动。
+Windows 根本没有启动，所以这次没有显卡驱动状态或内屏输出的验证结果。
+
+误导点是 libvirt XML schema 接受 `qemu:override` 中的布尔值，普通 VM 的
+固件启动测试也不包含 PCI 直通设备；这两项通过不能证明 QEMU 私有属性正确。
+锁定的 QEMU 10.2.4 将 `x-igd-legacy-mode` 定义为 `OnOffAuto`，
+而 `x-igd-opregion` 才是布尔值。前者已改为 `type="string" value="off"`，
+并给 `windowsVMChecks` 增加从锁定 QEMU 的 `vfio-pci,help` 读取类型、
+核对三份 XML 的检查。这项检查无需解绑 GPU，不能替代下一次实际直通测试。
+
+原始日志在 b650 的 `/var/tmp/268v-vfio-probe/`。首次测试结果仅证明
+启动时隔离核显和自动恢复流程有效，尚不能认定 Arc 140V 直通可用。
+
 ## 2026-10-02 · 高级独立入口初次启动与注册 {#gaoji-ingress-bootstrap}
 
 高级入口迁入 tank 的 `gaoji-web` 容器。NixOS 容器默认启动时限为一分钟，

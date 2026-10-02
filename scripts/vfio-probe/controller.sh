@@ -8,8 +8,8 @@ mkdir -p "$out"
 exec >>"$out/controller.log" 2>&1
 remote() { timeout 25 tailscale ssh root@268v "$@"; }
 log() { printf '%s %s\n' "$(date -Is)" "$*"; }
-normal=nixos-generation-12.conf
-vfio=nixos-generation-12-specialisation-vfio.conf
+normal=
+vfio=
 python=/nix/store/0if41r2dp11y0v833p5yrpgr8mdanqjk-python3-3.13.15-env/bin/python3
 rebooted=false
 
@@ -49,13 +49,24 @@ if [[ -z ${HOME:-}${XDG_CONFIG_HOME:-} ]]; then
 fi
 log 'Checking SSH and target prerequisites from the service environment'
 oldboot=$(remote 'cat /proc/sys/kernel/random/boot_id')
+generation=$(remote 'basename "$(readlink /nix/var/nix/profiles/system)"')
+[[ "$generation" =~ ^system-([0-9]+)-link$ ]] || { log 'Cannot identify current system generation'; exit 1; }
+normal="nixos-generation-${BASH_REMATCH[1]}.conf"
+vfio="nixos-generation-${BASH_REMATCH[1]}-specialisation-vfio.conf"
 remote "test -f /boot/loader/entries/$normal && test -f /boot/loader/entries/$vfio && test -x $python && test -f /var/tmp/268v-vfio-probe/receiver.py && virsh -c qemu:///system domstate windows11"
+remote "grep -Fq \"init=\$(readlink /run/current-system)/init \" /boot/loader/entries/$normal"
+log "Using $normal and $vfio"
 log 'Preflight passed'
 [[ ${1:-} == --check ]] && exit 0
 log 'Probe scheduled; waiting 45 seconds before guest shutdown'
 sleep 45
 log 'Requesting normal Windows shutdown'
-remote 'virsh -c qemu:///system shutdown windows11'
+state=$(remote 'virsh -c qemu:///system domstate windows11')
+case "$state" in
+    running) remote 'virsh -c qemu:///system shutdown windows11' ;;
+    'shut off') log 'Windows is already shut down' ;;
+    *) log "Unexpected VM state: $state; aborting"; exit 1 ;;
+esac
 for ((n=0; n<24; n++)); do
     state=$(remote 'virsh -c qemu:///system domstate windows11')
     [[ "$state" == 'shut off' ]] && break

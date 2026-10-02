@@ -4,6 +4,11 @@
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
 **尚未验证核显驱动接管、内屏输出或命运 2 实际运行。**
 
+首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
+`x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
+参数已修正为字符串 `off`，构建与 QEMU 属性类型校验已通过，待应用并再次实测。
+详见 [排查记录](incidents.md#268v-vfio-qemu-property-type)。
+
 本次已通过普通/VFIO 系统完整构建、三份 domain XML schema 校验和 ROM 构建。
 另以普通用户启动了隔离的 QEMU/KVM + OVMF + TPM 2.0 测试，确认固件正常到达
 “无可启动设备”画面，随后结束测试进程；该测试没有接触实体核显或物理磁盘。
@@ -45,7 +50,8 @@ SHA512 与官方值一致：
 
 2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
 控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
-当前固定使用已核实的 Generation 12 普通与 VFIO 条目，重新构建后不要直接照跑。
+控制程序从当前 system profile 读取 generation，检查普通启动条目与运行中的
+system closure 一致，再使用该 generation 的普通与 VFIO 条目。
 Windows 的 `VFIOProbe` 一次性启动任务以 SYSTEM 收集显卡及问题设备列表，
 向仅监听 VM 网桥的临时接收端提交 JSON，然后自行删除任务。
 接收服务有 600 秒运行上限，不开启公共监听，也不自动登录 Windows。
