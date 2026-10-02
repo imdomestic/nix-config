@@ -27,6 +27,7 @@ in {
   modules = [
     ./system.nix
     ./gaoji.nix
+    ./gaoji-web.nix
     ./max.nix
     ./hardware-configuration.nix
     ../../modules/gaoji-worker.nix
