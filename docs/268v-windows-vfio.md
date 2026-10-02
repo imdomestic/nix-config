@@ -9,6 +9,10 @@
 “无可启动设备”画面，随后结束测试进程；该测试没有接触实体核显或物理磁盘。
 系统尚未激活：`sudo -n` 返回需要交互认证，连 dry-activate 都未执行。
 没有创建持久 Windows VM 或磁盘；声明会在首次成功应用系统配置时创建它们。
+随后用户下载了 `Windows11_Client_x64_en-us_26300_9457.iso`（9,047,330,816 字节），
+SHA256 `bd4307df32bc8af33b39ccecb1174aeb345386630f89a2b86c7a4e36b55ea650`
+与 Microsoft 下载页英文 x64 项一致。`system.nix` 已接入运行时路径
+`/var/lib/libvirt/iso/windows11.iso`；仍需以 sudo 复制镜像并首次应用系统配置。
 
 ## 命运 2 的限制与证据
 
@@ -114,8 +118,13 @@ Windows 默认不自动启动，重新应用配置保留其运行状态且不强
 1. 在 [Microsoft 官方页面](https://www.microsoft.com/software-download/windows11)
    获取 Windows 11 x64 ISO，并按页面给出的 SHA256 核验。此次自动请求下载链接
    被 Microsoft 的 Sentinel 拒绝，未下载或使用第三方系统镜像。
-   将文件存到 `/var/lib/libvirt/iso/windows11.iso`，权限允许 QEMU 用户读取。
-   在 `system.nix` 中声明：
+   已下载的镜像位于私有家目录，QEMU 用户无法遍历；先复制到运行时位置：
+
+   ```sh
+   sudo install -D -m 0644 /home/hank/Downloads/Windows11_Client_x64_en-us_26300_9457.iso /var/lib/libvirt/iso/windows11.iso
+   ```
+
+   `system.nix` 已声明：
 
    ```nix
    my.windowsVM.installISO = "/var/lib/libvirt/iso/windows11.iso";
