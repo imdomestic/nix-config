@@ -42,6 +42,8 @@ in {
   systemd.services."container@${containerName}" = {
     requires = ["gaoji-web-upstream.socket"];
     after = ["gaoji-web-upstream.socket"];
+    # First DNS-01 issuance waits at least 120 seconds for propagation.
+    serviceConfig.TimeoutStartSec = lib.mkForce "5min";
   };
 
   containers.${containerName} = {
