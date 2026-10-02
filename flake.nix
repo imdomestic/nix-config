@@ -54,6 +54,7 @@
         tmux-agent-sidebar = agentSidebar nixos.rpi4;
       };
       x86_64-linux = {
+        vfio-igd-rom = nixos."268v".config.my.windowsVM.igdROM;
         # 在 b650 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。
         templar-droidspaces-kernel = templarDroidspacesKernel nixos.b650;
         # b650 / x470 两台解析出来是同一个 drv,取哪台都一样。
