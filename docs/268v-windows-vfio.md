@@ -2,7 +2,7 @@
 
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
-**尚未验证 Windows 驱动、内屏输出或命运 2 实际运行。**
+**尚未验证核显驱动接管、内屏输出或命运 2 实际运行。**
 
 本次已通过普通/VFIO 系统完整构建、三份 domain XML schema 校验和 ROM 构建。
 另以普通用户启动了隔离的 QEMU/KVM + OVMF + TPM 2.0 测试，确认固件正常到达
@@ -18,12 +18,15 @@ SHA256 `bd4307df32bc8af33b39ccecb1174aeb345386630f89a2b86c7a4e36b55ea650`
 `/var/lib/libvirt/iso/windows11.iso` 并再次校验 SHA256。
 安装器已加载 VirtIO 光盘的 `viostor/w11/amd64` 驱动，确认唯一安装目标为
 240 GiB 空白虚拟磁盘。Windows 11 Pro（英文，26300.9457，跳过产品密钥）
-已安装并到达 OOBE 首次设置；地区、键盘和账户由用户继续完成。
+已安装，用户完成首次设置并进入 `hank` 桌面。
 OOBE 中已用 `pnputil` 安装 `NetKVM/w11/amd64/netkvm.inf`，获得 NAT DHCP 地址，
 `curl.exe -I https://www.microsoft.com` 返回 HTTP 200。
 正常关闭客户机后，已移除安装光盘声明（`installISO` 恢复默认 `null`）；
 再次应用配置并启动客户机，确认能从虚拟硬盘回到 OOBE，网卡驱动保留。
 VirtIO 驱动光盘保留。物理 Windows 分区没有挂载或传入。
+首次登录后补装 `E:\fwcfg\w11\amd64\fwcfg.inf`，解决唯一的
+`ACPI\QEMU0002` Code 28；再次运行 `pnputil /enum-devices /problem` 无问题设备。
+普通模式显示设备为 Microsoft Basic Display Adapter（`1234:1111`），符合软件 VGA 定义。
 
 已从 [Intel 官方 Arc 驱动页](https://www.intel.com/content/www/us/en/download/785597/intel-arc-graphics-windows.html)
 下载明确列出 Arc 140V / 268V 的 `gfx_win_101.9033.exe` 到宿主 `~/Downloads/`，
@@ -31,7 +34,12 @@ SHA512 与官方值一致：
 `e36933d5af3bed5cd39290eab29ec2e0fe7995b3f9ecfe8c4ef396c7e16b06f02fe97651e44f79f787bf143b45b63d4460fa6399d3235daa69b6d953dc5b8987`。
 安装包也已复制到客户机 `C:\Users\Public\Downloads\Intel.exe`，客户机内
 `certutil -hashfile ... SHA512` 再次校验一致。传输时仅在 VM 网桥地址临时监听，
-传输结束已停止该 HTTP 服务。显卡驱动尚未安装或验证，待核显实际传入后执行。
+传输结束已停止该 HTTP 服务。另将原安装包的 Graphics 目录解包至客户机
+`C:\IntelDrivers\Graphics`，确认 `iigd_dch.inf` 声明 `8086:64a0`，
+并用 `pnputil /add-driver C:\IntelDrivers\Graphics\*.inf /subdirs` 预置到驱动库。
+12 个驱动包均成功加入；`pnputil /enum-drivers /class Display` 确认主驱动
+版本为 `32.0.101.9033`，签名者为 Microsoft Windows Hardware Compatibility Publisher。
+预置不代表驱动已绑定或加速可用；核显实际传入后仍需检查设备状态。
 
 ## 命运 2 的限制与证据
 
@@ -169,6 +177,8 @@ Windows 默认不自动启动，重新应用配置保留其运行状态且不强
    Tailscale CLI 可用时也可使用 `tailscale ssh hank@268v`，它处理 tailnet 主机密钥。
    关闭 VM，重新启动宿主，在 systemd-boot 菜单选择带 `vfio` 标记的条目。
    这个启动阶段宿主屏幕可能黑屏，普通条目始终保留。
+   2026-10-02 已核实当前 Generation 12 的条目是
+   `nixos-generation-12-specialisation-vfio.conf`；后续 rebuild 后以 `sudo bootctl list` 为准。
 
 4. 从另一台设备检查：
 
