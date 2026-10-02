@@ -222,8 +222,9 @@ in
             }
             {
               name = "x-igd-legacy-mode";
-              type = "bool";
-              value = "false";
+              # QEMU exposes OnOffAuto, not bool; see docs/incidents.md#268v-vfio-qemu-property-type.
+              type = "string";
+              value = "off";
             }
           ];
         }

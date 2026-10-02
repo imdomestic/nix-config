@@ -140,6 +140,8 @@ in {
         for definition in "$out"/*.xml; do
           virt-xml-validate "$definition" domain
         done
+        ${pkgs.python3}/bin/python ${../../../scripts/check-windows-vm-qemu.py} \
+          ${config.virtualisation.libvirtd.qemu.package}/bin/qemu-system-x86_64 "$out"/*.xml
         test -s ${cfg.igdROM}/igd-64a0.rom
         test -f ${pkgs.OVMFFull.fd}/FV/OVMF_CODE.fd
         test -f ${pkgs.OVMFFull.fd}/FV/OVMF_VARS.fd
