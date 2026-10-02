@@ -41,6 +41,35 @@ SHA512 与官方值一致：
 版本为 `32.0.101.9033`，签名者为 Microsoft Windows Hardware Compatibility Publisher。
 预置不代表驱动已绑定或加速可用；核显实际传入后仍需检查设备状态。
 
+## 首次重启测试的接续位置
+
+2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
+控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
+当前固定使用已核实的 Generation 12 普通与 VFIO 条目，重新构建后不要直接照跑。
+Windows 的 `VFIOProbe` 一次性启动任务以 SYSTEM 收集显卡及问题设备列表，
+向仅监听 VM 网桥的临时接收端提交 JSON，然后自行删除任务。
+接收服务有 600 秒运行上限，不开启公共监听，也不自动登录 Windows。
+
+控制程序先正常关闭 VM，使用一次性 VFIO 启动项重启，核实 GPU 已绑定
+`vfio-pci` 后启动 VM。拿到 Windows 报告或等待超时后保存日志、控制台截图，
+正常请求关闭 VM，再重启返回普通 NixOS。若 Windows 不响应 ACPI 关机，
+等待 90 秒后仍会请求宿主重启以恢复桌面；这是首次直通实验的恢复流程。
+宿主若失联到无法接收重启命令，则需物理重启；默认启动项一直保留普通 NixOS。
+
+结果保存在 **b650** 的 `/var/tmp/268v-vfio-probe/`：`controller.log`、
+`host.txt`、`start.txt`、`guest.json`、`kernel.log`、`qemu.log`、`screen.png`、
+`restored.txt`。恢复 Codex 后先读取这些文件，不要把“已安排测试”当成直通成功。
+宿主本身也保留接收到的 `/var/tmp/268v-vfio-probe/guest.json`；
+Windows 本地报告在 `C:\IntelDrivers\vfio-report.json`。
+
+```sh
+tailscale ssh root@b650 'cat /var/tmp/268v-vfio-probe/controller.log'
+tailscale ssh root@b650 'cat /var/tmp/268v-vfio-probe/guest.json'
+```
+
+tmux 与 Codex 都是宿主进程，不能跨 268V 重启存活；仅关闭 SSH 或终端时才是
+tmux 的保活场景。独立的 b650 控制程序不依赖本机 Codex 会话继续运行。
+
 ## 命运 2 的限制与证据
 
 Bungie 安全团队 BNGSecurity 在 2021-08-26 的
