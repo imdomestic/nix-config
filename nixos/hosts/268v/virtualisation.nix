@@ -38,7 +38,7 @@ in {
     hideHypervisor = lib.mkEnableOption "basic CPUID/KVM signature hiding, without timing concealment";
     memoryGiB = lib.mkOption {
       type = lib.types.ints.between 4 24;
-      default = 12;
+      default = 16;
     };
     cores = lib.mkOption {
       type = lib.types.ints.between 2 6;

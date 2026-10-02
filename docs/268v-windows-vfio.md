@@ -89,7 +89,7 @@ Bungie 安全团队 BNGSecurity 在 2021-08-26 的
 - `pkgs/vfio-igd-rom/default.nix`：固定 VfioIgdPkg 源码和 hash，用 Nixpkgs EDK2
   构建 `8086:64a0` 的 `IgdAssignmentDxe` Option ROM，不包含 Intel 私有 GOP。
 
-默认 VM 是 `windows11`：6 vCPU、12 GiB 内存、240 GiB 稀疏 qcow2、
+默认 VM 是 `windows11`：6 vCPU、16 GiB 内存、240 GiB 稀疏 qcow2、
 VirtIO 磁盘/网卡、TPM 2.0、UEFI、软件 VGA 与仅监听回环地址的 SPICE。
 240 GiB 是虚拟容量，文件会随写入增长；游戏更新或快照前要检查宿主剩余空间。
 现有卷只在不存在时创建，修改容量声明不会自动扩容已有磁盘。
