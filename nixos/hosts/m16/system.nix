@@ -1,124 +1,125 @@
 {
+  config,
   pkgs,
-  inputs,
   ...
-}: let
-  wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
-    conf = "${inputs.wg-config.outPath}/client_00024.conf";
-    address = "10.0.0.25/24";
-  };
-in {
+}: {
   imports = [
-    ./hardware-configuration.nix
-    ./dosuspend.nix
+    ../../modules/keyd
+    ../../modules/nerdfonts
   ];
 
-  boot.loader.systemd-boot.enable = true;
-  boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_zen;
-
-  boot.binfmt = {
-    emulatedSystems = ["aarch64-linux"];
-    preferStaticEmulators = true;
+  boot.loader = {
+    systemd-boot = {
+      enable = true;
+      configurationLimit = 5;
+      xbootldrMountPoint = "/boot";
+    };
+    efi = {
+      canTouchEfiVariables = true;
+      efiSysMountPoint = "/efi";
+    };
   };
 
   networking = {
-    networkmanager.enable = false;
-    wireless.iwd.enable = true;
-
-    useDHCP = false;
-    useNetworkd = true;
-    nameservers = ["1.1.1.1" "8.8.8.8"];
-  };
-
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://127.0.0.1:7890";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
-  systemd.network = {
-    wait-online.enable = false;
-    enable = true;
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
-    networks."wlan" = {
-      matchConfig.Name = "wlan0";
-      networkConfig = {
-        DHCP = "yes";
+    networkmanager = {
+      enable = true;
+      ensureProfiles = {
+        environmentFiles = ["/var/lib/NetworkManager/m16-wifi.env"];
+        profiles.m16-wifi = {
+          connection = {
+            id = "m16-wifi";
+            type = "wifi";
+            autoconnect = true;
+            autoconnect-retries = 0;
+          };
+          wifi = {
+            mode = "infrastructure";
+            ssid = "$INSTALLER_WIFI_SSID";
+          };
+          wifi-security = {
+            key-mgmt = "wpa-psk";
+            psk = "$INSTALLER_WIFI_PASSWORD";
+          };
+          ipv4.method = "auto";
+          ipv6.method = "auto";
+        };
       };
     };
+    nftables.enable = true;
   };
 
-  time.timeZone = "Asia/Hong_Kong";
-
-  nixpkgs.config.rocmSupport = true;
-
-  services.xserver.enable = true;
-  services.displayManager.gdm.enable = true;
-  services.desktopManager.gnome.enable = true;
-
-  services.flatpak.enable = true;
-  services.spice-vdagentd.enable = true;
-  services.blueman.enable = true;
-
-  services.resolved = {
-    enable = true;
-    settings.Resolve.FallbackDNS = ["223.5.5.5"];
-  };
-
-  environment = {
-    variables = {
-      EDITOR = "nvim";
+  hardware = {
+    graphics.enable = true;
+    nvidia = {
+      modesetting.enable = true;
+      powerManagement.enable = false;
+      open = true;
+      nvidiaSettings = false;
+      nvidiaPersistenced = true;
+      package = config.boot.kernelPackages.nvidiaPackages.production;
     };
+    nvidia-container-toolkit.enable = true;
+  };
+  nixpkgs.config.allowUnfree = true;
+  my.host.useChinaMirror = false;
+  virtualisation.podman.enable = true;
+
+  i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
+  services = {
+    displayManager.gdm = {
+      enable = true;
+      autoSuspend = false;
+    };
+    desktopManager.gnome.enable = true;
+    pipewire = {
+      enable = true;
+      alsa.enable = true;
+      pulse.enable = true;
+    };
+    logind.settings.Login = {
+      HandleLidSwitch = "ignore";
+      HandleLidSwitchExternalPower = "ignore";
+      HandleLidSwitchDocked = "ignore";
+      IdleAction = "ignore";
+    };
+    avahi = {
+      enable = true;
+      openFirewall = true;
+      publish = {
+        enable = true;
+        addresses = true;
+        workstation = true;
+      };
+    };
+    # GNOME 使用 Intel 核显，将独立显卡留给计算任务。
+    udev.extraRules = ''
+      SUBSYSTEM=="drm", KERNEL=="card[0-9]*|renderD[0-9]*", ATTRS{vendor}=="0x8086", ATTRS{device}=="0x46a6", TAG+="mutter-device-preferred-primary"
+      SUBSYSTEM=="drm", KERNEL=="card[0-9]*|renderD[0-9]*", ATTRS{vendor}=="0x10de", ATTRS{device}=="0x2520", TAG+="mutter-device-ignore"
+    '';
+  };
+  systemd.sleep.settings.Sleep = {
+    AllowSuspend = false;
+    AllowHibernation = false;
   };
 
-  environment.sessionVariables.NIXOS_OZONE_WL = "1";
-  environment.sessionVariables.COSMIC_DATA_CONTROL_ENABLED = 1;
-  systemd.packages = pkgs.lib.optional (pkgs ? observatory) pkgs.observatory;
-  systemd.services.monitord.wantedBy = ["multi-user.target"];
-
-  services.printing.enable = true;
-
-  # Enable sound.
-  services.pipewire = {
-    enable = true;
-    pulse.enable = true;
+  security = {
+    rtkit.enable = true;
+    sudo.wheelNeedsPassword = false;
   };
-
-  users.users.linwhite = {
-    isNormalUser = true;
-    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
-    packages = with pkgs; [
-      tree
-    ];
+  users.users = {
+    linwhite.hashedPasswordFile = "/var/lib/user-passwords/linwhite";
+    hank.hashedPasswordFile = "/var/lib/user-passwords/hank";
   };
-
-  # 这里只留机器自己需要的。GUI 应用、编译工具链、看 GPU 的那几个都搬去了
-  # home(modules/gui、profiles/dev)—— 换一个浏览器不该需要 root + 整机重建。
-  # vim 留着:系统坏掉时是以 root 身份进来修的,那时候 home 的 PATH 帮不上忙。
-  # qemu 没了:profiles/virtualisation 已经装了它。
+  programs = {
+    zsh.enable = true;
+    nix-index-database.comma.enable = true;
+  };
   environment.systemPackages = with pkgs; [
-    vim
-    wqy_microhei
-    ntfs3g
-    adwaita-icon-theme
+    pciutils
+    nvtopPackages.nvidia
+    btop-cuda
   ];
 
-  programs = {
-    gamescope = {
-      enable = true;
-      capSysNice = true;
-    };
-    steam = {
-      enable = true;
-      gamescopeSession.enable = true;
-      remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
-      dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
-      localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
-    };
-    zsh.enable = true;
-  };
-
-  services.openssh.enable = true;
-
-  system.stateVersion = "25.11"; # Did you read the comment?
+  time.timeZone = "Asia/Tokyo";
+  system.stateVersion = "26.05";
 }

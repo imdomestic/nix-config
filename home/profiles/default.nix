@@ -5,6 +5,7 @@
   base = ./base.nix;
   interactive = ./interactive.nix;
   gui = {
+    common = ./gui/common.nix;
     linux = ./gui/linux.nix;
     darwin = ./gui/darwin.nix;
   };
