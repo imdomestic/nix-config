@@ -50,6 +50,14 @@ in {
 
   # Headscale extra records support literal addresses, so derive aliases at runtime.
   services.headscale.settings.dns.extra_records_path = recordsPath;
+  # A scoped DNS deployment can precede the next full h610 switch.
+  system.activationScripts.gaojiDNSMigration = {
+    deps = ["etc"];
+    text = ''
+      rm -f /etc/systemd/system/headscale-local-dns.service.d/50-gaoji-migration.conf
+      rm -f /nix/var/nix/gcroots/gaoji-dns-updater
+    '';
+  };
   systemd.services.headscale.preStart = lib.mkBefore ''
     if [ ! -e ${recordsPath} ]; then
       printf '[]\n' > ${recordsPath}

@@ -35,6 +35,11 @@ DNS 记录。`gaoji` 由节点自己的 MagicDNS 提供；旧 `kennethbot` 别�
 gaoji peer 的地址。找不到该 peer 时保留原记录并失败，不能退回 h610 地址。
 只改 DNS 不代表 HTTPS 入口已经迁移；只通过构建也不代表已经部署。
 
+首次上线不整机切换 h610：只给 `headscale-local-dns.service` 安装临时的
+`50-gaoji-migration.conf`，引用已经构建的原生记录生成器，并为该闭包建立
+`gaoji-dns-updater` GC root。这个覆盖在重启后仍有效；下一次包含本模块的
+h610 正常切换会自动删除覆盖和 GC root，恢复纯声明式管理。
+
 ## 2026-09-30 · 浮层保留圆角边框 {#floats-keep-borders}
 
 补全菜单、文档窗、签名提示、which-key、noice 命令行、Snacks 浮动 picker、诊断浮窗
