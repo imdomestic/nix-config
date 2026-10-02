@@ -23,13 +23,14 @@ TASKS = [
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", required=True)
+    parser.add_argument("--model", default="qwen3.8-27b")
     parser.add_argument("--label", required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--repeats", type=int, default=2)
     parser.add_argument("--requests", type=int, default=12)
     parser.add_argument("--max-tokens", type=int, default=2048)
     args = parser.parse_args()
-    report = {"label": args.label, "requests_per_batch": args.requests,
+    report = {"label": args.label, "model": args.model, "requests_per_batch": args.requests,
               "max_tokens": args.max_tokens, "repeats": args.repeats, "batches": []}
 
     def post(body):
@@ -37,9 +38,11 @@ def main():
         req = urllib.request.Request(args.url.rstrip("/") + "/v1/chat/completions",
                                      data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})
         with opener.open(req, timeout=600) as reply:
-            return json.load(reply)
+            result = json.load(reply)
+        assert result["model"] == args.model, result.get("model")
+        return result
 
-    warmup = {"model": "qwen3.8-27b", "messages": [{"role": "user", "content": "Reply READY."}],
+    warmup = {"model": args.model, "messages": [{"role": "user", "content": "Reply READY."}],
               "max_tokens": 16, "temperature": 0, "reasoning_effort": "none", "stream": False}
     post(warmup)
     for workload in ["count", "mixed"]:
@@ -51,7 +54,7 @@ def main():
                 nonce = hashlib.sha256(f"qwen-c3-c4-v1/{workload}/{repeat}/{index}".encode()).hexdigest()
                 task = ("Write the integers from 1 through 10000 in ascending order, separated by commas. "
                         "Include every integer. Output only the list without explanation.") if workload == "count" else TASKS[index % len(TASKS)]
-                body = {"model": "qwen3.8-27b", "messages": [{"role": "user", "content": nonce + "\n" + task}],
+                body = {"model": args.model, "messages": [{"role": "user", "content": nonce + "\n" + task}],
                         "max_tokens": args.max_tokens, "temperature": 0 if workload == "count" else 1,
                         "seed": 20260925 + repeat * 100 + index, "reasoning_effort": "none", "stream": False}
                 body_hash = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()

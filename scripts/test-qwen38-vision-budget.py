@@ -26,6 +26,7 @@ def solid_image(rgb):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", required=True)
+    parser.add_argument("--model", default="qwen3.8-27b")
     parser.add_argument("--budget", type=int, choices=[32768, 49152], default=49152)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--admission-only", action="store_true")
@@ -54,7 +55,7 @@ def main():
         content = [{"type": "text", "text": "Reply OK."}]
         content += [{"type": "image_url", "image_url": {"url": url}} for url in images[:n]]
         code, body, elapsed = post("/v1/chat/completions", {
-            "model": "qwen3.8-27b", "messages": [{"role": "user", "content": content}],
+            "model": args.model, "messages": [{"role": "user", "content": content}],
             "temperature": 0, "reasoning_effort": "none", "max_tokens": 1, "stream": False,
         })
         record = {"test": "admission", "images": n, "visual_tokens": n * 16384,
@@ -62,6 +63,7 @@ def main():
         records.append(record)
         if allowed:
             assert code == 200 and args.budget <= body["usage"]["prompt_tokens"] < args.budget + 256, record
+            assert body["model"] == args.model, body.get("model")
         else:
             assert code == 400 and body["error"]["code"] == "media_budget_exceeded", record
 
@@ -69,21 +71,23 @@ def main():
         content = [{"type": "text", "text": "Name the dominant color of each image in order. Only output the color names."}]
         content += [{"type": "image_url", "image_url": {"url": url}} for url in images[:count]]
         code, body, elapsed = post("/v1/chat/completions", {
-            "model": "qwen3.8-27b", "messages": [{"role": "user", "content": content}],
+            "model": args.model, "messages": [{"role": "user", "content": content}],
             "temperature": 0, "reasoning_effort": "none", "max_tokens": 64, "stream": False,
         })
         record = {"test": "generation", "images": count, "status": code,
                   "response": body, "elapsed_seconds": elapsed}
         records.append(record)
         assert code == 200, record
+        assert body["model"] == args.model, body.get("model")
         text = body["choices"][0]["message"]["content"].lower()
         colors = ["red", "green", "blue"][:count]
         positions = [text.find(color) for color in colors]
         assert all(position >= 0 for position in positions) and positions == sorted(positions), record
         assert args.budget <= body["usage"]["prompt_tokens"] < args.budget + 256, record
 
-    args.output.write_text(json.dumps({"budget": args.budget, "passed": True, "results": records}, indent=2) + "\n")
-    print(json.dumps({"budget": args.budget, "passed": True, "results": records}, indent=2))
+    report = {"model": args.model, "budget": args.budget, "passed": True, "results": records}
+    args.output.write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

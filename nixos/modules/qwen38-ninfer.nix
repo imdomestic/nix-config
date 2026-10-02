@@ -54,11 +54,12 @@
     healthCheckTimeout = 300;
     logLevel = "info";
     models = {
-      "qwen3.8-27b" =
+      "qwen3.8-27b-aligned" =
         commonModel
         // {
-          name = "Qwen3.8 27B QUASAR NVFP4 262K MTP3";
+          name = "qwen3.8-27b-aligned";
           description = "QUASAR QAT NVFP4 weights, NVFP4 KV cache, vision and MTP3";
+          useModelName = "qwen3.8-27b-aligned";
           cmd = lib.getExe qwenRunner;
           proxy = "http://127.0.0.1:8100";
           metadata = {
@@ -67,12 +68,12 @@
           };
           capabilities = commonModel.capabilities // {context = 262144;};
         };
-      "qwen3.8-27b-abliterated" =
+      "qwen3.8-27b" =
         commonModel
         // {
-          name = "qwen3.8-27b-abliterated";
+          name = "qwen3.8-27b";
           description = "Swift-1.5 ajgazin ablation, NVFP4 weights and KV cache, vision and MTP3";
-          useModelName = "qwen3.8-27b-abliterated";
+          useModelName = "qwen3.8-27b";
           cmd = lib.getExe abliteratedRunner;
           proxy = "http://127.0.0.1:8101";
           metadata = {
@@ -178,7 +179,7 @@ in {
                 "ninfer-serve"
                 "/models/qwen3_8_27b_swift15abl_nvfp4full-dflash2-d52441e7.ninfer"
                 "--model-id"
-                "qwen3.8-27b-abliterated"
+                "qwen3.8-27b"
                 "--host"
                 "127.0.0.1"
                 "--port"
@@ -189,8 +190,9 @@ in {
                 "32768"
                 "--kv-capacity"
                 "262144"
+                # Four active lanes share one pool: docs/incidents.md#b650-swift15-concurrency-four.
                 "--max-concurrency"
-                "1"
+                "4"
                 "--max-pending-requests"
                 "16"
                 "--pending-timeout-ms"
@@ -202,7 +204,7 @@ in {
                 "--device-state-slots"
                 "0"
                 "--host-state-slots"
-                "8"
+                "24"
                 "--host-kv-mib"
                 "8192"
                 "--max-private-continuations"
@@ -233,7 +235,7 @@ in {
                 "ninfer-serve"
                 "/models/qwen3_8_27b_nvfp4qat-a45b9f5c.ninfer"
                 "--model-id"
-                "qwen3.8-27b"
+                "qwen3.8-27b-aligned"
                 "--host"
                 "127.0.0.1"
                 "--port"
