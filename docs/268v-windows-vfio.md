@@ -6,7 +6,9 @@
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
-参数已修正为字符串 `off`，构建与 QEMU 属性类型校验已通过，待应用并再次实测。
+参数已修正为字符串 `off`，构建与 QEMU 属性类型校验已通过。
+2026-10-03 已应用到 generation 13，b650 控制服务的只读预检通过；
+第二次实际直通结果仍待采集。
 详见 [排查记录](incidents.md#268v-vfio-qemu-property-type)。
 
 本次已通过普通/VFIO 系统完整构建、三份 domain XML schema 校验和 ROM 构建。
@@ -67,6 +69,8 @@ Windows 的 `VFIOProbe` 一次性启动任务以 SYSTEM 收集显卡及问题设
 `restored.txt`。恢复 Codex 后先读取这些文件，不要把“已安排测试”当成直通成功。
 宿主本身也保留接收到的 `/var/tmp/268v-vfio-probe/guest.json`；
 Windows 本地报告在 `C:\IntelDrivers\vfio-report.json`。
+首次失败的完整结果已归档到 b650 的 `/var/tmp/268v-vfio-probe-first-20261002/`，
+后续测试使用上面的工作目录。
 
 ```sh
 tailscale ssh root@b650 'cat /var/tmp/268v-vfio-probe/controller.log'

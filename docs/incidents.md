@@ -19,7 +19,7 @@ Windows 根本没有启动，所以这次没有显卡驱动状态或内屏输出
 并给 `windowsVMChecks` 增加从锁定 QEMU 的 `vfio-pci,help` 读取类型、
 核对三份 XML 的检查。这项检查无需解绑 GPU，不能替代下一次实际直通测试。
 
-原始日志在 b650 的 `/var/tmp/268v-vfio-probe/`。首次测试结果仅证明
+原始日志在 b650 的 `/var/tmp/268v-vfio-probe-first-20261002/`。首次测试结果仅证明
 启动时隔离核显和自动恢复流程有效，尚不能认定 Arc 140V 直通可用。
 
 ## 2026-10-02 · 高级独立入口初次启动与注册 {#gaoji-ingress-bootstrap}
