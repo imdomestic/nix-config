@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Run on b650 as a transient service, never on the laptop being rebooted.
+set -euo pipefail
+export PATH=/run/current-system/sw/bin
+[[ $(hostname -s) == b650 ]] || { echo 'Run this controller on b650, not on 268v.' >&2; exit 1; }
+out=/var/tmp/268v-vfio-probe
+mkdir -p "$out"
+exec >>"$out/controller.log" 2>&1
+remote() { timeout 25 tailscale ssh root@268v "$@"; }
+log() { printf '%s %s\n' "$(date -Is)" "$*"; }
+normal=nixos-generation-12.conf
+vfio=nixos-generation-12-specialisation-vfio.conf
+python=/nix/store/0if41r2dp11y0v833p5yrpgr8mdanqjk-python3-3.13.15-env/bin/python3
+rebooted=false
+
+restore() {
+    if ! $rebooted; then return; fi
+    log 'Collecting evidence and restoring normal boot'
+    remote 'journalctl -b -k --no-pager' >"$out/kernel.log" 2>&1 || true
+    remote 'cat /var/log/libvirt/qemu/windows11.log' >"$out/qemu.log" 2>&1 || true
+    remote 'cat /var/tmp/268v-vfio-probe/guest.json' >"$out/guest.json" 2>/dev/null || true
+    remote "virsh -c qemu:///system qemu-monitor-command windows11 '{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"/tmp/268v-vfio-screen.png\",\"format\":\"png\"}}'" || true
+    remote 'cat /tmp/268v-vfio-screen.png' >"$out/screen.png" 2>/dev/null || true
+    remote 'virsh -c qemu:///system shutdown windows11' || true
+    for ((n=0; n<18; n++)); do
+        state=$(remote 'virsh -c qemu:///system domstate windows11' 2>/dev/null || true)
+        [[ "$state" == 'shut off' ]] && break
+        sleep 5
+    done
+    # The normal default remains unchanged; set it once explicitly for this return.
+    remote "bootctl set-oneshot $normal && systemctl reboot" || true
+    for ((n=0; n<36; n++)); do
+        sleep 5
+        current=$(remote 'readlink /run/current-system' 2>/dev/null || true)
+        if [[ -n "$current" && "$current" != *268v-vfio* ]]; then
+            remote 'systemctl is-active display-manager; lspci -nnk -s 00:02.0' >"$out/restored.txt" 2>&1 || true
+            log 'Normal system returned; results are in /var/tmp/268v-vfio-probe on b650'
+            return
+        fi
+    done
+    log 'Automatic return was not confirmed. A physical reboot uses the normal default.'
+}
+trap restore EXIT
+
+log 'Probe scheduled; waiting 45 seconds before guest shutdown'
+sleep 45
+oldboot=$(remote 'cat /proc/sys/kernel/random/boot_id')
+remote "test -f /boot/loader/entries/$normal && test -f /boot/loader/entries/$vfio"
+remote 'virsh -c qemu:///system shutdown windows11'
+for ((n=0; n<24; n++)); do
+    state=$(remote 'virsh -c qemu:///system domstate windows11')
+    [[ "$state" == 'shut off' ]] && break
+    sleep 5
+done
+[[ "$state" == 'shut off' ]] || { log 'Guest did not shut down; aborting without reboot'; exit 1; }
+remote "bootctl set-oneshot $vfio"
+rebooted=true
+remote 'systemctl reboot' || true
+for ((n=0; n<48; n++)); do
+    sleep 5
+    newboot=$(remote 'cat /proc/sys/kernel/random/boot_id' 2>/dev/null || true)
+    [[ -n "$newboot" && "$newboot" != "$oldboot" ]] && break
+done
+[[ -n "$newboot" && "$newboot" != "$oldboot" ]] || { log 'Host did not reconnect'; exit 1; }
+remote 'readlink /run/current-system; cat /proc/cmdline; lspci -nnk -s 00:02.0; systemctl show nixvirt -p Result -p ExecMainStatus' >"$out/host.txt"
+remote 'test "$(basename "$(readlink /sys/bus/pci/devices/0000:00:02.0/driver)")" = vfio-pci'
+for ((n=0; n<12; n++)); do
+    remote 'virsh -c qemu:///system dumpxml --inactive windows11' >"$out/domain.xml"
+    grep -q 'hostdev' "$out/domain.xml" && break
+    sleep 5
+done
+grep -q 'hostdev' "$out/domain.xml"
+remote "systemd-run --unit=268v-vfio-receiver --property=RuntimeMaxSec=600 $python /var/tmp/268v-vfio-probe/receiver.py"
+if ! remote 'virsh -c qemu:///system start windows11' >"$out/start.txt" 2>&1; then
+    log 'VM start failed; restoring normal boot'
+    exit 1
+fi
+log 'VM started with passthrough; waiting for the one-shot Windows report'
+for ((n=0; n<36; n++)); do
+    if remote 'test -s /var/tmp/268v-vfio-probe/guest.json'; then
+        log 'Windows device report received'
+        exit 0
+    fi
+    sleep 5
+done
+log 'No Windows report within 180 seconds; capturing console and restoring'
