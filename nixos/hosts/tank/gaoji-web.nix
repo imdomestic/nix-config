@@ -48,8 +48,8 @@ in {
     autoStart = true;
     privateNetwork = true;
     enableTun = true;
-    hostAddress = "10.233.0.1/30";
-    localAddress = "${containerAddress}/30";
+    hostAddress = "10.233.0.1";
+    localAddress = containerAddress;
     bindMounts."/run/gaoji-acme.env" = {
       hostPath = config.sops.templates."gaoji-web-acme.env".path;
       isReadOnly = true;
