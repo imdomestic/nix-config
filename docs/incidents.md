@@ -4,6 +4,39 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-02 · b650 试用 Swift-1.5 abliterated NVFP4 {#b650-swift15-abliterated}
+
+新增对外模型 `qwen3.8-27b-abliterated`，保留 `qwen3.8-27b` QUASAR。
+两者通过 llama-swap 默认互斥调度共用一张 24 GB RTX 5090 D v2，按请求切换，
+不同时加载。新模型的 NInfer 后端只监听 `127.0.0.1:8101`，仍由 Tailnet
+网关的 8000 端口提供服务。
+
+来源为 [kaushikvira 的 Swift-1.5 ajgazin ablation 转换](https://huggingface.co/kaushikvira/Qwen3.8-27B-swift15-uncensored-ajgazin-nvfp4full-dflash2-NInfer-v3)，
+固定 revision `d52441e7706846f325f0d2d419c93b632b3bdc1a`，v3 文件
+`qwen3_8_27b_swift15abl_nvfp4full-dflash2.ninfer`，19,782,447,364 bytes，
+SHA-256 `65f9d2ab1161e95d65ecdb20858b42ae937bb40c92d3dabf969fd47bfd03c0cb`。
+下载使用 `scripts/fetch-qwen38-swift-abliterated.sh`，校验成功后才将 `.part`
+重命名为带 revision 的最终文件；原 QUASAR 权重继续保留。
+
+配置使用文本主干 NVFP4、NVFP4 KV、262,144-token context / KV pool、
+单并发、视觉、MTP3 和 proposal head；单次默认输出预算 32,768。
+复用已有 `qwen38-quasar-bace20dc-vision48k` 引擎镜像。
+容易误判的是把发布者在 32 GB 5090 上的四并发 DFlash2 参数照搬过来，
+或者把 18.42 GiB 文件大小当成 GPU 总占用：未选中的 DFlash2 组件不上传，
+而 KV、workspace、视觉和并发状态需要额外显存。这里采用单并发 MTP3，
+并通过实际长输入验证 262K 配置。
+
+实测启动权重 16.3 GiB、runtime 5.83 GiB；`nvidia-smi` 占用
+23,186 MiB、空闲约 788 MiB。七项验收全部通过，其中长输入实际为
+259,244 tokens，三处随机代码及图片左右颜色均正确，总耗时 103.52 秒。
+
+验收复用 `scripts/test-qwen38-quasar.py --model qwen3.8-27b-abliterated`，
+覆盖算术、Python、SQL、SSE、工具调用、视觉及约 259.5K token 的检索加视觉。
+报告保存到 b650 的
+`/var/lib/qwen38/ninfer-logs/swift15-abliterated-acceptance.json`；
+服务运行参数和内存分配记录在同目录的 `qwen38-abliterated.jsonl`。
+这些是部署验收，不是证明能力超过 QUASAR 的综合评测。
+
 ## 2026-10-01 · flake-check 连红四天:IFD 预热还在 h610 {#ci-ifd-warmup-stale-host}
 
 `flake-check` 的 `nix flake check` job 从 2026-09-27 的 `273926d`(Max 从 h610

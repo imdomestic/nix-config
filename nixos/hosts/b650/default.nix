@@ -20,6 +20,7 @@ in {
       "llama-swap.service"
       "llama-swap-proxy.service"
       "podman-qwen38.service"
+      "podman-qwen38-abliterated.service"
       "nvidia-persistenced.service"
     ];
   };
