@@ -54,7 +54,7 @@ in {
   system.activationScripts.gaojiDNSMigration = {
     deps = ["etc"];
     text = ''
-      rm -f /etc/systemd/system/headscale-local-dns.service.d/50-gaoji-migration.conf
+      rm -f /etc/systemd/system.control/headscale-local-dns.service.d/50-gaoji-migration.conf
       rm -f /nix/var/nix/gcroots/gaoji-dns-updater
     '';
   };
