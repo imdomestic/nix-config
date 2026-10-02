@@ -78,7 +78,6 @@
   i18n.defaultLocale = "en_US.UTF-8";
 
   my = {
-    windowsVM.installISO = "/var/lib/libvirt/iso/windows11.iso";
     tailscale = {
       enable = true;
       ssh = true;
