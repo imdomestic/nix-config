@@ -34,6 +34,26 @@ xorriso -indev base.iso -outdev m16-installer.iso \
 
 ## 安装系统与用户环境
 
-主机定义位于 `nixos/hosts/m16/`，用户环境为 `homeConfigurations."linwhite@m16"`。连接实机后核对硬件和目标磁盘，完成分区并挂载到 `/mnt`，使用实机生成的 `hardware-configuration.nix` 更新主机配置。
+主机定义位于 `nixos/hosts/m16/`，角色为带 GNOME 桌面的 GPU 服务器。Intel 核显负责桌面，RTX 3060 提供计算能力，Podman 可以使用 NVIDIA CDI。合盖和空闲均保持运行。局域网地址为 `m16.local`，服务器管理地址为 `m16.inner.imdomestic.com`。
 
-系统安装使用 `nixos-install --flake .#m16`。用户环境独立安装，在 linwhite 账户下执行 `just hm m16 linwhite`。系统和 Home Manager 分别验证，重启后检查网络、SSH、图形桌面及用户环境。
+Windows 的 Tailscale 节点名称为 `m16-windows`；NixOS 使用独立的 `m16` 节点身份。
+
+用户环境保持独立：`homeConfigurations."hank@m16"` 使用 b650 的个人配置、开发工具和 GNOME 模块；`homeConfigurations."linwhite@m16"` 与 m1pro 共用个人配置、开发工具和图形工具配置，软件按各自平台构建。
+
+### 磁盘与启动
+
+安装目标为 Micron 3400 512 GB NVMe。保留 Windows 分区、Microsoft 保留分区和原有 EFI 分区。先在 Windows 管理员终端运行 `powercfg /h off`，保存文件后执行 `shutdown /s /t 0`，从 USB 启动并确认 NTFS 可以正常读写。
+
+如果 NTFS-3G 报告元数据仍保留在 Windows 缓存中，需要进入 Windows 完成恢复和完整关机，直到读写探测通过，才可以调整分区。
+
+分配容量按 Windows 实际空闲字节数的 80%，向下取整到 5 GiB 的整数倍计算。调整前保存 GPT 和 EFI 内容，检查 NTFS 一致性并完成 `ntfsresize --no-action` 验证。先缩小 NTFS，再调整分区边界；起始扇区和分区标识保持一致。分配空间包含 2 GiB 的 FAT32 XBOOTLDR 分区 `M16BOOT`，其余为 ext4 根分区 `M16ROOT`。安装前核对完整系统与两个用户环境的总容量，并预留运行空间。
+
+`M16ROOT` 挂载到 `/mnt`，`M16BOOT` 挂载到 `/mnt/boot`，原 EFI 分区（UUID `6219-21FA`）挂载到 `/mnt/efi`。systemd-boot 在原 EFI 分区保存启动程序，将内核和 initrd 放在 XBOOTLDR 分区，并提供 Windows 启动入口。
+
+### 系统和用户环境部署
+
+将安装介质的 `/iso/installer-network.env` 以 root 所有、权限 `0600` 写入目标系统 `/var/lib/NetworkManager/m16-wifi.env`。NetworkManager 使用该文件生成持久 Wi-Fi 连接。
+
+本地登录密码通过 `users.users.<name>.hashedPasswordFile` 管理，散列分别保存在 `/var/lib/user-passwords/linwhite` 和 `/var/lib/user-passwords/hank`，文件仅允许 root 读写。安装前创建这些文件，密码及散列均保留在仓库以外。
+
+系统安装使用 `nixos-install --flake .#m16`。用户环境分别在对应账户下执行 `just hm m16 hank` 和 `just hm m16 linwhite`。首次启动后注册本机的 Tailscale 身份。系统与 Home Manager 分别验证，重启后检查根分区、Windows 启动入口、Wi-Fi、SSH、两个用户环境、GNOME、NVIDIA 驱动和 Podman CDI。
