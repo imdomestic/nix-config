@@ -70,6 +70,20 @@ tailscale ssh root@b650 'cat /var/tmp/268v-vfio-probe/guest.json'
 tmux 与 Codex 都是宿主进程，不能跨 268V 重启存活；仅关闭 SSH 或终端时才是
 tmux 的保活场景。独立的 b650 控制程序不依赖本机 Codex 会话继续运行。
 
+首次启动控制服务时，等待结束后立即报
+`neither $XDG_CONFIG_HOME nor $HOME are defined`，因此没有关闭 VM 或重启宿主。
+误导点是交互式 Tailscale SSH 已成功，但 systemd 的隐式 root 服务没有同样的登录环境。
+控制服务必须显式指定 `User=root`、`SetLoginEnvironment=yes`；现已加入等待前的
+完整连接检查和 `--check` 只读预检模式，先在相同服务环境中通过预检再执行。
+
+```sh
+# 在 b650 上运行；脚本已复制到对应运行时目录。
+systemd-run --wait --pipe --collect --property=User=root --property=SetLoginEnvironment=yes \
+  /run/current-system/sw/bin/bash /var/tmp/268v-vfio-probe/controller.sh --check
+systemd-run --unit=268v-vfio-probe --property=User=root --property=SetLoginEnvironment=yes \
+  --property=RuntimeMaxSec=1800 /run/current-system/sw/bin/bash /var/tmp/268v-vfio-probe/controller.sh
+```
+
 ## 命运 2 的限制与证据
 
 Bungie 安全团队 BNGSecurity 在 2021-08-26 的

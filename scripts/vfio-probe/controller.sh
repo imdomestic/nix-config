@@ -41,11 +41,20 @@ restore() {
     log 'Automatic return was not confirmed. A physical reboot uses the normal default.'
 }
 trap restore EXIT
+trap 'log "Probe failed at line $LINENO"' ERR
 
+if [[ -z ${HOME:-}${XDG_CONFIG_HOME:-} ]]; then
+    log 'Missing login environment; start with User=root and SetLoginEnvironment=yes'
+    exit 1
+fi
+log 'Checking SSH and target prerequisites from the service environment'
+oldboot=$(remote 'cat /proc/sys/kernel/random/boot_id')
+remote "test -f /boot/loader/entries/$normal && test -f /boot/loader/entries/$vfio && test -x $python && test -f /var/tmp/268v-vfio-probe/receiver.py && virsh -c qemu:///system domstate windows11"
+log 'Preflight passed'
+[[ ${1:-} == --check ]] && exit 0
 log 'Probe scheduled; waiting 45 seconds before guest shutdown'
 sleep 45
-oldboot=$(remote 'cat /proc/sys/kernel/random/boot_id')
-remote "test -f /boot/loader/entries/$normal && test -f /boot/loader/entries/$vfio"
+log 'Requesting normal Windows shutdown'
 remote 'virsh -c qemu:///system shutdown windows11'
 for ((n=0; n<24; n++)); do
     state=$(remote 'virsh -c qemu:///system domstate windows11')
@@ -53,8 +62,10 @@ for ((n=0; n<24; n++)); do
     sleep 5
 done
 [[ "$state" == 'shut off' ]] || { log 'Guest did not shut down; aborting without reboot'; exit 1; }
+log 'Windows stopped; selecting the one-shot VFIO boot entry'
 remote "bootctl set-oneshot $vfio"
 rebooted=true
+log 'Rebooting 268v'
 remote 'systemctl reboot' || true
 for ((n=0; n<48; n++)); do
     sleep 5
@@ -62,6 +73,7 @@ for ((n=0; n<48; n++)); do
     [[ -n "$newboot" && "$newboot" != "$oldboot" ]] && break
 done
 [[ -n "$newboot" && "$newboot" != "$oldboot" ]] || { log 'Host did not reconnect'; exit 1; }
+log '268v reconnected after reboot; checking GPU binding'
 remote 'readlink /run/current-system; cat /proc/cmdline; lspci -nnk -s 00:02.0; systemctl show nixvirt -p Result -p ExecMainStatus' >"$out/host.txt"
 remote 'test "$(basename "$(readlink /sys/bus/pci/devices/0000:00:02.0/driver)")" = vfio-pci'
 for ((n=0; n<12; n++)); do
