@@ -158,6 +158,14 @@
       syntaxPunctuation = gray3;
     };
 in {
+  imports = [inputs.sops-nix.homeManagerModules.sops];
+
+  # 与 .sops.yaml 的管理员收件人一致，运行时从用户的 SSH key 派生 age key。
+  sops.age.sshKeyPaths = ["${config.home.homeDirectory}/.ssh/id_ed25519"];
+  sops.secrets."cliproxy/api_key" = {
+    sopsFile = ../../../secrets/clients/cliproxy.yaml;
+  };
+
   programs.opencode = {
     enable = true;
     package = inputs.llm-agents.packages.${system}.opencode;
@@ -166,6 +174,39 @@ in {
       model = "ninfer/qwen3.8-27b";
       plugin = runtimePlugins;
       instructions = ["${shellStrategy}/shell_strategy.md"];
+      provider.cliproxy = {
+        npm = "@ai-sdk/openai";
+        name = "CLIProxy (h610)";
+        options = {
+          baseURL = "http://h610.inner.imdomestic.com:8317/v1";
+          apiKey = "{file:${config.sops.secrets."cliproxy/api_key".path}}";
+        };
+        # h610 /v1/models 的对话模型；Responses API 保留推理与工具调用。
+        models =
+          lib.genAttrs [
+            "gpt-6.1-sol"
+            "gpt-6-astra"
+            "gpt-6-sol"
+            "gpt-6-luna"
+            "gpt-5.6-sol"
+            "gpt-5.6-terra"
+            "gpt-5.6-luna"
+            "gpt-5.5"
+          ] (model: {
+            name = model;
+            reasoning = true;
+            tool_call = true;
+            limit = {
+              context = 1050000;
+              input = 922000;
+              output = 128000;
+            };
+            modalities = {
+              input = ["text" "image"];
+              output = ["text"];
+            };
+          });
+      };
       provider.ninfer = {
         npm = "@ai-sdk/openai-compatible";
         name = "NInfer";

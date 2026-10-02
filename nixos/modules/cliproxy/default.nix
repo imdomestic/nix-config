@@ -46,9 +46,8 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    # 客户端调用本代理时要出示的 key。键名固定,`just check-sops` 会检查它
-    # 在 secrets/hosts/<host>.yaml 里真的存在。
-    sops.secrets."cliproxy/api_key" = {};
+    # 服务端和 OpenCode 共用同一份调用密钥，轮换时只需改一个文件。
+    sops.secrets."cliproxy/api_key".sopsFile = ../../../secrets/clients/cliproxy.yaml;
 
     # 管理口令。和 api_key 是两把,别复用:api_key 只能拿订阅跑量,这把能把
     # OAuth 凭据整个下载走。
