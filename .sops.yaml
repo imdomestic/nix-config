@@ -13,7 +13,7 @@ keys:
   - &fendada age1ctfjwk8fkfuxq9rrsuenmqtx8l3jx5rt4hujvh525pgruxs69fls4qtj7z # 1823215739@qq.com
   - &kenneth age18glzkfyda2qcs7ffqz9pgxrqc0p9e565xpcqxe85shdfltlv2ytq5rjp4v # 3526452465@qq.com
   # host keys: ssh-keyscan -t ed25519 <ip> | ssh-to-age
-  - &host_shanghai age1q9r44n8y323qs4yyke49pgqpv9xa75qwtjx9x4z49rmdfm584dxq2lwm2a
+  - &host_tokyo age1cddsqmvytfs97c898mnlncam62v0znxyn8am4zln5xv68gn4z3mqs878u9
   - &host_h610 age1m70ml5ff2cxswwqy8vz8al9ptjd4sfqmmk7mufem9gejgk5t34tqp7v7zr
   # h310 只有 tsIp,没有 wireguard 地址,所以 keyscan 得走 100.64.0.30。它的 22
   # 端口是 Tailscale SSH 接的(banner 是 SSH-2.0-Tailscale,不像别的机器是
@@ -53,9 +53,9 @@ creation_rules:
   - path_regex: secrets/gaoji/worker-h610\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
-  - path_regex: secrets/hosts/shanghai\.yaml$
+  - path_regex: secrets/hosts/tokyo\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_shanghai]
+      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_tokyo]
   - path_regex: secrets/hosts/h610\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
@@ -92,7 +92,7 @@ creation_rules:
           - *linwhite
           - *fendada
           - *kenneth
-          - *host_shanghai
+          - *host_tokyo
           - *host_h610
           - *host_h310
           - *host_r6s

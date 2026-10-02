@@ -13,7 +13,7 @@
 #     systemd.network.networks."40-wg0" = wg.network;
 #   }
 #   (declare the sops.secrets with owner = "systemd-network"; psk index order
-#    must match the peers list, see nixos/hosts/shanghai/wg-peers.nix)
+#    must match the peers list, see nixos/hosts/tokyo/wg-peers.nix)
 #
 # Legacy mode — parse a wg-quick style server conf from the private `wg-config`
 # input. NOTE: the extracted key files land in the world-readable nix store.

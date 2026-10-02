@@ -25,7 +25,7 @@ Behind that is a small fleet, spread over a few places on purpose:
 * `h610` runs the second copy of monitoring. It lives in a different failure
   domain from `tank` deliberately; when `tank`'s side lost power for a whole
   day, `h610` stayed up the entire time.
-* `shanghai` is a 2 GB box that fronts Grafana and runs a DERP relay.
+* `tokyo` is a 2 GB box that fronts Grafana and runs a DERP relay.
 * `r2s`, `r5s`, `r6s` and `rpi4` are small ARM boxes that keep the network
   running.
 
@@ -60,7 +60,7 @@ Claude Code statusline script.
 **Do you build on the small boxes?** No. Once was enough: a full input update
 built locally knocked three ARM boxes off the network
 ([`docs/incidents.md#arm-boxes-oom-on-local-build`](docs/incidents.md#arm-boxes-oom-on-local-build)).
-Now `r6s` builds for the ARM boxes and `tank` builds for `shanghai`. The target
+Now `r6s` builds for the ARM boxes and `tank` builds for `tokyo`. The target
 only receives a closure and runs `switch-to-configuration`.
 
 **How do you deploy?** deploy-rs over Tailscale, addressed by the MagicDNS

@@ -15,44 +15,15 @@
 in {
   imports = [
     ./hardware-configuration.nix
-    ../../modules/dae
     # 只为了 gateway.nix —— 这台不跑 Prometheus/Grafana,只做 Grafana 的
-    # 故障转移入口:http://100.64.0.13:3000 → tank,连不上自动换 h610。
+    # 故障转移入口:http://tokyo.inner.imdomestic.com:3000 → tank,连不上自动换 h610。
     # 角色在 ./default.nix 的 roles 里("monitor-gateway"),主后端见下面的
     # my.monitoring.gateway.primary。
     ../../modules/monitoring
     ../../modules/minecraft/sh.nix
   ];
 
-  # ---------------------------------------------------------------------
-  # tailscale exit node —— 让 iOS 一个 VPN 同时拿到内网和代理。
-  #
-  # 起因:iOS 只允许**一个** NetworkExtension 隧道,tailscale 和代理客户端
-  # 必然二选一。走 exit node 之后手机上只开 tailscale,出网流量到这台再由
-  # dae 按规则分流,两样一起有。
-  #
-  # 链路:
-  #   iOS → tailscale → 本机 tailscale0 → dae(转发流量)→ 分流
-  #     → 国内直连 / 国外走 im 组 → portal → 反向隧道 → r5sjp → 出网
-  #   tailnet 自身的流量不受影响 —— dae 的 routing 里 100.64.0.0/10、
-  #   41641 端口、pname(tailscaled) 全是 must_direct。
-  #
-  # **tailscale0 必须进 lan_interface,否则整件事是空的。** dae 只代理
-  # lan_interface 上的转发流量,不加的话 exit node 的流量会直接从 ens5
-  # 裸奔出去 —— 结果是拿到一个上海 IP、一点分流都没有,而且这个失败是
-  # 静默的(能上网,只是没走代理)。
-  #
-  # 只在这台覆盖:h610 和 rpi4 不是 exit node,没有 tailscale 转发流量可代理。
-  # ---------------------------------------------------------------------
-  my.dae.lanInterfaces = ["br-lan" "tailscale0"];
-
-  # 广播成出口节点。useRoutingFeatures 必须显式给 —— 默认是 "none",
-  # 不设的话 ip_forward 之类的内核参数不会被打开,广播了也转不动。
-  #
-  # 注意还有一步在机器之外:**headscale 侧要批准这条路由**。和子网路由一样,
-  # 广播 ≠ 可用,`headscale nodes list-routes` 看,`headscale nodes
-  # approve-routes` 批。另外 ACL 的 dst 要有 autogroup:internet(见
-  # hosts/h610/system.nix 的 policy),否则策略层面就不放行出网。
+  # Host traffic is direct; Xray entries retain the Japan and Sydney reverse tunnels.
   services.tailscale.useRoutingFeatures = "server";
   services.tailscale.extraSetFlags = ["--advertise-exit-node"];
 
@@ -81,7 +52,9 @@ in {
       })
       wgPeers);
 
-  time.timeZone = "Asia/Hong_Kong";
+  my.host.useChinaMirror = false;
+
+  time.timeZone = "Asia/Tokyo";
 
   boot.loader.grub.enable = true;
   boot.loader.grub.useOSProber = false;
@@ -110,6 +83,7 @@ in {
     firewall.enable = false;
     networkmanager.enable = false;
     useNetworkd = true;
+    usePredictableInterfaceNames = false;
     useDHCP = false;
     nftables = {
       enable = true;
@@ -121,11 +95,11 @@ in {
           chain prerouting {
             type nat hook prerouting priority -100; policy accept;
 
-            iifname "br-lan" tcp dport 27015 dnat ip to 10.0.0.66:27015
-            iifname "br-lan" udp dport 27015 dnat ip to 10.0.0.66:27015
+            iifname "eth0" tcp dport 27015 dnat ip to 10.0.0.66:27015
+            iifname "eth0" udp dport 27015 dnat ip to 10.0.0.66:27015
 
-            iifname "br-lan" tcp dport 64738 dnat ip to 10.0.0.66:64738
-            iifname "br-lan" udp dport 64738 dnat ip to 10.0.0.66:64738
+            iifname "eth0" tcp dport 64738 dnat ip to 10.0.0.66:64738
+            iifname "eth0" udp dport 64738 dnat ip to 10.0.0.66:64738
           }
 
           chain postrouting {
@@ -141,7 +115,7 @@ in {
       };
       # Replaces the server.conf PostUp:
       #   iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-      # so WireGuard clients (10.0.0.0/24) reach the internet via the WAN (br-lan).
+      # so WireGuard clients (10.0.0.0/24) reach the internet via the WAN (eth0).
       tables.wireguard = {
         name = "wireguard";
         enable = true;
@@ -150,7 +124,7 @@ in {
           chain postrouting {
             type nat hook postrouting priority 100; policy accept;
 
-            ip saddr 10.0.0.0/24 oifname "br-lan" masquerade
+            ip saddr 10.0.0.0/24 oifname "eth0" masquerade
           }
         '';
       };
@@ -159,34 +133,29 @@ in {
 
   systemd.network = {
     enable = true;
-    netdevs."10-br-lan" = {
-      netdevConfig = {
-        Kind = "bridge";
-        Name = "br-lan";
-      };
-    };
     netdevs."40-wg0" = wg.netdev;
     networks."40-wg0" = wg.network;
 
-    networks."20-lan-uplink" = {
-      matchConfig.Name = "ens5";
-      networkConfig.Bridge = "br-lan";
-      linkConfig.RequiredForOnline = "enslaved";
-    };
-
-    networks."30-br-lan" = {
-      matchConfig.Name = "br-lan";
+    networks."30-eth0" = {
+      matchConfig.Name = "eth0";
+      # The provider's public IPv6 and gateway were observed on the bootstrap image.
+      address = ["240d:c000:f06e:c600:c226:13a6:264e:3/128"];
+      routes = [
+        {
+          Destination = "::/0";
+          Gateway = "fe80::feee:ffff:feff:ffff";
+          GatewayOnLink = true;
+        }
+      ];
       networkConfig = {
         DHCP = "yes";
-        # The ISP's DHCP hands out DNS servers inside 100.64.0.0/10 (CGNAT),
-        # the same range tailscale uses for the tailnet. Once tailscale is up
-        # it routes 100.64.0.0/10 into tailscale0, so those DNS IPs become
-        # unreachable and all resolution fails. Pin public resolvers outside
-        # that range instead of trusting DHCP DNS.
-        DNS = ["223.5.5.5" "119.29.29.29"];
+        # Public DNS stays reachable when Tailscale owns 100.64.0.0/10.
+        DNS = ["1.1.1.1" "8.8.8.8"];
+        IPv6AcceptRA = true;
       };
       dhcpV4Config = {
-        UseRoutes = false;
+        ClientIdentifier = "mac";
+        UseRoutes = true;
         UseGateway = true;
         UseDNS = false;
       };
@@ -213,12 +182,7 @@ in {
       group = "derper";
       reloadServices = ["derper.service"];
 
-      # 不做 DNS 探测,固定等待 —— 和 h610 是同一个 bug(dae 劫持 DNS),
-      # 经过和证据见 docs/incidents.md#dae-breaks-lego-dns01。
-      #
-      # 这台尤其不能让证书坏掉:derper 拿自签占位证书照样启动,而节点选 home
-      # DERP 只看 UDP 3478 的 STUN 延迟 —— 那个是通的。于是节点被吸过来、再在
-      # TLS 阶段被拒。**证书坏掉的 DERP 比没有 DERP 更糟。**
+      # Keep the proven DNS-01 propagation delay; see docs/incidents.md#dae-breaks-lego-dns01.
       extraLegoFlags = ["--dns.propagation-wait" "120s"];
     };
   };
@@ -291,7 +255,7 @@ in {
     enable = true;
     # Without a fallback resolver, tailscale/MagicDNS taking over the resolver
     # leaves no working upstream and breaks public DNS. Matches the routers.
-    settings.Resolve.FallbackDNS = ["223.5.5.5"];
+    settings.Resolve.FallbackDNS = ["1.1.1.1" "8.8.8.8"];
   };
   services.qemuGuest.enable = true;
 
@@ -311,7 +275,7 @@ in {
     tokenFile = config.sops.secrets."k3s/token".path;
     serverAddr = "https://10.0.0.66:6443";
     extraFlags = [
-      "--node-name=shanghai"
+      "--node-name=tokyo"
       "--node-taint=vps=true:NoSchedule"
       "--node-label=node.kubernetes.io/vps=true"
       "--node-ip=10.0.0.1"
@@ -333,10 +297,10 @@ in {
     content = let
       s = config.sops.placeholder;
 
-      # www.aliyun.com:证书记录 2845B(远低于 REALITY 硬编码的 8192 上限,
-      # 见 Xray #6356),解析到本省电信段,dest 拨号不出省。
+      # Japan DNS selects a TLS-1.2 origin; use the compatible CDN, retaining the client SNI.
+      # See docs/incidents.md#tokyo-reality-cdn.
       aliyun = {
-        dest = "www.aliyun.com:443";
+        dest = "www.aliyun.com.w.cdngslb.com:443";
         serverNames = ["www.aliyun.com"];
       };
 
@@ -373,7 +337,7 @@ in {
         reverse.portals = [
           {
             tag = "portal-sh";
-            # 这台的目录名是 shanghai,但隧道两端一直用短名 sh：r5sjp 的
+            # 这台的目录名是 tokyo,但隧道两端一直用短名 sh：r5sjp 的
             # bridge-sh 注册的是 reverse-sh.hank.internal,两边必须一字不差。
             domain = "reverse-sh.hank.internal";
           }
@@ -445,5 +409,5 @@ in {
   environment.pathsToLink = ["/share/applications" "/share/xdg-desktop-portal"];
 
   programs.zsh.enable = true;
-  system.stateVersion = "25.11";
+  system.stateVersion = "26.05";
 }

@@ -4,6 +4,35 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-02 · Tokyo REALITY target changed with CDN geolocation {#tokyo-reality-cdn}
+
+After replacing the expired Shanghai VPS with Tokyo, both Xray entry ports
+accepted TCP but REALITY clients failed with `received real certificate`.
+The client UUIDs, short IDs and derived public key all matched the server,
+and the loaded service credential matched the rendered SOPS template.
+
+The misleading first signal was the large number of established bridge TCP
+connections: these were repeated REALITY fallback connections, not evidence
+that the reverse tunnels were usable. Rechecking credentials alone did not
+identify the failure.
+
+From Tokyo, `www.aliyun.com` resolved to the Japan origin (`47.245.36.2` or
+`47.91.8.6` in the samples). `xray tls ping` measured TLS 1.2 and a 9369-byte
+certificate chain. The previous domestic CDN path supported TLS 1.3 and a
+2822-byte chain with SNI `www.aliyun.com`.
+
+The Tokyo configuration now dials `www.aliyun.com.w.cdngslb.com:443`, the CDN
+alias observed from the domestic resolver, while keeping the existing SNI,
+keys and ports. Its observed Tokyo resolution `155.102.209.204` was tested
+with the original SNI: TLS 1.3, 2822-byte certificate chain. This CDN alias
+is an upstream dependency; retest it if REALITY fallback errors recur.
+
+After activation, fresh local Xray clients returned `219.104.128.80` through
+port 54322 (r5sjp) and `27.122.122.170` through port 54324 (rpi4).
+The host itself returned `43.130.229.141`; DAE is absent.
+
+Installation and acceptance: [tokyo-migration.md](tokyo-migration.md).
+
 ## 2026-10-02 · Swift 四并发、模型改名及单路测速 {#b650-swift15-concurrency-four}
 
 后续试用将 Swift-1.5 abliterated 的公开 ID 改为 `qwen3.8-27b`，原 QUASAR
