@@ -9,11 +9,15 @@
     name = "headscale-local-dns-records";
     runtimeInputs = [pkgs.tailscale pkgs.jq pkgs.coreutils];
     text = ''
-      address=$(tailscale status --json | jq -er '.Self.TailscaleIPs[] | select(startswith("100."))')
+      # Gaoji is an independent node; never attach service aliases to this host.
+      address=$(tailscale status --json | jq -er '
+        [.Peer[] | select(.DNSName == "gaoji.inner.imdomestic.com.")
+          | .TailscaleIPs[] | select(startswith("100."))] | unique
+        | if length == 1 then .[0] else error("Gaoji node address unavailable") end
+      ')
       tmp=$(mktemp ${recordsPath}.XXXXXX)
       trap 'rm -f "$tmp"' EXIT
       jq -n --arg address "$address" '[
-        {name:"gaoji.inner.imdomestic.com", type:"A", value:$address},
         {name:"kennethbot.inner.imdomestic.com", type:"A", value:$address}
       ]' > "$tmp"
       chmod 0644 "$tmp"
