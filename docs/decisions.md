@@ -11,6 +11,30 @@
 
 ---
 
+## 2026-10-02 · 高级入口使用独立 Tailscale 节点 {#gaoji-isolated-ingress}
+
+不再把 `gaoji.inner.imdomestic.com` 当成 h610 的 DNS 别名，也不直接改成
+tank 主机地址。入口配置位于 `nixos/hosts/tank/gaoji-web.nix`，使用原生
+NixOS 容器 `gaoji-web` 的 private network namespace，独立运行 tailscaled、
+nginx 和 ACME。容器注册为 `gaoji`，由 Headscale 分配自己的 IPv4/IPv6；
+宿主机的 Tailscale 身份、路由和 DNS 不共用。它不是额外的 KVM 虚拟机。
+
+机器人、QQ 和数据库仍在 tank 原位置。nginx 通过只读挂载的 Unix socket
+连接宿主机的 `gaoji-web-upstream`，由 systemd socket proxy 转发给现有
+机器人监听端口，避免经 Tailscale 绕回宿主机。只信任明确的代理来源。
+容器的 80/443 仅在自身 tailscale0 上放行；10.233.0.1/10.233.0.2 是
+点对点出口，不能作为控制台访问地址。证书凭据由 sops 渲染，只挂载这一份。
+
+首次注册使用短期、单次 preauthkey，不能把 key 或宿主机 tailscaled.state
+放进仓库。容器不是 ephemeral，独立状态与证书留在
+`/var/lib/nixos-containers/gaoji-web`，重启入口不应产生新的节点身份。
+不启用 Tailscale SSH、出口节点或子网广播。
+
+部署必须先验证新节点的有效 HTTPS、认证接口和实时更新，再更新 h610 的
+DNS 记录。`gaoji` 由节点自己的 MagicDNS 提供；旧 `kennethbot` 别名跟随
+gaoji peer 的地址。找不到该 peer 时保留原记录并失败，不能退回 h610 地址。
+只改 DNS 不代表 HTTPS 入口已经迁移；只通过构建也不代表已经部署。
+
 ## 2026-09-30 · 浮层保留圆角边框 {#floats-keep-borders}
 
 补全菜单、文档窗、签名提示、which-key、noice 命令行、Snacks 浮动 picker、诊断浮窗
