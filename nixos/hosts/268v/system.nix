@@ -1,6 +1,8 @@
 {config, pkgs, ...}: {
   boot = {
     kernelPackages = pkgs.linuxPackages_latest;
+    # Intel hybrid EAS requires passive intel_pstate with schedutil.
+    kernelParams = ["intel_pstate=passive"];
     loader = {
       efi = {
         canTouchEfiVariables = true;
@@ -25,7 +27,10 @@
   };
   services.fstrim.enable = true;
   zramSwap.enable = true;
-  powerManagement.enable = true;
+  powerManagement = {
+    enable = true;
+    cpuFreqGovernor = "schedutil";
+  };
 
   security.sudo-rs = {
     enable = true;
