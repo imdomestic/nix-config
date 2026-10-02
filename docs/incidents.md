@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-02 · 高级独立入口初次启动与注册 {#gaoji-ingress-bootstrap}
+
+高级入口迁入 tank 的 `gaoji-web` 容器。NixOS 容器默认启动时限为一分钟，
+但初次 DNS-01 签证对两个域名分别等待 120 秒。容器在启动完成前被反复
+重启，系统切换因此返回状态 4。只对这个容器用原生模块覆盖启动时限为
+五分钟；后续 tank 切换返回成功。
+
+初次启动也遇到临时公网 DNS 解析失败。Tailscale 的 bootstrap resolver
+拿到控制服务器的旧公网地址，导致首次注册超时。确认普通 DNS 查询已
+恢复后，只重启容器内 tailscaled，再用短期单次 key 注册；没有写死公网
+地址，也没有重启宿主机或 h610 的网络。凭据通过 SSH 管道交给容器内临时
+文件，退出时删除。随后取得正式证书，新节点为 `gaoji` / `100.64.0.42`。
+
+容易误判的信号：容器重启完成后立即读取客户端，曾返回 `NoState`。
+状态文件仍存在且修改时间未变化；等待后端初始化后，节点 ID 48 和地址
+都恢复原值。不能因为初始化瞬间的状态就断言登录数据丢失。
+
+h610 的 `/etc/systemd/system` 指向只读 Nix 闭包，普通 drop-in 无法写入。
+首次上线只给 DNS 记录生成器使用 systemd 原生的 `system.control` 覆盖，
+并建立闭包 GC root；未来 h610 的正常 Nix 激活会自动清理这两处过渡文件。
+对外域名已改用高级节点的 MagicDNS，旧控制台别名跟随它的地址；h610 的
+Headscale、tailscaled 和 nginx 服务身份均保持不变。
+
 ## 2026-10-02 · Tokyo REALITY target changed with CDN geolocation {#tokyo-reality-cdn}
 
 After replacing the expired Shanghai VPS with Tokyo, both Xray entry ports

@@ -36,9 +36,18 @@ gaoji peer 的地址。找不到该 peer 时保留原记录并失败，不能退
 只改 DNS 不代表 HTTPS 入口已经迁移；只通过构建也不代表已经部署。
 
 首次上线不整机切换 h610：只给 `headscale-local-dns.service` 安装临时的
-`50-gaoji-migration.conf`，引用已经构建的原生记录生成器，并为该闭包建立
+`system.control/headscale-local-dns.service.d/50-gaoji-migration.conf`，引用已
+构建的原生记录生成器，并为该闭包建立
 `gaoji-dns-updater` GC root。这个覆盖在重启后仍有效；下一次包含本模块的
 h610 正常切换会自动删除覆盖和 GC root，恢复纯声明式管理。
+
+2026-10-02 已在 tank 上线：Headscale 节点 `gaoji`（ID 48）属于
+`kenneth@imdomestic.com`，地址为 `100.64.0.42` / `fd7a:115c:a1e0::2a`。
+客户端正常域名访问控制台返回 HTTPS 200，证书校验成功；未登录管理 API
+返回 401；旧地址返回 308 并跳转到高级。完整重启容器后节点 ID、IP 和
+证书保持不变。h610 仍为 `100.64.0.3`，tank 主机仍为 `100.64.0.4`。
+h610 的 Headscale、tailscaled、nginx 以及 tank 的 QQ、数据库和 Max
+InvocationID 均未变化。18 台 NixOS 主机配置评估通过，tank 构建并切换成功。
 
 ## 2026-09-30 · 浮层保留圆角边框 {#floats-keep-borders}
 
