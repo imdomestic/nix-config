@@ -1,12 +1,15 @@
 # m16 Minecraft 服务
 
-m16 运行 tank 的 Minecraft 数据副本。公网入口的变更需要获得用户确认。
+m16 承载 Minecraft 服务，tokyo 的 Gate 通过 Tailscale 将玩家连接转发到 m16。
 
 ## 连接地址
 
-Java 客户端通过 `m16.inner.imdomestic.com:25565` 连接；同一局域网可以使用
-`10.1.2.137:25565`。Bedrock 使用相同主机的 UDP `19132` 端口。
-Tailscale 地址为 `100.64.0.43`。
+Java 客户端继续使用 tokyo 的原有地址，公网 IPv4 入口为 `43.130.229.141:25565`。
+Gate 的全部主机名路由指向 `m16.inner.imdomestic.com:25565`，并使用 PROXY
+protocol 传递玩家真实地址。m16 的 Java 入口由 Gate 转发连接。
+
+Bedrock 使用 `m16.inner.imdomestic.com:19132`，局域网地址为 `10.1.2.137:19132`。
+m16 的 Tailscale 地址为 `100.64.0.43`。
 Bedrock 协议响应版本为 `1.21.130`。
 
 | 服务 | 版本 | 本机端口 | 最大 Java 堆内存 |
@@ -19,8 +22,8 @@ Bedrock 协议响应版本为 `1.21.130`。
 | GTL | Forge 1.20.1-47.3.7 | TCP 25560 | 6 GiB |
 
 代理默认进入 lobby；代理注册的子服名称为 `lobby`、`bingo`、`speedrun`、`gtl`。
-子服、RCON 和数据库只监听本机地址。Wi-Fi 和 Tailscale 接口开放 Java 与
-Bedrock 的客户端端口。
+子服、RCON 和数据库只监听本机地址。Java 代理接收 Gate 的 PROXY protocol
+连接，Bedrock 代理接收客户端 UDP 连接。
 
 ## 数据与账户
 
@@ -72,11 +75,12 @@ NetworkManager 随系统启动。
 PostgreSQL 和 MariaDB 自动恢复，局域网与 Tailscale SSH 均可连接，systemd
 没有失败单元。重启后再次验证了休眠入口、GNOME 设置锁定及 Wi-Fi 节能设置。
 
-## 割接条件
+## 公网入口维护
 
-用户确认副本后，重新核对 tank 是否产生新的世界或数据库数据，并在一致的
-停止状态完成最终同步。随后更新公网入口到 m16，验证客户端登录、子服切换和
-权限数据。
+Gate 由 tokyo 的 `podman-gate.service` 管理，并启用开机启动。
+`nixos/modules/minecraft/gate.nix` 声明后端域名、PROXY protocol 和 TCP `25565`
+防火墙端口；`nixos/hosts/m16/minecraft.nix` 声明代理接收 PROXY protocol。
 
-`nixos/modules/minecraft/gate.nix` 的 Gate 配置使用 PROXY protocol。连接该入口时，
-需要同时配置 m16 主代理接收 PROXY protocol。当前副本接受客户端直接连接。
+2026-10-04 已从公网查询服务状态，并通过实际协议客户端登录 m16 大厅、
+确认出生位置。m16 的代理和大厅日志确认了同一条登录连接及玩家真实公网地址。
+tokyo 与 m16 的系统配置均已激活，Gate 后端通过 Tailscale 域名解析到 m16。

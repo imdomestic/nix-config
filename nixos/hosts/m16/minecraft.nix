@@ -133,7 +133,7 @@ in {
         };
       }))
       {
-        proxy.files."velocity.toml".value.advanced.haproxy-protocol = lib.mkForce false;
+        proxy.files."velocity.toml".value.advanced.haproxy-protocol = lib.mkForce true;
         bedrock-proxy.files."velocity.toml".value.bind = lib.mkForce "127.0.0.1:25572";
         lobby.jvmOpts = lib.mkForce "-Xms1G -Xmx2G -Djava.io.tmpdir=/var/cache/minecraft/lobby -XX:+ExitOnOutOfMemoryError";
         speedrun = {
