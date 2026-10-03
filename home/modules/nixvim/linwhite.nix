@@ -1,13 +1,18 @@
 # linwhite = hank/default.nix 那套 + 输入法自动切换(macOS)。
-{pkgs-unstable, ...}: {
+{
+  lib,
+  pkgs,
+  pkgs-unstable,
+  ...
+}: {
   imports = [./hank/default.nix];
 
   programs.nixvim = {
-    extraPlugins = [
+    extraPlugins = lib.optionals pkgs.stdenv.isDarwin [
       pkgs-unstable.vimPlugins.im-select-nvim
     ];
 
-    extraConfigLua = ''
+    extraConfigLua = lib.optionalString pkgs.stdenv.isDarwin ''
       require("im_select").setup({
         default_im_select = "com.apple.keylayout.ABC",
         default_command = "im-select",
