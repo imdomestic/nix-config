@@ -17,6 +17,14 @@ _: {
           "if".app-id = "com.mitchellh.ghostty";
           run = ["layout floating"];
         }
+        {
+          # Minecraft 的 Java 进程可能没有 bundle ID,用应用名和游戏标题匹配。
+          "if" = {
+            app-name-regex-substring = "^(java|Minecraft)$";
+            window-title-regex-substring = "^Minecraft(\\s|$)";
+          };
+          run = ["layout floating"];
+        }
       ];
 
       mode.main.binding = {

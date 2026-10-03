@@ -5,6 +5,7 @@
   imports = [
     ../../profiles/dev.nix
     ../../modules/nixvim/hank/default.nix
+    ../../modules/nixvim/hank/java.nix
     ../../modules/claude-code
     ../../modules/lazygit
     ../../modules/codex
@@ -21,5 +22,5 @@
 
   # nixvim 里 postgres_lsp 的可执行文件。只有 hank 在练 PG,不放共享的
   # profiles/dev.nix,免得 linwhite 也背上这 93 MB。
-  home.packages = [pkgs.postgres-language-server];
+  home.packages = [pkgs.postgres-language-server pkgs.jdt-language-server];
 }

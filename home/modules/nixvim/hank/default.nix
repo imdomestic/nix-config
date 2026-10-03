@@ -110,9 +110,9 @@
       };
     };
 
-    # jdtls / lemminx 是 kenneth 用的(kenneth.nix 里配)。列在这里只为了让
-    # 守卫认得它们 —— config 是空的,不会生成任何 vim.lsp.config 调用。
-    jdtls = {};
+    # Java 的配置交给 plugins.jdtls;cmd 可以是函数,守卫显式检查 PATH。
+    jdtls.exe = "jdtls";
+    # lemminx 是 kenneth 用的,这里只声明给 PATH 守卫。
     lemminx = {};
 
     jsonls.config = {
