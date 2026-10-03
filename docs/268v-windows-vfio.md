@@ -94,6 +94,12 @@ GPU 成功。报告及截图归档在 b650 `/var/tmp/268v-vfio-probe-third-20261
 当前 ROM 源码对 Lunar Lake 只设置 OpRegion，不分配旧式 stolen memory，
 其 OpRegion 路径本身不要求 `00:02.0`；这也是不能提前认定 PCI 位置为根因的原因。
 
+2026-10-04 第四次测试准备完成：PCI 布局配置已激活为 generation 15。
+新版采集脚本已在 Windows 以 SYSTEM 身份成功上传普通模式报告，并已重新设置
+一次性启动任务。基线在宿主 `/var/tmp/268v-vfio-probe/baseline-before-fourth.json`，
+实际测试继续使用 b650 的工作目录。部署前的 sudo 输入超时和 b650 短暂失联均未
+触发重启；恢复管理连接后，通过同一已构建闭包的标准激活入口完成切换。
+
 2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
 控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
 控制程序从当前 system profile 读取 generation，检查普通启动条目与运行中的
