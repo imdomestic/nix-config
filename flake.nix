@@ -14,9 +14,9 @@
   in {
     inherit (systems) darwinConfigurations;
     nixosConfigurations = systems.nixosConfigurations // {
-      m16-installer = inputs.nixpkgs.lib.nixosSystem {
+      x86_64-rescue = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        modules = [./nixos/installers/m16.nix];
+        modules = [./nixos/installers/x86_64-rescue.nix];
       };
     };
     homeConfigurations = homes;

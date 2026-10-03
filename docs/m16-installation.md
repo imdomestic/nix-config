@@ -1,11 +1,14 @@
 # m16 安装介质
 
-`nixosConfigurations.m16-installer` 提供 x86_64 NixOS 安装系统，支持 UEFI 和 USB 启动。系统通过 NetworkManager 自动连接 Wi-Fi，启动 SSH，并通过 Avahi 发布 `m16-installer.local`。`root` 和 `nixos` 接受 linwhite 的 SSH 公钥。
+M16 使用 [通用 x86_64 救援U盘](usb-rescue.md)，对应
+`nixosConfigurations.x86_64-rescue`。介质通过 GRUB 支持 UEFI 和传统 BIOS
+启动，自动配置有线 DHCP 和 Wi-Fi，并通过 Avahi 发布 `nixos-rescue.local`。
+`root` 和 `nixos` 接受 linwhite 的 SSH 公钥。
 
 系统启动后可从持有对应私钥的 Mac 连接：
 
 ```sh
-ssh root@m16-installer.local
+ssh root@nixos-rescue.local
 ```
 
 控制台可以通过 `ip -brief address` 查询地址，通过 `nmcli device status` 检查网络。安装环境关闭自动休眠，合上盖子后保持运行。
@@ -15,7 +18,7 @@ ssh root@m16-installer.local
 在 x86_64 Linux 构建机运行：
 
 ```sh
-nix build .#nixosConfigurations.m16-installer.config.system.build.isoImage
+nix build .#nixosConfigurations.x86_64-rescue.config.system.build.isoImage
 ```
 
 输出位于 `result/iso/`。Wi-Fi 凭据保存在本机受保护且被 Git 忽略的工作目录，文件名为 `installer-network.env`，提供 `INSTALLER_WIFI_SSID` 和 `INSTALLER_WIFI_PASSWORD` 两个变量。
@@ -23,7 +26,7 @@ nix build .#nixosConfigurations.m16-installer.config.system.build.isoImage
 将镜像下载到本机后，使用 xorriso 写入凭据并保留启动信息：
 
 ```sh
-xorriso -indev base.iso -outdev m16-installer.iso \
+xorriso -indev base.iso -outdev nixos-rescue.iso \
   -map installer-network.env /installer-network.env \
   -boot_image any replay
 ```
@@ -84,4 +87,8 @@ Windows 后方依次是 Linux 启动分区和根分区。扩容时从安装 U �
 
 安装后已通过 GRUB 的 Windows 菜单项启动保留的 Windows 系统，并确认 `m16-windows` 在 Tailscale 上联网。扩容后再次检查 NTFS 一致性和 Windows EFI 启动程序的 SHA-256，检查通过。
 
-ELECOM U 盘持续连接，作为专用维护启动盘，启动时按住 Esc 可以选择。固件将 SSD 上的 GRUB 排在 U 盘之前。U 盘保留自动联网和 SSH 功能，其 EFI 启动文件与原始备份的 SHA-256 一致。GPT、EFI 内容、启动项和扩容前的完整 Linux 分区备份保存在操作机受保护、被 Git 忽略的工作目录中。
+ELECOM U盘保存通用 x86_64 救援系统，M16 启动时按住 Esc 可以选择。
+固件将 SSD 上的 GRUB 排在U盘之前。U盘自动配置有线 DHCP、原有 Wi-Fi
+和 SSH，使用方式及介质验证记录见 [救援U盘文档](usb-rescue.md)。GPT、
+EFI 内容、启动项和扩容前的完整 Linux 分区备份保存在操作机受保护、
+被 Git 忽略的工作目录中。
