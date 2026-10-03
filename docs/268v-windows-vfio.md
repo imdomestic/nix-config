@@ -2,7 +2,7 @@
 
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
-**尚未验证核显驱动接管、内屏输出或命运 2 实际运行。**
+**第三次测试已确认 Arc 140V 在 Windows 中报 Code 43；核显加速、内屏输出和命运 2 均未成功验证。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -74,6 +74,25 @@ peer-to-peer 的警告，但尚无证据证明这些警告阻止 Windows 显卡�
 `baseline-before-third.json`；任务已重新创建，旧 `guest.json` 已归档移开。
 基线中的 Arc 140V 是上次直通留下的已断开设备，匹配 Intel `oem9.inf`；
 它不能证明本次直通成功，仍需等待实际 VFIO 启动后的报告。
+
+第三次实际结果（2026-10-03）：16:57:55 VM 启动，16:59:13 收到报告，
+17:00:25 自动返回普通系统，控制服务 `Result=success`。Arc 140V 正确匹配
+Intel `32.0.101.9033` / `oem9.inf`，但 `ConfigManagerErrorCode=43`、
+`CM_PROB_FAILED_POST_START`，分辨率为空；软件 VGA 正常。控制流程成功不代表
+GPU 成功。报告及截图归档在 b650 `/var/tmp/268v-vfio-probe-third-20261003/`。
+
+下一次对照实验仅改变 GPU 的客户机地址：从自动分配的 `04:00.0` 改为
+根总线 `00:02.0`，保持 Q35、软件 VGA、ROM、驱动和 CPU 特征。此布局参照
+[QEMU 10.2.4 IGD 文档](https://raw.githubusercontent.com/qemu/qemu/v10.2.4/docs/igd-assign.txt)
+及 [上游配置示例](https://github.com/LongQT-sea/intel-igpu-passthru#upt-mode)，
+是待验证的兼容性实验，不是已查明的 Code 43 根因。额外采集 Windows
+设备 ProblemStatus 和本次开机的系统错误事件。
+
+同次 QEMU 出现对 `0x38190000000` 的 16 MiB DMA 映射失败及 BAR peer-to-peer
+警告。CPU 物理地址宽度与所有 DMAR 的 MGAW 实测均为 42，失败地址也在此范围内；
+因此没有直接套用“宿主 CPU 比 IOMMU 位宽大”的诊断或盲目降低地址宽度。
+当前 ROM 源码对 Lunar Lake 只设置 OpRegion，不分配旧式 stolen memory，
+其 OpRegion 路径本身不要求 `00:02.0`；这也是不能提前认定 PCI 位置为根因的原因。
 
 2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
 控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
