@@ -36,7 +36,7 @@ xorriso -indev base.iso -outdev m16-installer.iso \
 
 主机定义位于 `nixos/hosts/m16/`，角色为带 GNOME 桌面的 GPU 服务器。Intel 核显负责桌面，RTX 3060 提供计算能力，Podman 可以使用 NVIDIA CDI。合盖和空闲均保持运行。局域网地址为 `m16.local`，服务器管理地址为 `m16.inner.imdomestic.com`。
 
-Windows 的 Tailscale 节点名称为 `m16-windows`；NixOS 使用独立的 `m16` 节点身份。
+Windows 的 Tailscale 节点名称为 `m16-windows`，地址为 `100.64.0.28`；NixOS 使用独立的 `m16` 节点身份，地址为 `100.64.0.43`。NixOS 的节点状态保存在 `/var/lib/tailscale`。
 
 用户环境保持独立：`homeConfigurations."hank@m16"` 使用 b650 的个人配置、开发工具和 GNOME 模块；`homeConfigurations."linwhite@m16"` 与 m1pro 共用个人配置、开发工具和图形工具配置，软件按各自平台构建。
 
@@ -49,6 +49,8 @@ Windows 的 Tailscale 节点名称为 `m16-windows`；NixOS 使用独立的 `m16
 分配容量按 Windows 实际空闲字节数的 80%，向下取整到 5 GiB 的整数倍计算。调整前保存 GPT 和 EFI 内容，检查 NTFS 一致性并完成 `ntfsresize --no-action` 验证。先缩小 NTFS，再调整分区边界；起始扇区和分区标识保持一致。分配空间包含 2 GiB 的 FAT32 XBOOTLDR 分区 `M16BOOT`，其余为 ext4 根分区 `M16ROOT`。安装前核对完整系统与两个用户环境的总容量，并预留运行空间。
 
 `M16ROOT` 挂载到 `/mnt`，`M16BOOT` 挂载到 `/mnt/boot`，原 EFI 分区（UUID `6219-21FA`）挂载到 `/mnt/efi`。systemd-boot 在原 EFI 分区保存启动程序，将内核和 initrd 放在 XBOOTLDR 分区，并提供 Windows 启动入口。
+
+固件中的 NixOS 启动项应指向原 EFI 分区的 `\EFI\systemd\systemd-bootx64.efi`。同一分区的 `\EFI\BOOT\BOOTX64.EFI` 也提供 systemd-boot 标准启动入口；Windows 启动程序位于 `\EFI\Microsoft\Boot\bootmgfw.efi`。
 
 2026-10-03 安装时，Windows 空闲容量为 70,802,575,360 字节（约 65.94 GiB），按上述规则分配 50 GiB。调整后的 NTFS 一致性检查通过，Windows 的起始扇区、分区标识和文件系统 UUID 保持一致。
 
@@ -70,4 +72,8 @@ Windows 的 Tailscale 节点名称为 `m16-windows`；NixOS 使用独立的 `m16
 
 系统和两个 Home Manager 环境可以在 tank 构建，再通过 `nix copy` 写入安装机的 `/mnt` store。安装使用 `nixos-install --root /mnt --system <system-store-path> --no-root-passwd --no-channel-copy`，两个 Home Manager 环境分别以对应账户执行其 `activate` 程序。初次安装的三个环境合计约 17.6 GiB。
 
-后续更新分别执行系统部署及 `just hm m16 hank`、`just hm m16 linwhite`。首次启动后注册本机的 Tailscale 身份。系统与 Home Manager 分别验证，重启后检查根分区、Windows 启动入口、Wi-Fi、SSH、两个用户环境、GNOME、NVIDIA 驱动和 Podman CDI。
+后续更新分别执行系统部署及 `just hm m16 hank`、`just hm m16 linwhite`。Tailscale 身份已在安装期间注册并写入目标系统，首次启动后由系统服务使用持久状态连接。
+
+2026-10-03 已完成系统安装及两个独立 Home Manager 环境的激活。在目标系统中验证了两个账户的 GNOME PAM 密码认证、sops-nix 凭据解密、交互式 Zsh、Git、tmux 会话和 Neovim 启动。根分区安装后剩余约 28 GiB。
+
+首次从 SSD 启动后，需要验证根分区、Wi-Fi、SSH、两个用户环境、GNOME、NVIDIA 驱动和 Podman CDI。Windows 首次启动时应允许 NTFS 容量调整后安排的文件系统检查完成。
