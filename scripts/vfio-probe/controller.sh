@@ -6,30 +6,44 @@ export PATH=/run/current-system/sw/bin
 out=/var/tmp/268v-vfio-probe
 mkdir -p "$out"
 exec >>"$out/controller.log" 2>&1
-remote() { timeout 25 tailscale ssh root@268v "$@"; }
+remote() { timeout --kill-after=5 15 tailscale ssh root@268v "$@"; }
 log() { printf '%s %s\n' "$(date -Is)" "$*"; }
 normal=
 vfio=
 python=/nix/store/0if41r2dp11y0v833p5yrpgr8mdanqjk-python3-3.13.15-env/bin/python3
 rebooted=false
 
+capture() {
+    local name=$1 command=$2
+    if remote "$command" >"$out/$name.partial" 2>/dev/null; then
+        mv "$out/$name.partial" "$out/$name"
+    fi
+}
+
+evidence() {
+    capture kernel.log 'journalctl -b -k --no-pager'
+    capture qemu.log 'cat /var/log/libvirt/qemu/windows11.log'
+    capture guest.json 'cat /var/tmp/268v-vfio-probe/guest.json'
+    if remote "virsh -c qemu:///system qemu-monitor-command windows11 '{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"/tmp/268v-vfio-screen.png\",\"format\":\"png\"}}'"; then
+        capture screen.png 'cat /tmp/268v-vfio-screen.png'
+    fi
+}
+
 restore() {
     if ! $rebooted; then return; fi
     log 'Collecting evidence and restoring normal boot'
-    remote 'journalctl -b -k --no-pager' >"$out/kernel.log" 2>&1 || true
-    remote 'cat /var/log/libvirt/qemu/windows11.log' >"$out/qemu.log" 2>&1 || true
-    remote 'cat /var/tmp/268v-vfio-probe/guest.json' >"$out/guest.json" 2>/dev/null || true
-    remote "virsh -c qemu:///system qemu-monitor-command windows11 '{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"/tmp/268v-vfio-screen.png\",\"format\":\"png\"}}'" || true
-    remote 'cat /tmp/268v-vfio-screen.png' >"$out/screen.png" 2>/dev/null || true
+    evidence
     remote 'virsh -c qemu:///system shutdown windows11' || true
-    for ((n=0; n<18; n++)); do
+    local deadline=$((SECONDS + 90))
+    while ((SECONDS < deadline)); do
         state=$(remote 'virsh -c qemu:///system domstate windows11' 2>/dev/null || true)
         [[ "$state" == 'shut off' ]] && break
         sleep 5
     done
     # The normal default remains unchanged; set it once explicitly for this return.
     remote "bootctl set-oneshot $normal && systemctl reboot" || true
-    for ((n=0; n<36; n++)); do
+    deadline=$((SECONDS + 180))
+    while ((SECONDS < deadline)); do
         sleep 5
         current=$(remote 'readlink /run/current-system' 2>/dev/null || true)
         if [[ -n "$current" && "$current" != *268v-vfio* ]]; then
@@ -55,6 +69,7 @@ normal="nixos-generation-${BASH_REMATCH[1]}.conf"
 vfio="nixos-generation-${BASH_REMATCH[1]}-specialisation-vfio.conf"
 remote "test -f /boot/loader/entries/$normal && test -f /boot/loader/entries/$vfio && test -x $python && test -f /var/tmp/268v-vfio-probe/receiver.py && virsh -c qemu:///system domstate windows11"
 remote "grep -Fq \"init=\$(readlink /run/current-system)/init \" /boot/loader/entries/$normal"
+remote 'test ! -e /var/tmp/268v-vfio-probe/guest.json'
 log "Using $normal and $vfio"
 log 'Preflight passed'
 [[ ${1:-} == --check ]] && exit 0
@@ -67,7 +82,8 @@ case "$state" in
     'shut off') log 'Windows is already shut down' ;;
     *) log "Unexpected VM state: $state; aborting"; exit 1 ;;
 esac
-for ((n=0; n<24; n++)); do
+deadline=$((SECONDS + 120))
+while ((SECONDS < deadline)); do
     state=$(remote 'virsh -c qemu:///system domstate windows11')
     [[ "$state" == 'shut off' ]] && break
     sleep 5
@@ -78,7 +94,9 @@ remote "bootctl set-oneshot $vfio"
 rebooted=true
 log 'Rebooting 268v'
 remote 'systemctl reboot' || true
-for ((n=0; n<48; n++)); do
+deadline=$((SECONDS + 240))
+newboot=
+while ((SECONDS < deadline)); do
     sleep 5
     newboot=$(remote 'cat /proc/sys/kernel/random/boot_id' 2>/dev/null || true)
     [[ -n "$newboot" && "$newboot" != "$oldboot" ]] && break
@@ -87,7 +105,8 @@ done
 log '268v reconnected after reboot; checking GPU binding'
 remote 'readlink /run/current-system; cat /proc/cmdline; lspci -nnk -s 00:02.0; systemctl show nixvirt -p Result -p ExecMainStatus' >"$out/host.txt"
 remote 'test "$(basename "$(readlink /sys/bus/pci/devices/0000:00:02.0/driver)")" = vfio-pci'
-for ((n=0; n<12; n++)); do
+deadline=$((SECONDS + 60))
+while ((SECONDS < deadline)); do
     remote 'virsh -c qemu:///system dumpxml --inactive windows11' >"$out/domain.xml"
     grep -q 'hostdev' "$out/domain.xml" && break
     sleep 5
@@ -99,11 +118,18 @@ if ! remote 'virsh -c qemu:///system start windows11' >"$out/start.txt" 2>&1; th
     exit 1
 fi
 log 'VM started with passthrough; waiting for the one-shot Windows report'
-for ((n=0; n<36; n++)); do
+deadline=$((SECONDS + 300))
+next_capture=$((SECONDS + 30))
+while ((SECONDS < deadline)); do
     if remote 'test -s /var/tmp/268v-vfio-probe/guest.json'; then
         log 'Windows device report received'
         exit 0
     fi
+    if ((SECONDS >= next_capture)); then
+        log 'Saving intermediate evidence'
+        evidence
+        next_capture=$((SECONDS + 60))
+    fi
     sleep 5
 done
-log 'No Windows report within 180 seconds; capturing console and restoring'
+log 'Windows report deadline reached (300 seconds plus bounded in-flight evidence capture); restoring'

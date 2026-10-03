@@ -61,6 +61,10 @@ in {
 
     boot.kernelModules = ["kvm-intel"];
     boot.kernelParams = ["intel_iommu=on"];
+    # VFIO devices cannot be saved or restored with libvirt managed save.
+    virtualisation.libvirtd.onBoot = "ignore";
+    virtualisation.libvirtd.onShutdown = "shutdown";
+    virtualisation.libvirtd.shutdownTimeout = 90;
     virtualisation.libvirtd.qemu = {
       package = pkgs.qemu_kvm;
       runAsRoot = false;
