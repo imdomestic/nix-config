@@ -22,13 +22,13 @@
       symlinks."forwarding.secret" = secretFile;
 
       symlinks."plugins/ViaVerion.jar" = pkgs.fetchurl {
-        url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.6.0/ViaVersion-5.6.0.jar";
-        sha256 = "sha256-VAlqr/sa4899o9NI1ckgpHIXWuwsnbm4lBYZDWyQnms=";
+        url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.7.1/ViaVersion-5.7.1.jar";
+        sha256 = "sha256-e5s9WjhExO5bGJZjJ2ku5+aY5311a4sPt4XlOg+apKU=";
       };
 
       symlinks."plugins/ViaBackwards.jar" = pkgs.fetchurl {
-        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.6.0/ViaBackwards-5.6.0.jar";
-        sha256 = "sha256-osVDte0mpTDCH6osoY+EEm3N/t4prsd6OuAhK3x5E6Y=";
+        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.7.1/ViaBackwards-5.7.1.jar";
+        sha256 = "sha256-elB1xx7Chj7eEtpVN8AWH/i1x6eKPBCGpJYziZEaARs=";
       };
 
       symlinks."plugins/ViaRewind.jar" = pkgs.fetchurl {
@@ -173,13 +173,13 @@
       symlinks."forwarding.secret" = secretFile;
 
       symlinks."plugins/ViaVerion.jar" = pkgs.fetchurl {
-        url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.6.0/ViaVersion-5.6.0.jar";
-        sha256 = "sha256-VAlqr/sa4899o9NI1ckgpHIXWuwsnbm4lBYZDWyQnms=";
+        url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.7.1/ViaVersion-5.7.1.jar";
+        sha256 = "sha256-e5s9WjhExO5bGJZjJ2ku5+aY5311a4sPt4XlOg+apKU=";
       };
 
       symlinks."plugins/ViaBackwards.jar" = pkgs.fetchurl {
-        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.6.0/ViaBackwards-5.6.0.jar";
-        sha256 = "sha256-osVDte0mpTDCH6osoY+EEm3N/t4prsd6OuAhK3x5E6Y=";
+        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.7.1/ViaBackwards-5.7.1.jar";
+        sha256 = "sha256-elB1xx7Chj7eEtpVN8AWH/i1x6eKPBCGpJYziZEaARs=";
       };
 
       symlinks."plugins/ViaRewind.jar" = pkgs.fetchurl {

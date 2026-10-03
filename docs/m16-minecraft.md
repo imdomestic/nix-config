@@ -25,6 +25,9 @@ Bedrock 协议响应版本为 `1.21.130`。
 子服、RCON 和数据库只监听本机地址。Java 代理接收 Gate 的 PROXY protocol
 连接，Bedrock 代理接收客户端 UDP 连接。
 
+两个代理均使用固定版本 ViaVersion 5.7.1 和 ViaBackwards 5.7.1，负责客户端与
+子服之间的协议转换，包括 bingo 计分板文本中的新版组件。
+
 ## 数据与账户
 
 完整数据位于 `/var/lib/minecraft`，包括历史世界备份、玩家数据、管理员名单与
@@ -70,6 +73,10 @@ NetworkManager 随系统启动。
 
 2026-10-04 已验证完整备份的 SHA-256、四个世界的名称与种子、管理员名单和
 封禁名单。Java 代理、Bedrock 代理及四个子服均通过 Minecraft 协议查询。
+
+1.21.5 协议客户端已通过公网入口进入 lobby，再执行 `/server bingo`，收到
+出生位置与计分板并持续连接。收到的 23 个 bingo 计分板文本全部通过
+Minecraft 1.21.5 官方 `ComponentSerialization.CODEC` 与 `NbtOps` 解码检查。
 
 保留维护 U 盘插入的状态下，m16 已完成重启并从 SSD 启动 NixOS。六个服务、
 PostgreSQL 和 MariaDB 自动恢复，局域网与 Tailscale SSH 均可连接，systemd
