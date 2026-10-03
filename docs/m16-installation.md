@@ -76,4 +76,6 @@ Windows 的 Tailscale 节点名称为 `m16-windows`，地址为 `100.64.0.28`；
 
 2026-10-03 已完成系统安装及两个独立 Home Manager 环境的激活。在目标系统中验证了两个账户的 GNOME PAM 密码认证、sops-nix 凭据解密、交互式 Zsh、Git、tmux 会话和 Neovim 启动。根分区安装后剩余约 28 GiB。
 
-首次从 SSD 启动后，需要验证根分区、Wi-Fi、SSH、两个用户环境、GNOME、NVIDIA 驱动和 Podman CDI。Windows 首次启动时应允许 NTFS 容量调整后安排的文件系统检查完成。
+拔下 U 盘后，已验证通过 SSD 上的 GRUB 默认启动 NixOS，根分区为 `nvme0n1p5`。Wi-Fi、局域网 SSH、Tailscale SSH、GNOME Wayland 登录界面和 NVIDIA 驱动正常，系统及两个用户均没有失败的 systemd 服务。hank 通过 Podman 的 NVIDIA CDI 在容器中调用 `nvidia-smi`，识别到 RTX 3060 Laptop GPU、6144 MiB 显存和 595.71.05 驱动。
+
+已通过 GRUB 的 Windows 菜单项启动保留的 Windows 系统，并确认 `m16-windows` 在 Tailscale 上联网。U 盘已恢复为安装介质，其 EFI 启动文件与原始备份的 SHA-256 一致。GPT、EFI 内容和启动项备份保存在安装操作机受保护、被 Git 忽略的工作目录中。
