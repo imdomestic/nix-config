@@ -69,6 +69,12 @@ peer-to-peer 的警告，但尚无证据证明这些警告阻止 Windows 显卡�
 其后约每分钟保留一次中间日志和截图，失败读取不会覆盖已保存的成功结果。
 预检要求宿主不存在旧 `guest.json`，防止把普通模式验证报告当成新直通结果。
 
+第三次测试准备：上述修复已应用到 generation 14，b650 同环境预检通过。
+普通 Windows 的采集任务已成功上传报告，基线另存为 b650 工作目录中的
+`baseline-before-third.json`；任务已重新创建，旧 `guest.json` 已归档移开。
+基线中的 Arc 140V 是上次直通留下的已断开设备，匹配 Intel `oem9.inf`；
+它不能证明本次直通成功，仍需等待实际 VFIO 启动后的报告。
+
 2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
 控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
 控制程序从当前 system profile 读取 generation，检查普通启动条目与运行中的
