@@ -8,7 +8,9 @@
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
 参数已修正为字符串 `off`，构建与 QEMU 属性类型校验已通过。
 2026-10-03 已应用到 generation 13，b650 控制服务的只读预检通过；
-第二次实际直通结果仍待采集。
+第二次测试中 QEMU 成功启动，Windows 获得 DHCP 地址，但 03:46:34 宿主
+收到短按电源键事件并关机，显卡报告未返回，无法判定驱动接管或内屏输出。
+远端恢复控制因此失联并超时；14:33 再次开机后已确认普通系统、`xe` 和桌面恢复。
 详见 [排查记录](incidents.md#268v-vfio-qemu-property-type)。
 
 本次已通过普通/VFIO 系统完整构建、三份 domain XML schema 校验和 ROM 构建。
@@ -49,6 +51,16 @@ SHA512 与官方值一致：
 预置不代表驱动已绑定或加速可用；核显实际传入后仍需检查设备状态。
 
 ## 首次重启测试的接续位置
+
+第二次测试（2026-10-03）的当前结果仍在工作目录：03:45:26 VM 启动，
+03:45:41 Windows 获得 `192.168.178.14`，03:46:34 logind 记录
+`Power key pressed short` 并开始关机，03:46:41 日志结束。此前每五秒的 SSH
+探测持续成功，不能把控制器随后超时误判为 GPU 导致宿主死机。
+QEMU 记录了 `vfio_container_dma_map ... Invalid argument` 和不支持 BAR
+peer-to-peer 的警告，但尚无证据证明这些警告阻止 Windows 显卡工作。
+关机时 libvirt 尝试保存 VFIO VM 状态失败（设备不可迁移），后续需要改为正常
+关闭客户机；当前 VM 为 `shut off`。控制器按次数等待叠加 SSH 超时，日志声称的
+180 秒实际耗时更长，重试前应改成墙钟截止时间并及时保存中间证据。
 
 2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
 控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
