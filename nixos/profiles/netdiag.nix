@@ -28,4 +28,6 @@
     # 编辑器,而 NixOS 默认只给 nano。
     vim
   ];
+
+  programs.nexttrace.enable = true;
 }
