@@ -2,7 +2,15 @@
   config,
   pkgs,
   ...
-}: {
+}: let
+  prepareWindowsLoader = ''
+    windowsBoot=/efi/EFI/Microsoft/Boot
+    if [ -f "$windowsBoot/bootmgfw.efi" ]; then
+      ${pkgs.coreutils}/bin/mv -f "$windowsBoot/bootmgfw.efi" "$windowsBoot/windows.efi"
+    fi
+    test -s "$windowsBoot/windows.efi"
+  '';
+in {
   imports = [
     ../../modules/keyd
     ../../modules/nerdfonts
@@ -26,13 +34,7 @@
           chainloader /EFI/Microsoft/Boot/windows.efi
         }
       '';
-      extraInstallCommands = ''
-        windowsBoot=/efi/EFI/Microsoft/Boot
-        if [ -f "$windowsBoot/bootmgfw.efi" ]; then
-          ${pkgs.coreutils}/bin/mv -f "$windowsBoot/bootmgfw.efi" "$windowsBoot/windows.efi"
-        fi
-        test -s "$windowsBoot/windows.efi"
-      '';
+      extraInstallCommands = prepareWindowsLoader;
     };
     efi = {
       canTouchEfiVariables = false;
@@ -120,6 +122,39 @@
   systemd.sleep.settings.Sleep = {
     AllowSuspend = false;
     AllowHibernation = false;
+  };
+  systemd.services.m16-boot-entries = {
+    description = "Keep Windows boot access in the GRUB menu";
+    wantedBy = ["multi-user.target"];
+    after = ["local-fs.target"];
+    unitConfig = {
+      ConditionPathIsMountPoint = "/sys/firmware/efi/efivars";
+      RequiresMountsFor = ["/efi"];
+    };
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      StateDirectory = "m16-boot-entries";
+      StateDirectoryMode = "0700";
+      UMask = "0077";
+    };
+    script =
+      prepareWindowsLoader
+      + ''
+        test -s /efi/EFI/BOOT/BOOTX64.EFI
+        shopt -s nullglob
+        for variable in /sys/firmware/efi/efivars/Boot????-8be4df61-93ca-11d2-aa0d-00e098032b8c; do
+          name=''${variable##*/}
+          name=''${name%%-*}
+          entry="$(${pkgs.efibootmgr}/bin/efibootdump "$name")"
+          case "$entry" in
+            "$name: "*"Windows Boot Manager HD(1,GPT,8762fad7-cfcb-4eae-8bf0-4315bef44901,"*)
+              ${pkgs.coreutils}/bin/cp "$variable" "$STATE_DIRECTORY/$name"
+              ${pkgs.coreutils}/bin/rm "$variable"
+              ;;
+          esac
+        done
+      '';
   };
 
   security = {
