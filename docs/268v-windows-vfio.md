@@ -52,15 +52,22 @@ SHA512 与官方值一致：
 
 ## 首次重启测试的接续位置
 
-第二次测试（2026-10-03）的当前结果仍在工作目录：03:45:26 VM 启动，
+第二次测试（2026-10-03）的结果已归档至 b650 的
+`/var/tmp/268v-vfio-probe-second-20261003/`，并补取宿主上次启动的完整 journal。
+03:45:26 VM 启动，
 03:45:41 Windows 获得 `192.168.178.14`，03:46:34 logind 记录
 `Power key pressed short` 并开始关机，03:46:41 日志结束。此前每五秒的 SSH
 探测持续成功，不能把控制器随后超时误判为 GPU 导致宿主死机。
 QEMU 记录了 `vfio_container_dma_map ... Invalid argument` 和不支持 BAR
 peer-to-peer 的警告，但尚无证据证明这些警告阻止 Windows 显卡工作。
-关机时 libvirt 尝试保存 VFIO VM 状态失败（设备不可迁移），后续需要改为正常
-关闭客户机；当前 VM 为 `shut off`。控制器按次数等待叠加 SSH 超时，日志声称的
-180 秒实际耗时更长，重试前应改成墙钟截止时间并及时保存中间证据。
+关机时 libvirt 尝试保存 VFIO VM 状态失败（设备不可迁移）。重试准备中已声明
+`libvirtd.onShutdown = "shutdown"`、`shutdownTimeout = 90`，并用
+`onBoot = "ignore"` 避免把上次运行状态跨普通/VFIO 启动模式自动恢复。
+旧控制器按次数等待叠加 SSH 超时，日志声称的 180 秒实际耗时更长；现改用
+经过时间截止值，单次 SSH 15 秒超时后再给 5 秒强制结束，Windows 报告等待
+300 秒，最后正在进行的有限时证据采集可能稍微延长这一期限。启动后 30 秒及
+其后约每分钟保留一次中间日志和截图，失败读取不会覆盖已保存的成功结果。
+预检要求宿主不存在旧 `guest.json`，防止把普通模式验证报告当成新直通结果。
 
 2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
 控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
