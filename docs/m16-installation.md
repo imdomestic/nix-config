@@ -50,10 +50,24 @@ Windows 的 Tailscale 节点名称为 `m16-windows`；NixOS 使用独立的 `m16
 
 `M16ROOT` 挂载到 `/mnt`，`M16BOOT` 挂载到 `/mnt/boot`，原 EFI 分区（UUID `6219-21FA`）挂载到 `/mnt/efi`。systemd-boot 在原 EFI 分区保存启动程序，将内核和 initrd 放在 XBOOTLDR 分区，并提供 Windows 启动入口。
 
+2026-10-03 安装时，Windows 空闲容量为 70,802,575,360 字节（约 65.94 GiB），按上述规则分配 50 GiB。调整后的 NTFS 一致性检查通过，Windows 的起始扇区、分区标识和文件系统 UUID 保持一致。
+
+| 分区 | 容量 | 文件系统 | 用途 |
+| --- | --- | --- | --- |
+| `nvme0n1p1` | 300 MiB | FAT32 | 原 EFI 分区，挂载到 `/efi` |
+| `nvme0n1p2` | 16 MiB | Microsoft Reserved | Windows 保留分区 |
+| `nvme0n1p3` | 约 426.63 GiB | NTFS | Windows |
+| `nvme0n1p4` | 2 GiB | FAT32，`M16BOOT` | XBOOTLDR，挂载到 `/boot` |
+| `nvme0n1p5` | 48 GiB | ext4，`M16ROOT` | NixOS 根分区 |
+
 ### 系统和用户环境部署
 
 将安装介质的 `/iso/installer-network.env` 以 root 所有、权限 `0600` 写入目标系统 `/var/lib/NetworkManager/m16-wifi.env`。NetworkManager 使用该文件生成持久 Wi-Fi 连接。
 
 本地登录密码通过 `users.users.<name>.hashedPasswordFile` 管理，散列分别保存在 `/var/lib/user-passwords/linwhite` 和 `/var/lib/user-passwords/hank`，文件仅允许 root 读写。安装前创建这些文件，密码及散列均保留在仓库以外。
 
-系统安装使用 `nixos-install --flake .#m16`。用户环境分别在对应账户下执行 `just hm m16 hank` 和 `just hm m16 linwhite`。首次启动后注册本机的 Tailscale 身份。系统与 Home Manager 分别验证，重启后检查根分区、Windows 启动入口、Wi-Fi、SSH、两个用户环境、GNOME、NVIDIA 驱动和 Podman CDI。
+两个账户各自生成独立的 Ed25519 密钥，保存在本机 `~/.ssh/id_ed25519`。对应的 age 公钥加入 `secrets/clients/cliproxy.yaml` 的接收者列表，供 Home Manager 的 sops-nix 服务解密 OpenCode 凭据。
+
+系统和两个 Home Manager 环境可以在 tank 构建，再通过 `nix copy` 写入安装机的 `/mnt` store。安装使用 `nixos-install --root /mnt --system <system-store-path> --no-root-passwd --no-channel-copy`，两个 Home Manager 环境分别以对应账户执行其 `activate` 程序。初次安装的三个环境合计约 17.6 GiB。
+
+后续更新分别执行系统部署及 `just hm m16 hank`、`just hm m16 linwhite`。首次启动后注册本机的 Tailscale 身份。系统与 Home Manager 分别验证，重启后检查根分区、Windows 启动入口、Wi-Fi、SSH、两个用户环境、GNOME、NVIDIA 驱动和 Podman CDI。
