@@ -46,7 +46,9 @@ Windows 的 Tailscale 节点名称为 `m16-windows`，地址为 `100.64.0.28`；
 
 如果 NTFS-3G 报告元数据仍保留在 Windows 缓存中，需要进入 Windows 完成恢复和完整关机，直到读写探测通过，才可以调整分区。
 
-分配容量按 Windows 实际空闲字节数的 80%，向下取整到 5 GiB 的整数倍计算。调整前保存 GPT 和 EFI 内容，检查 NTFS 一致性并完成 `ntfsresize --no-action` 验证。先缩小 NTFS，再调整分区边界；起始扇区和分区标识保持一致。分配空间包含 2 GiB 的 FAT32 启动分区 `M16BOOT`，其余为 ext4 根分区 `M16ROOT`。安装前核对完整系统与两个用户环境的总容量，并预留运行空间。
+NixOS 分配容量为 350 GiB，包含 2 GiB 的 FAT32 启动分区 `M16BOOT` 和 348 GiB 的 ext4 根分区 `M16ROOT`。调整前保存 GPT、EFI 内容及完整 Linux 分区镜像，并校验备份与源分区的 SHA-256。检查 NTFS 一致性并完成 `ntfsresize --no-action` 验证后，先缩小 NTFS，再调整 Windows 分区边界；Windows 起始扇区和所有分区标识保持一致。
+
+Windows 后方依次是 Linux 启动分区和根分区。扩容时从安装 U 盘启动，将全部 SSD 分区卸载，把两个 Linux 分区复制到缩减 Windows 所释放的空间。逐字节比较原分区与副本，通过后更新分区表，并使用 `resize2fs` 扩展根文件系统。文件系统 UUID 和卷标保持一致，操作完成后检查 GPT、FAT 和 ext4。
 
 `M16ROOT` 挂载到 `/mnt`，`M16BOOT` 挂载到 `/mnt/boot`，原 EFI 分区（UUID `6219-21FA`）挂载到 `/mnt/efi`。GRUB 在原 EFI 分区保存启动程序，将配置、内核和 initrd 放在 `/boot`，默认选择 NixOS，等待 5 秒后启动。菜单提供 Windows 选项，通过 EFI 分区 UUID 定位原有 Windows 启动程序。
 
@@ -54,15 +56,15 @@ Windows 的 Tailscale 节点名称为 `m16-windows`，地址为 `100.64.0.28`；
 
 每次 NixOS 启动时，`m16-boot-entries.service` 使用 `efibootdump` 识别名称为 Windows Boot Manager、指向本机 EFI 分区的启动项，将变量备份到 `/var/lib/m16-boot-entries` 后删除。GRUB 的启动项及菜单中的 Windows 入口保持可用。
 
-2026-10-03 安装时，Windows 空闲容量为 70,802,575,360 字节（约 65.94 GiB），按上述规则分配 50 GiB。调整后的 NTFS 一致性检查通过，Windows 的起始扇区、分区标识和文件系统 UUID 保持一致。
+2026-10-03 已新增 300 GiB，将 NixOS 总分配容量扩展到 350 GiB。扩容后的 Windows 分区约 126.63 GiB，空闲约 45.46 GiB，NTFS 一致性检查通过。
 
 | 分区 | 容量 | 文件系统 | 用途 |
 | --- | --- | --- | --- |
 | `nvme0n1p1` | 300 MiB | FAT32 | 原 EFI 分区，挂载到 `/efi` |
 | `nvme0n1p2` | 16 MiB | Microsoft Reserved | Windows 保留分区 |
-| `nvme0n1p3` | 约 426.63 GiB | NTFS | Windows |
+| `nvme0n1p3` | 约 126.63 GiB | NTFS | Windows |
 | `nvme0n1p4` | 2 GiB | FAT32，`M16BOOT` | Linux 启动分区，挂载到 `/boot` |
-| `nvme0n1p5` | 48 GiB | ext4，`M16ROOT` | NixOS 根分区 |
+| `nvme0n1p5` | 348 GiB | ext4，`M16ROOT` | NixOS 根分区 |
 
 ### 系统和用户环境部署
 
@@ -76,8 +78,10 @@ Windows 的 Tailscale 节点名称为 `m16-windows`，地址为 `100.64.0.28`；
 
 后续更新分别执行系统部署及 `just hm m16 hank`、`just hm m16 linwhite`。Tailscale 身份已在安装期间注册并写入目标系统，首次启动后由系统服务使用持久状态连接。
 
-2026-10-03 已完成系统安装及两个独立 Home Manager 环境的激活。在目标系统中验证了两个账户的 GNOME PAM 密码认证、sops-nix 凭据解密、交互式 Zsh、Git、tmux 会话和 Neovim 启动。根分区安装后剩余约 28 GiB。
+2026-10-03 已完成系统安装及两个独立 Home Manager 环境的激活。在目标系统中验证了两个账户的 GNOME PAM 密码认证、sops-nix 凭据解密、交互式 Zsh、Git、tmux 会话和 Neovim 启动。根分区扩容后可用容量约 319.71 GiB。
 
-拔下 U 盘后，已验证通过 SSD 上的 GRUB 默认启动 NixOS，根分区为 `nvme0n1p5`。Wi-Fi、局域网 SSH、Tailscale SSH、GNOME Wayland 登录界面和 NVIDIA 驱动正常，系统及两个用户均没有失败的 systemd 服务。hank 通过 Podman 的 NVIDIA CDI 在容器中调用 `nvidia-smi`，识别到 RTX 3060 Laptop GPU、6144 MiB 显存和 595.71.05 驱动。
+扩容后已在 U 盘保持连接的情况下，验证通过 SSD 上的 GRUB 默认启动 NixOS，根分区为 `nvme0n1p5`。Wi-Fi、局域网 SSH、Tailscale SSH、GNOME 登录服务和 NVIDIA 驱动正常，系统及两个用户均没有失败的 systemd 服务。系统和两个 Home Manager 环境均保留扩容前的版本，凭据解密、Zsh、tmux 和 Neovim 启动检查通过。安装时已验证 hank 通过 Podman 的 NVIDIA CDI 在容器中调用 `nvidia-smi`，识别到 RTX 3060 Laptop GPU、6144 MiB 显存和 595.71.05 驱动。
 
-已通过 GRUB 的 Windows 菜单项启动保留的 Windows 系统，并确认 `m16-windows` 在 Tailscale 上联网。U 盘已恢复为安装介质，其 EFI 启动文件与原始备份的 SHA-256 一致。GPT、EFI 内容和启动项备份保存在安装操作机受保护、被 Git 忽略的工作目录中。
+安装后已通过 GRUB 的 Windows 菜单项启动保留的 Windows 系统，并确认 `m16-windows` 在 Tailscale 上联网。扩容后再次检查 NTFS 一致性和 Windows EFI 启动程序的 SHA-256，检查通过。
+
+ELECOM U 盘持续连接，作为专用维护启动盘，启动时按住 Esc 可以选择。固件将 SSD 上的 GRUB 排在 U 盘之前。U 盘保留自动联网和 SSH 功能，其 EFI 启动文件与原始备份的 SHA-256 一致。GPT、EFI 内容、启动项和扩容前的完整 Linux 分区备份保存在操作机受保护、被 Git 忽略的工作目录中。
