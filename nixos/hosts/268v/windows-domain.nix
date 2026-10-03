@@ -202,6 +202,14 @@ in
           slot = 2;
           function = 0;
         };
+        # Match the upstream IGD layout; see docs/268v-windows-vfio.md.
+        address = {
+          type = "pci";
+          domain = 0;
+          bus = 0;
+          slot = 2;
+          function = 0;
+        };
         rom = {
           bar = true;
           file = "${cfg.igdROM}/igd-64a0.rom";
