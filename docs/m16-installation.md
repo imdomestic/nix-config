@@ -50,7 +50,7 @@ Windows 的 Tailscale 节点名称为 `m16-windows`，地址为 `100.64.0.28`；
 
 `M16ROOT` 挂载到 `/mnt`，`M16BOOT` 挂载到 `/mnt/boot`，原 EFI 分区（UUID `6219-21FA`）挂载到 `/mnt/efi`。GRUB 在原 EFI 分区保存启动程序，将配置、内核和 initrd 放在 `/boot`，默认选择 NixOS，等待 5 秒后启动。菜单提供 Windows 选项，通过 EFI 分区 UUID 定位原有 Windows 启动程序。
 
-固件使用单独的 `GRUB` 启动项，指向原 EFI 分区的 `\EFI\BOOT\BOOTX64.EFI`。GRUB 使用 `efiInstallAsRemovable` 安装至该标准路径，系统更新通过文件更新引导程序。Windows 启动程序位于 `\EFI\Microsoft\Boot\bootmgfw.efi`，通过 GRUB 菜单启动。
+固件使用单独的 `GRUB` 启动项，指向原 EFI 分区的 `\EFI\BOOT\BOOTX64.EFI`。GRUB 使用 `efiInstallAsRemovable` 安装至该标准路径，系统更新通过文件更新引导程序。Windows 启动程序保存为 `\EFI\Microsoft\Boot\windows.efi`，由 GRUB 菜单加载；这个文件名避免华硕固件自动生成 Windows Boot Manager 启动项。Windows 更新若重新生成 `bootmgfw.efi`，再次部署系统会将新版程序移至 `windows.efi`。
 
 2026-10-03 安装时，Windows 空闲容量为 70,802,575,360 字节（约 65.94 GiB），按上述规则分配 50 GiB。调整后的 NTFS 一致性检查通过，Windows 的起始扇区、分区标识和文件系统 UUID 保持一致。
 

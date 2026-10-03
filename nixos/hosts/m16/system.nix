@@ -23,8 +23,15 @@
           insmod fat
           insmod chain
           search --no-floppy --fs-uuid --set=root 6219-21FA
-          chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+          chainloader /EFI/Microsoft/Boot/windows.efi
         }
+      '';
+      extraInstallCommands = ''
+        windowsBoot=/efi/EFI/Microsoft/Boot
+        if [ -f "$windowsBoot/bootmgfw.efi" ]; then
+          ${pkgs.coreutils}/bin/mv -f "$windowsBoot/bootmgfw.efi" "$windowsBoot/windows.efi"
+        fi
+        test -s "$windowsBoot/windows.efi"
       '';
     };
     efi = {
