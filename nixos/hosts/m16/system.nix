@@ -45,6 +45,7 @@ in {
   networking = {
     networkmanager = {
       enable = true;
+      wifi.powersave = false;
       ensureProfiles = {
         environmentFiles = ["/var/lib/NetworkManager/m16-wifi.env"];
         profiles.m16-wifi = {
@@ -122,7 +123,25 @@ in {
   systemd.sleep.settings.Sleep = {
     AllowSuspend = false;
     AllowHibernation = false;
+    AllowHybridSleep = false;
+    AllowSuspendThenHibernate = false;
   };
+  systemd.targets = {
+    sleep.enable = false;
+    suspend.enable = false;
+    hibernate.enable = false;
+    hybrid-sleep.enable = false;
+    suspend-then-hibernate.enable = false;
+  };
+  programs.dconf.profiles.user.databases = [
+    {
+      lockAll = true;
+      settings."org/gnome/settings-daemon/plugins/power" = {
+        sleep-inactive-ac-type = "nothing";
+        sleep-inactive-battery-type = "nothing";
+      };
+    }
+  ];
   systemd.services.m16-boot-entries = {
     description = "Keep Windows boot access in the GRUB menu";
     wantedBy = ["multi-user.target"];
