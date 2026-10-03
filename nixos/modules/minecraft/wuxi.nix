@@ -37,13 +37,13 @@
       };
 
       symlinks."plugins/Geyser.jar" = pkgs.fetchurl {
-        url = "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/velocity";
+        url = "https://download.geysermc.org/v2/projects/geyser/versions/2.9.2/builds/1015/downloads/velocity";
         sha256 = "sha256-f7S/3KcRGtdMT7rXAgxyEEFfYPj9r2HBDEJrRNKA6vQ=";
       };
 
       symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
-        url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
-        sha256 = "sha256-EZ4g5MfPcORMOfvbNCkKD2XNDIi1iIztOoZtERRS8cc=";
+        url = "https://cdn.modrinth.com/data/Vebnzrzj/versions/tamnmXad/LuckPerms-Velocity-5.5.71.jar";
+        sha256 = "sha256-o6yS704p/Yek1wbckkRf2UbxyvHTNSbKGEIqYlVPoYo=";
       };
 
       symlinks."plugins/Ambassador.jar" = pkgs.fetchurl {
@@ -188,8 +188,8 @@
       };
 
       symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
-        url = "https://download.luckperms.net/1610/velocity/LuckPerms-Velocity-5.5.21.jar";
-        sha256 = "sha256-EZ4g5MfPcORMOfvbNCkKD2XNDIi1iIztOoZtERRS8cc=";
+        url = "https://cdn.modrinth.com/data/Vebnzrzj/versions/tamnmXad/LuckPerms-Velocity-5.5.71.jar";
+        sha256 = "sha256-o6yS704p/Yek1wbckkRf2UbxyvHTNSbKGEIqYlVPoYo=";
       };
 
       symlinks."plugins/Ambassador.jar" = pkgs.fetchurl {
@@ -327,8 +327,8 @@
       jvmOpts = "-Xms2G -Xmx4G";
 
       symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
-        url = "https://download.luckperms.net/1610/bukkit/loader/LuckPerms-Bukkit-5.5.21.jar";
-        sha256 = "sha256-asG+JVgKKxyKnS/eYATV3Ilpn/R+La3nfHszG8pgIGE=";
+        url = "https://cdn.modrinth.com/data/Vebnzrzj/versions/b0mk8uS6/LuckPerms-Bukkit-5.5.71.jar";
+        sha256 = "sha256-Sc7LZvof0ioTMDmkkOnB5QlaI4581m650qFv5siXVQ0=";
       };
 
       # symlinks."plugins/EssentialsX.jar" = pkgs.fetchurl {
@@ -560,8 +560,8 @@
       };
 
       symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
-        url = "https://download.luckperms.net/1610/bukkit/loader/LuckPerms-Bukkit-5.5.21.jar";
-        sha256 = "sha256-asG+JVgKKxyKnS/eYATV3Ilpn/R+La3nfHszG8pgIGE=";
+        url = "https://cdn.modrinth.com/data/Vebnzrzj/versions/b0mk8uS6/LuckPerms-Bukkit-5.5.71.jar";
+        sha256 = "sha256-Sc7LZvof0ioTMDmkkOnB5QlaI4581m650qFv5siXVQ0=";
       };
 
       symlinks."plugins/CMILib.jar" = pkgs.fetchurl {

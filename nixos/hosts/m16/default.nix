@@ -15,10 +15,12 @@ in {
 
   modules = [
     ./system.nix
+    ./minecraft.nix
     ./hardware-configuration.nix
   ];
 
   externalModules = [
+    inputs.nix-minecraft.nixosModules.minecraft-servers
     inputs.nixos-hardware.nixosModules.asus-zephyrus-gu603h
     inputs.nix-index-database.nixosModules.default
   ];
