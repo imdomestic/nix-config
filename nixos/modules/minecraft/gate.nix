@@ -12,7 +12,7 @@
         enabled: true
         routes:
           - host: "*"
-            backend: 10.0.0.66:25565
+            backend: m16.inner.imdomestic.com:25565
             proxyProtocol: true
             tcpShieldRealIP: false
   '';
@@ -33,5 +33,5 @@ in {
     cmd = ["-c" "/config.yml"];
   };
 
-  networking.firewall.allowedTCPPorts = [25566];
+  networking.firewall.allowedTCPPorts = [25565];
 }
