@@ -46,11 +46,11 @@ Windows 的 Tailscale 节点名称为 `m16-windows`，地址为 `100.64.0.28`；
 
 如果 NTFS-3G 报告元数据仍保留在 Windows 缓存中，需要进入 Windows 完成恢复和完整关机，直到读写探测通过，才可以调整分区。
 
-分配容量按 Windows 实际空闲字节数的 80%，向下取整到 5 GiB 的整数倍计算。调整前保存 GPT 和 EFI 内容，检查 NTFS 一致性并完成 `ntfsresize --no-action` 验证。先缩小 NTFS，再调整分区边界；起始扇区和分区标识保持一致。分配空间包含 2 GiB 的 FAT32 XBOOTLDR 分区 `M16BOOT`，其余为 ext4 根分区 `M16ROOT`。安装前核对完整系统与两个用户环境的总容量，并预留运行空间。
+分配容量按 Windows 实际空闲字节数的 80%，向下取整到 5 GiB 的整数倍计算。调整前保存 GPT 和 EFI 内容，检查 NTFS 一致性并完成 `ntfsresize --no-action` 验证。先缩小 NTFS，再调整分区边界；起始扇区和分区标识保持一致。分配空间包含 2 GiB 的 FAT32 启动分区 `M16BOOT`，其余为 ext4 根分区 `M16ROOT`。安装前核对完整系统与两个用户环境的总容量，并预留运行空间。
 
-`M16ROOT` 挂载到 `/mnt`，`M16BOOT` 挂载到 `/mnt/boot`，原 EFI 分区（UUID `6219-21FA`）挂载到 `/mnt/efi`。systemd-boot 在原 EFI 分区保存启动程序，将内核和 initrd 放在 XBOOTLDR 分区，并提供 Windows 启动入口。
+`M16ROOT` 挂载到 `/mnt`，`M16BOOT` 挂载到 `/mnt/boot`，原 EFI 分区（UUID `6219-21FA`）挂载到 `/mnt/efi`。GRUB 在原 EFI 分区保存启动程序，将配置、内核和 initrd 放在 `/boot`，默认选择 NixOS，等待 5 秒后启动。菜单提供 Windows 选项，通过 EFI 分区 UUID 定位原有 Windows 启动程序。
 
-固件中的 NixOS 启动项应指向原 EFI 分区的 `\EFI\systemd\systemd-bootx64.efi`。同一分区的 `\EFI\BOOT\BOOTX64.EFI` 也提供 systemd-boot 标准启动入口；Windows 启动程序位于 `\EFI\Microsoft\Boot\bootmgfw.efi`。
+固件使用单独的 `GRUB` 启动项，指向原 EFI 分区的 `\EFI\BOOT\BOOTX64.EFI`。GRUB 使用 `efiInstallAsRemovable` 安装至该标准路径，系统更新通过文件更新引导程序。Windows 启动程序位于 `\EFI\Microsoft\Boot\bootmgfw.efi`，通过 GRUB 菜单启动。
 
 2026-10-03 安装时，Windows 空闲容量为 70,802,575,360 字节（约 65.94 GiB），按上述规则分配 50 GiB。调整后的 NTFS 一致性检查通过，Windows 的起始扇区、分区标识和文件系统 UUID 保持一致。
 
@@ -59,7 +59,7 @@ Windows 的 Tailscale 节点名称为 `m16-windows`，地址为 `100.64.0.28`；
 | `nvme0n1p1` | 300 MiB | FAT32 | 原 EFI 分区，挂载到 `/efi` |
 | `nvme0n1p2` | 16 MiB | Microsoft Reserved | Windows 保留分区 |
 | `nvme0n1p3` | 约 426.63 GiB | NTFS | Windows |
-| `nvme0n1p4` | 2 GiB | FAT32，`M16BOOT` | XBOOTLDR，挂载到 `/boot` |
+| `nvme0n1p4` | 2 GiB | FAT32，`M16BOOT` | Linux 启动分区，挂载到 `/boot` |
 | `nvme0n1p5` | 48 GiB | ext4，`M16ROOT` | NixOS 根分区 |
 
 ### 系统和用户环境部署

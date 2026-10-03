@@ -9,13 +9,26 @@
   ];
 
   boot.loader = {
-    systemd-boot = {
+    timeout = 5;
+    grub = {
       enable = true;
+      device = "nodev";
+      efiSupport = true;
+      efiInstallAsRemovable = true;
       configurationLimit = 5;
-      xbootldrMountPoint = "/boot";
+      default = 0;
+      extraEntries = ''
+        menuentry "Windows" --class windows {
+          insmod part_gpt
+          insmod fat
+          insmod chain
+          search --no-floppy --fs-uuid --set=root 6219-21FA
+          chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+        }
+      '';
     };
     efi = {
-      canTouchEfiVariables = true;
+      canTouchEfiVariables = false;
       efiSysMountPoint = "/efi";
     };
   };
