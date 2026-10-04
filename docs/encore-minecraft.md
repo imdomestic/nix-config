@@ -110,3 +110,7 @@ Gate 由 tokyo 的 `podman-gate.service` 管理，并启用开机启动。
 2026-10-04 已从公网查询服务状态，并通过实际协议客户端登录 encore 大厅、
 确认出生位置。encore 的代理和大厅日志确认了同一条登录连接及玩家真实公网地址。
 tokyo 与 encore 的系统配置均已激活，Gate 后端通过 Tailscale 域名解析到 encore。
+
+encore 重启后已验证六个 Java 状态查询、Bedrock UDP 状态查询，并使用
+26.3 协议客户端从公网完成 `lobby → bingo → speedrun → lobby` 登录与切换。
+Windows 的管理名称为 `m16.inner.imdomestic.com`。
