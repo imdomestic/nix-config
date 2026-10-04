@@ -15,25 +15,15 @@ ssh root@nixos-rescue.local
 
 ## 构建与写入
 
-在 x86_64 Linux 构建机运行：
+在 x86_64 Linux 构建机生成救援 ISO，使用 xorriso 写入 Wi-Fi 凭据，
+再通过 `system.build.usbImageBuilder` 生成标准 GPT 磁盘镜像。U盘的首个
+分区为 512 MiB FAT32 EFI 分区，第二分区用于 GRUB BIOS，第三分区保存
+完整的只读 ISO。构建命令、凭据处理、写入校验和备份 GPT 调整步骤见
+[救援U盘说明](usb-rescue.md#构建和写入)。
 
-```sh
-nix build .#nixosConfigurations.x86_64-rescue.config.system.build.isoImage
-```
-
-输出位于 `result/iso/`。Wi-Fi 凭据保存在本机受保护且被 Git 忽略的工作目录，文件名为 `installer-network.env`，提供 `INSTALLER_WIFI_SSID` 和 `INSTALLER_WIFI_PASSWORD` 两个变量。
-
-将镜像下载到本机后，使用 xorriso 写入凭据并保留启动信息：
-
-```sh
-xorriso -indev base.iso -outdev nixos-rescue.iso \
-  -map installer-network.env /installer-network.env \
-  -boot_image any replay
-```
-
-安装系统使用 `networking.networkmanager.ensureProfiles`，从 `/iso/installer-network.env` 读取凭据。凭据仅保存在本机和安装介质中。基础镜像可以在构建机生成，凭据写入和最终镜像测试在本机进行。
-
-将最终镜像作为 USB 磁盘写入，写入前核对设备型号、容量和外置 USB 属性，写入后读取镜像对应的全部字节进行 SHA-256 校验。镜像应通过真实 UEFI 启动、SSH 公钥登录和 NetworkManager 配置加载测试。
+安装系统使用 `networking.networkmanager.ensureProfiles`，从
+`/iso/installer-network.env` 读取 Wi-Fi 凭据。凭据仅保存在受保护的
+本地工作目录和安装介质中。
 
 ## 安装系统与用户环境
 
@@ -59,7 +49,7 @@ Windows 后方依次是 Linux 启动分区和根分区。扩容时从安装 U �
 
 每次 NixOS 启动时，`m16-boot-entries.service` 使用 `efibootdump` 识别名称为 Windows Boot Manager、指向本机 EFI 分区的启动项，将变量备份到 `/var/lib/m16-boot-entries` 后删除。GRUB 的启动项及菜单中的 Windows 入口保持可用。
 
-固件启动列表保留 `Boot0000`（SSD GRUB）和 `Boot0001`（`NixOS Rescue USB`），顺序为 `0000,0001`。救援入口指向 ELECOM MF-DAU3 当前 USB 接口和第二分区的 `\EFI\BOOT\BOOTX64.EFI`。2026-10-04 已通过该入口启动救援系统并完成 Wi-Fi、SSH 和内存根目录检查，随后返回 SSD，启动顺序保持一致。救援介质及备份位置见 [救援U盘说明](usb-rescue.md)。
+固件启动列表保留 `Boot0000`（SSD GRUB）和 `Boot0001`（`NixOS Rescue USB`），顺序为 `0000,0001`。救援入口通过 ELECOM MF-DAU3 第一分区的 PARTUUID 定位 `\EFI\BOOT\BOOTX64.EFI`，适用于不同的 USB 接口。2026-10-04 已通过该入口启动救援系统并完成 Wi-Fi、SSH 和内存根目录检查，随后返回 SSD，启动顺序保持一致。救援介质及备份位置见 [救援U盘说明](usb-rescue.md)。
 
 2026-10-03 已新增 300 GiB，将 NixOS 总分配容量扩展到 350 GiB。扩容后的 Windows 分区约 126.63 GiB，空闲约 45.46 GiB，NTFS 一致性检查通过。
 

@@ -38,8 +38,8 @@ nix build .#nixosConfigurations.x86_64-rescue.config.system.build.isoImage
 ```
 
 输出位于 `result/iso/`。`nixos/installers/grub-iso.nix` 使用 NixOS 的
-UEFI GRUB 镜像及 `grub-mkrescue` 生成 BIOS 引导程序；EFI 文件系统作为
-独立 GPT 分区附加到镜像，支持直接写入 USB 磁盘后启动。
+UEFI GRUB 镜像及 `grub-mkrescue` 生成 ISO，系统内容和启动菜单均保存在
+ISO 中。
 
 Wi-Fi 凭据保存在受保护并被 Git 忽略的工作目录，文件名为
 `installer-network.env`，提供 `INSTALLER_WIFI_SSID` 和
@@ -54,10 +54,38 @@ xorriso -indev base.iso -outdev nixos-rescue.iso \
 NetworkManager 从 `/iso/installer-network.env` 读取凭据。最终镜像和U盘
 包含这些凭据，需要与原有安装介质一样妥善保管。
 
-写入前通过设备型号、序列号、USB 总线及挂载状态确认目标，并备份现有
-安装镜像。写入后对镜像覆盖的全部字节进行 SHA-256 校验。启动测试使用
-QEMU/KVM，将镜像或实际U盘作为只读 USB 磁盘，分别检查 UEFI、BIOS、
-SSH 公钥登录、有线 DHCP、DNS、Wi-Fi 配置及维护工具。
+构建磁盘镜像生成工具，再将包含凭据的 ISO 放入标准 GPT 磁盘镜像：
+
+```sh
+nix build .#nixosConfigurations.x86_64-rescue.config.system.build.usbImageBuilder \
+  --out-link usb-image-builder
+sudo ./usb-image-builder/bin/build-rescue-usb-image \
+  nixos-rescue.iso .work/usb-image
+```
+
+输出为 `.work/usb-image/rescue-usb.img`。工具将救援文件生成为纯 ISO9660
+数据镜像 `rescue-data.iso`，并将其写入第三分区。工具需要 Linux 的 loop
+设备及挂载权限，输出目录应位于受保护、被 Git 忽略的工作目录中。
+磁盘布局为：
+
+| 分区 | 容量 | 格式 | 用途 |
+| --- | --- | --- | --- |
+| 第一分区 | 512 MiB | FAT32，EFI System Partition | `EFI/BOOT/BOOTX64.EFI` 和 GRUB 文件 |
+| 第二分区 | 2 MiB | BIOS Boot Partition | GRUB BIOS 引导程序 |
+| 第三分区 | 随 ISO 大小确定 | ISO9660，`NIXOS_RESCUE` | 完整救援系统和 Wi-Fi 配置 |
+
+UEFI 和 BIOS 的 GRUB 均从第三分区读取系统启动菜单。UEFI 使用标准
+可移动介质路径；在其他机器上启动无需提前登记固件启动项。
+
+写入前通过设备型号、序列号、USB 总线及所有分区的挂载状态确认目标，
+并备份现有安装镜像。将 `rescue-usb.img` 写入整个U盘，刷新缓存并逐字节
+比较镜像覆盖范围，随后使用 `sgdisk --move-second-header` 将备份 GPT
+移到实际设备末尾。重新读取分区表，检查 GPT 和 FAT32，再分别比较第一
+分区与磁盘镜像、第三分区与 `rescue-data.iso`，确认文件系统内容一致。调整 GPT 后的整个
+设备散列与原始磁盘镜像不同。
+
+启动测试使用 QEMU/KVM，将镜像或实际U盘作为只读 USB 磁盘，分别检查
+UEFI、BIOS、SSH 公钥登录、有线 DHCP、DNS、Wi-Fi 配置及维护工具。
 
 ## 本地系统启动
 
@@ -71,24 +99,34 @@ U盘适用于支持 Linux 驱动的 x86_64 机器，UEFI 启动需要关闭 Secu
 
 2026-10-04 已写入 M16 上的 ELECOM MF-DAU3，序列号
 `07083421BA974624`，设备容量为 31,042,043,904 字节。
-镜像覆盖 1,519,779,840 字节，完整读取内容与最终镜像逐字节一致，SHA-256 为：
+磁盘镜像大小为 2,415,919,104 字节，SHA-256 为：
 
 ```text
-4764a10c1e9ede89b6ddbf8e5a45ce457c5d2663ebabefa166acb3e35ce17cd0
+2a1df2ff43a04a4fa93b682b2480ae4070fdb15fe2302167431ad3eb223d0f25
 ```
 
-已在 M16 的 QEMU/KVM 中分别通过 UEFI 和 BIOS 启动最终镜像及实际U盘，
-共完成四次启动测试。实际U盘以只读磁盘连接给虚拟机，两种启动方式均通过
-`root`、`nixos` 公钥登录、sudo、有线 DHCP、DNS、内存根目录、Wi-Fi
-配置加载、SSH 认证设置和维护工具检查，救援系统没有失败的 systemd 服务。
-Wi-Fi 凭据与原有U盘一致。测试完成后虚拟机正常关闭，M16 继续运行 SSD
-上的系统，SSH、NetworkManager 和 Tailscale 正常。
+第三分区内的救援数据 ISO 大小为 1,516,478,464 字节，SHA-256 为：
+
+```text
+27ac7ebf30cf770d7028e6a6ff1154bd253ebbb7e8bfc4b0250f53e5f62051ad
+```
+
+写入后完整比较磁盘镜像覆盖范围，通过后将备份 GPT 移到设备末尾。调整
+后的 GPT 和 FAT32 检查通过，EFI 分区与镜像对应区域、救援分区与完整
+ISO 均逐字节一致。EFI 分区 UUID 为 `9CC9-7992`，PARTUUID 为
+`89a6b4ed-7286-4a3a-a33c-6f244d79ad71`。
+
+已在 M16 的 QEMU/KVM 中通过 UEFI、BIOS 启动最终磁盘镜像，并将实际
+U盘以只读方式连接给虚拟机完成 BIOS 启动。三个测试均通过 `root`、
+`nixos` 公钥登录、sudo、有线 DHCP、DNS、内存根目录、Wi-Fi 配置加载、
+SSH 认证设置和维护工具检查，救援系统没有失败的 systemd 服务。Wi-Fi
+凭据与原有U盘一致。
 
 M16 的固件启动列表仅保留两个入口，`BootOrder` 为 `0000,0001`：
 
 - `Boot0000`：SSD 上的 GRUB，默认启动本地 NixOS。
-- `Boot0001`：`NixOS Rescue USB`，指向当前U盘第二分区的
-  `\EFI\BOOT\BOOTX64.EFI`。该入口包含当前 USB 接口的设备路径。
+- `Boot0001`：`NixOS Rescue USB`，通过第一分区的 PARTUUID 定位
+  `\EFI\BOOT\BOOTX64.EFI`，入口适用于不同的 USB 接口。
 
 2026-10-04 已在 M16 实机通过 `Boot0001` 启动U盘，确认根目录位于内存、
 SSD 根分区未挂载、Wi-Fi 获取 `10.1.2.137`、DNS 正常，`root` 和 `nixos`
@@ -101,8 +139,9 @@ SSD 启动变量和 EFI 引导程序与维护前的备份一致。
 后续调整固件启动项时应检查写入结果。U盘保留标准可移动介质引导路径，
 在其他机器上通过该机器的固件启动菜单选择U盘。
 
-配置通过 `nix flake check --no-build` 和救援 ISO 的完整构建。
-Mac 与 M16 计算出的 ISO derivation 一致。
+配置通过救援 ISO 的完整构建和磁盘镜像生成工具的实际运行；生成工具
+通过 ShellCheck。Mac 与 M16 计算出的 ISO derivation 一致，Nix 文件
+通过 Alejandra 格式检查，救援数据分区中的全部文件与源 ISO 内容一致。
 镜像、原有介质备份和测试记录位于 Mac 仓库的 `.work/usb-rescue/`，
 M16 的对应目录为 `/home/hank/.work/usb-rescue/`；两个目录均限制访问权限。
 
