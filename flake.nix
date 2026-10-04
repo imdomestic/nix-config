@@ -60,6 +60,7 @@
         tmux-agent-sidebar = agentSidebar nixos.rpi4;
       };
       x86_64-linux = {
+        bonsai-convert-env = nixos.ms7e56.pkgs.callPackage ./pkgs/bonsai-convert-env {};
         vfio-igd-rom = nixos."268v".config.my.windowsVM.igdROM;
         # 在 taipan 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。
         templar-droidspaces-kernel = templarDroidspacesKernel nixos.taipan;
