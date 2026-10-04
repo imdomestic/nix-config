@@ -165,6 +165,10 @@ in {
               ${pkgs.coreutils}/bin/cp "$variable" "$STATE_DIRECTORY/$name"
               ${pkgs.efibootmgr}/bin/efibootmgr --bootnum "''${name#Boot}" --delete-bootnum
               ;;
+            "$name: "*"UEFI:CD/DVD Drive BBS(129,,0x0)"|"$name: "*"UEFI:Removable Device BBS(130,,0x0)"|"$name: "*"UEFI:Network Device BBS(131,,0x0)")
+              ${pkgs.coreutils}/bin/cp "$variable" "$STATE_DIRECTORY/$name"
+              ${pkgs.efibootmgr}/bin/efibootmgr --bootnum "''${name#Boot}" --delete-bootnum
+              ;;
           esac
         done
       '';
