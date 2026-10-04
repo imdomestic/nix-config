@@ -31,6 +31,7 @@ in {
         modules = [
           userModules.linwhite.module
           userModules.linwhite.dev
+          ../../../home/modules/opencode/local-bonsai.nix
         ];
       };
     };

@@ -180,6 +180,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--url', default='http://127.0.0.1:8080')
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--api-key-file', type=Path, default=Path.home() / '.config/sops-nix/secrets/bonsai/api_key')
     parser.add_argument('--long-context', action='store_true')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -190,7 +191,9 @@ def main():
         records.append({'test': name, 'status': 'passed'})
         print(json.dumps(records[-1], ensure_ascii=False), flush=True)
 
-    with httpx.Client(timeout=900, trust_env=False) as client, MemoryMonitor() as monitor:
+    api_key = args.api_key_file.read_text().strip()
+    assert api_key, args.api_key_file
+    with httpx.Client(timeout=900, trust_env=False, headers={'Authorization': f'Bearer {api_key}'}) as client, MemoryMonitor() as monitor:
         response = client.get(f'{args.url}/v1/models')
         response.raise_for_status()
         listing = response.json()

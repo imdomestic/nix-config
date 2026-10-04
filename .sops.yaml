@@ -31,8 +31,12 @@ keys:
   - &host_rpi4 age1lghdzjwhlwssu44ptp5853e48fy0pcxrxlpf4r7ruphplxna4vzqq6e2kh
   - &host_r2s age1gf9jpsr9zr2myn780m8emtk5qzfz87jqdlrju744cvmj3v02nqpsdkkueh
   - &host_taipan age1qpgrpyp6swk2a2hystwaryaulrvyrtjecmzzjlnjawsn50ckg3fqj8rsaf
+  - &host_ms7e56 age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f
 
 creation_rules:
+  - path_regex: secrets/clients/bonsai\.yaml$
+    key_groups:
+      - age: [*linwhite, *linwhite_ms7e56, *host_ms7e56]
   - path_regex: secrets/clients/cliproxy\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_praxic, *hank_taipan, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_ms7e56, *linwhite, *fendada, *kenneth, *host_h610]

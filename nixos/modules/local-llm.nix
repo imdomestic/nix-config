@@ -68,6 +68,7 @@
     printf '%s  %s\n' ${lib.escapeShellArg model.sha256} "$target" | sha256sum --check --strict
   '';
 in {
+  imports = [./bonsai-network.nix];
   users.groups.llm-models = {};
   users.users.llm-models = {
     isSystemUser = true;
