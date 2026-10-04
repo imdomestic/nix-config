@@ -54,20 +54,32 @@
       ]
       ++ lib.optionals (id == "bonsai-main") ["--chat-template-file" (toString ./bonsai-main.jinja)]
       ++ lib.optionals model.mtp ["--spec-type" "draft-mtp" "--spec-draft-n-max" "2"]);
-  downloadModel = _id: model: ''
-    target=${lib.escapeShellArg "${bonsai.directory}/${model.file}"}
-    if [ ! -f "$target" ]; then
-      curl --fail --location --show-error --continue-at - \
-        --output "$target.partial" \
-        ${lib.escapeShellArg "https://huggingface.co/${model.repository}/resolve/${model.revision}/${model.file}"}
-      test "$(stat -c %s "$target.partial")" = ${toString model.bytes}
-      printf '%s  %s\n' ${lib.escapeShellArg model.sha256} "$target.partial" | sha256sum --check --strict
-      chmod 0644 "$target.partial"
-      mv "$target.partial" "$target"
-    fi
-    test "$(stat -c %s "$target")" = ${toString model.bytes}
-    printf '%s  %s\n' ${lib.escapeShellArg model.sha256} "$target" | sha256sum --check --strict
-  '';
+  modelManifest = pkgs.writeText "bonsai-models.json" (builtins.toJSON bonsai);
+  modelService = force: {
+    description =
+      if force
+      then "Fully verify the pinned Bonsai GGUF models"
+      else "Prepare the pinned Bonsai GGUF models using verification stamps";
+    after = ["systemd-tmpfiles-setup.service"];
+    before = lib.optionals (!force) ["llama-swap.service"];
+    path = [pkgs.curl];
+    environment.TMPDIR = "/var/lib/llm-models";
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = !force;
+      User = "llm-models";
+      Group = "llm-models";
+      StateDirectory = "llm-models";
+      StateDirectoryMode = "0755";
+      WorkingDirectory = bonsai.directory;
+      TimeoutStartSec = "infinity";
+      UMask = "0022";
+    };
+    script = ''
+      exec ${lib.getExe pkgs.python3} ${../../scripts/bonsai-models.py} \
+        --config ${modelManifest} ${lib.optionalString force "--force"}
+    '';
+  };
 in {
   imports = [./bonsai-network.nix];
   users.groups.llm-models = {};
@@ -80,26 +92,8 @@ in {
     "d /var/lib/llm-models 0755 llm-models llm-models -"
     "d ${bonsai.directory} 0755 llm-models llm-models -"
   ];
-  systemd.services.bonsai-models = {
-    description = "Download and verify the pinned Bonsai GGUF models";
-    wants = ["network-online.target"];
-    after = ["network-online.target" "systemd-tmpfiles-setup.service"];
-    before = ["llama-swap.service"];
-    path = [pkgs.curl pkgs.coreutils];
-    environment.TMPDIR = "/var/lib/llm-models";
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      User = "llm-models";
-      Group = "llm-models";
-      StateDirectory = "llm-models";
-      StateDirectoryMode = "0755";
-      WorkingDirectory = bonsai.directory;
-      TimeoutStartSec = "infinity";
-      UMask = "0022";
-    };
-    script = lib.concatStringsSep "\n" (lib.mapAttrsToList downloadModel bonsai.models);
-  };
+  systemd.services.bonsai-models = modelService false;
+  systemd.services.bonsai-models-verify = modelService true;
   services.llama-swap = {
     enable = true;
     listenAddress = "127.0.0.1";
