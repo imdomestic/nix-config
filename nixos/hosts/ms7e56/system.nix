@@ -85,13 +85,6 @@ in {
   };
   networking.nftables.enable = true;
 
-  hardware.nvidia = {
-    modesetting.enable = true;
-    open = true;
-    nvidiaSettings = true;
-    package = config.boot.kernelPackages.nvidiaPackages.production;
-  };
-  services.xserver.videoDrivers = ["nvidia"];
   nixpkgs.config.allowUnfree = true;
   my.host.useChinaMirror = false;
 
