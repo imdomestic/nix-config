@@ -84,3 +84,9 @@ ELECOM U盘保存通用 x86_64 救援系统，encore 启动时按住 Esc 可以�
 和 SSH，使用方式及介质验证记录见 [救援U盘文档](usb-rescue.md)。GPT、
 EFI 内容、启动项和扩容前的完整 Linux 分区备份保存在操作机受保护、
 被 Git 忽略的工作目录中。
+
+encore 的系统、两个用户环境、SSH 密钥注释、Wi-Fi 连接、磁盘卷标和
+管理域名均已同步。2026-10-04 实际重启后，SSD 启动、局域网与 Tailscale
+SSH、两个账户的凭据解密、GNOME、NVIDIA 和 Minecraft 服务检查通过。
+GNOME 休眠设置由系统锁定，两个 Home Manager 环境均可独立激活。
+启动维护服务同时清理固件生成的通用光驱、可移动设备和网络启动入口。
