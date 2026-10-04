@@ -155,6 +155,8 @@ in {
     # Reserve the only GPU at boot; see docs/268v-windows-vfio.md.
     specialisation.vfio.configuration = {
       my.windowsVM.passthrough = true;
+      # Driver compatibility experiment; see docs/268v-windows-vfio.md.
+      my.windowsVM.hideHypervisor = true;
       system.nixos.tags = ["vfio"];
       boot.kernelParams = ["vfio-pci.ids=8086:64a0" "initcall_blacklist=sysfb_init"];
       # nixos-hardware explicitly loads xe; a modprobe blacklist alone cannot override that.

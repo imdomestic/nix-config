@@ -2,7 +2,7 @@
 
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
-**第三、第四次测试均确认 Arc 140V 在 Windows 中报 Code 43；核显加速、内屏输出和命运 2 均未成功验证。**
+**第三至第五次测试均确认 Arc 140V 在 Windows 中报 Code 43；核显加速、内屏输出和命运 2 均未成功验证。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -111,6 +111,37 @@ GPU 成功。报告及截图归档在 b650 `/var/tmp/268v-vfio-probe-third-20261
 ASLS 和 OpRegion/VBT 签名。脚本已在普通 VM 的 `00:01.0` 上正确读出
 `1234:1111`，控制器同环境预检通过，Windows 一次性任务已重新创建。
 此轮用于判断固件初始化是否完成，不是宣称修复 Code 43。
+
+第五次实际结果：15:31:17 VM 启动，15:32:40 收到报告，15:33:54 自动返回普通
+系统。驱动仍报 Code 43。客户机 ASLS 为 `0x7bbd2000`，其内存中的
+`IntelGraphicsMem` 签名有效，OpRegion 版本 3.2、基础大小 8 KiB；说明 ROM
+确实完成了 OpRegion 设置，不能再把“ROM 没执行”当作首要猜测。结果归档在 b650
+`/var/tmp/268v-vfio-probe-fifth-20261004/`。
+
+第五次采集的 `vbt_signature_valid=false` 只针对 `ASLS+0x400` 的内嵌 VBT，
+**不是完整 VBT 检查结果**。宿主 `xe` debugfs 实测 RVDA=`0x2000`、RVDS=`0x1e00`，
+扩展 VBT 为 7,680 字节，签名 `$VBT LUNARLAKE`。依据
+[Linux OpRegion 实现](https://github.com/torvalds/linux/blob/master/drivers/gpu/drm/i915/display/intel_opregion.c)，
+2.1 及以上版本应按 OpRegion 基址加 RVDA 读取扩展 VBT。现已修正脚本，分别
+报告 inline/extended 签名，并用宿主真实 OpRegion/VBT 与第五次 PCI 数据回放验证；
+客户机扩展 VBT 的实际结果仍待下一轮采集。
+
+恢复后读到了 Windows 保留的四条 DxgKrnl 549 事件，均为
+`The request is not supported`，原因 `StartAdapter_DpiFdoEnumChildDevicesFailed`。
+PnP 的“device started”事件不代表后续图形适配器初始化成功。此前只采集 System
+错误日志遗漏了这些事件；新增读取 `Microsoft-Windows-DxgKrnl-Admin` 和
+`Microsoft-Windows-Kernel-PnP/Configuration`。DxgKrnl 日志名使用连字符而非
+斜杠，初版查询错误已修正，并让单个通道读取失败不再阻止其他诊断上报。
+`Confirm-SecureBootUEFI` 实测为 false，排除未签名 ROM 被 Secure Boot 拦截。
+
+第六次对照配置已构建，并用 `just switch 268v` 激活：普通系统仍保留原 CPU
+设置，仅 VFIO specialisation 启用已有的 `my.windowsVM.hideHypervisor`，隐藏
+CPUID hypervisor 位及 KVM 标识、移除 Hyper-V enlightenments/clock；GPU 布局、
+ROM、驱动、6 vCPU/16 GiB 不变。只使用标准 KVM/libvirt 设置，不修改内核。
+[NUC 13 的一手报告](https://forum.proxmox.com/threads/success-asus-intel-nuc-13-pro-i5-1340h-igpu-passthrough-on-proxmox-ve-9.180742/)
+把此类 CPU 特征配置列为其 Code 43 修复的一部分，但代际和其他配置不同，不能
+据此认定本机根因。第六次应同时检查新事件时间、GPU 状态和扩展 VBT。
+准备阶段 b650 曾短暂失联，未在恢复控制链路确认前重启。
 
 ## 2026-10-04 相似问题检索
 
