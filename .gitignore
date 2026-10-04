@@ -1,2 +1,4 @@
 result
 .DS_Store
+.work/
+__pycache__/
