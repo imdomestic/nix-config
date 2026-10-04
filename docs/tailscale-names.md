@@ -17,6 +17,13 @@ zone and `resolve` so a peer's address change does not require an nginx restart.
 
 ## Host names from 2026-10-04
 
+linwhite's Mac uses `aegis`, with `aegis.local` on the LAN and
+`aegis.inner.imdomestic.com` on Tailscale. Its existing node identity and
+`100.64.0.25` address are retained. nix-darwin manages ComputerName, HostName
+and LocalHostName; macOS synchronizes the SMB names with these settings.
+Use `just darwin aegis` for the system and `just hm aegis linwhite` for the
+standalone user environment.
+
 | Device | Current name | Previous name |
 | --- | --- | --- |
 | Local Mac | `praxic` | `m1elite` |

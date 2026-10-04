@@ -31,7 +31,7 @@ ssh root@nixos-rescue.local
 
 Windows 的 Tailscale 节点名称为 `m16`，地址为 `100.64.0.28`；NixOS 使用独立的 `encore` 节点身份，地址为 `100.64.0.43`。NixOS 的节点状态保存在 `/var/lib/tailscale`。
 
-用户环境保持独立：`homeConfigurations."hank@encore"` 使用 b650 的个人配置、开发工具和 GNOME 模块；`homeConfigurations."linwhite@encore"` 与 aegis 共用个人配置、开发工具和图形工具配置，软件按各自平台构建。
+用户环境保持独立：`homeConfigurations."hank@encore"` 使用 taipan 的个人配置、开发工具和 GNOME 模块；`homeConfigurations."linwhite@encore"` 与 aegis 共用个人配置、开发工具和图形工具配置，软件按各自平台构建。
 
 ### 磁盘与启动
 
