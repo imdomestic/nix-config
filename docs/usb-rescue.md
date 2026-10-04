@@ -84,11 +84,22 @@ U盘适用于支持 Linux 驱动的 x86_64 机器，UEFI 启动需要关闭 Secu
 Wi-Fi 凭据与原有U盘一致。测试完成后虚拟机正常关闭，M16 继续运行 SSD
 上的系统，SSH、NetworkManager 和 Tailscale 正常。
 
-M16 的 `Boot0000` 为 SSD 上的 GRUB，`BootOrder` 保持
-`0000,0001,0002,0003,0004`。固件变量存储当前可用空间为零，保存的
-`Boot0001` 仍指向原有U盘布局。使用新介质时，需要固件重新检测U盘；
-介质通过标准 `\EFI\BOOT\BOOTX64.EFI` 启动。M16 本机固件重新检测
-后的启动尚待验证。
+M16 的固件启动列表仅保留两个入口，`BootOrder` 为 `0000,0001`：
+
+- `Boot0000`：SSD 上的 GRUB，默认启动本地 NixOS。
+- `Boot0001`：`NixOS Rescue USB`，指向当前U盘第二分区的
+  `\EFI\BOOT\BOOTX64.EFI`。该入口包含当前 USB 接口的设备路径。
+
+2026-10-04 已在 M16 实机通过 `Boot0001` 启动U盘，确认根目录位于内存、
+SSD 根分区未挂载、Wi-Fi 获取 `10.1.2.137`、DNS 正常，`root` 和 `nixos`
+均可使用公钥登录，维护工具及 systemd 服务检查通过。随后通过 `Boot0000`
+返回 SSD，启动顺序仍为 `0000,0001`，SSH、Tailscale 和数据库服务正常。
+SSD 启动变量和 EFI 引导程序与维护前的备份一致。
+
+启动项通过 SSD GRUB 的一次性入口进入 UEFI Shell 后完成整理。维护结束后
+已清除临时入口及 EFI 维护文件。固件变量空间仍触及 Linux 写入保护阈值；
+后续调整固件启动项时应检查写入结果。U盘保留标准可移动介质引导路径，
+在其他机器上通过该机器的固件启动菜单选择U盘。
 
 配置通过 `nix flake check --no-build` 和救援 ISO 的完整构建。
 Mac 与 M16 计算出的 ISO derivation 一致。
