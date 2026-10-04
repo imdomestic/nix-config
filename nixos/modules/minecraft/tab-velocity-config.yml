@@ -54,6 +54,7 @@ playerlist-objective:
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Belowname
 belowname-objective:
   enabled: false
+  view-distance: 10
   value: "%health%"
   title: "&cHealth"
   fancy-value: "&c%health%"
@@ -83,8 +84,6 @@ scoreboard:
   toggle-command: /sb
   remember-toggle-choice: false
   hidden-by-default: false
-  use-numbers: true
-  static-number: 0
   delay-on-join-milliseconds: 0
   scoreboards:
     scoreboard-1.20.3+:
@@ -149,7 +148,7 @@ layout:
         - '43|&8&m                       '
       groups:
         staff:
-          condition: permission:tab.staff
+          display-condition: permission:tab.staff
           slots:
             - 24-40
         players:
@@ -180,6 +179,7 @@ global-playerlist:
       - server2
 
 placeholders:
+  locale: "en-US"
   date-format: "dd.MM.yyyy"
   time-format: "[HH:mm:ss / h:mm a]"
   time-offset: 0
@@ -243,6 +243,7 @@ mysql:
 # https://github.com/NEZNAMY/TAB/wiki/Feature-guide:-Multi-server-support
 proxy-support:
   enabled: true
+  channel-name-suffix: "custom"
   # Supported types: PLUGIN, REDIS, RABBITMQ
   type: PLUGIN
   plugin:
@@ -260,7 +261,7 @@ components:
   disable-shadow-for-heads: true
 
 # Internal value, do not change this
-config-version: 2
+config-version: 7
 
 ########################################################################
 # BUKKIT ONLY - THE FOLLOWING SECTION IS ONLY FOR BACKEND INSTALLATION #

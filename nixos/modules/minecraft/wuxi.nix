@@ -4,7 +4,14 @@
   pkgs,
   inputs,
   ...
-}: {
+}: let
+  velocityPackage = pkgs.velocityServers.velocity.override {
+    version = "4.2.0-30";
+    url = "https://fill-data.papermc.io/v1/objects/35a5596a5468a035d8a32c8de5ebb0dc6b8d8f0cc3ff5169d514aca762af8aa8/velocity-4.2.0-30.jar";
+    sha256 = "sha256-NaVZalRooDXYoyyN5euw3GuNjwzD/1Fp1RSsp2Kviqg=";
+    jre_headless = pkgs.temurin-bin-25;
+  };
+in {
   services.minecraft-servers = let
     forwardingSecret = "hbhbhb";
     secretFile = pkgs.runCommand "forwarding.secret" {} "echo -n '${forwardingSecret}' > $out";
@@ -16,29 +23,29 @@
 
     servers.bedrock-proxy = {
       enable = true;
-      package = pkgs.velocityServers.velocity;
+      package = velocityPackage;
       openFirewall = false;
 
       symlinks."forwarding.secret" = secretFile;
 
       symlinks."plugins/ViaVerion.jar" = pkgs.fetchurl {
-        url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.7.1/ViaVersion-5.7.1.jar";
-        sha256 = "sha256-e5s9WjhExO5bGJZjJ2ku5+aY5311a4sPt4XlOg+apKU=";
+        url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.12.0/ViaVersion-5.12.0.jar";
+        sha256 = "sha256-csQKanAtZ/Im/JoNitgquhSD/avi5hWbzd2y3AcHULA=";
       };
 
       symlinks."plugins/ViaBackwards.jar" = pkgs.fetchurl {
-        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.7.1/ViaBackwards-5.7.1.jar";
-        sha256 = "sha256-elB1xx7Chj7eEtpVN8AWH/i1x6eKPBCGpJYziZEaARs=";
+        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.12.0/ViaBackwards-5.12.0.jar";
+        sha256 = "sha256-GU6SUCJGMidNezwX5BHgMakiPBhjxvUTjVPHIfB6t40=";
       };
 
       symlinks."plugins/ViaRewind.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/TbHIxhx5/versions/pbzmkUEh/ViaRewind-4.0.12.jar";
-        sha256 = "sha256-bdIvzx3zRAilAC6GL/gxBpruhH09FdSRz+EeRU1Nmkc=";
+        url = "https://github.com/ViaVersion/ViaRewind/releases/download/4.2.0/ViaRewind-4.2.0.jar";
+        sha256 = "sha256-1mNLpXu4LVFhxo37OTVxzfQFEaC+sbBLjH7XlKNTLGo=";
       };
 
       symlinks."plugins/Geyser.jar" = pkgs.fetchurl {
-        url = "https://download.geysermc.org/v2/projects/geyser/versions/2.9.2/builds/1015/downloads/velocity";
-        sha256 = "sha256-f7S/3KcRGtdMT7rXAgxyEEFfYPj9r2HBDEJrRNKA6vQ=";
+        url = "https://download.geysermc.org/v2/projects/geyser/versions/2.11.3/builds/1247/downloads/velocity";
+        sha256 = "sha256-PvZLiv6HeIc8BuVeiac/gQkhR4GrH5ZGNgMaUtLu5hk=";
       };
 
       symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
@@ -52,28 +59,28 @@
       };
 
       symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
-        sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
+        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/ziIzW16f/SkinsRestorer.jar";
+        sha256 = "sha256-qFtKNw+Yh0HJo49NBJgmLtrL8yIDFHkKwcEnRhmWNZw=";
       };
 
       symlinks."plugins/TAB.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/gG7VFbG0/versions/lhpBZZBR/TAB%20v5.4.0.jar";
-        sha256 = "sha256-hwHDVkEf2VECt/OSa+FKy146XLqqRNLX2ymOMN/WI9I=";
+        url = "https://github.com/NEZNAMY/TAB/releases/download/6.2.0/TAB.v6.2.0.jar";
+        sha256 = "sha256-+UMxlHE0JC76R4ubm/BLKeN4YXId7ljDK36ld3mqc14=";
       };
 
       symlinks."plugins/VelocityScoreboardAPI.jar" = pkgs.fetchurl {
-        url = "https://github.com/NEZNAMY/VelocityScoreboardAPI/releases/download/1.1.6/VelocityScoreboardAPI.v1.1.6.jar";
-        sha256 = "sha256-QXglwvheLu+hmgFvMCAaDKks5seO6z483wMp1Vnky68=";
+        url = "https://github.com/NEZNAMY/VelocityScoreboardAPI/releases/download/2.1.1/VelocityScoreboardAPIv.2.1.1.jar";
+        sha256 = "sha256-EjXsEvUnluoUUgxNd4HDJTLd+ejuLvDjkzOxYu2lYM4=";
       };
 
       symlinks."plugins/Velocircon.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/KkmSfl3v/versions/fSM522rY/Velocircon-1.0.5.jar";
-        sha256 = "sha256-atXQb3DEPRNDzFq9XUrhUcmGth3GTXvlt95mqWs7fsA=";
+        url = "https://cdn.modrinth.com/data/KkmSfl3v/versions/QSNbHrv9/Velocircon-1.0.7.jar";
+        sha256 = "sha256-tNQsnUD/o/x10SOK0jdJzJrwhLFnM28vaCQGDJc0PM8=";
       };
 
       symlinks."plugins/CMIV.jar" = pkgs.fetchurl {
-        url = "https://www.zrips.net/cmiv/download.php?file=CMIV-1.0.2.3.jar";
-        sha256 = "sha256-fr2zRVNK/aX8OioT3ezKdNyWxpdBXO2epPciQYaNkyc=";
+        url = "https://www.zrips.net/cmiv/download.php?file=CMIV-1.0.2.4.jar";
+        sha256 = "sha256-X88/f94WN9XX4RvhcupdVEOtoR6Vv1Rc6KpBOMECdlE=";
       };
 
       # symlinks."plugins/TNEV.jar" = pkgs.fetchurl {
@@ -167,24 +174,24 @@
 
     servers.proxy = {
       enable = true;
-      package = pkgs.velocityServers.velocity;
+      package = velocityPackage;
       openFirewall = false;
 
       symlinks."forwarding.secret" = secretFile;
 
       symlinks."plugins/ViaVerion.jar" = pkgs.fetchurl {
-        url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.7.1/ViaVersion-5.7.1.jar";
-        sha256 = "sha256-e5s9WjhExO5bGJZjJ2ku5+aY5311a4sPt4XlOg+apKU=";
+        url = "https://github.com/ViaVersion/ViaVersion/releases/download/5.12.0/ViaVersion-5.12.0.jar";
+        sha256 = "sha256-csQKanAtZ/Im/JoNitgquhSD/avi5hWbzd2y3AcHULA=";
       };
 
       symlinks."plugins/ViaBackwards.jar" = pkgs.fetchurl {
-        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.7.1/ViaBackwards-5.7.1.jar";
-        sha256 = "sha256-elB1xx7Chj7eEtpVN8AWH/i1x6eKPBCGpJYziZEaARs=";
+        url = "https://github.com/ViaVersion/ViaBackwards/releases/download/5.12.0/ViaBackwards-5.12.0.jar";
+        sha256 = "sha256-GU6SUCJGMidNezwX5BHgMakiPBhjxvUTjVPHIfB6t40=";
       };
 
       symlinks."plugins/ViaRewind.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/TbHIxhx5/versions/pbzmkUEh/ViaRewind-4.0.12.jar";
-        sha256 = "sha256-bdIvzx3zRAilAC6GL/gxBpruhH09FdSRz+EeRU1Nmkc=";
+        url = "https://github.com/ViaVersion/ViaRewind/releases/download/4.2.0/ViaRewind-4.2.0.jar";
+        sha256 = "sha256-1mNLpXu4LVFhxo37OTVxzfQFEaC+sbBLjH7XlKNTLGo=";
       };
 
       symlinks."plugins/LuckPerms.jar" = pkgs.fetchurl {
@@ -198,28 +205,28 @@
       };
 
       symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
-        sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
+        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/ziIzW16f/SkinsRestorer.jar";
+        sha256 = "sha256-qFtKNw+Yh0HJo49NBJgmLtrL8yIDFHkKwcEnRhmWNZw=";
       };
 
       symlinks."plugins/TAB.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/gG7VFbG0/versions/lhpBZZBR/TAB%20v5.4.0.jar";
-        sha256 = "sha256-hwHDVkEf2VECt/OSa+FKy146XLqqRNLX2ymOMN/WI9I=";
+        url = "https://github.com/NEZNAMY/TAB/releases/download/6.2.0/TAB.v6.2.0.jar";
+        sha256 = "sha256-+UMxlHE0JC76R4ubm/BLKeN4YXId7ljDK36ld3mqc14=";
       };
 
       symlinks."plugins/VelocityScoreboardAPI.jar" = pkgs.fetchurl {
-        url = "https://github.com/NEZNAMY/VelocityScoreboardAPI/releases/download/1.1.6/VelocityScoreboardAPI.v1.1.6.jar";
-        sha256 = "sha256-QXglwvheLu+hmgFvMCAaDKks5seO6z483wMp1Vnky68=";
+        url = "https://github.com/NEZNAMY/VelocityScoreboardAPI/releases/download/2.1.1/VelocityScoreboardAPIv.2.1.1.jar";
+        sha256 = "sha256-EjXsEvUnluoUUgxNd4HDJTLd+ejuLvDjkzOxYu2lYM4=";
       };
 
       symlinks."plugins/Velocircon.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/KkmSfl3v/versions/fSM522rY/Velocircon-1.0.5.jar";
-        sha256 = "sha256-atXQb3DEPRNDzFq9XUrhUcmGth3GTXvlt95mqWs7fsA=";
+        url = "https://cdn.modrinth.com/data/KkmSfl3v/versions/QSNbHrv9/Velocircon-1.0.7.jar";
+        sha256 = "sha256-tNQsnUD/o/x10SOK0jdJzJrwhLFnM28vaCQGDJc0PM8=";
       };
 
       symlinks."plugins/CMIV.jar" = pkgs.fetchurl {
-        url = "https://www.zrips.net/cmiv/download.php?file=CMIV-1.0.2.3.jar";
-        sha256 = "sha256-fr2zRVNK/aX8OioT3ezKdNyWxpdBXO2epPciQYaNkyc=";
+        url = "https://www.zrips.net/cmiv/download.php?file=CMIV-1.0.2.4.jar";
+        sha256 = "sha256-X88/f94WN9XX4RvhcupdVEOtoR6Vv1Rc6KpBOMECdlE=";
       };
 
       # symlinks."plugins/TNEV.jar" = pkgs.fetchurl {
@@ -357,12 +364,12 @@
         sha256 = "sha256-9aTqcYuqq2EYz+jzmD6jpWYK8e6FcjYBgqPRttvy610=";
       };
       symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
-        sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
+        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/ziIzW16f/SkinsRestorer.jar";
+        sha256 = "sha256-qFtKNw+Yh0HJo49NBJgmLtrL8yIDFHkKwcEnRhmWNZw=";
       };
       symlinks."plugins/TAB-Bridge.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/cOXgQQKY/TAB-Bridge%20v6.2.0.jar";
-        sha256 = "sha256-7L2IOopc3SOQ7fnCQbVVJTB1vWc9NQcXgt+kMn82BnE=";
+        url = "https://github.com/NEZNAMY/TAB-Bridge/releases/download/6.2.3/TAB-Bridge.v6.2.3.-.Bukkit.jar";
+        sha256 = "sha256-tnLZw3rvnCYlQMCNqOpG5SzLiKmINdWxA46vqL9H7Wc=";
       };
       symlinks."plugins/CMIEInjector.jar" = pkgs.fetchurl {
         url = "https://zrips.net/cmii/download.php?file=CMIEInjector1.0.2.4.jar";
@@ -580,12 +587,12 @@
         sha256 = "sha256-9aTqcYuqq2EYz+jzmD6jpWYK8e6FcjYBgqPRttvy610=";
       };
       symlinks."plugins/SkinsRestorer.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/gtqGepWi/SkinsRestorer.jar";
-        sha256 = "sha256-MKDGPE9Y+Sugpem07LaT8u2AlnSjKYg8DEOzcLl0P3I=";
+        url = "https://cdn.modrinth.com/data/TsLS8Py5/versions/ziIzW16f/SkinsRestorer.jar";
+        sha256 = "sha256-qFtKNw+Yh0HJo49NBJgmLtrL8yIDFHkKwcEnRhmWNZw=";
       };
       symlinks."plugins/TAB-Bridge.jar" = pkgs.fetchurl {
-        url = "https://cdn.modrinth.com/data/kG3hVbBX/versions/cOXgQQKY/TAB-Bridge%20v6.2.0.jar";
-        sha256 = "sha256-7L2IOopc3SOQ7fnCQbVVJTB1vWc9NQcXgt+kMn82BnE=";
+        url = "https://github.com/NEZNAMY/TAB-Bridge/releases/download/6.2.3/TAB-Bridge.v6.2.3.-.Bukkit.jar";
+        sha256 = "sha256-tnLZw3rvnCYlQMCNqOpG5SzLiKmINdWxA46vqL9H7Wc=";
       };
       symlinks."plugins/CMIEInjector.jar" = pkgs.fetchurl {
         url = "https://zrips.net/cmii/download.php?file=CMIEInjector1.0.2.4.jar";
