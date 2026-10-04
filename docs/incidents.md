@@ -74,6 +74,28 @@ SHA256 为 `ffa159736c11bdafd29e2903bdfd3ae75294c9d26a03b37df071fcbecdc73312`。
 PPL 使用 teacher-forced 评分，服务固定使用 NVFP4 与 MTP。代码语料 PPL 与
 短篇自然语言样本 PPL 直接比较没有意义。上述质量记录只覆盖这一份语料。
 
+正式服务使用镜像 `localhost/ninfer:bonsai-9c875f71-sm120a-high`，镜像 ID 为
+`ec1fff5213c2388a98b4e99719f0546797d699d6624090d847d3c3af5a64b5ac`，
+OCI 归档 SHA256 为 `1f7cd72d8a31a42de88f6ac77dd4ee3096e3955e7d4b66b35e3616bd3e4cebaf`。
+固定版本的 NInfer 原生推理等级为 low、medium、xhigh；补丁将 API 的 high
+映射到 xhigh。llama-swap v224 的 setParams 原生行为是覆盖请求，因此补丁增加
+setParamsIfAbsent 和按 HTTP 路径配置的 byPath。主力默认 high，允许单次覆盖；
+Hikari 在 Chat、Responses 和 upstream 入口上固定 medium，并保持 thinking 开启。
+Responses 参数需使用 `reasoning.effort`，token 计数接口也纳入模型路由。
+
+正式服务的 13 组验证均通过。主力默认请求与显式 high 的 reasoning_tokens 为 130，
+显式 low 为 116；服务日志分别确认 xhigh 和 low。Hikari 的关闭 thinking、
+low effort 及 upstream 入口覆盖请求均被固定为 medium。
+主力与 Hikari 之间三个包含生成结果的换载请求分别耗时 5.916、6.129、5.878 秒，
+每次仅有一个模型处于加载状态。正式服务的两次 165k 输入仍全部找回三处记录；
+预填充分别为 167.588、167.864 秒，显存峰值和剩余量保持 11238 / 538 MiB。
+
+本机 llama-swap 监听 127.0.0.1:8080；独立网关监听 Tailscale 地址
+100.64.0.44:8080，仅允许 aegis 的 100.64.0.25。SOPS 在运行时提供 API key。
+网关补丁检查全部入口并向模型列表接口转发 Authorization。缺失及错误密钥均返回
+401，tank 的 100.64.0.4 请求超时，nftables 对应规则记录了丢弃的数据包。
+配置仅修改 Bonsai 实例，现有 taipan 服务保持原样。
+
 ## 2026-10-03 · 268V 首次直通在 QEMU 属性解析阶段失败 {#268v-vfio-qemu-property-type}
 
 10 月 2 日 21:34 的远端自动测试成功重启至 VFIO 特化，`8086:64a0`

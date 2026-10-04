@@ -222,7 +222,8 @@ class Verification:
                   "input_sha256": hashlib.sha256(text.encode()).hexdigest(),
                   "peak_memory_mib": max(int(row[1]) for row in gpu_rows),
                   "minimum_free_mib": min(int(row[2]) for row in gpu_rows),
-                  "passed": all(value in answer for value in markers.values()),
+                  "response_status": response["status"],
+                  "passed": response["status"] == "completed" and all(value in answer for value in markers.values()),
                   "source_files": [str(path.relative_to(source)) for path in files]}
         self.record(f"{model}-long-result", result)
         assert result["passed"], result
