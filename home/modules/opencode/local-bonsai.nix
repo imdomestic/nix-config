@@ -22,21 +22,27 @@ in {
         timeout = 600000;
       };
       models =
-        lib.mapAttrs (_id: model: {
-          inherit (model) name;
-          reasoning = true;
-          tool_call = true;
-          temperature = true;
-          limit = {
-            context = model.context;
-            output = bonsai.output;
-          };
-          modalities = {
-            input = ["text"];
-            output = ["text"];
-          };
-          options.reasoningEffort = "medium";
-        })
+        lib.mapAttrs (id: model:
+          {
+            inherit (model) name;
+            reasoning = true;
+            tool_call = true;
+            temperature = true;
+            limit = {
+              context = model.context;
+              output = bonsai.output;
+            };
+            modalities = {
+              input = ["text"];
+              output = ["text"];
+            };
+            options.reasoningEffort = model.reasoningEffort;
+          }
+          // lib.optionalAttrs (id == "bonsai-main") {
+            variants = lib.genAttrs ["low" "medium" "high"] (effort: {
+              reasoningEffort = effort;
+            });
+          })
         bonsai.models;
     };
     agent.aggressive = {

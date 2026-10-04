@@ -12,6 +12,7 @@
       sha256 = "a4e4c7b578131595c1694354bd6c74d00920df1f5082647a6126899753ebebf8";
       mtp = true;
       context = 81920;
+      reasoningEffort = "high";
     };
     bonsai-hikari = {
       name = "Hikari Bonsai 2 27B · medium";
@@ -22,6 +23,7 @@
       sha256 = "41a362f422b70a8c2dc74a3cc14447ad0ea702c440f0dbe41dc1796da7b7e342";
       mtp = false;
       context = 102400;
+      reasoningEffort = "medium";
     };
   };
 }
