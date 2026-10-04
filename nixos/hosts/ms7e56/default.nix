@@ -9,7 +9,7 @@ in {
   tsName = "ms7e56.inner.imdomestic.com";
 
   profiles = with nixosProfiles; [base desktop];
-  modules = [./system.nix ./hardware-configuration.nix];
+  modules = [./system.nix ./hardware-configuration.nix ./graphics.nix];
   externalModules = [inputs.nix-index-database.nixosModules.default];
   homeOverlays = [
     (final: prev: {
