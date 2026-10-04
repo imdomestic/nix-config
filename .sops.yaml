@@ -10,6 +10,7 @@ keys:
   - &hank_268v age199f3re3sturx83zkmedc5qkz7aqra656w6cz9zttkcxg0slndudqlf8sca
   - &hank_m16 age1wh7zpq8aaqx5anad9nxk9cr40q0rq2qcnsrpujmrmsf8z59aycsqhlpmth
   - &linwhite_m16 age1kmgn6snvphehfluadsztazkvlj5q8u6rydzm3at0y3muu45ny43szct0qr
+  - &linwhite_9950x_native age1svatkwy2klm39twkpv7rxfteampuzkyu3ccxtjzpmuz2kq3d6sus8l3hg4
   # extra admins: ed25519 pubkeys converted via ssh-to-age
   - &linwhite age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7 # linwhite@linwhite.top
   - &fendada age1ctfjwk8fkfuxq9rrsuenmqtx8l3jx5rt4hujvh525pgruxs69fls4qtj7z # 1823215739@qq.com
@@ -33,7 +34,7 @@ keys:
 creation_rules:
   - path_regex: secrets/clients/cliproxy\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *hank_268v, *hank_m16, *linwhite_m16, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *hank_268v, *hank_m16, *linwhite_m16, *linwhite_9950x_native, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/gaoji/account-auth\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
