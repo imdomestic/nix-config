@@ -4,6 +4,76 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-05 · ms7e56 的 Bonsai NInfer 174080 上下文实测 {#ms7e56-bonsai-ninfer-174080}
+
+RTX 5070 使用开放内核驱动 595.71.05，AMD Granite Ridge 核显的 PCI 地址为
+`10:00.0`，NVIDIA 为 `01:00.0`。GNOME/Mutter 使用 AMD；重启后 GLX 和 Vulkan
+默认设备均为 AMD，NVIDIA 空闲占用 1 MiB，未发现图形进程，可用显存为
+11774 MiB。主机无需物理显示输出，保留现有连接方式。
+
+引擎固定为 `CraneBW/ninfer-ternary-bonsai-ada` 的
+`9c875f710c459768468d74632e796d782a7e98fc`。CUDA 13.1.2 镜像使用
+`CMAKE_CUDA_ARCHITECTURES=120a`、`NINFER_SM120=1`、48 个 SM，保留 FFmpeg。
+构建脚本将 TMPDIR 放在磁盘目录，并使用 6 个编译任务、24 GiB 内存限制。
+参考 yutils 的 SM120a 补丁时，需要同时适配当前 CMake 宏分支。
+
+转换使用 Nix 声明的 Python 3.11.15、NumPy 2.3.4、官方 CPU Torch 2.11.0。
+模板 revision 为 `dc370fb6295a`，格式为 v2；通过上游 Go template-fetch 读取
+转换需要的 419 个对象。主力输入为 revision `e25d197aa62ce0a2f685fc65d76a41b2416c5e66`
+中的非 MTP GGUF；Hikari 输入为 `e7f6daf95ab820ef8de7d8f5e883d95d546ab02c`。
+两个输入均为 851 个张量，几何、解码、字节往返检查全部通过。
+完整 embedding 解码检查需要超过本机 30 GiB 物理内存，使用声明式 64 GiB
+磁盘交换文件完成原始检查。转换输出各为 10533732876 字节，1192 个对象；
+frontend、draft、MTP、vision、dflash 等 419 个借用对象均与模板逐个核对 SHA256。
+
+| 产物 | SHA256 |
+| --- | --- |
+| bonsai-main-e25d197aa62ce0a2.ninfer | 244e513ab2809e70d6cb1446ef61e20082bcda51ae3ab3def7c2a7542e47b00f |
+| bonsai-hikari-e7f6daf95ab820ef.ninfer | 3674e71fc9016550df976c7a33460e95bcfe8bbfafe80682bce36012e15f4794 |
+
+两者均通过 Paris 补全、中文问答、开源程序反汇编分析请求和真实主机名称工具调用往返。
+yutils 的 `ppl_sample.txt` 固定于 `63dad6dbae3575f609dd4284c601cbaa8abda709`，
+主力 PPL 为 4.203984，Hikari 为 4.291636。
+
+服务参数固定为 NVFP4 KV、174080 上下文与 KV 容量、MTP、并发 1、prefill chunk 1024。
+K=3 时两个模型的权重均为 7641154560 字节，runtime 为 4017176832 字节，
+其中 KV payload 为 3409256448 字节；runtime 已经包含 KV，计算总量时不可重复相加。
+启动后 CUDA 可用量为 565248000 字节。`nvidia-smi` 峰值为 11238 MiB、
+最小剩余 538 MiB；驱动保留显存使 `used + free` 小于显示的物理总量。
+
+| 模型 | K=3 启动秒数 | 长输入 token | 三处信息找回 | 预填充约秒数 | 长输入后生成 tok/s |
+| --- | ---: | ---: | --- | ---: | ---: |
+| 主力 | 5.274 | 165000 | 全部正确 | 167.5 | 101.6 |
+| Hikari | 5.212 | 165002 | 全部正确 | 167.8 | 97.2 |
+
+长输入由固定引擎源代码组成，在开头、中间和结尾加入独立记录；输入、来源列表、
+SHA256、逐次响应、100 ms 显存采样与引擎 JSONL 均保存在运行证据中。
+
+同一个 TTL LRU cache 编码任务使用 temperature=1、top_p=0.95、top_k=20、
+medium 推理、16384 输出上限，固定三个随机种子，比较 K=3 和 K=5。
+本次全部 12 个响应自然结束。以下为三次生成速度的中位数：
+
+| 模型 | K=3 tok/s | K=5 tok/s | 采用值 |
+| --- | ---: | ---: | ---: |
+| 主力 | 128.126 | 119.192 | 3 |
+| Hikari | 126.332 | 123.895 | 3 |
+
+相对旧方案提供的约 96 tok/s，主力和 Hikari 分别高约 33.5% 和 31.6%。
+旧数据与本次任务的采样方法不同，这个比例用于参考。K=5 的启动峰值为
+11244 MiB、剩余 532 MiB，也能够容纳固定上下文。
+
+32k 困惑度使用引擎自带的真实代码语料 `eval/corpora/perplexity-1m/data/ninfer/00.txt`，
+SHA256 为 `ffa159736c11bdafd29e2903bdfd3ae75294c9d26a03b37df071fcbecdc73312`。
+共有 64899 个输入 token，评分 64898 个，context 32768、stride 16384。
+
+| 模型 | NVFP4 PPL | BF16 PPL | NVFP4 相对偏差 |
+| --- | ---: | ---: | ---: |
+| 主力 | 1.746019 | 1.741951 | +0.234% |
+| Hikari | 1.739240 | 1.736372 | +0.165% |
+
+PPL 使用 teacher-forced 评分，服务固定使用 NVFP4 与 MTP。代码语料 PPL 与
+短篇自然语言样本 PPL 直接比较没有意义。上述质量记录只覆盖这一份语料。
+
 ## 2026-10-03 · 268V 首次直通在 QEMU 属性解析阶段失败 {#268v-vfio-qemu-property-type}
 
 10 月 2 日 21:34 的远端自动测试成功重启至 VFIO 特化，`8086:64a0`
