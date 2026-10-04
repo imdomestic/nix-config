@@ -74,6 +74,7 @@ def main():
         log_path = args.output / f'mtp-{mtp}.log'
         gpu_path = args.output / f'mtp-{mtp}-gpu.csv'
         with log_path.open('w') as log, gpu_path.open('w') as gpu_log:
+            startup = time.perf_counter()
             server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=environment, cwd=args.output)
             monitor = subprocess.Popen([
                 'nvidia-smi', '--query-gpu=timestamp,memory.total,memory.used',
@@ -92,6 +93,7 @@ def main():
                         break
                     time.sleep(1)
                 assert ready, log_path
+                startup_seconds = time.perf_counter() - startup
                 with httpx.Client(timeout=600, trust_env=False) as client:
                     warmup = request(client, 'http://127.0.0.1:5850', '请用中文介绍二分查找。', 64)
                     samples = []
@@ -110,6 +112,7 @@ def main():
         result = {
             'mtp': mtp,
             'command': command,
+            'startup_seconds': startup_seconds,
             'warmup': warmup,
             'samples': samples,
             'median_tokens_per_second': statistics.median(item['timings']['predicted_per_second'] for item in samples),

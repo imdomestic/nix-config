@@ -158,6 +158,24 @@ def long_context(client, base_url, model):
     return {'model': model, 'input_tokens': 31000, 'elapsed_seconds': time.perf_counter() - started, 'result': result}
 
 
+def hikari_policy(client, base_url):
+    result = post(client, f'{base_url}/v1/chat/completions', {
+        'model': 'bonsai-hikari',
+        'messages': [{'role': 'user', 'content': '请用中文一句话解释水为什么结冰。'}],
+        'reasoning_effort': 'unsupported-client-value',
+        'chat_template_kwargs': {
+            'enable_thinking': False,
+            'reasoning_effort': 'unsupported-client-value',
+        },
+        'max_tokens': 4096, 'temperature': 1.0, 'seed': 20261004,
+    })
+    message = result['choices'][0]['message']
+    check_answer(message['content'])
+    assert message.get('reasoning_content') or message.get('reasoning'), result
+    assert result['choices'][0]['finish_reason'] == 'stop', result
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--url', default='http://127.0.0.1:8080')
@@ -184,6 +202,7 @@ def main():
             ))
         for model in ('bonsai-main', 'bonsai-hikari'):
             save(f'tool-{model}', tool_roundtrip(client, args.url, model))
+        save('hikari-server-policy', hikari_policy(client, args.url))
         if args.long_context:
             for model in ('bonsai-main', 'bonsai-hikari'):
                 save(f'context-{model}', long_context(client, args.url, model))
