@@ -34,7 +34,7 @@
         "--ubatch-size"
         "256"
         "--jinja"
-        "--no-webui"
+        "--no-ui"
         "--temp"
         "1.0"
         "--top-p"
@@ -47,11 +47,10 @@
         "1.0"
         "--n-predict"
         (toString bonsai.output)
-        "--chat-template-kwargs"
-        (builtins.toJSON {
-          enable_thinking = true;
-          reasoning_effort = "medium";
-        })
+        "--reasoning"
+        "on"
+        "--reasoning-effort"
+        "medium"
       ]
       ++ lib.optionals model.mtp ["--spec-type" "draft-mtp" "--spec-draft-n-max" "2"]);
   downloadModel = _id: model: ''
