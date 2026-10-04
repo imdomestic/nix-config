@@ -31,7 +31,7 @@ ssh root@nixos-rescue.local
 
 Windows 的 Tailscale 节点名称为 `m16`，地址为 `100.64.0.28`；NixOS 使用独立的 `encore` 节点身份，地址为 `100.64.0.43`。NixOS 的节点状态保存在 `/var/lib/tailscale`。
 
-用户环境保持独立：`homeConfigurations."hank@encore"` 使用 b650 的个人配置、开发工具和 GNOME 模块；`homeConfigurations."linwhite@encore"` 与 m1pro 共用个人配置、开发工具和图形工具配置，软件按各自平台构建。
+用户环境保持独立：`homeConfigurations."hank@encore"` 使用 b650 的个人配置、开发工具和 GNOME 模块；`homeConfigurations."linwhite@encore"` 与 aegis 共用个人配置、开发工具和图形工具配置，软件按各自平台构建。
 
 ### 磁盘与启动
 
@@ -49,7 +49,7 @@ Windows 后方依次是 Linux 启动分区和根分区。扩容时从安装 U �
 
 每次 NixOS 启动时，`encore-boot-entries.service` 使用 `efibootdump` 识别名称为 Windows Boot Manager、指向本机 EFI 分区的启动项，将变量备份到 `/var/lib/encore-boot-entries` 后删除。GRUB 的启动项及菜单中的 Windows 入口保持可用。
 
-固件启动列表保留 `Boot0000`（SSD GRUB）和 `Boot0001`（`NixOS Rescue USB`），顺序为 `0000,0001`。救援入口通过 ELECOM MF-DAU3 第一分区的 PARTUUID 定位 `\EFI\BOOT\BOOTX64.EFI`，适用于不同的 USB 接口。2026-10-04 已通过该入口启动救援系统并完成 Wi-Fi、SSH 和内存根目录检查，随后返回 SSD，启动顺序保持一致。救援介质及备份位置见 [救援U盘说明](usb-rescue.md)。
+固件的有效启动项保留 `Boot0000`（SSD GRUB）和 `Boot0001`（`NixOS Rescue USB`），SSD 排在首位。系统启动时删除固件自动添加的光驱、通用可移动设备和网络 BBS 入口；`BootOrder` 中其后的编号没有对应的有效入口。救援入口通过 ELECOM MF-DAU3 第一分区的 PARTUUID 定位 `\EFI\BOOT\BOOTX64.EFI`，适用于不同的 USB 接口。2026-10-04 已通过该入口启动救援系统并完成 Wi-Fi、SSH 和内存根目录检查，随后返回 SSD。救援介质及备份位置见 [救援U盘说明](usb-rescue.md)。
 
 2026-10-03 已新增 300 GiB，将 NixOS 总分配容量扩展到 350 GiB。扩容后的 Windows 分区约 126.63 GiB，空闲约 45.46 GiB，NTFS 一致性检查通过。
 

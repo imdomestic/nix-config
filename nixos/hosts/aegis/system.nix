@@ -32,7 +32,7 @@
   # iproute2mac 删了:home/profiles/dev.nix 的 darwin 分支里本来就有。
   # host-users
   networking.computerName = config.my.host.name;
-  system.defaults.smb.NetBIOSName = config.my.host.name;
+  networking.localHostName = config.my.host.name;
   system.primaryUser = "linwhite";
 
   homebrew = {

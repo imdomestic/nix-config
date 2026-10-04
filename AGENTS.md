@@ -356,7 +356,7 @@ it to `imdomestic.cachix.org`.
 
 - **New files are invisible to Nix until `git add`ed.** The flake reads the git
   tree, so an untracked module silently does not exist.
-- **Determinate hosts** (`praxic`, `m1pro`, `alex`) set `nix.enable = false`,
+- **Determinate hosts** (`praxic`, `aegis`, `alex`) set `nix.enable = false`,
   which drops nix-darwin's entire nix module — `nix.settings` and `nix.registry`
   evaluate to nothing, with no error. `nixos/modules/nix-settings.nix` and
   `nix-registry.nix` detect this and route the same values to

@@ -1,4 +1,4 @@
-# linwhite 的 AeroSpace。按用户分文件、由 host 显式 import(m1pro),不在模块里
+# linwhite 的 AeroSpace。按用户分文件、由 host 显式 import(aegis),不在模块里
 # 按 config.my.host.usernames 猜:aerospace 的配置是整机一份(/etc/aerospace.toml),
 # 两个人的键位互不兼容,谁的机器谁自己写死。hank 的那份在 ./hank.nix。
 _: {
