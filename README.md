@@ -12,7 +12,7 @@ live on my network. I'm not a Nix expert either. I value the fleet staying up
 over the config being pretty, so when something here looks strange, there is
 usually a dated entry in `docs/` about the afternoon that made it that way.
 
-My main machine is a Mac (`m1elite`). Day to day I live in three apps: Arc for
+My main machine is a Mac (`praxic`). Day to day I live in three apps: Arc for
 browsing, Raycast for launching everything, and Ghostty for the terminal. The
 actual work happens inside Ghostty with tmux + Neovim (nixvim), either locally
 or over SSH on whichever box has the hardware the job needs.
@@ -21,7 +21,7 @@ Behind that is a small fleet, spread over a few places on purpose:
 
 * `tank` is the home server: storage, PostgreSQL, Matrix, Prometheus/Grafana,
   and the bots.
-* `b650` has the GPU and serves local models.
+* `taipan` has the GPU and serves local models.
 * `h610` runs the second copy of monitoring. It lives in a different failure
   domain from `tank` deliberately; when `tank`'s side lost power for a whole
   day, `h610` stayed up the entire time.

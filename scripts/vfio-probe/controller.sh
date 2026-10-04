@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Run on b650 or tank as a transient service, never on the laptop being rebooted.
+# Run on taipan or tank as a transient service, never on the laptop being rebooted.
 set -euo pipefail
 export PATH=/run/current-system/sw/bin
 controller=$(hostname -s)
 case "$controller" in
-    b650|tank) ;;
-    *) echo 'Run this controller on b650 or tank, not on 268v.' >&2; exit 1 ;;
+    taipan|tank) ;;
+    *) echo 'Run this controller on taipan or tank, not on 268v.' >&2; exit 1 ;;
 esac
 out=/var/tmp/268v-vfio-probe
 mkdir -p "$out"

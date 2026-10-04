@@ -3,13 +3,13 @@
 in {
   h610 = callHost "h610";
   h310 = callHost "h310";
-  b650 = callHost "b650";
+  taipan = callHost "taipan";
   "268v" = callHost "268v";
   tank = callHost "tank";
   r5s = callHost "r5s";
   rpi4 = callHost "rpi4";
   wsl = callHost "wsl";
-  m1elite = callHost "m1elite";
+  praxic = callHost "praxic";
   m1pro = callHost "m1pro";
   alex = callHost "alex";
   hackintosh = callHost "hackintosh";

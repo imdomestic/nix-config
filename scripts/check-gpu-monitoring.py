@@ -96,7 +96,7 @@ def write_alert_tests(rules_path, output):
     rules = json.loads(Path(rules_path).read_text())
     definitions = {r["alert"]: r for r in rules["groups"][0]["rules"] if "alert" in r}
     uuid = "d8ec4dea-3771-68e6-9f8b-11811e47ac9d"
-    base = {"instance": "b650", "uuid": uuid}
+    base = {"instance": "taipan", "uuid": uuid}
 
     def series(name, value, labels=None):
         tags = ",".join(f'{k}="{v}"' for k, v in (base if labels is None else labels).items())
@@ -107,7 +107,7 @@ def write_alert_tests(rules_path, output):
         alerts = []
         if expected is not None:
             labels, value = expected
-            annotations = {k: v.replace("{{ $labels.instance }}", "b650")
+            annotations = {k: v.replace("{{ $labels.instance }}", "taipan")
                             .replace("{{ $labels.uuid }}", labels.get("uuid", ""))
                             .replace("{{ $labels.code }}", labels.get("code", ""))
                             .replace("{{ $labels.collector }}", labels.get("collector", ""))
@@ -127,20 +127,20 @@ def write_alert_tests(rules_path, output):
                                      series("nvidia_gpu_memory_free_warning_bytes", f"{128 * 2**20}+0x80")], "20m"),
         case("GPUThermalThrottling", [series("nvidia_smi_clocks_event_reasons_sw_power_cap", "1+0x40"),
                                      series("nvidia_smi_clocks_event_reasons_hw_thermal_slowdown", "0+0x40")], "10m"),
-        case("GPUDeviceMissing", [series("up", "1+0x40", {"instance": "b650", "job": "nvidia-gpu"})],
+        case("GPUDeviceMissing", [series("up", "1+0x40", {"instance": "taipan", "job": "nvidia-gpu"})],
              "6m", (base, 1)),
-        case("GPUDeviceMissing", [series("up", "1+0x40", {"instance": "b650", "job": "nvidia-gpu"}),
+        case("GPUDeviceMissing", [series("up", "1+0x40", {"instance": "taipan", "job": "nvidia-gpu"}),
                                   series("nvidia_smi_gpu_info", "1+0x40")], "6m"),
-        case("GPUDetailCollectionStale", [series("nvidia_gpu_collection_timestamp_seconds", "0+0x30", {"instance": "b650"})],
-             "5m", ({"instance": "b650"}, 300)),
+        case("GPUDetailCollectionStale", [series("nvidia_gpu_collection_timestamp_seconds", "0+0x30", {"instance": "taipan"})],
+             "5m", ({"instance": "taipan"}, 300)),
         case("GPUUncorrectableECC", [], "5m"),
         case("GPUXidError", [series("nvidia_gpu_xid_last_timestamp_seconds", "0+0x60", base | {"code": "63"})], "5m"),
         case("GPUXidCritical", [series("nvidia_gpu_xid_last_timestamp_seconds", "10+0x40", base | {"code": "79"})],
              "1m", (base | {"code": "79"}, 50)),
         case("GPUXidCritical", [series("nvidia_gpu_xid_last_timestamp_seconds", "0+0x80", base | {"code": "79"})], "20m"),
         case("GPUDetailCollectorFailed", [series("nvidia_gpu_collector_success", "0+0x40",
-                                                {"instance": "b650", "collector": "xml"})],
-             "6m", ({"instance": "b650", "collector": "xml"}, 0)),
+                                                {"instance": "taipan", "collector": "xml"})],
+             "6m", ({"instance": "taipan", "collector": "xml"}, 0)),
     ]
     Path(output).write_text(json.dumps({"rule_files": [str(Path(rules_path).absolute())],
                                        "evaluation_interval": "15s", "tests": tests}, indent=2))

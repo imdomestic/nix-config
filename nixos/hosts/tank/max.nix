@@ -51,7 +51,7 @@
         "qwen3.8-27b" = {
           "protocol" = "openai";
           "api_key" = config.sops.placeholder."max/llm-profiles-qwen3.8-27b-api-key";
-          "base_url" = "http://b650.inner.imdomestic.com:8000/v1";
+          "base_url" = "http://taipan.inner.imdomestic.com:8000/v1";
           "multimodal" = true;
           "model" = "qwen3.8-27b";
           "price_input" = 3;
@@ -64,7 +64,7 @@
           "vision_tokens" = 49152;
           "vision_item_tokens" = 16384;
           "effort" = "xhigh";
-          # Matches NInfer's --max-concurrency on b650, so excess requests
+          # Matches NInfer's --max-concurrency on taipan, so excess requests
           # queue in Max (turns first) instead of the server's FIFO.
           "max_concurrency" = 4;
         };
@@ -74,7 +74,7 @@
         "qwen3.8-27b-lingo" = {
           "protocol" = "openai";
           "api_key" = config.sops.placeholder."max/llm-profiles-qwen3.8-27b-api-key";
-          "base_url" = "http://b650.inner.imdomestic.com:8000/v1";
+          "base_url" = "http://taipan.inner.imdomestic.com:8000/v1";
           "model" = "qwen3.8-27b";
           "price_input" = 3;
           "price_cached_input" = 0.6;
@@ -275,7 +275,7 @@
       "extract_profile" = "gpt-5.6-luna";
     };
     # Learns group expressions and jargon behind the Historian cursor; the
-    # first run relearns the whole history on b650's local model.
+    # first run relearns the whole history on taipan's local model.
     "lingo" = {
       "profile" = "qwen3.8-27b-lingo";
     };

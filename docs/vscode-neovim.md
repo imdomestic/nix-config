@@ -7,7 +7,7 @@
 - `vscode.nix`：独立 nixvim 包，只加载共享编辑功能，并把 IDE 操作交给 VS Code。
 - `snippets/`：Rust `cp` / `cpi` 模板，两边复用。
 
-Home Manager 接线在 `home/modules/vscode/`，目前只在 m1elite 的 hank home
+Home Manager 接线在 `home/modules/vscode/`，目前只在 praxic 的 hank home
 启用 `my.vscode.enable`。macOS 使用已有的 `/Applications/Visual Studio Code.app`，
 只增加 `code` 命令包装器，不额外安装第二份应用。这个包装器也让 Home Manager
 在扩展集合变化时调用原生 CLI 刷新扩展索引；`package = null` 会跳过这一步，
@@ -23,7 +23,7 @@ Home Manager 接线在 `home/modules/vscode/`，目前只在 m1elite 的 hank ho
 Home Manager 不生成、不覆盖、不合并用户的 `settings.json` / `keybindings.json`。
 扩展目录保持可写，可以继续从 GUI 安装其他扩展。
 
-代码字体与字号默认读取同一份 Home Manager 中的 Ghostty 设置；m1elite 当前为
+代码字体与字号默认读取同一份 Home Manager 中的 Ghostty 设置；praxic 当前为
 `RecMonoSmCasual Nerd Font Mono`，后备 `Menlo` / `PingFang SC`，字号 `15`。
 GUI 中手动设置的字体和字号仍优先。
 
@@ -43,8 +43,8 @@ GUI 中手动设置的字体和字号仍优先。
 按仓库的 freshness check 完成同步和漂移检查，并关闭日常 VS Code 窗口后：
 
 ```sh
-just hm-dry m1elite hank
-just hm m1elite hank
+just hm-dry praxic hank
+just hm praxic hank
 ```
 
 重启 VS Code，使其重新扫描扩展目录。不要同时启用 VSCodeVim (`vscodevim.vim`)
@@ -95,7 +95,7 @@ OSC 52、终端 UI、补全、LSP 和 session 插件不会在嵌入实例中加�
 ## 验证
 
 ```sh
-scripts/test-vscode-neovim.sh hank@m1elite
+scripts/test-vscode-neovim.sh hank@praxic
 ```
 
 脚本构建声明的扩展并启动独立的 VS Code 测试窗口，使用临时用户目录、扩展目录和

@@ -4,7 +4,7 @@ set -euo pipefail
 # Launch a real extension host with isolated settings, extensions and fixture files.
 repo_dir=$(cd "$(dirname "$0")/.." && pwd)
 cd "$repo_dir"
-home_name=${1:-hank@m1elite}
+home_name=${1:-hank@praxic}
 code_bin=${VSCODE_BIN:-}
 if [[ -z "$code_bin" ]]; then
   code_bin=$(command -v code || true)

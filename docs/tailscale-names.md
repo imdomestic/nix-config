@@ -5,8 +5,8 @@ registry entry. `lib/my-host.nix` forwards it as `config.my.host.tsName` to all
 four evaluators. A non-null name enables the existing deployment, telemetry and
 Tailscale defaults. No allocated Tailscale IP is required in this inventory.
 Do not assume the registry name equals the actual MagicDNS name: verify the
-node's `DNSName` first, especially for dual-boot machines (`b650` and
-`b650-windows` are different nodes).
+node's `DNSName` first, especially for dual-boot machines (`taipan` and
+`taipan-windows` are different nodes).
 
 Deployment destinations, worker URLs, Prometheus targets, Alertmanager
 peers, Grafana data sources, ping targets and the migrated h610/tank consumers
@@ -14,6 +14,23 @@ use fully qualified names. Explicit `instance`/`peer` labels retain the short
 registry names, preserving dashboard and alert identities. Ping remains IPv4
 only, with DNS refreshed every 30 seconds. Nginx remote upstreams use a shared
 zone and `resolve` so a peer's address change does not require an nginx restart.
+
+## Host names from 2026-10-04
+
+| Device | Current name | Previous name |
+| --- | --- | --- |
+| Local Mac | `praxic` | `m1elite` |
+| Native Linux GPU workstation | `taipan` | `b650` |
+| Windows on the same workstation | `taipan-windows` | `b650-windows` |
+| iOS node 25 | `terciopelo` | `a19pro` |
+| iOS node 24 | `krait` | `m1` |
+
+The previous DNS names and flake outputs are not compatibility aliases. Use
+`taipan.inner.imdomestic.com` for inference clients and telemetry, and
+`just hm praxic hank` for the local home. The Windows node was offline during
+the rename; its Headscale name is changed, but its OS computer name still needs
+an on-device change. iOS device names are changed in Settings, independently
+from their Headscale names. Dated incident records retain their original names.
 
 ## Listeners
 

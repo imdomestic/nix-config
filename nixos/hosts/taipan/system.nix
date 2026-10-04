@@ -63,6 +63,7 @@
   # The native node receives its own Tailscale identity on first boot. The
   # inference gateway discovers that address at runtime and binds only to it.
   my.tailscale.enable = true;
+  services.tailscale.extraSetFlags = ["--hostname=${config.networking.hostName}"];
 
   services.openssh.enable = true;
   security.sudo.wheelNeedsPassword = false;

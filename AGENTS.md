@@ -238,7 +238,7 @@ ssh hank@<构建机> \
 
 踩过一次，见 `docs/incidents.md#arm-boxes-oom-on-local-build`。
 用户在当前任务中明确指定构建机时按该指令执行，先核对资源并限制构建并发；
-2026-09-15 的 h310、b650、rpi4 本机构建例外与实测见
+2026-09-15 的 h310、taipan、rpi4 本机构建例外与实测见
 `docs/max-ssh-operations.md#2026-09-15-fleet-rollout`。
 
 ### Before any rebuild: freshness check
@@ -356,7 +356,7 @@ it to `imdomestic.cachix.org`.
 
 - **New files are invisible to Nix until `git add`ed.** The flake reads the git
   tree, so an untracked module silently does not exist.
-- **Determinate hosts** (`m1elite`, `m1pro`, `alex`) set `nix.enable = false`,
+- **Determinate hosts** (`praxic`, `m1pro`, `alex`) set `nix.enable = false`,
   which drops nix-darwin's entire nix module — `nix.settings` and `nix.registry`
   evaluate to nothing, with no error. `nixos/modules/nix-settings.nix` and
   `nix-registry.nix` detect this and route the same values to

@@ -5,7 +5,7 @@
 在 `nixos/hosts/<host>/default.nix` 登记，采集端和所有 monitor 的抓取目标共用此信息：
 
 ```nix
-tsName = "b650.inner.imdomestic.com";
+tsName = "taipan.inner.imdomestic.com";
 gpuMonitoring = {
   enable = true;
   uuids = ["GPU-d8ec4dea-3771-68e6-9f8b-11811e47ac9d"];
@@ -79,7 +79,7 @@ Xid 63/92 只记录；79/48/94/95 critical，其余新 Xid warning，具体原�
 
 ```sh
 python3 scripts/check-gpu-monitoring.py
-nix eval --raw .#nixosConfigurations.b650.config.system.build.toplevel.drvPath
+nix eval --raw .#nixosConfigurations.taipan.config.system.build.toplevel.drvPath
 nix eval --raw .#nixosConfigurations.h610.config.system.build.toplevel.drvPath
 nix eval --raw .#nixosConfigurations.tank.config.system.build.toplevel.drvPath
 ```

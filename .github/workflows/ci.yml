@@ -128,7 +128,7 @@ jobs:
           x86_64-darwin
 
           # 来自 inputs.noctalia 的 nixosModule。溯源(2026-08-12 实测):只有
-          # b650 / gpd / encore 报,而 x470 同样是 base+desktop 却不报 —— 三者与
+          # taipan / gpd / encore 报,而 x470 同样是 base+desktop 却不报 —— 三者与
           # x470 的唯一差别就是 externalModules 里的 noctalia。单独求值
           # inputs.noctalia.packages.x86_64-linux.default 不报,所以在模块导入
           # 路径上,不是包本身。本仓库自己那处 prev.system 已在

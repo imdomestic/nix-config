@@ -12,10 +12,10 @@
   # tank 也有图形界面,但它的 hank **没有**引 gui.linux(tank/default.nix 里那行
   # 是注释掉的),所以这个模块根本到不了 tank。它那几个桌面包挂在
   # home/users/hank/default.nix 的 host 条件里。
-  desktopWorkstations = ["b650" "gpd" "encore"];
+  desktopWorkstations = ["taipan" "gpd" "encore"];
 in {
   home.packages = with pkgs;
-    lib.optionals (host == "b650") [
+    lib.optionals (host == "taipan") [
       blueman
       spotify
       nix-output-monitor

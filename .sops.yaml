@@ -3,7 +3,7 @@ keys:
   # private half lives on that machine at ~/.config/sops/age/keys.txt
   # (regenerate: ssh-to-age -private-key -i ~/.ssh/id_ed25519)
   - &hank_hackintosh age1xeeg8yu74aqn5x0vzevsuxmsd4nem3cfw2gjwc82ke4mjvep3pxq5p99lh
-  - &hank_m1elite age1uumwl2zvv6sk2yysjtd29yfffjj8xfus6z95eu0ftxt40mnyh9aq3g5f2c
+  - &hank_praxic age1uumwl2zvv6sk2yysjtd29yfffjj8xfus6z95eu0ftxt40mnyh9aq3g5f2c
   - &hank1 age1zzwv2edh2ssz7xpmpcqr73rkh79j4mwjy50ap8dvm4c64ksmspxsz7mnat
   - &hank2 age175594x5r5ngze8rs5n2ga0976e0flh0xq2aqjq3xaldr28e703sqlcy9n6
   - &hank3 age1f0ch7vfsqs3u5c4mzqs4m228wge5vulz0s0yj30gkapk7nlk3g2s43x42l
@@ -29,66 +29,66 @@ keys:
   - &host_r5sjp age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq
   - &host_rpi4 age1lghdzjwhlwssu44ptp5853e48fy0pcxrxlpf4r7ruphplxna4vzqq6e2kh
   - &host_r2s age1gf9jpsr9zr2myn780m8emtk5qzfz87jqdlrju744cvmj3v02nqpsdkkueh
-  - &host_b650 age1qpgrpyp6swk2a2hystwaryaulrvyrtjecmzzjlnjawsn50ckg3fqj8rsaf
+  - &host_taipan age1qpgrpyp6swk2a2hystwaryaulrvyrtjecmzzjlnjawsn50ckg3fqj8rsaf
 
 creation_rules:
   - path_regex: secrets/clients/cliproxy\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_ms7e56, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_ms7e56, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/gaoji/account-auth\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/hosts/h610-(max|ops)\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/hosts/tank-max\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_tank]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_tank]
   - path_regex: secrets/gaoji/worker-h310\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610, *host_h310]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610, *host_h310]
   - path_regex: secrets/gaoji/worker-tank\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610, *host_tank]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610, *host_tank]
   - path_regex: secrets/gaoji/control\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/gaoji/worker-h610\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/hosts/tokyo\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_tokyo]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_tokyo]
   - path_regex: secrets/hosts/h610\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/hosts/h310\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h310]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h310]
   - path_regex: secrets/hosts/r6s\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r6s]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r6s]
   - path_regex: secrets/hosts/r5s\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r5s]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r5s]
   - path_regex: secrets/hosts/tank\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_tank]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_tank]
   - path_regex: secrets/hosts/r5sjp\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r5sjp]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r5sjp]
   - path_regex: secrets/hosts/rpi4\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_rpi4]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_rpi4]
   - path_regex: secrets/hosts/r2s\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_m1elite, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r2s]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r2s]
   # shared secrets: encrypted to every admin and every known host
   - path_regex: secrets/.*\.yaml$
     key_groups:
       - age:
           - *hank_hackintosh
-          - *hank_m1elite
+          - *hank_praxic
           - *hank1
           - *hank2
           - *hank3
@@ -104,4 +104,4 @@ creation_rules:
           - *host_r5sjp
           - *host_rpi4
           - *host_r2s
-          - *host_b650
+          - *host_taipan
