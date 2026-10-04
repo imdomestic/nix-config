@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Run on b650 as a transient service, never on the laptop being rebooted.
+# Run on b650 or tank as a transient service, never on the laptop being rebooted.
 set -euo pipefail
 export PATH=/run/current-system/sw/bin
-[[ $(hostname -s) == b650 ]] || { echo 'Run this controller on b650, not on 268v.' >&2; exit 1; }
+controller=$(hostname -s)
+case "$controller" in
+    b650|tank) ;;
+    *) echo 'Run this controller on b650 or tank, not on 268v.' >&2; exit 1 ;;
+esac
 out=/var/tmp/268v-vfio-probe
 mkdir -p "$out"
 exec >>"$out/controller.log" 2>&1
@@ -49,7 +53,7 @@ restore() {
         current=$(remote 'readlink /run/current-system' 2>/dev/null || true)
         if [[ -n "$current" && "$current" != *268v-vfio* ]]; then
             remote 'systemctl is-active display-manager; lspci -nnk -s 00:02.0' >"$out/restored.txt" 2>&1 || true
-            log 'Normal system returned; results are in /var/tmp/268v-vfio-probe on b650'
+            log "Normal system returned; results are in /var/tmp/268v-vfio-probe on $controller"
             return
         fi
     done

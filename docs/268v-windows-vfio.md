@@ -142,6 +142,11 @@ ROM、驱动、6 vCPU/16 GiB 不变。只使用标准 KVM/libvirt 设置，不�
 把此类 CPU 特征配置列为其 Code 43 修复的一部分，但代际和其他配置不同，不能
 据此认定本机根因。第六次应同时检查新事件时间、GPU 状态和扩展 VBT。
 准备阶段 b650 曾短暂失联，未在恢复控制链路确认前重启。
+最终改用 **tank** 执行第六次控制程序：已确认 tank 可通过 Tailscale SSH
+回连 268V。第六次结果应读取 **tank** 的 `/var/tmp/268v-vfio-probe/`；
+b650 上保留的第五次结果不能当作本轮结果。控制脚本只允许在 b650 或 tank
+运行，仍禁止在会被重启的 268V 本机运行。系统激活为 generation 16，QEMU
+转换校验确认 CPU 参数为 `host,migratable=off,hypervisor=off,kvm=off`。
 
 ## 2026-10-04 相似问题检索
 
@@ -168,7 +173,7 @@ Meteor Lake 起通过 BAR2 访问 stolen memory，无需旧式 BDSM 分配。因
 排查固件数据交接有依据，尚无证据要求给宿主内核打反检测或时序补丁。
 
 2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
-控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
+控制程序由 **b650 或 tank 的 root transient systemd service** 运行，不能在 268V 本机运行。
 控制程序从当前 system profile 读取 generation，检查普通启动条目与运行中的
 system closure 一致，再使用该 generation 的普通与 VFIO 条目。
 Windows 的 `VFIOProbe` 一次性启动任务以 SYSTEM 收集显卡及问题设备列表，
@@ -181,7 +186,8 @@ Windows 的 `VFIOProbe` 一次性启动任务以 SYSTEM 收集显卡及问题设
 等待 90 秒后仍会请求宿主重启以恢复桌面；这是首次直通实验的恢复流程。
 宿主若失联到无法接收重启命令，则需物理重启；默认启动项一直保留普通 NixOS。
 
-结果保存在 **b650** 的 `/var/tmp/268v-vfio-probe/`：`controller.log`、
+结果保存在运行控制程序的远端主机（前五次 b650，第六次 tank）的
+`/var/tmp/268v-vfio-probe/`：`controller.log`、
 `host.txt`、`start.txt`、`guest.json`、`kernel.log`、`qemu.log`、`screen.png`、
 `restored.txt`。恢复 Codex 后先读取这些文件，不要把“已安排测试”当成直通成功。
 宿主本身也保留接收到的 `/var/tmp/268v-vfio-probe/guest.json`；
