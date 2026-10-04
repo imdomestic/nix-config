@@ -6,7 +6,7 @@ in {
   system = "x86_64-linux";
   kind = "nixos";
   roles = ["desktop" "gui"];
-  tsName = "9950x-native.inner.imdomestic.com";
+  tsName = "b850.inner.imdomestic.com";
 
   profiles = with nixosProfiles; [base desktop];
   modules = [./system.nix ./hardware-configuration.nix];

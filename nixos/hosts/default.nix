@@ -25,7 +25,7 @@ in {
   gpd = callHost "gpd";
   m16 = callHost "m16";
   "9950x" = callHost "9950x";
-  "9950x-native" = callHost "9950x-native";
+  b850 = callHost "b850";
   marble = callHost "marble";
   cse = callHost "cse";
 }
