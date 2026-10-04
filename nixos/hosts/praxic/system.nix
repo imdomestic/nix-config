@@ -37,6 +37,7 @@
   # Mac 自己要的。
   # host-users
   networking.computerName = config.my.host.name;
+  networking.localHostName = config.my.host.name;
   system.defaults.smb.NetBIOSName = config.my.host.name;
   system.primaryUser = "hank";
   my.host.useChinaMirror = false;

@@ -20,7 +20,7 @@
         # 的旧别名,26.05 起求值时会打
         #   evaluation warning: 'system' has been renamed to/replaced by
         #                       'stdenv.hostPlatform.system'
-        # 这是本仓库唯一一处触发它的地方(实测在 b650 的求值里冒出来)。
+        # 这是本仓库唯一一处触发它的地方(实测在 taipan 的求值里冒出来)。
         zjstatus = inputs.zjstatus.packages.${prev.stdenv.hostPlatform.system}.default;
       })
     ];

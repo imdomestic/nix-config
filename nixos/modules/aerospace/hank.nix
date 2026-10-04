@@ -1,4 +1,4 @@
-# hank 的 AeroSpace。按用户分文件、由 host 显式 import(m1elite / hackintosh),
+# hank 的 AeroSpace。按用户分文件、由 host 显式 import(praxic / hackintosh),
 # 不在模块里按 config.my.host.usernames 猜:aerospace 的配置是整机一份
 # (/etc/aerospace.toml),两个人的键位互不兼容,谁的机器谁自己写死。
 # linwhite 的那份在 ./linwhite.nix。

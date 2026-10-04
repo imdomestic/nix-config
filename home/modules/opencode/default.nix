@@ -15,7 +15,7 @@
   modelStatsPlugin = [
     "file://${modelStats}"
     {
-      prefillWsUrl = "ws://b650.inner.imdomestic.com:8000/prefill-ws";
+      prefillWsUrl = "ws://taipan.inner.imdomestic.com:8000/prefill-ws";
     }
   ];
   notificator = pkgs.fetchFromGitHub {
@@ -210,7 +210,7 @@ in {
       provider.ninfer = {
         npm = "@ai-sdk/openai-compatible";
         name = "NInfer";
-        options.baseURL = "http://b650.inner.imdomestic.com:8000/v1";
+        options.baseURL = "http://taipan.inner.imdomestic.com:8000/v1";
         models = {
           "qwen3.8-27b-aligned" = {
             name = "qwen3.8-27b-aligned";

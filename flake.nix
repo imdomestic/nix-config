@@ -61,15 +61,15 @@
       };
       x86_64-linux = {
         vfio-igd-rom = nixos."268v".config.my.windowsVM.igdROM;
-        # 在 b650 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。
-        templar-droidspaces-kernel = templarDroidspacesKernel nixos.b650;
-        # b650 / x470 两台解析出来是同一个 drv,取哪台都一样。
-        recursive-mono-cascadia-italic = font nixos.b650;
-        tmux-agent-sidebar = agentSidebar nixos.b650;
+        # 在 taipan 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。
+        templar-droidspaces-kernel = templarDroidspacesKernel nixos.taipan;
+        # taipan / x470 两台解析出来是同一个 drv,取哪台都一样。
+        recursive-mono-cascadia-italic = font nixos.taipan;
+        tmux-agent-sidebar = agentSidebar nixos.taipan;
       };
       aarch64-darwin = {
-        recursive-mono-cascadia-italic = font darwin.m1elite;
-        tmux-agent-sidebar = agentSidebar darwin.m1elite;
+        recursive-mono-cascadia-italic = font darwin.praxic;
+        tmux-agent-sidebar = agentSidebar darwin.praxic;
       };
       # x86_64-darwin(hackintosh)没进来:macos-13 runner 正在退役,而且 26.05
       # 是 nixpkgs 最后一个支持 x86_64-darwin 的版本,不值得为它单开一条流水线。

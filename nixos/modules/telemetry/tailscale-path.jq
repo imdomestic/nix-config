@@ -72,7 +72,7 @@ def handshake:
     # **用 DNSName 的首段,不是 HostName。**
     #
     # HostName 在 tailnet 里不唯一 —— 实测这里有五台 iOS 设备全都自报
-    # "localhost"(mtf / marble / lgm / a19pro / m1)。拿它当标签会产生
+    # "localhost"(mtf / marble / lgm / terciopelo / krait)。拿它当标签会产生
     # 重复的时序,promtool 报 "metric not unique",整个 .prom 文件被
     # textfile 采集器丢弃 —— 也就是所有路径指标一起消失,而不只是这几台。
     #

@@ -581,7 +581,7 @@ in {
 
       # general
       # settings / cleanram / trim_all 只在 Linux 机器上有意义,留着 —— 这台 mac
-      # 的 history 里没出现过不代表没用过(GNOME 装在 b650/x470/encore/tank 上)。
+      # 的 history 里没出现过不代表没用过(GNOME 装在 taipan/x470/encore/tank 上)。
       settings = "gnome-control-center";
       cleanram = "sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'";
       trim_all = "sudo fstrim -va";
@@ -1017,7 +1017,7 @@ in {
       # ssh 过去 magick 不在,图就是出不来。
       # 提到这里 = 每台有 hank 的机器都能看图,又不用把整套 dev 工具链背过去。
       #
-      # dev.nix 里那份没删:它同时被 linwhite/dev.nix 引着。b650 上两边都声明,指向
+      # dev.nix 里那份没删:它同时被 linwhite/dev.nix 引着。taipan 上两边都声明,指向
       # 同一个 derivation,profile 里会去重,无害。
       # mermaid(mmdc)和 tectonic 仍然只在 dev profile —— 那两个是真的重。
       pkgs.imagemagick
@@ -1027,7 +1027,7 @@ in {
     # 单机工具,不是机器跑起来需要的,所以按 host 挂在这儿。
     #
     # iproute2mac 不在这儿:profiles/dev.nix 的 darwin 分支早就有了,
-    # m1elite 的 system 那份纯属重复。
+    # praxic 的 system 那份纯属重复。
     ++ lib.optionals (config.my.host.name == "aarch64-wsl") [pkgs.distrobox]
     ++ lib.optionals (config.my.host.name == "r5sjp") [pkgs.wakeonlan]
     # tank 的 hank 没引 gui.linux,所以这台的桌面工具单独列出。
@@ -1036,7 +1036,7 @@ in {
       pkgs.radeontop
       pkgs.clapper
     ]
-    ++ lib.optionals (config.my.host.name == "m1elite") [
+    ++ lib.optionals (config.my.host.name == "praxic") [
       # 用来推别的机器,不是这台 Mac 自己要的。
       pkgs.nixos-rebuild
       pkgs.nixos-rebuild-ng
