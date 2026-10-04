@@ -11,6 +11,7 @@ in {
   imports = [
     (modulesPath + "/installer/cd-dvd/installation-cd-minimal.nix")
     ./grub-iso.nix
+    ./usb-image.nix
   ];
 
   networking.hostName = "nixos-rescue";
