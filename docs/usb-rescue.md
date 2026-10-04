@@ -194,7 +194,7 @@ linwhite 使用本机独立生成的 Ed25519 密钥，Home Manager 的 sops-nix
 2026-10-04 已完成安装，并在U盘保持连接时验证从本地 SSD 重启。
 固件只保留 `Boot0002`（`GRUB NixOS 9950x`）与 `Boot0001`（救援U盘），
 `BootOrder` 为 `0002,0001`，`BootCurrent` 为 `0002`。
-根目录使用 ext4 卷标 `NIXOS9950X`，安装后可用空间约 706 GiB。
+根目录使用 ext4 卷标 `NIXOS9950X`，安装后可用空间约 700 GiB。
 NVMe 设备编号在两次启动间发生变化，挂载和引导均通过卷标或 UUID 定位。
 
 有线地址为 `10.1.2.194`，Tailscale 地址为 `100.64.0.44`。已验证局域网
@@ -208,3 +208,7 @@ Home Manager 激活、凭据解密和终端工具。GNOME 的 Wayland 登录会�
 构建，新增 Nix 文件通过 Alejandra 格式检查。分区、EFI 和验证记录位于
 Mac 仓库的 `.work/9950x-install/`，以及本机
 `/root/.work/9950x-install/`，目录均限制访问权限。
+
+本机配置仓库位于 `/home/linwhite/.config/nix-config`。已同步锁定源文件，
+并在本机求值系统和 linwhite 用户环境，两者的输出路径均与已安装版本
+一致。安装结束后再次计算U盘救援数据的 SHA-256，与原有镜像一致。
