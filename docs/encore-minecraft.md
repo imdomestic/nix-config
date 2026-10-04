@@ -1,15 +1,15 @@
-# m16 Minecraft 服务
+# encore Minecraft 服务
 
-m16 承载 Minecraft 服务，tokyo 的 Gate 通过 Tailscale 将玩家连接转发到 m16。
+encore 承载 Minecraft 服务，tokyo 的 Gate 通过 Tailscale 将玩家连接转发到 encore。
 
 ## 连接地址
 
 Java 客户端继续使用 tokyo 的原有地址，公网 IPv4 入口为 `43.130.229.141:25565`。
-Gate 的全部主机名路由指向 `m16.inner.imdomestic.com:25565`，并使用 PROXY
-protocol 传递玩家真实地址。m16 的 Java 入口由 Gate 转发连接。
+Gate 的全部主机名路由指向 `encore.inner.imdomestic.com:25565`，并使用 PROXY
+protocol 传递玩家真实地址。encore 的 Java 入口由 Gate 转发连接。
 
-Bedrock 使用 `m16.inner.imdomestic.com:19132`，局域网地址为 `10.1.2.137:19132`。
-m16 的 Tailscale 地址为 `100.64.0.43`。
+Bedrock 使用 `encore.inner.imdomestic.com:19132`，局域网地址为 `10.1.2.137:19132`。
+encore 的 Tailscale 地址为 `100.64.0.43`。
 Bedrock 协议响应版本为 `26.51`。
 
 | 服务 | 版本 | 本机端口 | 最大 Java 堆内存 |
@@ -49,7 +49,7 @@ LuckPerms Velocity 5.5.71 与 Ambassador 1.4.5 已核对为上游最新发布版
 用户组。
 
 PostgreSQL 16 保存 `minecraft`、`luckperms` 数据库，MariaDB 保存 `minecraft`
-数据库。子服 LuckPerms 和 CMI 使用 m16 的数据库；代理 LuckPerms 保留原有
+数据库。子服 LuckPerms 和 CMI 使用 encore 的数据库；代理 LuckPerms 保留原有
 H2 数据库，SkinsRestorer 保留原有文件存储。
 Bukkit 与 Velocity 的 LuckPerms 使用官方固定版本 5.5.71。
 
@@ -57,8 +57,8 @@ Bukkit 与 Velocity 的 LuckPerms 使用官方固定版本 5.5.71。
 `database.json` 通过 systemd credentials 提供数据库初始化凭据，
 `forwarding.secret` 提供代理转发认证。凭据需要单独备份，不进入 Git。
 
-首次迁移备份位于 tank 的 `/root/.work/m16-minecraft-export`、Mac 仓库的
-`.work/m16-minecraft/source-export` 和 m16 的 `/root/.work/m16-minecraft`。
+首次迁移备份位于 tank 的 `/root/.work/encore-minecraft-export`、Mac 仓库的
+`.work/encore-minecraft/source-export` 和 encore 的 `/root/.work/encore-minecraft`。
 `SHA256SUMS` 覆盖完整存档及三个数据库导出文件。
 
 ## 服务管理
@@ -78,7 +78,7 @@ sudo systemctl restart minecraft-server-speedrun.service
 
 ## 持续运行
 
-m16 配置忽略合盖与空闲事件，禁用 systemd 的睡眠、挂起、休眠和混合睡眠
+encore 配置忽略合盖与空闲事件，禁用 systemd 的睡眠、挂起、休眠和混合睡眠
 入口，禁用 GDM 自动挂起，并锁定两个用户的 GNOME 空闲睡眠设置为 `nothing`。
 NetworkManager 禁用 Wi-Fi 节能，保存的网络配置自动连接；SSH、Tailscale 和
 NetworkManager 随系统启动。
@@ -97,7 +97,7 @@ Minecraft 1.21.5 官方 `ComponentSerialization.CODEC` 与 `NbtOps` 解码检查
 测试使用 MCProtocolLib 26.3，所有接收数据包均正常解码。Bedrock UDP 状态查询
 返回版本 26.51，Geyser 与两个代理、四个子服均正常启动。
 
-保留维护 U 盘插入的状态下，m16 已完成重启并从 SSD 启动 NixOS。六个服务、
+保留维护 U 盘插入的状态下，encore 已完成重启并从 SSD 启动 NixOS。六个服务、
 PostgreSQL 和 MariaDB 自动恢复，局域网与 Tailscale SSH 均可连接，systemd
 没有失败单元。重启后再次验证了休眠入口、GNOME 设置锁定及 Wi-Fi 节能设置。
 
@@ -105,8 +105,8 @@ PostgreSQL 和 MariaDB 自动恢复，局域网与 Tailscale SSH 均可连接，
 
 Gate 由 tokyo 的 `podman-gate.service` 管理，并启用开机启动。
 `nixos/modules/minecraft/gate.nix` 声明后端域名、PROXY protocol 和 TCP `25565`
-防火墙端口；`nixos/hosts/m16/minecraft.nix` 声明代理接收 PROXY protocol。
+防火墙端口；`nixos/hosts/encore/minecraft.nix` 声明代理接收 PROXY protocol。
 
-2026-10-04 已从公网查询服务状态，并通过实际协议客户端登录 m16 大厅、
-确认出生位置。m16 的代理和大厅日志确认了同一条登录连接及玩家真实公网地址。
-tokyo 与 m16 的系统配置均已激活，Gate 后端通过 Tailscale 域名解析到 m16。
+2026-10-04 已从公网查询服务状态，并通过实际协议客户端登录 encore 大厅、
+确认出生位置。encore 的代理和大厅日志确认了同一条登录连接及玩家真实公网地址。
+tokyo 与 encore 的系统配置均已激活，Gate 后端通过 Tailscale 域名解析到 encore。

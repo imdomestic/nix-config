@@ -12,7 +12,7 @@
         enabled: true
         routes:
           - host: "*"
-            backend: m16.inner.imdomestic.com:25565
+            backend: encore.inner.imdomestic.com:25565
             proxyProtocol: true
             tcpShieldRealIP: false
   '';

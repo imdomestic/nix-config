@@ -149,7 +149,7 @@ in {
       multipath-tools
       bubblewrap
 
-      # C / 内核构建。原本在 b650 / gpd / m16 / tank 四台的
+      # C / 内核构建。原本在 b650 / gpd / encore / tank 四台的
       # environment.systemPackages 里各抄一份 —— 编译是人干的活,不是机器要的。
       # 只给 linux:elfutils / libelf 在 darwin 上是 unsupported,放外面会让
       # 两台 Mac 的 home 直接求值失败。

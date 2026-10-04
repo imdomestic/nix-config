@@ -6,7 +6,7 @@ in {
   system = "x86_64-linux";
   kind = "nixos";
   roles = ["server" "gpu-compute" "desktop" "gui"];
-  tsName = "m16.inner.imdomestic.com";
+  tsName = "encore.inner.imdomestic.com";
 
   profiles = with nixosProfiles; [
     base
