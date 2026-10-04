@@ -1,0 +1,16 @@
+diff --git a/src/serve/translate.cpp b/src/serve/translate.cpp
+--- a/src/serve/translate.cpp
++++ b/src/serve/translate.cpp
+@@ -155,10 +155,11 @@ ResolvedPromptSemantics resolve_prompt_semantics(
+         result.reasoning_effort = ninfer::ReasoningEffort::Medium;
+         break;
++    // OpenCode 的 high 对应此模板最高的原生推理等级。
++    case RequestedReasoningEffort::High:
+     case RequestedReasoningEffort::XHigh:
+         result.reasoning_effort = ninfer::ReasoningEffort::XHigh;
+         break;
+     case RequestedReasoningEffort::Minimal:
+-    case RequestedReasoningEffort::High:
+     case RequestedReasoningEffort::Max:
+         invalid_prompt_option("reasoning effort '" +
+                                   std::string(requested_reasoning_effort_name(requested)) +
