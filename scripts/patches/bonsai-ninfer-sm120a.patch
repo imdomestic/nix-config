@@ -1,0 +1,61 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -49,6 +49,8 @@ elseif(CMAKE_CUDA_ARCHITECTURES MATCHES "^86")
+   add_compile_definitions(NINFER_SM86=1)
+ elseif(CMAKE_CUDA_ARCHITECTURES MATCHES "^89")
+   add_compile_definitions(NINFER_SM89=1)
++elseif(CMAKE_CUDA_ARCHITECTURES MATCHES "^120")
++  add_compile_definitions(NINFER_SM120=1)
+ endif()
+ 
+ if(MSVC)
+diff --git a/src/core/device.h b/src/core/device.h
+--- a/src/core/device.h
++++ b/src/core/device.h
+@@ -25,8 +25,10 @@ int device_sm_count();
+ inline constexpr int kTargetSmCount = 128; // NVIDIA GeForce RTX 4090
+ #elif defined(NINFER_SM86)
+ inline constexpr int kTargetSmCount = 82; // NVIDIA GeForce RTX 3090
++#elif defined(NINFER_SM120)
++inline constexpr int kTargetSmCount = 48; // RTX 5070 的 SM 数量。
+ #else
+-#error "NInfer requires NINFER_SM86 or NINFER_SM89"
++#error "NInfer requires NINFER_SM86, NINFER_SM89 or NINFER_SM120"
+ #endif
+ 
+ // Non-owning execution facts passed to Ops whose launch policy depends on physical device
+diff --git a/Dockerfile b/Dockerfile
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -3,6 +3,9 @@
+ FROM nvidia/cuda:13.1.2-devel-ubuntu24.04 AS build
+ 
+ ARG DEBIAN_FRONTEND=noninteractive
++ARG NINFER_BUILD_JOBS=6
++ENV TMPDIR=/build-tmp
++RUN mkdir -p /build-tmp
+ RUN apt-get update \
+     && apt-get install --yes --no-install-recommends \
+         cmake \
+@@ -21,10 +24,11 @@ COPY . .
+ 
+ RUN cmake -S . -B /build -G Ninja \
+         -DCMAKE_BUILD_TYPE=Release \
++        -DCMAKE_CUDA_ARCHITECTURES=120a \
+         -DNINFER_BUILD_APPS=ON \
+         -DBUILD_TESTING=OFF \
+         -DNINFER_BUILD_BENCHMARKS=OFF \
+-    && cmake --build /build --parallel --target ninfer ninfer-serve
++    && cmake --build /build --parallel "$NINFER_BUILD_JOBS" --target ninfer ninfer-serve ninfer-perplexity
+ 
+ FROM nvidia/cuda:13.1.2-runtime-ubuntu24.04
+ 
+@@ -41,6 +45,7 @@ RUN apt-get update \
+ 
+ COPY --from=build /build/apps/ninfer /usr/local/bin/ninfer
+ COPY --from=build /build/apps/ninfer-serve /usr/local/bin/ninfer-serve
++COPY --from=build /build/apps/ninfer-perplexity /usr/local/bin/ninfer-perplexity
+ 
+ WORKDIR /workspace
+ EXPOSE 8080
