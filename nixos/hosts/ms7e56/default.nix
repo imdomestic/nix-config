@@ -9,7 +9,7 @@ in {
   tsName = "ms7e56.inner.imdomestic.com";
 
   profiles = with nixosProfiles; [base desktop];
-  modules = [./system.nix ./hardware-configuration.nix];
+  modules = [./system.nix ./hardware-configuration.nix ../../modules/local-llm.nix];
   externalModules = [inputs.nix-index-database.nixosModules.default];
   homeOverlays = [
     (final: prev: {
@@ -24,6 +24,6 @@ in {
 
   users.linwhite.home = {
     profiles = with homeProfiles; [core base interactive gui.linux];
-    modules = [userModules.linwhite.module userModules.linwhite.dev];
+    modules = [userModules.linwhite.module userModules.linwhite.dev ../../../home/modules/opencode/local-bonsai.nix];
   };
 }
