@@ -1,0 +1,65 @@
+diff --git a/main.go b/main.go
+--- a/main.go
++++ b/main.go
+@@ -1,6 +1,7 @@
+ package main
+ 
+ import (
++	"crypto/subtle"
+ 	_ "embed"
+ 	"encoding/json"
+ 	"flag"
+@@ -361,5 +362,6 @@
+ 	listen := flag.String("listen", ":5900", "address to listen on (host:port)")
+ 	upstream := flag.String("upstream", "http://127.0.0.1:9290", "llama-swap base URL")
+ 	configPath := flag.String("config", "/ai/llama-swap/config.yaml", "path to llama-swap config.yaml")
++	apiKeyEnv := flag.String("api-key-env", "", "environment variable containing the required Bearer API key")
+ 	sessionsDir := flag.String("sessions-dir", "/ai/sessions", "directory used for centralized session storage")
+ 	defaultUser := flag.String("default-user", "user", "default username used when auth is not configured")
+@@ -375,6 +377,14 @@
+ 	opencodeExcludeModelType := flag.String("opencode-exclude-model-type", "", "comma-separated metadata.model_type values to exclude from /opencode responses")
+ 	flag.Parse()
+ 
++	apiKey := ""
++	if *apiKeyEnv != "" {
++		apiKey = os.Getenv(*apiKeyEnv)
++		if apiKey == "" {
++			log.Fatalf("API key environment variable is empty: %s", *apiKeyEnv)
++		}
++	}
++
+ 	includeModelTypes := parseListFlag(*opencodeIncludeModelType)
+ 	excludeModelTypes := parseListFlag(*opencodeExcludeModelType)
+ 	backendGuesser := NewBackendGuesser(*upstream)
+@@ -621,7 +631,13 @@
+ 	http.HandleFunc("/api/sessions/", syncServer.HandleSessions)
+ 
+ 	http.HandleFunc("/v1/models", func(w http.ResponseWriter, r *http.Request) {
+-		resp, err := http.Get(*upstream + "/v1/models")
++		request, err := http.NewRequestWithContext(r.Context(), http.MethodGet, *upstream+"/v1/models", nil)
++		if err != nil {
++			http.Error(w, "invalid upstream request", http.StatusInternalServerError)
++			return
++		}
++		request.Header.Set("Authorization", r.Header.Get("Authorization"))
++		resp, err := http.DefaultClient.Do(request)
+ 		if err != nil {
+ 			log.Printf("models: upstream error: %v", err)
+ 			http.Error(w, fmt.Sprintf("upstream error: %v", err), http.StatusBadGateway)
+@@ -723,7 +739,15 @@
+ 	log.Printf("  return_progress injection: %t", !*disableReturnProgressInjection)
+ 	log.Printf("  /sdcpp/* -> dynamically resolved sd model upstream")
+ 	log.Printf("  /upstream/* HTML -> llama.cpp webui sync bootstrap injection")
+-	if err := http.ListenAndServe(*listen, nil); err != nil {
++	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
++		if apiKey != "" && subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), []byte("Bearer "+apiKey)) != 1 {
++			w.Header().Set("WWW-Authenticate", "Bearer")
++			http.Error(w, "unauthorized", http.StatusUnauthorized)
++			return
++		}
++		http.DefaultServeMux.ServeHTTP(w, r)
++	})
++	if err := http.ListenAndServe(*listen, handler); err != nil {
+ 		log.Fatalf("listen: %v", err)
+ 	}
+ }
