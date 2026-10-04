@@ -144,7 +144,7 @@ in {
     }
   ];
   systemd.services.encore-boot-entries = {
-    description = "Keep Windows boot access in the GRUB menu";
+    description = "Keep the SSD and rescue USB boot entries";
     wantedBy = ["multi-user.target"];
     after = ["local-fs.target"];
     unitConfig = {
@@ -174,7 +174,7 @@ in {
               ;;
             "$name: "*"UEFI:CD/DVD Drive BBS(129,,0x0)"|"$name: "*"UEFI:Removable Device BBS(130,,0x0)"|"$name: "*"UEFI:Network Device BBS(131,,0x0)")
               ${pkgs.coreutils}/bin/cp "$variable" "$STATE_DIRECTORY/$name"
-              ${pkgs.efibootmgr}/bin/efibootmgr --bootnum "''${name#Boot}" --delete-bootnum
+              ${pkgs.coreutils}/bin/rm "$variable"
               ;;
           esac
         done
