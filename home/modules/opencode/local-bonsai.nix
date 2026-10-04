@@ -1,13 +1,24 @@
-{lib, ...}: let
+{
+  config,
+  inputs,
+  lib,
+  ...
+}: let
   bonsai = import ../../../lib/bonsai-models.nix;
+  serverHost =
+    if config.my.host.name == "ms7e56"
+    then "127.0.0.1"
+    else inputs.self.hosts.ms7e56.tsName;
 in {
+  sops.secrets."bonsai/api_key".sopsFile = ../../../secrets/clients/bonsai.yaml;
   programs.opencode.settings = {
     model = lib.mkForce "local-bonsai/bonsai-main";
     provider.local-bonsai = {
       npm = "@ai-sdk/openai-compatible";
       name = "Bonsai · ms7e56";
       options = {
-        baseURL = "http://127.0.0.1:${toString bonsai.port}/v1";
+        baseURL = "http://${serverHost}:${toString bonsai.port}/v1";
+        apiKey = "{file:${config.sops.secrets."bonsai/api_key".path}}";
         timeout = 600000;
       };
       models =
