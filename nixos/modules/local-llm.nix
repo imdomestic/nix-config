@@ -6,6 +6,7 @@
   bonsai = import ../../lib/bonsai-models.nix;
   engine = pkgs.callPackage ../../pkgs/llama-cpp-prism {};
   server = lib.getExe engine;
+  mainTemplate = pkgs.writeText "bonsai-main.jinja" (builtins.readFile ./bonsai-main.jinja);
   modelCommand = id: model:
     lib.escapeShellArgs ([
         server
@@ -52,7 +53,7 @@
         "--reasoning-effort"
         model.reasoningEffort
       ]
-      ++ lib.optionals (id == "bonsai-main") ["--chat-template-file" (toString ./bonsai-main.jinja)]
+      ++ lib.optionals (id == "bonsai-main") ["--chat-template-file" mainTemplate]
       ++ lib.optionals model.mtp ["--spec-type" "draft-mtp" "--spec-draft-n-max" "2"]);
   modelManifest = pkgs.writeText "bonsai-models.json" (builtins.toJSON bonsai);
   modelService = force: {
