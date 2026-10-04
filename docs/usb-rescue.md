@@ -214,3 +214,9 @@ Mac 仓库的 `.work/9950x-install/`，以及本机
 本机配置仓库位于 `/home/linwhite/.config/nix-config`。已同步锁定源文件，
 并在本机求值系统和 linwhite 用户环境，两者的输出路径均与已安装版本
 一致。安装结束后再次计算U盘救援数据的 SHA-256，与原有镜像一致。
+
+本机主机名、Tailscale 节点名称、网络连接、磁盘卷标、GRUB 固件入口和
+SSH 密钥注释均使用 `ms7e56`。实际重启后通过局域网及
+`ms7e56.inner.imdomestic.com` 登录，系统与用户服务检查通过；系统配置
+与启动版本一致。Windows 节点保留 `9950x.inner.imdomestic.com` 和
+`100.64.0.17`，本机的 Tailscale 地址保持 `100.64.0.44`。
