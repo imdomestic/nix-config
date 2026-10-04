@@ -1,28 +1,27 @@
 {
   port = 8080;
+  context = 174080;
   output = 16384;
-  directory = "/var/lib/llm-models/bonsai2";
+  directory = "/var/lib/bonsai-ninfer";
+  image = "localhost/ninfer:bonsai-9c875f71-sm120a-high";
+  imageArchive = "ninfer-bonsai-9c875f71-sm120a-high.oci";
   models = {
     bonsai-main = {
-      name = "Bonsai 2 27B v2 · MTP";
-      repository = "BoldingBuilds/Ternary-Bonsai-2-27B-Abliterated-v2-PQ2_0-MTP-GGUF";
-      revision = "e25d197aa62ce0a2f685fc65d76a41b2416c5e66";
-      file = "Ternary-Bonsai-2-27B-Abliterated-v2-PQ2_0-MTP.gguf";
-      bytes = 7657489696;
-      sha256 = "a4e4c7b578131595c1694354bd6c74d00920df1f5082647a6126899753ebebf8";
-      mtp = true;
-      context = 81920;
+      name = "Bonsai 2 27B v2 · NInfer MTP";
+      file = "bonsai-main-e25d197aa62ce0a2.ninfer";
+      sha256 = "244e513ab2809e70d6cb1446ef61e20082bcda51ae3ab3def7c2a7542e47b00f";
+      bytes = 10533732876;
+      port = 8100;
+      draftTokens = 3;
       reasoningEffort = "high";
     };
     bonsai-hikari = {
-      name = "Hikari Bonsai 2 27B · medium";
-      repository = "Hikari07jp/Ternary-Bonsai-2-27B-Abliterated-GGUF";
-      revision = "e7f6daf95ab820ef8de7d8f5e883d95d546ab02c";
-      file = "Ternary-Bonsai-2-27B-Abliterated-PQ2_0.gguf";
-      bytes = 7206168928;
-      sha256 = "41a362f422b70a8c2dc74a3cc14447ad0ea702c440f0dbe41dc1796da7b7e342";
-      mtp = false;
-      context = 102400;
+      name = "Hikari Bonsai 2 27B · NInfer MTP medium";
+      file = "bonsai-hikari-e7f6daf95ab820ef.ninfer";
+      sha256 = "3674e71fc9016550df976c7a33460e95bcfe8bbfafe80682bce36012e15f4794";
+      bytes = 10533732876;
+      port = 8101;
+      draftTokens = 3;
       reasoningEffort = "medium";
     };
   };

@@ -32,5 +32,13 @@ NVIDIA 的 KMS 设置关闭，`nvidia_drm` 和 `nvidia_modeset` 列入内核模�
 - 启动配置已更新；`modprobe --dry-run --use-blacklist` 确认两个 NVIDIA 显示模块
   不会通过黑名单感知的模块加载流程加载。本次通过在线切换验证，没有重启整机。
 
-远程配置目录为 `~/.config/nix-config-bonsai`，包含模型服务和显卡配置。
+远程配置目录为 `~/.config/nix-config-bonsai-ninfer`，包含模型服务和显卡配置。
 OpenGL/Vulkan 的默认设备设置随登录会话生效；当前用户服务管理器已同步这些变量。
+
+## 2026-10-05 重启与 NInfer 验证
+
+系统已经重启，boot ID 为 `f745943c-ca02-4ba6-8d62-2ce0a89730aa`。
+GLX、Vulkan 默认设备均为 AMD；NVIDIA 空闲占用 1 MiB、可用 11774 MiB。
+NVIDIA CDI 与持久化服务已经启用，两个 NInfer 模型均完成 165k token 输入测试。
+主机按照用户说明无需物理显示输出，验收采用设备查询、渲染检查和 CUDA 实际请求。
+详细参数和测量记录见 [NInfer 部署报告](../REPORT.md)。

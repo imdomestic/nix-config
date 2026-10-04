@@ -1,0 +1,85 @@
+diff --git a/internal/config/filters.go b/internal/config/filters.go
+--- a/internal/config/filters.go
++++ b/internal/config/filters.go
+@@ -22,6 +22,12 @@ type Filters struct {
+ 	// Protected params (like "model") cannot be set
+ 	SetParams map[string]any `yaml:"setParams"`
+ 
++	// 列出的参数仅在请求没有提供值时使用 SetParams。
++	SetParamsIfAbsent []string `yaml:"setParamsIfAbsent"`
++
++	// 不同协议分别配置请求字段，避免向 Responses 注入 Chat 专用参数。
++	ByPath map[string]Filters `yaml:"byPath"`
++
+ 	// SetParamsByID maps requested model IDs to parameters to set/override in requests.
+ 	// Useful with aliases: a single loaded model can behave differently depending on
+ 	// which alias the client used. Applied after SetParams, so it can override those values.
+diff --git a/internal/server/filters.go b/internal/server/filters.go
+--- a/internal/server/filters.go
++++ b/internal/server/filters.go
+@@ -6,6 +6,7 @@ import (
+ 	"io"
+ 	"mime/multipart"
+ 	"net/http"
++	"slices"
+ 	"strconv"
+ 	"strings"
+ 
+@@ -13,6 +14,7 @@ import (
+ 	"github.com/mostlygeek/llama-swap/internal/chain"
+ 	"github.com/mostlygeek/llama-swap/internal/config"
+ 	"github.com/mostlygeek/llama-swap/internal/router"
++	"github.com/tidwall/gjson"
+ 	"github.com/tidwall/sjson"
+ )
+ 
+@@ -58,6 +60,14 @@ func CreateFilterMiddleware(cfg config.Config) chain.Middleware {
+ 				return
+ 			}
+ 
++			if endpointFilters, found := filters.ByPath[r.URL.Path]; found {
++				body, err = applyFilters(body, data.Model, "", endpointFilters)
++				if err != nil {
++					router.SendResponse(w, r, http.StatusInternalServerError, err.Error())
++					return
++				}
++			}
++
+ 			r.Body = io.NopCloser(bytes.NewReader(body))
+ 			r.Header.Del("Transfer-Encoding")
+ 			r.Header.Set("Content-Length", strconv.Itoa(len(body)))
+@@ -202,6 +212,9 @@ func applyFilters(body []byte, requested, useModelName string, f config.Filters) ([
+ 
+ 	setParams, setKeys := f.SanitizedSetParams()
+ 	for _, key := range setKeys {
++		if slices.Contains(f.SetParamsIfAbsent, key) && gjson.GetBytes(body, key).Exists() {
++			continue
++		}
+ 		if body, err = sjson.SetBytes(body, key, setParams[key]); err != nil {
+ 			return nil, fmt.Errorf("error setting parameter %s in request", key)
+ 		}
+diff --git a/internal/server/server.go b/internal/server/server.go
+--- a/internal/server/server.go
++++ b/internal/server/server.go
+@@ -48,6 +48,7 @@ var modelPostJSONRoutes = []string{
+ 	"/v1/chat/completions",
+ 	"/v1/responses",
++	"/v1/responses/input_tokens",
+ 	"/v1/completions",
+ 	"/v1/messages",
+ 	"/v1/messages/count_tokens",
+ 	"/v1/embeddings",
+diff --git a/internal/server/api.go b/internal/server/api.go
+--- a/internal/server/api.go
++++ b/internal/server/api.go
+@@ -234,8 +234,8 @@ func (s *Server) handleUpstream(w http.ResponseWriter, r *http.Request) {
+ 
+ 	switch {
+ 	case s.local.Handles(modelID):
+-		s.local.ServeHTTP(w, r)
++		CreateFilterMiddleware(s.cfg)(s.local).ServeHTTP(w, r)
+ 	case s.peer.Handles(modelID):
+-		s.peer.ServeHTTP(w, r)
++		CreateFilterMiddleware(s.cfg)(s.peer).ServeHTTP(w, r)
+ 	default:
+ 		router.SendResponse(w, r, http.StatusNotFound, "no router for model "+modelID)

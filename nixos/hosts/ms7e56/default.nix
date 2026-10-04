@@ -9,7 +9,18 @@ in {
   tsName = "ms7e56.inner.imdomestic.com";
 
   profiles = with nixosProfiles; [base desktop];
-  modules = [./system.nix ./hardware-configuration.nix ./graphics.nix ../../modules/local-llm.nix];
+  modules = [
+    ./system.nix
+    ./hardware-configuration.nix
+    ./graphics.nix
+    ../../modules/bonsai-conversion.nix
+    ../../modules/bonsai-ninfer.nix
+    ../../modules/bonsai-tailnet.nix
+    {
+      services.bonsaiNinfer.enable = true;
+      services.bonsaiNinfer.tailnet.enable = true;
+    }
+  ];
   externalModules = [inputs.nix-index-database.nixosModules.default];
   homeOverlays = [
     (final: prev: {
@@ -24,6 +35,10 @@ in {
 
   users.linwhite.home = {
     profiles = with homeProfiles; [core base interactive gui.linux];
-    modules = [userModules.linwhite.module userModules.linwhite.dev ../../../home/modules/opencode/local-bonsai.nix];
+    modules = [
+      userModules.linwhite.module
+      userModules.linwhite.dev
+      ../../../home/modules/opencode/local-bonsai.nix
+    ];
   };
 }

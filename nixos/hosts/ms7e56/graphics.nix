@@ -2,16 +2,22 @@
   boot.initrd.kernelModules = ["amdgpu"];
   boot.blacklistedKernelModules = ["nvidia_drm" "nvidia_modeset"];
 
-  hardware.nvidia = {
-    modesetting.enable = false;
-    open = true;
-    nvidiaSettings = false;
-    package = config.boot.kernelPackages.nvidiaPackages.production;
+  hardware = {
+    graphics.enable = true;
+    nvidia = {
+      modesetting.enable = false;
+      open = true;
+      nvidiaSettings = false;
+      nvidiaPersistenced = true;
+      package = config.boot.kernelPackages.nvidiaPackages.production;
+    };
+    nvidia-container-toolkit.enable = true;
   };
+  virtualisation.podman.enable = true;
   services.xserver.videoDrivers = ["amdgpu" "nvidia"];
 
   services.udev.extraRules = ''
-    SUBSYSTEM=="drm", ENV{DEVTYPE}=="drm_minor", ENV{DEVNAME}=="/dev/dri/card[0-9]", SUBSYSTEMS=="pci", ATTRS{vendor}=="0x1002", ATTRS{device}=="0x13c0", TAG+="mutter-device-preferred-primary"
+    SUBSYSTEM=="drm", ENV{DEVTYPE}=="drm_minor", KERNELS=="0000:10:00.0", TAG+="mutter-device-preferred-primary"
   '';
 
   environment.sessionVariables = {

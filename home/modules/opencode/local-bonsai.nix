@@ -15,7 +15,7 @@ in {
     model = lib.mkForce "local-bonsai/bonsai-main";
     provider.local-bonsai = {
       npm = "@ai-sdk/openai-compatible";
-      name = "Bonsai · ms7e56";
+      name = "Bonsai NInfer · ms7e56";
       options = {
         baseURL = "http://${serverHost}:${toString bonsai.port}/v1";
         apiKey = "{file:${config.sops.secrets."bonsai/api_key".path}}";
@@ -27,22 +27,13 @@ in {
           reasoning = true;
           tool_call = true;
           temperature = true;
-          limit = {
-            context = model.context;
-            output = bonsai.output;
-          };
-          modalities = {
-            input = ["text"];
-            output = ["text"];
-          };
+          limit = {inherit (bonsai) context output;};
+          modalities = {input = ["text"]; output = ["text"];};
           options.reasoningEffort = model.reasoningEffort;
         }
         // lib.optionalAttrs (id == "bonsai-main") {
-          variants = lib.genAttrs ["low" "medium" "high"] (effort: {
-            reasoningEffort = effort;
-          });
-        })
-      bonsai.models;
+          variants = lib.genAttrs ["low" "medium" "high"] (effort: {reasoningEffort = effort;});
+        }) bonsai.models;
     };
     agent.aggressive = {
       description = "使用本地 Hikari 模型进行研究与代码分析";
