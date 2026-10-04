@@ -18,7 +18,7 @@
         "--port"
         "\${PORT}"
         "--ctx-size"
-        (toString bonsai.context)
+        (toString model.context)
         "--parallel"
         "1"
         "--n-gpu-layers"
@@ -32,7 +32,7 @@
         "--batch-size"
         "512"
         "--ubatch-size"
-        "256"
+        "128"
         "--jinja"
         "--no-ui"
         "--temp"

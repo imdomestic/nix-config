@@ -23,6 +23,7 @@ def request(client, url, prompt, tokens):
         'messages': [{'role': 'user', 'content': prompt}],
         'max_tokens': tokens,
         'temperature': 0,
+        'reasoning_effort': 'medium',
         'seed': 20261004,
         'cache_prompt': False,
         'stream': True,
@@ -77,7 +78,7 @@ def main():
             startup = time.perf_counter()
             server = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT, env=environment, cwd=args.output)
             monitor = subprocess.Popen([
-                'nvidia-smi', '--query-gpu=timestamp,memory.total,memory.used',
+                'nvidia-smi', '--query-gpu=timestamp,memory.total,memory.used,memory.free',
                 '--format=csv,noheader,nounits', '--loop-ms=250',
             ], stdout=gpu_log, stderr=subprocess.STDOUT)
             try:
@@ -108,7 +109,8 @@ def main():
                 monitor.wait(timeout=10)
         rows = list(csv.reader(io.StringIO(gpu_path.read_text())))
         peak = max(int(row[2]) for row in rows)
-        assert int(rows[0][1]) - peak >= 819.2, peak
+        free = min(int(row[3]) for row in rows)
+        assert free >= 600, (peak, free)
         result = {
             'mtp': mtp,
             'command': command,
@@ -118,6 +120,7 @@ def main():
             'median_tokens_per_second': statistics.median(item['timings']['predicted_per_second'] for item in samples),
             'median_ttft_seconds': statistics.median(item['ttft_seconds'] for item in samples),
             'gpu_peak_mib': peak,
+            'minimum_free_mib': free,
         }
         results.append(result)
         (args.output / 'results.json').write_text(json.dumps(results, ensure_ascii=False, indent=2) + '\n')
