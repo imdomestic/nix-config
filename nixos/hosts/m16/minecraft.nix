@@ -93,7 +93,6 @@ in {
         jvmOpts = lib.mkAfter "-Djava.io.tmpdir=/var/cache/minecraft/${name} -XX:+ExitOnOutOfMemoryError";
       }))
       (lib.genAttrs proxies (name: {
-        package = lib.mkForce pkgs.velocityServers.velocity-3_5_0-SNAPSHOT-build_600;
         stopCommand = "shutdown";
         symlinks."forwarding.secret" = lib.mkForce "/var/lib/minecraft-secrets/forwarding.secret";
         files = {
