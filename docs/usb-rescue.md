@@ -184,15 +184,16 @@ GRUB 安装在新建 EFI 分区的 `EFI/BOOT/BOOTX64.EFI`，默认启动 NixOS�
 引导程序逐字节一致，保存为同目录下的 `windows.efi`。
 `9950x-boot-entries.service` 在启动时
 维护 Windows 引导程序文件名，并备份、删除指向该分区的 Windows Boot
-Manager 固件启动项。
+Manager 固件启动项，同时清理 MSI 自动生成的光驱、通用可移动设备和
+网络设备 BBS 入口。
 
 linwhite 使用本机独立生成的 Ed25519 密钥，Home Manager 的 sops-nix
 通过对应的 age 接收者解密 OpenCode 凭据。系统与用户环境分别构建和
 部署，后续用户环境更新执行 `just hm 9950x-native linwhite`。
 
-2026-10-04 已完成安装，并在U盘保持连接时连续两次从本地 SSD 启动。
+2026-10-04 已完成安装，并在U盘保持连接时验证从本地 SSD 重启。
 固件只保留 `Boot0002`（`GRUB NixOS 9950x`）与 `Boot0001`（救援U盘），
-`BootOrder` 均为 `0002,0001`，`BootCurrent` 均为 `0002`。
+`BootOrder` 为 `0002,0001`，`BootCurrent` 为 `0002`。
 根目录使用 ext4 卷标 `NIXOS9950X`，安装后可用空间约 706 GiB。
 NVMe 设备编号在两次启动间发生变化，挂载和引导均通过卷标或 UUID 定位。
 
