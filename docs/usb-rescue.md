@@ -145,5 +145,65 @@ SSD 启动变量和 EFI 引导程序与维护前的备份一致。
 镜像、原有介质备份和测试记录位于 Mac 仓库的 `.work/usb-rescue/`，
 M16 的对应目录为 `/home/hank/.work/usb-rescue/`；两个目录均限制访问权限。
 
-U盘目前连接在 M16 上。9950x 的本地系统安装和 Windows Boot Manager
-启动项处理，需要将U盘移到 9950x 并从救援系统启动后进行。
+2026-10-04 已在 MSI B850 GAMING PLUS WIFI（MS-7E56）的 9950x 实机上
+通过 UEFI 启动。Realtek RTL8126 有线网卡由 r8169 驱动，经 r5sjp 桥接
+取得 `10.1.2.194`。`root`、`nixos` 公钥登录、sudo、DNS、内存根目录、
+Wi-Fi 配置和维护工具检查均通过，救援系统没有失败的 systemd 服务。
+
+## 9950x 本地系统
+
+主机配置为 `nixosConfigurations.9950x-native`，用户环境为
+`homeConfigurations."linwhite@9950x-native"`。系统提供 GNOME、RTX 5070
+的 NVIDIA 开放内核驱动、AMD CPU 微码、有线 DHCP、Wi-Fi 和 SSH。
+管理名称为 `9950x-native.inner.imdomestic.com`，局域网名称为
+`9950x-native.local`。本地登录密码使用 M16 上 linwhite 账户的现有密码。
+
+安装空间从 D 盘划分，总计 750 GiB。目标硬盘为 Samsung 970 EVO Plus
+2 TB，序列号 `S4J4NX0R400720Y`。分区布局如下：
+
+| 分区 | 容量 | 文件系统 | 用途 |
+| --- | --- | --- | --- |
+| 第一分区 | 约 181 GiB | NTFS | D 盘，UUID `7CBC355ABC35105E` |
+| 第二分区 | 约 932 GiB | NTFS | 现有数据分区，UUID `20FCF685ED4F0BEA` |
+| 第三分区 | 2 GiB | FAT32，`BOOT9950X` | `/boot`，保存 GRUB、内核和 initrd |
+| 第四分区 | 748 GiB | ext4，`NIXOS9950X` | NixOS 根目录 |
+
+D 盘缩容前已完成完整 NTFS 镜像备份、压缩检查、恢复格式检查，以及
+传输前后 SHA-256 比较。备份位于 M16 的
+`/home/hank/.work/9950x-install/d-drive.ntfs.zst`，约 83 GiB。
+NTFS 镜像 SHA-256 为
+`91ee001049996ce6fcbab3ce04123f67b92b99a311d331bf24ff210bca4a9097`。
+缩容后 NTFS 检查通过，D 盘根目录文件列表一致，第一分区的起始扇区和
+标识保持一致，第二分区完整保持原有边界和标识。另外两块硬盘的 GPT
+与操作前备份逐字节一致。
+
+GRUB 安装在新建 EFI 分区的 `EFI/BOOT/BOOTX64.EFI`，默认启动 NixOS，
+等待时间为 5 秒。Windows 菜单通过 UUID `8C8A-383D` 定位 Predator
+硬盘上的原有 EFI 分区，加载 `EFI/Microsoft/Boot/windows.efi`。
+该分区挂载到 `/windows-efi`。原 `EFI/Boot/bootx64.efi` 与 Windows
+引导程序逐字节一致，保存为同目录下的 `windows.efi`。
+`9950x-boot-entries.service` 在启动时
+维护 Windows 引导程序文件名，并备份、删除指向该分区的 Windows Boot
+Manager 固件启动项。
+
+linwhite 使用本机独立生成的 Ed25519 密钥，Home Manager 的 sops-nix
+通过对应的 age 接收者解密 OpenCode 凭据。系统与用户环境分别构建和
+部署，后续用户环境更新执行 `just hm 9950x-native linwhite`。
+
+2026-10-04 已完成安装，并在U盘保持连接时连续两次从本地 SSD 启动。
+固件只保留 `Boot0002`（`GRUB NixOS 9950x`）与 `Boot0001`（救援U盘），
+`BootOrder` 均为 `0002,0001`，`BootCurrent` 均为 `0002`。
+根目录使用 ext4 卷标 `NIXOS9950X`，安装后可用空间约 706 GiB。
+NVMe 设备编号在两次启动间发生变化，挂载和引导均通过卷标或 UUID 定位。
+
+有线地址为 `10.1.2.194`，Tailscale 地址为 `100.64.0.44`。已验证局域网
+SSH、经 r5sjp 跳转的 SSH、Tailscale SSH、linwhite 的 sudo、DNS、
+Home Manager 激活、凭据解密和终端工具。GNOME 的 Wayland 登录会话
+正常，NVIDIA 驱动 `595.71.05` 识别 RTX 5070 与 12,227 MiB 显存，
+系统和用户均没有失败的 systemd 服务。Windows EFI 文件和 GRUB 菜单
+通过检查；本次未实际启动 Windows。
+
+全部 20 个 NixOS 主机配置通过求值，新主机的系统和用户环境完成实际
+构建，新增 Nix 文件通过 Alejandra 格式检查。分区、EFI 和验证记录位于
+Mac 仓库的 `.work/9950x-install/`，以及本机
+`/root/.work/9950x-install/`，目录均限制访问权限。
