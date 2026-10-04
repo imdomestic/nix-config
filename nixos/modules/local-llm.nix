@@ -50,8 +50,9 @@
         "--reasoning"
         "on"
         "--reasoning-effort"
-        "medium"
+        model.reasoningEffort
       ]
+      ++ lib.optionals (id == "bonsai-main") ["--chat-template-file" (toString ./bonsai-main.jinja)]
       ++ lib.optionals model.mtp ["--spec-type" "draft-mtp" "--spec-draft-n-max" "2"]);
   downloadModel = _id: model: ''
     target=${lib.escapeShellArg "${bonsai.directory}/${model.file}"}
