@@ -32,6 +32,14 @@ the rename; its Headscale name is changed, but its OS computer name still needs
 an on-device change. iOS device names are changed in Settings, independently
 from their Headscale names. Dated incident records retain their original names.
 
+Verification: the Mac reports `praxic` for HostName, LocalHostName and
+ComputerName; native Linux reports `taipan` for both its live and static
+hostname. All five new MagicDNS names resolve to their existing node addresses;
+the five previous names no longer resolve. Both h610 and tank have activated
+the new model URLs and monitoring configuration: node, NVIDIA GPU and ping
+scrapes for `taipan` are up, and `/v1/models` responds through the new name.
+The rename did not re-enrol any node or change its Tailscale addresses.
+
 ## Listeners
 
 Services continue to bind specific local Tailscale addresses. Programs that
