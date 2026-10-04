@@ -47,10 +47,10 @@ in {
       enable = true;
       wifi.powersave = false;
       ensureProfiles = {
-        environmentFiles = ["/var/lib/NetworkManager/m16-wifi.env"];
-        profiles.m16-wifi = {
+        environmentFiles = ["/var/lib/NetworkManager/encore-wifi.env"];
+        profiles.encore-wifi = {
           connection = {
-            id = "m16-wifi";
+            id = "encore-wifi";
             type = "wifi";
             autoconnect = true;
             autoconnect-retries = 0;
@@ -89,6 +89,7 @@ in {
 
   i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
   services = {
+    tailscale.extraSetFlags = ["--hostname=${config.networking.hostName}"];
     displayManager.gdm = {
       enable = true;
       autoSuspend = false;
@@ -142,7 +143,7 @@ in {
       };
     }
   ];
-  systemd.services.m16-boot-entries = {
+  systemd.services.encore-boot-entries = {
     description = "Keep Windows boot access in the GRUB menu";
     wantedBy = ["multi-user.target"];
     after = ["local-fs.target"];
@@ -153,7 +154,7 @@ in {
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      StateDirectory = "m16-boot-entries";
+      StateDirectory = "encore-boot-entries";
       StateDirectoryMode = "0700";
       UMask = "0077";
     };

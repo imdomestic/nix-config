@@ -1,6 +1,6 @@
 # x86_64 救援U盘
 
-`nixosConfigurations.x86_64-rescue` 提供用于 M16、ms7e56 和其他 x86_64
+`nixosConfigurations.x86_64-rescue` 提供用于 encore、ms7e56 和其他 x86_64
 机器的 NixOS 救援与安装系统。UEFI 和传统 BIOS 均通过 GRUB 启动。
 系统包含通用硬件驱动及固件，根目录位于内存，安装介质以只读方式挂载。
 本地磁盘的分区、文件系统和固件启动项由维护操作显式管理。
@@ -90,14 +90,14 @@ UEFI、BIOS、SSH 公钥登录、有线 DHCP、DNS、Wi-Fi 配置及维护工具
 ## 本地系统启动
 
 ms7e56 的本地安装使用 GRUB。Windows 从 GRUB 菜单进入，Windows Boot
-Manager 的固件启动项在确认目标 EFI 分区后处理。M16 的具体配置和已验证
-行为见 [M16 安装记录](m16-installation.md)。
+Manager 的固件启动项在确认目标 EFI 分区后处理。encore 的具体配置和已验证
+行为见 [encore 安装记录](encore-installation.md)。
 
 U盘适用于支持 Linux 驱动的 x86_64 机器，UEFI 启动需要关闭 Secure Boot。
 
 ## 当前介质与验证
 
-2026-10-04 已写入 M16 上的 ELECOM MF-DAU3，序列号
+2026-10-04 已写入 encore 上的 ELECOM MF-DAU3，序列号
 `07083421BA974624`，设备容量为 31,042,043,904 字节。
 磁盘镜像大小为 2,415,919,104 字节，SHA-256 为：
 
@@ -116,19 +116,19 @@ U盘适用于支持 Linux 驱动的 x86_64 机器，UEFI 启动需要关闭 Secu
 ISO 均逐字节一致。EFI 分区 UUID 为 `9CC9-7992`，PARTUUID 为
 `89a6b4ed-7286-4a3a-a33c-6f244d79ad71`。
 
-已在 M16 的 QEMU/KVM 中通过 UEFI、BIOS 启动最终磁盘镜像，并将实际
+已在 encore 的 QEMU/KVM 中通过 UEFI、BIOS 启动最终磁盘镜像，并将实际
 U盘以只读方式连接给虚拟机完成 BIOS 启动。三个测试均通过 `root`、
 `nixos` 公钥登录、sudo、有线 DHCP、DNS、内存根目录、Wi-Fi 配置加载、
 SSH 认证设置和维护工具检查，救援系统没有失败的 systemd 服务。Wi-Fi
 凭据与原有U盘一致。
 
-M16 的固件启动列表仅保留两个入口，`BootOrder` 为 `0000,0001`：
+encore 的固件启动列表仅保留两个入口，`BootOrder` 为 `0000,0001`：
 
 - `Boot0000`：SSD 上的 GRUB，默认启动本地 NixOS。
 - `Boot0001`：`NixOS Rescue USB`，通过第一分区的 PARTUUID 定位
   `\EFI\BOOT\BOOTX64.EFI`，入口适用于不同的 USB 接口。
 
-2026-10-04 已在 M16 实机通过 `Boot0001` 启动U盘，确认根目录位于内存、
+2026-10-04 已在 encore 实机通过 `Boot0001` 启动U盘，确认根目录位于内存、
 SSD 根分区未挂载、Wi-Fi 获取 `10.1.2.137`、DNS 正常，`root` 和 `nixos`
 均可使用公钥登录，维护工具及 systemd 服务检查通过。随后通过 `Boot0000`
 返回 SSD，启动顺序仍为 `0000,0001`，SSH、Tailscale 和数据库服务正常。
@@ -140,10 +140,10 @@ SSD 启动变量和 EFI 引导程序与维护前的备份一致。
 在其他机器上通过该机器的固件启动菜单选择U盘。
 
 配置通过救援 ISO 的完整构建和磁盘镜像生成工具的实际运行；生成工具
-通过 ShellCheck。Mac 与 M16 计算出的 ISO derivation 一致，Nix 文件
+通过 ShellCheck。Mac 与 encore 计算出的 ISO derivation 一致，Nix 文件
 通过 Alejandra 格式检查，救援数据分区中的全部文件与源 ISO 内容一致。
 镜像、原有介质备份和测试记录位于 Mac 仓库的 `.work/usb-rescue/`，
-M16 的对应目录为 `/home/hank/.work/usb-rescue/`；两个目录均限制访问权限。
+encore 的对应目录为 `/home/hank/.work/usb-rescue/`；两个目录均限制访问权限。
 
 2026-10-04 已在 MSI B850 GAMING PLUS WIFI（MS-7E56）的 ms7e56 实机上
 通过 UEFI 启动。Realtek RTL8126 有线网卡由 r8169 驱动，经 r5sjp 桥接
@@ -157,7 +157,7 @@ Wi-Fi 配置和维护工具检查均通过，救援系统没有失败的 systemd
 的 NVIDIA 开放内核驱动、AMD CPU 微码、有线 DHCP、Wi-Fi 和 SSH。
 管理名称为 `ms7e56.inner.imdomestic.com`，局域网名称为
 `ms7e56.local`。Windows 远程名称为 `9950x.inner.imdomestic.com`，
-WSL 配置为 `nixosConfigurations.9950x`。本地登录密码使用 M16 上
+WSL 配置为 `nixosConfigurations.9950x`。本地登录密码使用 encore 上
 linwhite 账户的现有密码。
 
 安装空间从 D 盘划分，总计 750 GiB。目标硬盘为 Samsung 970 EVO Plus
@@ -171,7 +171,7 @@ linwhite 账户的现有密码。
 | 第四分区 | 748 GiB | ext4，`NIXOSMS7E56` | NixOS 根目录 |
 
 D 盘缩容前已完成完整 NTFS 镜像备份、压缩检查、恢复格式检查，以及
-传输前后 SHA-256 比较。备份位于 M16 的
+传输前后 SHA-256 比较。备份位于 encore 的
 `/home/hank/.work/9950x-install/d-drive.ntfs.zst`，约 83 GiB。
 NTFS 镜像 SHA-256 为
 `91ee001049996ce6fcbab3ce04123f67b92b99a311d331bf24ff210bca4a9097`。

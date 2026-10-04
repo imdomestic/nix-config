@@ -23,7 +23,7 @@ in {
   r2s = callHost "r2s";
   r5sjp = callHost "r5sjp";
   gpd = callHost "gpd";
-  m16 = callHost "m16";
+  encore = callHost "encore";
   "9950x" = callHost "9950x";
   ms7e56 = callHost "ms7e56";
   marble = callHost "marble";

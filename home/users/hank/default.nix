@@ -581,7 +581,7 @@ in {
 
       # general
       # settings / cleanram / trim_all 只在 Linux 机器上有意义,留着 —— 这台 mac
-      # 的 history 里没出现过不代表没用过(GNOME 装在 b650/x470/m16/tank 上)。
+      # 的 history 里没出现过不代表没用过(GNOME 装在 b650/x470/encore/tank 上)。
       settings = "gnome-control-center";
       cleanram = "sudo sh -c 'sync; echo 3 > /proc/sys/vm/drop_caches'";
       trim_all = "sudo fstrim -va";
