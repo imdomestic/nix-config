@@ -59,6 +59,8 @@ Windows 后方依次是 Linux 启动分区和根分区。扩容时从安装 U �
 
 每次 NixOS 启动时，`m16-boot-entries.service` 使用 `efibootdump` 识别名称为 Windows Boot Manager、指向本机 EFI 分区的启动项，将变量备份到 `/var/lib/m16-boot-entries` 后删除。GRUB 的启动项及菜单中的 Windows 入口保持可用。
 
+固件启动列表保留 `Boot0000`（SSD GRUB）和 `Boot0001`（`NixOS Rescue USB`），顺序为 `0000,0001`。救援入口指向 ELECOM MF-DAU3 当前 USB 接口和第二分区的 `\EFI\BOOT\BOOTX64.EFI`。2026-10-04 已通过该入口启动救援系统并完成 Wi-Fi、SSH 和内存根目录检查，随后返回 SSD，启动顺序保持一致。救援介质及备份位置见 [救援U盘说明](usb-rescue.md)。
+
 2026-10-03 已新增 300 GiB，将 NixOS 总分配容量扩展到 350 GiB。扩容后的 Windows 分区约 126.63 GiB，空闲约 45.46 GiB，NTFS 一致性检查通过。
 
 | 分区 | 容量 | 文件系统 | 用途 |
