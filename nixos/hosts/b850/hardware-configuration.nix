@@ -10,11 +10,11 @@
   boot.kernelModules = ["kvm-amd"];
 
   fileSystems."/" = {
-    device = "/dev/disk/by-label/NIXOS9950X";
+    device = "/dev/disk/by-uuid/5afa7bbb-5217-4c64-8136-c2a3d0d92250";
     fsType = "ext4";
   };
   fileSystems."/boot" = {
-    device = "/dev/disk/by-label/BOOT9950X";
+    device = "/dev/disk/by-uuid/8DC1-C232";
     fsType = "vfat";
     options = ["fmask=0077" "dmask=0077"];
   };

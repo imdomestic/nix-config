@@ -47,10 +47,10 @@ in {
     settings.main.no-auto-default = "*";
     wifi.powersave = false;
     ensureProfiles = {
-      environmentFiles = ["/var/lib/NetworkManager/9950x-wifi.env"];
-      profiles."9950x-ethernet" = {
+      environmentFiles = ["/var/lib/NetworkManager/b850-wifi.env"];
+      profiles."b850-ethernet" = {
         connection = {
-          id = "9950x-ethernet";
+          id = "b850-ethernet";
           type = "ethernet";
           autoconnect = true;
           autoconnect-priority = 100;
@@ -63,9 +63,9 @@ in {
         };
         ipv6.method = "auto";
       };
-      profiles."9950x-wifi" = {
+      profiles."b850-wifi" = {
         connection = {
-          id = "9950x-wifi";
+          id = "b850-wifi";
           type = "wifi";
           autoconnect = true;
           autoconnect-retries = 0;
@@ -96,6 +96,7 @@ in {
   my.host.useChinaMirror = false;
 
   services = {
+    tailscale.extraSetFlags = ["--hostname=${config.networking.hostName}"];
     displayManager.gdm.autoSuspend = false;
     pipewire.alsa.enable = true;
     logind.settings.Login.IdleAction = "ignore";
@@ -136,7 +137,7 @@ in {
       };
     }
   ];
-  systemd.services."9950x-boot-entries" = {
+  systemd.services."b850-boot-entries" = {
     description = "Keep Windows boot access in the GRUB menu";
     wantedBy = ["multi-user.target"];
     after = ["local-fs.target"];
@@ -147,7 +148,7 @@ in {
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      StateDirectory = "9950x-boot-entries";
+      StateDirectory = "b850-boot-entries";
       StateDirectoryMode = "0700";
       UMask = "0077";
     };

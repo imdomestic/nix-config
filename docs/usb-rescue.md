@@ -1,6 +1,6 @@
 # x86_64 救援U盘
 
-`nixosConfigurations.x86_64-rescue` 提供用于 M16、9950x 和其他 x86_64
+`nixosConfigurations.x86_64-rescue` 提供用于 M16、b850 和其他 x86_64
 机器的 NixOS 救援与安装系统。UEFI 和传统 BIOS 均通过 GRUB 启动。
 系统包含通用硬件驱动及固件，根目录位于内存，安装介质以只读方式挂载。
 本地磁盘的分区、文件系统和固件启动项由维护操作显式管理。
@@ -18,7 +18,7 @@ SSH 关闭密码认证。局域网主机名为 `nixos-rescue.local`：
 ssh root@nixos-rescue.local
 ```
 
-9950x 的网线经 r5sjp 的 `br-lan` 桥接到路由器，救援系统从路由器获取
+b850 的网线经 r5sjp 的 `br-lan` 桥接到路由器，救援系统从路由器获取
 `10.1.2.0/24` 网段地址。r5sjp 的局域网地址为 `10.1.2.107`。需要从
 Tailscale 网络进入该局域网时，可以使用：
 
@@ -89,7 +89,7 @@ UEFI、BIOS、SSH 公钥登录、有线 DHCP、DNS、Wi-Fi 配置及维护工具
 
 ## 本地系统启动
 
-9950x 的本地安装使用 GRUB。Windows 从 GRUB 菜单进入，Windows Boot
+b850 的本地安装使用 GRUB。Windows 从 GRUB 菜单进入，Windows Boot
 Manager 的固件启动项在确认目标 EFI 分区后处理。M16 的具体配置和已验证
 行为见 [M16 安装记录](m16-installation.md)。
 
@@ -145,18 +145,19 @@ SSD 启动变量和 EFI 引导程序与维护前的备份一致。
 镜像、原有介质备份和测试记录位于 Mac 仓库的 `.work/usb-rescue/`，
 M16 的对应目录为 `/home/hank/.work/usb-rescue/`；两个目录均限制访问权限。
 
-2026-10-04 已在 MSI B850 GAMING PLUS WIFI（MS-7E56）的 9950x 实机上
+2026-10-04 已在 MSI B850 GAMING PLUS WIFI（MS-7E56）的 b850 实机上
 通过 UEFI 启动。Realtek RTL8126 有线网卡由 r8169 驱动，经 r5sjp 桥接
 取得 `10.1.2.194`。`root`、`nixos` 公钥登录、sudo、DNS、内存根目录、
 Wi-Fi 配置和维护工具检查均通过，救援系统没有失败的 systemd 服务。
 
-## 9950x 本地系统
+## b850 本地系统
 
-主机配置为 `nixosConfigurations.9950x-native`，用户环境为
-`homeConfigurations."linwhite@9950x-native"`。系统提供 GNOME、RTX 5070
+主机配置为 `nixosConfigurations.b850`，用户环境为
+`homeConfigurations."linwhite@b850"`。系统提供 GNOME、RTX 5070
 的 NVIDIA 开放内核驱动、AMD CPU 微码、有线 DHCP、Wi-Fi 和 SSH。
-管理名称为 `9950x-native.inner.imdomestic.com`，局域网名称为
-`9950x-native.local`。本地登录密码使用 M16 上 linwhite 账户的现有密码。
+管理名称为 `b850.inner.imdomestic.com`，局域网名称为
+`b850.local`。Windows／WSL 保留 `9950x` 名称。本地登录密码使用 M16 上
+linwhite 账户的现有密码。
 
 安装空间从 D 盘划分，总计 750 GiB。目标硬盘为 Samsung 970 EVO Plus
 2 TB，序列号 `S4J4NX0R400720Y`。分区布局如下：
@@ -165,8 +166,8 @@ Wi-Fi 配置和维护工具检查均通过，救援系统没有失败的 systemd
 | --- | --- | --- | --- |
 | 第一分区 | 约 181 GiB | NTFS | D 盘，UUID `7CBC355ABC35105E` |
 | 第二分区 | 约 932 GiB | NTFS | 现有数据分区，UUID `20FCF685ED4F0BEA` |
-| 第三分区 | 2 GiB | FAT32，`BOOT9950X` | `/boot`，保存 GRUB、内核和 initrd |
-| 第四分区 | 748 GiB | ext4，`NIXOS9950X` | NixOS 根目录 |
+| 第三分区 | 2 GiB | FAT32，`BOOTB850` | `/boot`，保存 GRUB、内核和 initrd |
+| 第四分区 | 748 GiB | ext4，`NIXOSB850` | NixOS 根目录 |
 
 D 盘缩容前已完成完整 NTFS 镜像备份、压缩检查、恢复格式检查，以及
 传输前后 SHA-256 比较。备份位于 M16 的
@@ -182,20 +183,20 @@ GRUB 安装在新建 EFI 分区的 `EFI/BOOT/BOOTX64.EFI`，默认启动 NixOS�
 硬盘上的原有 EFI 分区，加载 `EFI/Microsoft/Boot/windows.efi`。
 该分区挂载到 `/windows-efi`。原 `EFI/Boot/bootx64.efi` 与 Windows
 引导程序逐字节一致，保存为同目录下的 `windows.efi`。
-`9950x-boot-entries.service` 在启动时
+`b850-boot-entries.service` 在启动时
 维护 Windows 引导程序文件名，并备份、删除指向该分区的 Windows Boot
 Manager 固件启动项，同时清理 MSI 自动生成的光驱、通用可移动设备和
 网络设备 BBS 入口。
 
 linwhite 使用本机独立生成的 Ed25519 密钥，Home Manager 的 sops-nix
 通过对应的 age 接收者解密 OpenCode 凭据。系统与用户环境分别构建和
-部署，后续用户环境更新执行 `just hm 9950x-native linwhite`。
+部署，后续用户环境更新执行 `just hm b850 linwhite`。
 
 2026-10-04 已完成安装，并在U盘保持连接时验证从本地 SSD 重启。
-固件只保留 `Boot0002`（`GRUB NixOS 9950x`）与 `Boot0001`（救援U盘），
+固件只保留 `Boot0002`（`GRUB NixOS b850`）与 `Boot0001`（救援U盘），
 `BootOrder` 为 `0002,0001`，`BootCurrent` 为 `0002`。
-根目录使用 ext4 卷标 `NIXOS9950X`，安装后可用空间约 700 GiB。
-NVMe 设备编号在两次启动间发生变化，挂载和引导均通过卷标或 UUID 定位。
+根目录使用 ext4 卷标 `NIXOSB850`，安装后可用空间约 700 GiB。
+NVMe 设备编号在两次启动间发生变化，挂载和引导均通过 UUID 定位。
 
 有线地址为 `10.1.2.194`，Tailscale 地址为 `100.64.0.44`。已验证局域网
 SSH、经 r5sjp 跳转的 SSH、Tailscale SSH、linwhite 的 sudo、DNS、
