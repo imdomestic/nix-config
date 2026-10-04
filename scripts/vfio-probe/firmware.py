@@ -74,8 +74,25 @@ if config[0] == 0x64A08086:
             report["opregion_size_kib"] = int.from_bytes(header[16:20], "little")
             report["opregion_version"] = hex(int.from_bytes(header[20:24], "little"))
             vbt = b"".join(word.to_bytes(4, "little") for word in read_words(asls + 0x400, 8))
-            report["vbt_header_hex"] = vbt.hex()
-            report["vbt_signature_valid"] = vbt[:4] == b"$VBT"
+            report["inline_vbt_header_hex"] = vbt.hex()
+            report["inline_vbt_signature_valid"] = vbt[:4] == b"$VBT"
+            # Linux intel_opregion.c: 2.0 uses a physical RVDA; 2.1+ uses an offset.
+            asle = b"".join(word.to_bytes(4, "little") for word in read_words(asls + 0x3B8, 4))
+            rvda = int.from_bytes(asle[2:10], "little")
+            rvds = int.from_bytes(asle[10:14], "little")
+            version = int.from_bytes(header[20:24], "little")
+            report["rvda"] = hex(rvda)
+            report["rvds"] = rvds
+            if version >= 0x02000000 and rvda and rvds:
+                address = rvda if version < 0x02010000 else asls + rvda
+                # Bound diagnostics to a small nearby region for relative RVDA.
+                if (version < 0x02010000 or 8192 <= rvda <= 1048576) and 32 <= rvds <= 1048576 and address + 32 < 2**32:
+                    vbt = b"".join(word.to_bytes(4, "little") for word in read_words(address, 8))
+                    report["extended_vbt_address"] = hex(address)
+                    report["extended_vbt_header_hex"] = vbt.hex()
+                    report["extended_vbt_signature_valid"] = vbt[:4] == b"$VBT"
+                else:
+                    report["extended_vbt_error"] = "RVDA/RVDS outside diagnostic bounds"
     else:
         report["opregion_signature_valid"] = False
         report["opregion_error"] = "ASLS unset, unaligned, or outside 32-bit guest memory"

@@ -1,6 +1,7 @@
+param([int]$DelaySeconds = 60)
 $ErrorActionPreference = 'Stop'
 try {
-    Start-Sleep -Seconds 60
+    Start-Sleep -Seconds $DelaySeconds
     $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
     $intel = @(Get-PnpDevice -Class Display -PresentOnly | Where-Object InstanceId -like 'PCI\VEN_8086*')
     $report = [ordered]@{
@@ -12,6 +13,15 @@ try {
             Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName DEVPKEY_Device_ProblemStatus,DEVPKEY_Device_ProblemCode,DEVPKEY_Device_DriverInfPath -ErrorAction SilentlyContinue | Select-Object InstanceId, KeyName, Type, Data
         })
         events = @(Get-WinEvent -FilterHashtable @{ LogName = 'System'; StartTime = $boot; Level = @(1,2,3) } -MaxEvents 40 -ErrorAction SilentlyContinue | Select-Object TimeCreated, ProviderName, Id, LevelDisplayName, Message)
+        graphicsEvents = @(foreach ($log in @('Microsoft-Windows-DxgKrnl-Admin', 'Microsoft-Windows-Kernel-PnP/Configuration')) {
+            try {
+                Get-WinEvent -LogName $log -MaxEvents 100 -ErrorAction Stop | Select-Object TimeCreated, ProviderName, Id, LevelDisplayName, Message
+            } catch {
+                [pscustomobject]@{ LogName = $log; QueryError = $_.Exception.Message }
+            }
+        })
+        graphicsLogs = @(Get-WinEvent -ListLog '*Dxg*','*Kernel-PnP*' -ErrorAction SilentlyContinue | Select-Object LogName, IsEnabled, RecordCount)
+        secureBoot = $(try { Confirm-SecureBootUEFI } catch { $_.Exception.Message })
     }
     $body = $report | ConvertTo-Json -Depth 5
     $body | Set-Content -Encoding UTF8 C:\IntelDrivers\vfio-report.json
