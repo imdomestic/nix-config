@@ -96,6 +96,14 @@ low effort 及 upstream 入口覆盖请求均被固定为 medium。
 401，tank 的 100.64.0.4 请求超时，nftables 对应规则记录了丢弃的数据包。
 配置仅修改 Bonsai 实例，现有 taipan 服务保持原样。
 
+aegis 主仓库通过合并提交 `340d16e` 接入 NInfer，移除旧服务实现并保留其他配置。
+`just check`、`just hm-dry aegis linwhite`、`just hm aegis linwhite` 均通过，
+当前用户环境为 `/nix/store/4f2wqxxk7wqqi0ddabd492kgar40bk44-home-manager-generation`。
+本地模型列表包含两个 Bonsai 模型；主力完成真实 read、edit、bash 操作，
+三个问候函数测试通过且测试文件未被修改。aggressive 完成中文分析请求，
+服务日志确认 Hikari 为 medium、thinking 开启。激活前后的其他 provider、agent
+和 OpenCode 配置经过完整 JSON 比较，保持原样。
+
 ## 2026-10-03 · 268V 首次直通在 QEMU 属性解析阶段失败 {#268v-vfio-qemu-property-type}
 
 10 月 2 日 21:34 的远端自动测试成功重启至 VFIO 特化，`8086:64a0`

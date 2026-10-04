@@ -2,9 +2,9 @@
 
 日期：2026-10-05。配置分支：`feat/ms7e56-bonsai-ninfer`。
 
-服务器已经部署，两个模型的正式服务验证通过。aegis 主仓库的合并预检查发现
-6 个冲突，按任务阶段 6 的要求等待用户选择处理方式；aegis 的新 Home Manager
-配置已经通过预检查，尚未激活。旧分支、GGUF、模板与旧引擎的 Nix store 路径保留。
+服务器已经部署，两个模型的正式服务验证通过。aegis 主仓库已合并 NInfer 配置，
+独立 Home Manager 已激活，本地 OpenCode 能够使用两个模型。
+旧分支、GGUF、模板与旧引擎的 Nix store 路径保留。
 
 ## 固定版本与产物
 
@@ -133,7 +133,16 @@ Hikari 在 Chat、Responses、upstream 三种入口均验证了 medium 锁定。
 - tank 的 `100.64.0.4` 访问被阻断，防火墙记录 5 个丢弃的数据包。
 - ms7e56 Home Manager 已激活，模型列表包含两个 Bonsai 模型。
 - aegis 已通过网关完成两个模型的中文问答和真实工具调用往返，4 组 API 检查通过。
-- aegis Home Manager 预检查通过；主仓库合并等待 6 个冲突的处理选择。
+- aegis 主仓库 `~/.config/nix-config` 的 `main` 已合并 NInfer 分支，合并提交为 `340d16e`。
+- aegis 的 `just check`、`just hm-dry aegis linwhite` 和 `just hm aegis linwhite` 均通过。
+- 本地 OpenCode 模型列表包含 `local-bonsai/bonsai-main` 和 `local-bonsai/bonsai-hikari`。
+- 本地主力完成 `read → edit → bash`，问候函数的三个 unittest 通过，测试文件保持原样。
+- 本地 `aggressive` 完成中文程序分析对话，服务日志确认 Hikari 使用 medium 并开启 thinking。
+
+aegis 当前 Home Manager generation 为
+`/nix/store/4f2wqxxk7wqqi0ddabd492kgar40bk44-home-manager-generation`。
+自动核对确认其他 provider、agent 与 OpenCode 设置保持原样。
+主仓库的 ms7e56 系统求值结果与服务器正在运行的系统路径一致。
 
 保留其他 provider 和 agent。主力默认模型为 `local-bonsai/bonsai-main`，支持
 low / medium / high variants；`aggressive` 使用 `local-bonsai/bonsai-hikari`。
@@ -167,6 +176,11 @@ sudo /nix/store/x7h705zazxbmn2lpzc296kx5xvp4qvzp-nixos-system-ms7e56-26.05.20260
 `home/modules/opencode/local-bonsai.nix` 导入，运行 `just hm-dry` 和 `just hm`。
 原有 provider 配置一直保留。ms7e56 激活前的 Home Manager generation 为：
 `/nix/store/39ja9v9irjhf7f605b57ipyss6kvy19q-home-manager-generation`，可运行其 `activate`。
+
+aegis 激活前的 Home Manager generation 为
+`/nix/store/l109wzsmn4qr00ql5n4xwkw7gfs3xa70-home-manager-generation`，
+恢复本地用户配置可运行该目录中的 `activate`。配置备份位于
+`~/.config/nix-config/.work/ninfer-sync-20261005/`，包含激活前配置、主仓库归档与验证记录。
 
 `feat/ms7e56-bonsai`、原 GGUF、v2 模板、OCI 归档和旧系统闭包均保留。
 清理工作等待用户确认。
