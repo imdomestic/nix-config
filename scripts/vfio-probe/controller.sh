@@ -24,6 +24,7 @@ evidence() {
     capture kernel.log 'journalctl -b -k --no-pager'
     capture qemu.log 'cat /var/log/libvirt/qemu/windows11.log'
     capture guest.json 'cat /var/tmp/268v-vfio-probe/guest.json'
+    capture firmware.json "$python /var/tmp/268v-vfio-probe/firmware.py"
     if remote "virsh -c qemu:///system qemu-monitor-command windows11 '{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"/tmp/268v-vfio-screen.png\",\"format\":\"png\"}}'"; then
         capture screen.png 'cat /tmp/268v-vfio-screen.png'
     fi
@@ -70,6 +71,7 @@ vfio="nixos-generation-${BASH_REMATCH[1]}-specialisation-vfio.conf"
 remote "test -f /boot/loader/entries/$normal && test -f /boot/loader/entries/$vfio && test -x $python && test -f /var/tmp/268v-vfio-probe/receiver.py && virsh -c qemu:///system domstate windows11"
 remote "grep -Fq \"init=\$(readlink /run/current-system)/init \" /boot/loader/entries/$normal"
 remote 'test ! -e /var/tmp/268v-vfio-probe/guest.json'
+remote 'test -f /var/tmp/268v-vfio-probe/firmware.py'
 log "Using $normal and $vfio"
 log 'Preflight passed'
 [[ ${1:-} == --check ]] && exit 0
