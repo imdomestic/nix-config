@@ -28,7 +28,7 @@ in {
           tool_call = true;
           temperature = true;
           limit = {
-            context = bonsai.context;
+            context = model.context;
             output = bonsai.output;
           };
           modalities = {

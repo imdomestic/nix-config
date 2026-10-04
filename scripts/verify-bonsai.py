@@ -1,5 +1,6 @@
 import argparse
 import csv
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -15,11 +16,11 @@ from httpx_sse import connect_sse
 
 def gpu_state():
     result = subprocess.run(
-        ['nvidia-smi', '--query-gpu=name,memory.total,memory.used', '--format=csv,noheader,nounits'],
+        ['nvidia-smi', '--query-gpu=name,memory.total,memory.used,memory.free', '--format=csv,noheader,nounits'],
         check=True, capture_output=True, text=True,
     )
     row = next(csv.reader(io.StringIO(result.stdout)))
-    return {'name': row[0].strip(), 'total_mib': int(row[1]), 'used_mib': int(row[2])}
+    return {'name': row[0].strip(), 'total_mib': int(row[1]), 'used_mib': int(row[2]), 'free_mib': int(row[3])}
 
 
 class MemoryMonitor:
@@ -144,18 +145,50 @@ def tool_roundtrip(client, base_url, model):
     return {'model': model, 'observed': observed, 'call': first, 'answer': second}
 
 
-def long_context(client, base_url, model):
-    prefix = f'{base_url}/upstream/{model}'
-    text = ''.join(f'记录 {index:05d}：本条记录用于检查本地模型读取长篇中文资料的能力。\n' for index in range(5000))
-    tokens = post(client, f'{prefix}/tokenize', {'content': text})['tokens']
-    assert len(tokens) > 31000, len(tokens)
-    started = time.perf_counter()
-    result = post(client, f'{prefix}/completion', {
-        'prompt': tokens[:31000], 'n_predict': 64, 'temperature': 0,
-        'cache_prompt': False, 'seed': 20261004,
-    })
-    assert result['timings']['prompt_n'] >= 31000, result
-    return {'model': model, 'input_tokens': 31000, 'elapsed_seconds': time.perf_counter() - started, 'result': result}
+def long_context(client, base_url, model, corpus, expected_context, upstream_url=None):
+    prefix = upstream_url or f'{base_url}/upstream/{model}'
+    assert corpus.is_dir(), corpus
+    files = sorted(path for path in corpus.rglob('*') if path.suffix in {'.cpp', '.h', '.md'} and path.is_file())
+    parts = []
+    manifest = []
+    for path in files:
+        data = path.read_bytes()
+        parts.append(f'\nFile: {path.relative_to(corpus)}\n' + data.decode('utf-8'))
+        manifest.append({'path': str(path.relative_to(corpus)), 'sha256': hashlib.sha256(data).hexdigest()})
+        if sum(len(part) for part in parts) >= 900000:
+            break
+    text = ''.join(parts)
+    with MemoryMonitor() as monitor:
+        response = client.get(f'{prefix}/props')
+        response.raise_for_status()
+        context = response.json()['default_generation_settings']['n_ctx']
+        assert context == expected_context, (context, expected_context)
+        input_tokens = min(95000, context - 1024)
+        tokens = post(client, f'{prefix}/tokenize', {'content': text})['tokens']
+        assert len(tokens) >= input_tokens, len(tokens)
+        started = time.perf_counter()
+        result = post(client, f'{prefix}/completion', {
+            'prompt': tokens[:input_tokens], 'n_predict': 256, 'temperature': 0,
+            'cache_prompt': False, 'ignore_eos': True, 'seed': 20261004,
+        })
+        elapsed = time.perf_counter() - started
+        gpu_processes = subprocess.run([
+            'nvidia-smi', '--query-compute-apps=pid,process_name,used_gpu_memory',
+            '--format=csv,noheader,nounits',
+        ], check=True, capture_output=True, text=True).stdout
+        assert 'llama-server' in gpu_processes, gpu_processes
+    assert result['timings']['prompt_n'] >= input_tokens, result
+    assert result['timings']['predicted_n'] == 256, result
+    assert not result['truncated'], result
+    return {
+        'model': model, 'context': context, 'input_tokens': input_tokens,
+        'elapsed_seconds': elapsed, 'prefill_seconds': result['timings']['prompt_ms'] / 1000,
+        'gpu_peak_mib': max(item['used_mib'] for item in monitor.samples),
+        'minimum_free_mib': min(item['free_mib'] for item in monitor.samples),
+        'gpu_processes': gpu_processes, 'gpu_samples': monitor.samples,
+        'corpus': str(corpus), 'corpus_manifest': manifest,
+        'corpus_sha256': hashlib.sha256(text.encode()).hexdigest(), 'result': result,
+    }
 
 
 def hikari_policy(client, base_url):
@@ -182,6 +215,10 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--api-key-file', type=Path, default=Path.home() / '.config/sops-nix/secrets/bonsai/api_key')
     parser.add_argument('--long-context', action='store_true')
+    parser.add_argument('--only-context', action='store_true')
+    parser.add_argument('--corpus', type=Path)
+    parser.add_argument('--model-config', type=Path)
+    parser.add_argument('--models', nargs='+', default=['bonsai-main', 'bonsai-hikari'])
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     records = []
@@ -199,21 +236,27 @@ def main():
         listing = response.json()
         assert {item['id'] for item in listing['data']} == {'bonsai-main', 'bonsai-hikari'}, listing
         save('models', listing)
-        for index, model in enumerate(('bonsai-main', 'bonsai-hikari', 'bonsai-main')):
+        for index, model in enumerate([] if args.only_context else ('bonsai-main', 'bonsai-hikari', 'bonsai-main')):
             save(f'switch-{index}-{model}', stream_chat(
                 client, args.url, model, '请用中文一句话解释月亮为什么不会自行发光，回答不要超过六十个汉字。',
             ))
-        for model in ('bonsai-main', 'bonsai-hikari'):
+        for model in ([] if args.only_context else ('bonsai-main', 'bonsai-hikari')):
             save(f'tool-{model}', tool_roundtrip(client, args.url, model))
-        save('hikari-server-policy', hikari_policy(client, args.url))
+        if not args.only_context:
+            save('hikari-server-policy', hikari_policy(client, args.url))
         if args.long_context:
-            for model in ('bonsai-main', 'bonsai-hikari'):
-                save(f'context-{model}', long_context(client, args.url, model))
+            assert args.corpus and args.model_config
+            models = json.loads(args.model_config.read_text())['models']
+            for model in args.models:
+                record = long_context(client, args.url, model, args.corpus, models[model]['context'])
+                save(f'context-{model}', record)
+                assert record['minimum_free_mib'] >= 600, record['minimum_free_mib']
     assert monitor.samples
     peak = max(item['used_mib'] for item in monitor.samples)
     total = monitor.samples[0]['total_mib']
-    assert total - peak >= 819.2, (peak, total)
-    save('gpu', {'peak_mib': peak, 'total_mib': total, 'minimum_free_mib': total - peak, 'samples': monitor.samples})
+    free = min(item['free_mib'] for item in monitor.samples)
+    assert free >= 600, (peak, total, free)
+    save('gpu', {'peak_mib': peak, 'total_mib': total, 'minimum_free_mib': free, 'samples': monitor.samples})
     (args.output / 'results.json').write_text(json.dumps(records, ensure_ascii=False, indent=2) + '\n')
 
 
