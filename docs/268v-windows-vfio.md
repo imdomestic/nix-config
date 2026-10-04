@@ -2,7 +2,7 @@
 
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
-**第三次测试已确认 Arc 140V 在 Windows 中报 Code 43；核显加速、内屏输出和命运 2 均未成功验证。**
+**第三、第四次测试均确认 Arc 140V 在 Windows 中报 Code 43；核显加速、内屏输出和命运 2 均未成功验证。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -81,7 +81,7 @@ Intel `32.0.101.9033` / `oem9.inf`，但 `ConfigManagerErrorCode=43`、
 `CM_PROB_FAILED_POST_START`，分辨率为空；软件 VGA 正常。控制流程成功不代表
 GPU 成功。报告及截图归档在 b650 `/var/tmp/268v-vfio-probe-third-20261003/`。
 
-下一次对照实验仅改变 GPU 的客户机地址：从自动分配的 `04:00.0` 改为
+第四次对照实验仅改变 GPU 的客户机地址：从自动分配的 `04:00.0` 改为
 根总线 `00:02.0`，保持 Q35、软件 VGA、ROM、驱动和 CPU 特征。此布局参照
 [QEMU 10.2.4 IGD 文档](https://raw.githubusercontent.com/qemu/qemu/v10.2.4/docs/igd-assign.txt)
 及 [上游配置示例](https://github.com/LongQT-sea/intel-igpu-passthru#upt-mode)，
@@ -99,6 +99,42 @@ GPU 成功。报告及截图归档在 b650 `/var/tmp/268v-vfio-probe-third-20261
 一次性启动任务。基线在宿主 `/var/tmp/268v-vfio-probe/baseline-before-fourth.json`，
 实际测试继续使用 b650 的工作目录。部署前的 sudo 输入超时和 b650 短暂失联均未
 触发重启；恢复管理连接后，通过同一已构建闭包的标准激活入口完成切换。
+
+第四次实际结果：02:12:00 VM 启动，02:13:22 收到报告，02:14:30 自动返回普通
+系统。Intel 驱动仍为 `32.0.101.9033`，`ProblemCode=43`、`ProblemStatus=0`；
+设备实例路径已反映根总线布局。CIM 虽然报告 1280×800，但设备仍为 Error，
+不能据此认定核显加速成功。结果已归档至 b650
+`/var/tmp/268v-vfio-probe-fourth-20261004/`。
+
+第五次准备保持 generation 15 的系统和 GPU 配置，仅增加 `firmware.py` 只读
+采集：从 QEMU 内存布局发现 Q35 ECAM，读取客户机 `00:02.0` 的 PCI 配置、
+ASLS 和 OpRegion/VBT 签名。脚本已在普通 VM 的 `00:01.0` 上正确读出
+`1234:1111`，控制器同环境预检通过，Windows 一次性任务已重新创建。
+此轮用于判断固件初始化是否完成，不是宣称修复 Code 43。
+
+## 2026-10-04 相似问题检索
+
+检索了 Lunar Lake、268V、Arc 140V、8086:64a0 与 passthrough / VFIO / Code 43
+的组合，并阅读相关仓库 issue 的回复。尚未找到明确记录 **268V/140V + Windows
+整卡直通成功**的一手实测；项目列表写有 Lunar Lake 支持不能代替同机验证。
+
+| 一手记录 | 观察与适用边界 |
+| --- | --- |
+| [NixOS + 14700K/UHD 770，issue 31](https://github.com/LongQT-sea/intel-igpu-passthru/issues/31) | 作者报告 Q35 + UPT，noGOP ROM 解决 Code 43，保留虚拟显示设备且可用 Looking Glass。回复给出 Windows 10 19045.3448、Intel 32.0.101.7085；不是 Lunar Lake。 |
+| [8705G/HD 630，issue 39](https://github.com/LongQT-sea/intel-igpu-passthru/issues/39) | 作者报告 i440fx 可用，Q35 + noGOP 仍 Code 43。维护者转向 QEMU 文档，并未提供经验证的修复；issue 关闭不等于解决。 |
+| [NUC 14 Pro/Meteor Lake 的 ESXi 实测](https://williamlam.com/2024/09/esxi-on-asus-nuc-14-pro-revel-canyon.html) | Linux 客户机可用，Windows 驱动 Code 43；说明存在相似症状，但 hypervisor 和 GPU 代际均不同。 |
+| [Arrow Lake 285K，issue 13](https://github.com/LongQT-sea/intel-igpu-passthru/issues/13) | 黑屏最终通过较新 Linux 发行版与 noGOP ROM 解决；最终回复验证的是 Linux，不能写成 Windows 已成功。 |
+| [EVE 的实现 PR 5686](https://github.com/lf-edge/eve/pull/5686) | 作者报告修正 OpRegion/BDSM 和某些 GCC/LTO 构建的问题，测试清单注明 RPL-P、Alder Lake-N；其 Lunar Lake 支持描述缺少本代硬件实测信息。 |
+
+EVE 的补丁描述约 9.6 KiB 的 ROM 可能被 LTO 裁掉初始化函数。本机 ROM 为
+10,240 字节，但提取 EFI 后反汇编确认仍有 fw_cfg OpRegion 读取和 PCI offset
+`0xfc` 写入的调用序列，不能仅按文件大小套用该补丁。下一步读取实际 ASLS
+和内存签名，区分“代码存在”与“固件确实执行成功”。
+
+[QEMU 10.2.4 文档](https://raw.githubusercontent.com/qemu/qemu/v10.2.4/docs/igd-assign.txt)
+明确要求 Windows 获得有效 OpRegion，GOP 不是 OS 驱动初始化的普遍必要条件；
+Meteor Lake 起通过 BAR2 访问 stolen memory，无需旧式 BDSM 分配。因此继续
+排查固件数据交接有依据，尚无证据要求给宿主内核打反检测或时序补丁。
 
 2026-10-02 用户授权实际切换 VFIO。测试工具在 `scripts/vfio-probe/`：
 控制程序由 **b650 的 root transient systemd service** 运行，不能在 268V 本机运行。
