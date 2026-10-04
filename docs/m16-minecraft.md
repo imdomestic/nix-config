@@ -10,12 +10,12 @@ protocol 传递玩家真实地址。m16 的 Java 入口由 Gate 转发连接。
 
 Bedrock 使用 `m16.inner.imdomestic.com:19132`，局域网地址为 `10.1.2.137:19132`。
 m16 的 Tailscale 地址为 `100.64.0.43`。
-Bedrock 协议响应版本为 `1.21.130`。
+Bedrock 协议响应版本为 `26.51`。
 
 | 服务 | 版本 | 本机端口 | 最大 Java 堆内存 |
 | --- | --- | --- | --- |
-| proxy | Velocity 3.5.0，构建 600 | TCP 25565 | 512 MiB |
-| bedrock-proxy | Velocity、Geyser 2.9.2，构建 1015 | TCP 25572、UDP 19132 | 512 MiB |
+| proxy | Velocity 4.2.0，构建 30 | TCP 25565 | 512 MiB |
+| bedrock-proxy | Velocity、Geyser 2.11.3，构建 1247 | TCP 25572、UDP 19132 | 512 MiB |
 | lobby | Paper 1.21.1，构建 133 | TCP 25568 | 2 GiB |
 | bingo | Fabric 1.21.11 | TCP 25573 | 4 GiB |
 | speedrun | Paper 1.21.11，构建 132 | TCP 25567 | 4 GiB |
@@ -25,8 +25,22 @@ Bedrock 协议响应版本为 `1.21.130`。
 子服、RCON 和数据库只监听本机地址。Java 代理接收 Gate 的 PROXY protocol
 连接，Bedrock 代理接收客户端 UDP 连接。
 
-两个代理均使用固定版本 ViaVersion 5.7.1 和 ViaBackwards 5.7.1，负责客户端与
-子服之间的协议转换，包括 bingo 计分板文本中的新版组件。
+两个代理使用 Java 25，代理与插件均固定下载地址和 SHA-256：
+
+| 插件 | 版本 |
+| --- | --- |
+| ViaVersion / ViaBackwards | 5.12.0 |
+| ViaRewind | 4.2.0 |
+| TAB | 6.2.0 |
+| VelocityScoreboardAPI | 2.1.1 |
+| TAB-Bridge（lobby、speedrun） | 6.2.3 |
+| SkinsRestorer（代理、lobby、speedrun） | 15.12.6 |
+| Velocircon | 1.0.7 |
+| CMIV | 1.0.2.4 |
+
+ViaVersion 5.12.0 支持 Java 26.3 客户端。VelocityScoreboardAPI 2.1.1 要求
+Java 25 和 Velocity 4.2.0 构建 30；TAB 配置使用版本 7。
+LuckPerms Velocity 5.5.71 与 Ambassador 1.4.5 已核对为上游最新发布版本。
 
 ## 数据与账户
 
@@ -75,8 +89,13 @@ NetworkManager 随系统启动。
 封禁名单。Java 代理、Bedrock 代理及四个子服均通过 Minecraft 协议查询。
 
 1.21.5 协议客户端已通过公网入口进入 lobby，再执行 `/server bingo`，收到
-出生位置与计分板并持续连接。收到的 23 个 bingo 计分板文本全部通过
+出生位置与计分板并持续连接。收到的 24 个 bingo 计分板文本全部通过
 Minecraft 1.21.5 官方 `ComponentSerialization.CODEC` 与 `NbtOps` 解码检查。
+
+26.3 协议客户端（协议编号 777）已通过公网完成 `lobby → bingo → speedrun → lobby`
+登录与切换，收到各子服出生位置和计分板，在每次切换后保持连接 10 秒。
+测试使用 MCProtocolLib 26.3，所有接收数据包均正常解码。Bedrock UDP 状态查询
+返回版本 26.51，Geyser 与两个代理、四个子服均正常启动。
 
 保留维护 U 盘插入的状态下，m16 已完成重启并从 SSD 启动 NixOS。六个服务、
 PostgreSQL 和 MariaDB 自动恢复，局域网与 Tailscale SSH 均可连接，systemd
