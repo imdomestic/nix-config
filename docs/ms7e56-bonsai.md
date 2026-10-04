@@ -2,6 +2,8 @@
 
 配置入口是 `nixos/hosts/ms7e56/default.nix`。系统服务与独立 Home Manager 分别导入 `nixos/modules/local-llm.nix` 和 `home/modules/opencode/local-bonsai.nix`，模型信息统一维护在 `lib/bonsai-models.nix`。
 
+RTX 5070 用于 CUDA 计算，GNOME 与默认 3D 渲染由 AMD 核心显卡负责。配置及实机检查见 [显卡分工](ms7e56-gpu.md)。
+
 ## 使用
 
 OpenAI 兼容端点为 `http://127.0.0.1:8080/v1`，模型 ID 为 `bonsai-main` 和 `bonsai-hikari`。llama-swap 根据请求的 `model` 自动卸载当前模型并加载目标模型。服务随系统启动，首次请求负责加载模型。
