@@ -3,6 +3,7 @@ keys:
   # private half lives on that machine at ~/.config/sops/age/keys.txt
   # (regenerate: ssh-to-age -private-key -i ~/.ssh/id_ed25519)
   - &hank_hackintosh age1xeeg8yu74aqn5x0vzevsuxmsd4nem3cfw2gjwc82ke4mjvep3pxq5p99lh
+  - &hank_taipan age1esxjvsmcrlm7s7dks66mchddga45mdlr595u40862r649vrps4gsaxapnj
   - &hank_praxic age1uumwl2zvv6sk2yysjtd29yfffjj8xfus6z95eu0ftxt40mnyh9aq3g5f2c
   - &hank1 age1zzwv2edh2ssz7xpmpcqr73rkh79j4mwjy50ap8dvm4c64ksmspxsz7mnat
   - &hank2 age175594x5r5ngze8rs5n2ga0976e0flh0xq2aqjq3xaldr28e703sqlcy9n6
@@ -34,7 +35,7 @@ keys:
 creation_rules:
   - path_regex: secrets/clients/cliproxy\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_ms7e56, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank_taipan, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_ms7e56, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/gaoji/account-auth\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
