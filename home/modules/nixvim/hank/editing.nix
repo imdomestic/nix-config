@@ -44,11 +44,6 @@ in {
       action = ":";
     }
     {
-      mode = "v";
-      key = "J";
-      action = "5j";
-    }
-    {
       mode = ["n" "x" "o"];
       key = "s";
       action = mkRaw ''function() require("flash").jump() end'';

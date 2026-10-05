@@ -331,6 +331,8 @@ in {
       };
 
       blink-cmp.settings = {
+        # 签名帮助由上面的 lsp-signature 负责,两个一起开会弹两个窗口。
+        signature.enabled = lib.mkForce false;
         sources = {
           default = lib.mkForce [
             "lsp"
