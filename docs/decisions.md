@@ -27,14 +27,15 @@ linwhite 输入法切换仅限 macOS 的修复。旧界面文档保留作历史�
 NVFP4 KV、174080 token 上下文、174080 token KV 容量、MTP 和单个并发请求。
 服务使用 Podman 与 NVIDIA CDI，通过 llama-swap 按需启动并互斥切换。
 
-旧的 llama.cpp 实现在 `feat/ms7e56-bonsai` 分支保留。本次实现从最新
-`origin/main` 的 `973aa36` 创建 `feat/ms7e56-bonsai-ninfer`，配置中移除旧的
+本次实现从 `origin/main` 的 `973aa36` 创建 `feat/ms7e56-bonsai-ninfer`，配置中移除旧的
 llama-server、PrismML 构建和 bonsai-models 服务。旧方案实测通过的上下文为
 主力 81920、Hikari 102400，用户要求的新运行参数由 NInfer 验证。
 
 模型文件与引擎镜像保存在 `/var/lib/` 下。Hikari GGUF 用作转换输入，
-主力使用指定仓库中包含 851 个张量的 GGUF。清理 GGUF、模板和旧引擎
-需要用户在最终验收后确认。174080 参数出现显存不足时，记录引擎缺口与
+主力使用指定仓库中包含 851 个张量的 GGUF。根据用户后续清理指令，旧的
+`feat/ms7e56-bonsai` 分支、旧部署目录、旧 GGUF 与旧引擎已经删除。
+显卡模块和当前 NInfer 的转换材料、模型及镜像保留。
+174080 参数出现显存不足时，记录引擎缺口与
 显存占用，等待用户决定。
 
 ## 2026-10-02 · 高级入口使用独立 Tailscale 节点 {#gaoji-isolated-ingress}

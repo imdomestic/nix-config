@@ -4,7 +4,7 @@
 
 服务器已经部署，两个模型的正式服务验证通过。aegis 主仓库已合并 NInfer 配置，
 独立 Home Manager 已激活，本地 OpenCode 能够使用两个模型。
-旧分支、GGUF、模板与旧引擎的 Nix store 路径保留。
+显卡模块、NInfer 转换输入、模板和当前运行产物保留。
 
 ## 固定版本与产物
 
@@ -182,8 +182,22 @@ aegis 激活前的 Home Manager generation 为
 恢复本地用户配置可运行该目录中的 `activate`。配置备份位于
 `~/.config/nix-config/.work/ninfer-sync-20261005/`，包含激活前配置、主仓库归档与验证记录。
 
-`feat/ms7e56-bonsai`、原 GGUF、v2 模板、OCI 归档和旧系统闭包均保留。
-清理工作等待用户确认。
+当前 NInfer 的 GGUF 转换输入、v2 模板、`.ninfer` 产物和 OCI 归档均保留。
+
+## 旧版文件清理
+
+按照用户的清理指令，已删除旧版 `feat/ms7e56-bonsai` 本地与远端分支、
+专用工作目录、旧版下载资料包，以及服务器的 `/var/lib/llm-models/bonsai2/`。
+旧版配置源文件已经从当前配置移除。
+
+服务器第 6 至 12 代系统记录已删除，启动菜单已刷新。通过 Nix 引用检查回收
+150 个失效 store 路径，释放约 1.3 GiB；PrismML llama.cpp 引擎路径已不存在。
+包括旧 GGUF 和工作目录在内，服务器可用空间增加 16702251008 字节，约 15.6 GiB。
+第 5、13、14、15 代系统记录保留，第 15 代继续运行。
+
+清理前后的显卡模块 SHA256 完全一致，当前系统路径保持一致。
+`llama-swap` 和 Tailscale 网关均运行正常；清理后两个模型的中文问答与真实工具调用
+往返共 4 组检查全部通过。清理记录与复测响应包含在资料包的 `evidence/cleanup/` 中。
 
 完整测量说明位于 `docs/incidents.md#ms7e56-bonsai-ninfer-174080`，
 方案决定位于 `docs/decisions.md#ms7e56-bonsai-ninfer`。
