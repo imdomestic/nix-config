@@ -4,6 +4,22 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-05 · ms7e56 的 5070 显示设备停用 {#ms7e56-display-isolation}
+
+`graphics.nix` 使用 `initcall_blacklist=sysfb_init` 停用 Linux 固件显示设备，
+通过 `module_blacklist=nvidia_drm,nvidia_modeset` 阻止加载 NVIDIA 显示模块，
+并让 Mutter 忽略 PCI `0000:01:00.0` 下的 DRM 设备。AMD 核显承担图形工作，
+NVIDIA 的核心驱动与 UVM 提供 CUDA。
+
+系统构建、切换及整机重启通过。当前 GNOME 只打开 AMD 的设备，
+NVIDIA 显示模块均未加载，5070 下没有 `simple-framebuffer` 设备。
+主力与 Hikari 的 10 次真实 API 请求、4 组问答及工具调用断言通过。
+模型卸载后，显存 Used 从 1 MiB 变为 0 MiB，Free 从 11751 MiB 变为
+11752 MiB，Reserved 保持 476 MiB。显存统计不能只检查 Used：
+完整验收同时检查 DRM 设备归属、进程设备句柄和内核模块。
+
+配置、测量与恢复方式见 [显卡分工](ms7e56-gpu.md)。
+
 ## 2026-10-05 · Bonsai NInfer 在 OpenCode 显示 prefill 速度 {#bonsai-prefill-display}
 
 `opencode-model-stats` 同时订阅 Taipan 与 Bonsai 网关的 `/prefill-ws`。
