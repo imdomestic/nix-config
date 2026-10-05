@@ -297,7 +297,7 @@ in {
       cmdheight = 0;
       # nvim 默认 "ltToOCF" + "A"：发现残留 swap 时不再弹 E325 ATTENTION 提示。
       # 该提示在 snacks picker/explorer 的跳转里无法交互，会直接抛 Lua error。
-      # "W"：:w 后不报 "written"（原先靠 noice 的 route 过滤）。
+      # "W"：:w 后不报 "written"。
       shortmess = "ltToOCFAW";
       fillchars = {
         eob = " ";
@@ -802,6 +802,31 @@ in {
           explorer = {
             enabled = true;
             replace_netrw = true;
+          };
+        };
+      };
+
+      # 不用 0.12 的 ui2:它的命令行固定在底部、没有浮窗选项,
+      # 而且和 noice 互斥(两者都要 ext_messages)。
+      noice = {
+        enable = true;
+        lazyLoad.settings.event = "DeferredUIEnter";
+        settings = {
+          lsp = {
+            signature.enabled = false;
+            hover.enabled = false;
+          };
+          cmdline = {
+            enabled = true;
+            view = "cmdline_popup";
+          };
+          notify.enabled = false;
+          presets = {
+            bottom_search = true;
+            command_palette = true;
+            long_message_to_split = true;
+            inc_rename = false;
+            lsp_doc_border = false;
           };
         };
       };
@@ -1523,11 +1548,6 @@ in {
           })
         end
       end
-
-      -- 0.12 的实验性消息/命令行层，替代 noice。和 noice 互斥：两者都要
-      -- ext_messages。cmdheight=0 时消息走右下角会自动消失的 msg 窗口，
-      -- 长消息折叠成 [+x]，g< 在 pager 里看全文。
-      require("vim._core.ui2").enable({ msg = { targets = "msg" } })
 
       -- 0.12 runtime 自带的可选包：:Undotree 和 :DiffTool <left> <right>。
       vim.cmd.packadd("nvim.undotree")
