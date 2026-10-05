@@ -76,7 +76,7 @@ darwin/profiles/                # macOS base (pulls in nixos/modules/nix.nix, us
 home/profiles/                  # core, base, interactive, gui/{linux,darwin}; dev.nix is imported per user
 home/modules/                   # one directory per app: nixvim, ghostty, tmux, vicinae, …
 home/users/<name>/              # default.nix (+ dev.nix where the user has one)
-pkgs/                           # local packages (hank-tabline, tmux-agent-sidebar, …)
+pkgs/                           # local packages (tmux-agent-sidebar, …)
 scripts/                        # check-* scripts behind the just recipes, plus model/bench tooling
 secrets/                        # sops-nix: secrets.yaml + hosts/<host>.yaml
 docs/                           # incidents.md, decisions.md, topic docs, runbooks/

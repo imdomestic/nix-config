@@ -11,6 +11,16 @@
 
 ---
 
+## 2026-10-05 · Nixvim 回到 9 月 28 日界面改版前 {#nixvim-visual-rollback-20261005}
+
+按用户要求撤回 9 月 28 日起的整轮视觉改版，以 `bf6e6a2^` 中的
+`home/modules/nixvim/hank/default.nix` 为基准。恢复 mini.tabline、mini.clue、
+Snacks 原有侧栏/终端/诊断入口和 Evergarden 原始配色；移除自写的
+hank-tabline / hank-panels、EOF 斜纹、分层背景、失焦变暗和新 Git 标记样式。
+
+保留随后加入的 Hank Java/JDTLS 配置、LSP 功能、VS Code 配置拆分，以及
+linwhite 输入法切换仅限 macOS 的修复。旧界面文档保留作历史记录。
+
 ## 2026-10-05 · ms7e56 使用 NInfer 承载 Bonsai 2 {#ms7e56-bonsai-ninfer}
 
 用户指定 Bonsai 2 使用 CraneBW 的 NInfer 三元权重实现，两个模型均采用

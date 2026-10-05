@@ -267,13 +267,6 @@ in {
     ];
 
     plugins = {
-      which-key.settings.spec = [
-        {
-          __unkeyed-1 = "<leader>d";
-          group = "Debug";
-        }
-      ];
-
       presence.enable = true;
       lsp-signature.enable = true;
 

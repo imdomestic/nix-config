@@ -1,5 +1,8 @@
 # 界面分层
 
+> 历史记录：2026-10-05 已回退此轮界面改版，本文描述的定制外观/插件不再启用。
+> 回退范围与保留功能见 [决策记录](decisions.md#nixvim-visual-rollback-20261005)。
+
 Neovim 界面的外观规则：窗口之间靠底色区分，焦点用强调色标记。配置在
 `home/modules/nixvim/hank/default.nix`，颜色全部从 Evergarden 当前调色板取
 （`evergarden.setup` 的 `editor` 开关加 `overrides` 函数），换色板不用改规则。
