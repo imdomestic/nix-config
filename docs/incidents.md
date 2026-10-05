@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-05 · Bonsai NInfer 在 OpenCode 显示 prefill 速度 {#bonsai-prefill-display}
+
+`opencode-model-stats` 同时订阅 Taipan 与 Bonsai 网关的 `/prefill-ws`。
+`my.opencode.prefillEndpoints` 为 Bonsai 声明网关地址和 SOPS 密钥文件路径，
+插件在启动时读取文件，通过 Bun WebSocket 的 `Authorization` 请求头完成认证。
+配置文件只保存密钥文件路径。进度按 OpenCode session ID 关联到对应会话。
+
+aegis 与 ms7e56 的 Bonsai provider 均使用注册表中的
+`ms7e56.inner.imdomestic.com:8080`，使推理请求与进度订阅经过同一网关。
+ms7e56 访问自身地址经由 `lo`。服务端监听地址、访问白名单和 API key 规则保持原配置。
+
+验证使用实际 NInfer 请求与 OpenCode 1.18.34 终端文本：
+
+- Hikari 输入 62,450 token，收到 61 次 prefill 更新；后端记录预填充
+  42.105 秒，平均 1,483.18 token/秒。未认证的进度请求返回 HTTP 401。
+- OpenCode 的 27,771 token 请求显示
+  `Prefill 6,144/27,771 (22%) | 1981 t/s (EMA 2034) | ~29s`，随后进入生成速度显示。
+- `just check`、aegis 的 `just hm-dry` 通过。真实接口检查命令为
+  `bun scripts/verify-bonsai-prefill.ts ~/.config/opencode/opencode.json bonsai-hikari result.json`。
+
+新启动的 OpenCode 在输入区右侧显示处理量、百分比、当前 prefill 速度、平滑速度和
+预计剩余时间。已运行的 OpenCode 需要重新启动以加载插件。
+
 ## 2026-10-05 · tank 上 Max 浏览器把 reddit 判成保留地址 {#tank-browser-poisoned-dns}
 
 Max 的浏览器打开 `www.reddit.com` 和 `old.reddit.com` 都失败,报

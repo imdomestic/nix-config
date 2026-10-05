@@ -5,12 +5,16 @@
   ...
 }: let
   bonsai = import ../../../lib/bonsai-models.nix;
-  serverHost =
-    if config.my.host.name == "ms7e56"
-    then "127.0.0.1"
-    else inputs.self.hosts.ms7e56.tsName;
+  # API 与进度订阅经过同一网关，见 docs/incidents.md#bonsai-prefill-display。
+  serverHost = inputs.self.hosts.ms7e56.tsName;
 in {
   sops.secrets."bonsai/api_key".sopsFile = ../../../secrets/clients/bonsai.yaml;
+  my.opencode.prefillEndpoints = [
+    {
+      url = "ws://${serverHost}:${toString bonsai.port}/prefill-ws";
+      apiKeyFile = config.sops.secrets."bonsai/api_key".path;
+    }
+  ];
   programs.opencode.settings = {
     model = lib.mkForce "local-bonsai/bonsai-main";
     provider.local-bonsai = {
