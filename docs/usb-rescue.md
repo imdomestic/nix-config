@@ -154,9 +154,9 @@ Wi-Fi 配置和维护工具检查均通过，救援系统没有失败的 systemd
 ## ms7e56 本地系统
 
 主机配置为 `nixosConfigurations.ms7e56`，用户环境为
-`homeConfigurations."linwhite@ms7e56"`。系统提供 GNOME、AMD 核心显卡
-的显示与 3D 渲染、RTX 5070 的 NVIDIA 开放内核驱动与 CUDA、AMD CPU
-微码、有线 DHCP、Wi-Fi 和 SSH。显卡配置与检查见 [显卡分工](ms7e56-gpu.md)。
+`homeConfigurations."linwhite@ms7e56"`。系统通过 SSH 使用终端，提供
+RTX 5070 的 NVIDIA 开放内核驱动与 CUDA、AMD CPU 微码、有线 DHCP 和 Wi-Fi。
+两张显卡的 Linux 显示功能均停用，配置与检查见 [计算节点](ms7e56-gpu.md)。
 管理名称为 `ms7e56.inner.imdomestic.com`，局域网名称为
 `ms7e56.local`。Windows 远程名称为 `9950x.inner.imdomestic.com`，
 WSL 配置为 `nixosConfigurations.9950x`。本地登录密码使用 encore 上

@@ -4,6 +4,19 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-06 · ms7e56 通过 SSH 使用计算服务 {#ms7e56-compute-node}
+
+系统使用 `multi-user.target`，停用两张显卡的显示驱动、固件显示缓冲区和
+全部桌面服务。Home Manager 提供终端及开发工具，独立完成构建和激活。
+
+系统与用户环境切换后完成整机重启，SSH 伪终端实际取得 `/dev/pts/0`。
+系统没有 DRM 显示设备、framebuffer 设备或图形进程，NVIDIA 核心驱动
+与 UVM 正常加载。两个 Bonsai 模型的 10 次推理请求及真实主机名称
+工具调用通过。模型卸载后，显存 Used 为 0 MiB，Free 为 11752 MiB，
+Reserved 为 476 MiB；系统和用户均没有失败服务。
+
+配置、系统版本和检查证据见 [计算节点记录](ms7e56-gpu.md)。
+
 ## 2026-10-05 · ms7e56 的 5070 显示设备停用 {#ms7e56-display-isolation}
 
 `graphics.nix` 使用 `initcall_blacklist=sysfb_init` 停用 Linux 固件显示设备，

@@ -1,55 +1,64 @@
-# ms7e56 显卡分工
+# ms7e56 SSH 计算节点
 
-`nixos/hosts/ms7e56/graphics.nix` 将 GNOME、OpenGL、EGL 和 Vulkan 默认绑定到
-Ryzen 9 9950X 的 AMD 核心显卡，PCI 地址为 `0000:10:00.0`。RTX 5070
-保留 NVIDIA 开放内核驱动及 CUDA，用于 Bonsai 等计算任务。
+`nixos/hosts/ms7e56/compute.nix` 将系统设为通过 SSH 使用的计算节点，
+默认启动目标为 `multi-user.target`。GNOME、GDM、Xserver、音频、打印和
+蓝牙服务均停用，Home Manager 使用终端环境和开发工具。
 
-AMD 驱动在 initrd 中加载，Mutter 通过 udev 规则选择 AMD 为主显卡，
-并忽略 PCI `0000:01:00.0` 下的全部 DRM 设备。
-Mesa 的 `DRI_PRIME` 使用 PCI 地址；GLX 和 EGL 选择 Mesa；Vulkan 使用
-`VK_LOADER_DRIVERS_SELECT=radeon_icd*` 选择 RADV。配置不依赖 card 编号。
+AMD Granite Ridge 核显的 PCI 地址为 `0000:10:00.0`，RTX 5070 为
+`0000:01:00.0`。Linux 启动参数为：
 
-Linux 启动参数 `initcall_blacklist=sysfb_init` 停用固件显示缓冲区的注册，
-`module_blacklist=nvidia_drm,nvidia_modeset` 在内核中阻止加载 NVIDIA 显示模块。
-`nvidia` 与 `nvidia_uvm` 继续提供计算功能。此配置在 Linux 内核启动后生效；
-UEFI 和 GRUB 阶段的输出由固件决定。显卡使用原厂 250 W 功耗上限和驱动自动频率调节。
+```text
+initcall_blacklist=sysfb_init
+module_blacklist=amdgpu,radeon,nvidia_drm,nvidia_modeset
+```
 
-## 2026-10-05 实机验证
+两张显卡的显示驱动和固件显示缓冲区均停用。NVIDIA 的 `nvidia`、
+`nvidia_uvm`、开放内核模块、595.71.05 驱动、持久化服务及容器 CDI
+提供 CUDA 计算。`hardware.graphics.enable` 提供宿主机运行库目录
+`/run/opengl-driver`；显示设备由上述内核配置停用。
+此配置在 Linux 内核启动后生效。UEFI 固件及 GRUB 自身的启动画面独立于该配置。
 
-`just check`、`nixos-rebuild build` 与系统切换通过，随后完成整机重启。
-当前 boot ID 为 `7dc119cf-c82d-4935-a157-c6cece8c5bd4`，系统为
-`/nix/store/f23yky8p51f91iqj42wsc9i6pid5ykkm-nixos-system-ms7e56-26.05.20260911.21a67dc`。
+当前物理显示器仍然亮着，接口断开信号和显示器进入待机尚未通过验收。
+`nvidia-smi` 报告 `Display Active: Disabled`、`Display Attached: Yes`，
+这些驱动状态与 Linux 设备检查只能确认图形服务及其显存占用已经停止。
+Taipan 实机的全部 DP/HDMI 接口报告 `disconnected`，其 Mutter 规则用于
+让 GNOME 忽略 NVIDIA；该状态不能验证插着显示器时的接口断开行为。
 
-- 内核日志确认 `sysfb_init` 和 `nvidia_modeset` 被黑名单阻止。
-- `nvidia_drm`、`nvidia_modeset` 均未加载；5070 下没有固件显示设备。
-- DRM 设备全部属于 AMD `0000:10:00.0`；GNOME 的设备句柄只包含 AMD 的
-  `card0` 与 `renderD128`。设备编号是本次启动的观测值，配置继续使用 PCI 地址。
+## 2026-10-06 实机验证
+
+`just check`、`nixos-rebuild build`、`just hm-dry ms7e56 linwhite`、系统切换和
+Home Manager 激活均通过，随后完成整机重启。
+
+- boot ID：`f934bee3-505a-41ce-b014-16803f841c56`。
+- 系统：`/nix/store/r6h6c8fmglvfkn6d4wv94gy8n1raibxw-nixos-system-ms7e56-26.05.20260911.21a67dc`。
+- Home Manager：`/nix/store/mk277yl3hkq06j0gbr6wh47gpfdjygp7-home-manager-generation`。
+- SSH 分配并实际使用 `/dev/pts/0`；tmux、Zsh、Neovim 与 OpenCode 模型列表检查通过。
+- `amdgpu`、`radeon`、`nvidia_drm`、`nvidia_modeset` 均未加载。
+  系统没有 DRM 显示或渲染设备，也没有 framebuffer 设备。
+- GNOME、GDM、Xorg、Xwayland、Vicinae 和音频服务进程均不存在。
+  `display-manager.service` 不存在，`graphical.target` 未启动。
+- SSH、Tailscale、NVIDIA 持久化服务、llama-swap 和 Bonsai 网关正常运行；
+  系统和用户均没有失败的 systemd 服务。
 - 主力与 Hikari 均通过英文补全、中文问答、代码分析和真实主机名称工具调用，
-  共 10 次 API 请求、4 组断言。测试后卸载模型，GPU 进程列表为空。
-- `display-manager`、`llama-swap`、`bonsai-tailnet-gateway` 均正常运行，
-  systemd 没有失败服务。
+  共 10 次推理请求、4 组检查。测试后卸载模型，GPU 进程列表为空。
 
-两次测量均在模型卸载、没有 CUDA 任务的状态下进行：
-
-| NVIDIA 显存统计 | 切换前 | 重启并验证后 |
+| NVIDIA 显存统计 | 改动前空闲 | 重启后空闲 |
 | --- | ---: | ---: |
 | Total | 12227 MiB | 12227 MiB |
 | Reserved | 476 MiB | 476 MiB |
-| Used | 1 MiB | 0 MiB |
-| Free | 11751 MiB | 11752 MiB |
+| Used | 0 MiB | 0 MiB |
+| Free | 11752 MiB | 11752 MiB |
 
-可用显存实测增加 1 MiB；476 MiB 的驱动保留量保持不变。
-显示帧缓冲的像素大小无法直接换算为 CUDA 可回收显存。
+显存统计保留了驱动报告的 476 MiB Reserved；该数值不属于图形进程占用。
 
-远程配置目录为 `~/.config/nix-config-bonsai-ninfer`，包含模型服务和显卡配置。
-OpenGL/Vulkan 的默认设备设置随登录会话生效；当前用户服务管理器已同步这些变量。
+远程配置目录为 `~/.config/nix-config-bonsai-ninfer`，本次构建日志、设备检查、
+推理请求和结果位于 `.work/compute-node/`。模型参数和上下文测量见
+[NInfer 部署报告](../REPORT.md)。
 
-完整设备检查与请求记录在该目录的 `.work/display-isolation/`。
-模型参数和上下文测量见 [NInfer 部署报告](../REPORT.md)。
+## 配置恢复
 
-## 恢复显示设置
-
-手动编辑 `graphics.nix`，删除上述两项启动参数和 5070 的
-`mutter-device-ignore` 规则，执行 `just check`、`nixos-rebuild build`、
-`nixos-rebuild switch`，随后重启。配置备份位于
-`.work/display-isolation/backups/20261005-2335/graphics.nix`。
+改动前的主机配置备份位于 `.work/compute-node/backups/20261006-0355/`。
+需要恢复时，使用文件编辑工具根据备份恢复 `default.nix`、`graphics.nix` 和
+`system.nix`，移除本次新增的 `compute.nix` 与 `home.nix`，再执行
+`just check`、`nixos-rebuild build --flake .#ms7e56` 和
+`just hm-dry ms7e56 linwhite`。检查通过后切换系统、激活 Home Manager 并重启。
