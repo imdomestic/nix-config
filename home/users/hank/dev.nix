@@ -6,6 +6,7 @@
     ../../profiles/dev.nix
     ../../modules/nixvim/hank/default.nix
     ../../modules/nixvim/hank/java.nix
+    ../../modules/nixvim/hank/dap.nix
     ../../modules/claude-code
     ../../modules/lazygit
     ../../modules/codex
