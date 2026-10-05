@@ -90,8 +90,6 @@ in {
 
   services = {
     tailscale.extraSetFlags = ["--hostname=${config.networking.hostName}"];
-    displayManager.gdm.autoSuspend = false;
-    pipewire.alsa.enable = true;
     logind.settings.Login.IdleAction = "ignore";
     avahi = {
       enable = true;
@@ -121,15 +119,6 @@ in {
     hybrid-sleep.enable = false;
     suspend-then-hibernate.enable = false;
   };
-  programs.dconf.profiles.user.databases = [
-    {
-      lockAll = true;
-      settings."org/gnome/settings-daemon/plugins/power" = {
-        sleep-inactive-ac-type = "nothing";
-        sleep-inactive-battery-type = "nothing";
-      };
-    }
-  ];
   systemd.services."ms7e56-boot-entries" = {
     description = "Keep Windows boot access in the GRUB menu";
     wantedBy = ["multi-user.target"];
@@ -168,7 +157,6 @@ in {
       '';
   };
 
-  security.rtkit.enable = true;
   security.sudo.wheelNeedsPassword = false;
   users.users.linwhite.hashedPasswordFile = "/var/lib/user-passwords/linwhite";
   programs.nix-index-database.comma.enable = true;
