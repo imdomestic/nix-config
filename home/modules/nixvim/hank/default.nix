@@ -10,12 +10,6 @@
   # Dev machines (importing home/users/<user>/dev.nix) get the full setup;
   # everything gated on `dev` below stays out of the closure elsewhere.
   dev = config.my.nixvim.dev.enable;
-  # 左侧栏(explorer、git、大纲、数据库)和顶栏上方那块共用的宽度;右侧是 lean infoview。
-  sidebarWidth = 30;
-  infoviewWidth = 40;
-  # 底部面板(终端、问题、quickfix、消息)统一高度,切换时正文不跳。含 hank-tabline
-  # 占用的 winbar 那一行。
-  bottomHeight = 12;
   toLua = inputs.nixvim.lib.nixvim.toLuaObject;
   # React 那几个插件共用的 filetype 列表。
   reactFiletypes = [
@@ -257,8 +251,6 @@ in {
 
     extraPlugins = [
       pkgs.vimPlugins."evergarden-nvim"
-      (pkgs.callPackage ../../../../pkgs/hank-tabline {})
-      (pkgs.callPackage ../../../../pkgs/hank-panels {})
       # pkgs.vimPlugins.kanso-nvim
     ];
 
@@ -282,8 +274,6 @@ in {
       db_ui_use_nerd_fonts = lib.mkIf dev 1;
       # 表下面的 List / Columns 等模板点开就执行,不用再 :w 一次。
       db_ui_auto_execute_table_helpers = lib.mkIf dev 1;
-      # 和其它左侧面板(explorer、git、大纲)同宽,切换时编辑区不跳。
-      db_ui_winwidth = lib.mkIf dev sidebarWidth;
     };
 
     opts = {
@@ -310,24 +300,14 @@ in {
       # nvim 默认 "ltToOCF" + "A"：发现残留 swap 时不再弹 E325 ATTENTION 提示。
       # 该提示在 snacks picker/explorer 的跳转里无法交互，会直接抛 Lua error。
       shortmess = "ltToOCFA";
-      # 窗口之间靠底色区分,分隔线留空(WinSeparator 同正文底色)。
       fillchars = {
         eob = " ";
-        vert = " ";
-        horiz = " ";
-        horizup = " ";
-        horizdown = " ";
-        vertleft = " ";
-        vertright = " ";
-        verthoriz = " ";
       };
     };
 
     filetype.extension = {
       templ = "templ";
     };
-
-    highlight.HankEndOfBuffer.fg = "#303a3d";
 
     diagnostic.settings = {
       virtual_lines = false;
@@ -372,7 +352,6 @@ in {
       indent-four.clear = true;
       haskell-extra.clear = true;
       rust-extra.clear = true;
-      hank-look.clear = true;
     };
 
     autoCmd =
@@ -538,70 +517,19 @@ in {
             end
           '';
         }
-        {
-          # dadbod-ui 和 quickfix 没有窗口选项,打开时补上和其它面板一样的退后底色。
-          event = "FileType";
-          pattern = ["dbui" "qf"];
-          command = "setlocal winhighlight=Normal:HankSunk,NormalNC:HankSunk,EndOfBuffer:HankSunk,SignColumn:HankSunk";
-        }
-        {
-          # 失焦变暗只在正文窗口之间:焦点去了侧栏、面板或浮层时,最近用过的正文窗口
-          # 保持原色(它的 NormalNC 映射回 Normal),其它正文窗口照常变暗。延后到
-          # 事件处理完再看:新开的侧栏 split 会先短暂显示当前文件,像个正文窗口。
-          event = ["VimEnter" "WinEnter" "BufWinEnter"];
-          group = "hank-look";
-          desc = "Keep the last editor window undimmed while a panel has focus";
-          callback = mkRaw ''
-            function()
-              vim.schedule(function()
-                local function editor(win)
-                  return vim.api.nvim_win_get_config(win).relative == ""
-                    and vim.list_contains({ "", "help" }, vim.bo[vim.api.nvim_win_get_buf(win)].buftype)
-                end
-                local current = vim.api.nvim_get_current_win()
-                if not editor(current) then return end
-                for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
-                  if editor(win) then
-                    local parts = vim.tbl_filter(function(part)
-                      return not vim.startswith(part, "NormalNC:")
-                    end, vim.split(vim.wo[win].winhighlight, ",", { trimempty = true }))
-                    if win == current then parts[#parts + 1] = "NormalNC:Normal" end
-                    local value = table.concat(parts, ",")
-                    if vim.wo[win].winhighlight ~= value then vim.wo[win].winhighlight = value end
-                  end
-                end
-              end)
-            end
-          '';
-        }
       ];
 
     keymaps =
       [
-        # 侧栏里轮换同侧面板,而不是把文件换进侧栏窗口。
         {
           mode = ["n" "o"];
           key = "[b";
-          action = mkRaw ''
-            function()
-              if not require("hank-panels").cycle(-vim.v.count1) then
-                vim.cmd(vim.v.count1 .. "bprevious")
-              end
-            end
-          '';
-          options.desc = "Previous buffer / sidebar panel";
+          action = "<Cmd>bprev<CR>";
         }
         {
           mode = ["n" "o"];
           key = "]b";
-          action = mkRaw ''
-            function()
-              if not require("hank-panels").cycle(vim.v.count1) then
-                vim.cmd(vim.v.count1 .. "bnext")
-              end
-            end
-          '';
-          options.desc = "Next buffer / sidebar panel";
+          action = "<Cmd>bnext<CR>";
         }
         {
           mode = "n";
@@ -635,19 +563,16 @@ in {
           mode = "n";
           key = "<leader>q";
           action = "<Cmd>q<CR>";
-          options.desc = "Quit window";
         }
         {
           mode = "n";
           key = "<leader>Q";
           action = "<Cmd>qa!<CR>";
-          options.desc = "Quit all (discard changes)";
         }
         {
           mode = "n";
           key = "<leader>w";
           action = "<Cmd>w<CR>";
-          options.desc = "Write";
         }
         {
           # o 也要:operator-pending 序列(`3kj`)里同样是 gj/gk。
@@ -668,7 +593,7 @@ in {
           key = "<M-m>";
           action = mkRaw ''
             function()
-              require("hank-panels").toggle("terminal")
+              require("snacks").terminal()
             end
           '';
           options.desc = "Toggle terminal";
@@ -678,7 +603,7 @@ in {
           key = "<M-m>";
           action = mkRaw ''
             function()
-              require("hank-panels").toggle("terminal")
+              require("snacks").terminal()
             end
           '';
           options.desc = "Toggle terminal";
@@ -688,7 +613,7 @@ in {
           key = "<leader>th";
           action = mkRaw ''
             function()
-              require("hank-panels").toggle("terminal")
+              require("snacks").terminal()
             end
           '';
           options.desc = "Toggle terminal";
@@ -745,7 +670,6 @@ in {
               vim.bo.shiftwidth = indent
             end
           '';
-          options.desc = "Set indent width";
         }
         {
           mode = "n";
@@ -852,71 +776,27 @@ in {
           key = "<leader>e";
           action = mkRaw ''
             function()
-              require("hank-panels").toggle("explorer")
+              require("snacks").explorer()
             end
           '';
           options.desc = "Explorer";
         }
         {
           mode = "n";
-          key = "<leader>G";
-          action = mkRaw ''
-            function()
-              require("hank-panels").toggle("git")
-            end
-          '';
-          options.desc = "Git status sidebar";
-        }
-        {
-          mode = "n";
-          key = "<leader>o";
-          action = mkRaw ''
-            function()
-              require("hank-panels").toggle("outline")
-            end
-          '';
-          options.desc = "Outline";
-        }
-        {
-          mode = "n";
           key = "<leader>lD";
           action = mkRaw ''
             function()
-              require("hank-panels").toggle("problems")
+              require("snacks").picker.diagnostics()
             end
           '';
-          options.desc = "Diagnostics panel";
-        }
-        {
-          mode = "n";
-          key = "<leader>tq";
-          action = mkRaw ''
-            function()
-              require("hank-panels").toggle("quickfix")
-            end
-          '';
-          options.desc = "Toggle quickfix panel";
-        }
-        {
-          mode = "n";
-          key = "<leader>tm";
-          action = mkRaw ''
-            function()
-              require("hank-panels").toggle("messages")
-            end
-          '';
-          options.desc = "Toggle message history panel";
+          options.desc = "Diagnostics";
         }
       ]
       ++ lib.optionals dev [
         {
           mode = "n";
           key = "<leader>D";
-          action = mkRaw ''
-            function()
-              require("hank-panels").toggle("database")
-            end
-          '';
+          action = "<Cmd>DBUIToggle<CR>";
           options.desc = "Database UI";
         }
       ];
@@ -961,17 +841,7 @@ in {
           image.enabled = true;
           input.enabled = true;
           notifier.enabled = true;
-          lazygit = {
-            enabled = true;
-            win = {
-              position = "float";
-              # winblend 会跳过 Explorer 的下层浮窗,遮罩下只剩空的侧栏容器。
-              backdrop = false;
-              width = 0.9;
-              height = 0.9;
-              border = "rounded";
-            };
-          };
+          lazygit.enabled = true;
           words.enabled = true;
           indent = {
             enabled = true;
@@ -980,25 +850,12 @@ in {
           picker = {
             enabled = true;
             ui_select = true;
-            layout.layout.backdrop = false;
-            sources.explorer.layout.layout.width = sidebarWidth;
-            # 侧栏和底部的 picker(explorer、git、problems)是 split,改用退后底色;
-            # 开了顶栏横线时还要自己带着 winbar 留白,否则 Snacks 每次重排都会把它抹掉。
-            on_show = mkRaw ''
-              function(picker)
-                require("hank-panels.adapters").snacks_surface(picker, {
-                  Normal = "HankSunk", NormalNC = "HankSunk", NormalFloat = "HankSunk", EndOfBuffer = "HankSunk",
-                  SignColumn = "HankSunk", FloatBorder = "HankSunkBorder", FloatTitle = "HankSunkTitle",
-                })
-                ${lib.optionalString config.my.nixvim.tabline.underline.enable ''require("hank-tabline").reserve_snacks(picker)''}
-              end
-            '';
+            sources.explorer.layout.layout.width = 30;
           };
           terminal = {
             enabled = true;
             win = {
-              height = bottomHeight;
-              wo.winhighlight = "Normal:HankSunk,NormalNC:HankSunk,EndOfBuffer:HankSunk,WinBar:HankSunk,WinBarNC:HankSunk";
+              height = 10;
               position = "bottom";
               style = "minimal";
             };
@@ -1033,16 +890,6 @@ in {
             }
           ];
           notify.enabled = false;
-          views = {
-            # 消息列表(hank-panels 的 messages 面板)和长消息都走 split,和其它底部面板同高。
-            split = {
-              size = bottomHeight;
-              win_options.winhighlight = {
-                Normal = "HankSunk";
-                NormalNC = "HankSunk";
-              };
-            };
-          };
           presets = {
             bottom_search = true;
             command_palette = true;
@@ -1073,29 +920,6 @@ in {
         settings.ignored_filetypes = ["SnacksExplorer"];
       };
 
-      # hank-panels 的「大纲」面板:贴左边缘、和 explorer 同宽,跟着当前窗口换 buffer。
-      aerial = {
-        enable = true;
-        settings = {
-          attach_mode = "global";
-          # nil 把 attrset 的每个键都报成 Field,而默认只显示下面这几类,
-          # nix 文件的大纲会被整个滤空;其它语言保持 aerial 的默认。
-          filter_kind = {
-            "_" = ["Class" "Constructor" "Enum" "Function" "Interface" "Module" "Method" "Struct"];
-            nix = false;
-          };
-          layout = {
-            default_direction = "left";
-            placement = "edge";
-            # 默认 max_width = { 40, 0.2 },120 列的终端会被压到 24。
-            min_width = sidebarWidth;
-            max_width = sidebarWidth;
-            # 和其它侧栏一样退后一级,整列与正文区分开。
-            win_opts.winhighlight = "Normal:HankSunk,NormalNC:HankSunk,EndOfBuffer:HankSunk,SignColumn:HankSunk";
-          };
-        };
-      };
-
       persistence = {
         enable = true;
         lazyLoad.settings.event = "BufReadPre";
@@ -1107,6 +931,7 @@ in {
         mockDevIcons = true;
         modules = {
           icons = {};
+          tabline = {};
           pairs = {};
           comment = lib.optionalAttrs dev {
             options.custom_commentstring = mkRaw ''
@@ -1169,38 +994,63 @@ in {
               end
             '';
           };
-        };
-      };
-
-      # 按键提示。helix 布局:右下角一列,不挡正文。前缀组的名字在这里,
-      # 单个按键的说明来自各 keymap 自己的 desc。
-      which-key = {
-        enable = true;
-        settings = {
-          preset = "helix";
-          icons.mappings = false;
-          spec = [
-            {
-              __unkeyed-1 = "<leader>f";
-              group = "Find";
-            }
-            {
-              __unkeyed-1 = "<leader>h";
-              group = "Git hunks";
-            }
-            {
-              __unkeyed-1 = "<leader>l";
-              group = "LSP";
-            }
-            {
-              __unkeyed-1 = "<leader>t";
-              group = "Toggle";
-            }
-            {
-              __unkeyed-1 = "<leader>u";
-              group = "UI";
-            }
-          ];
+          clue = {
+            triggers = [
+              {
+                mode = ["n" "x"];
+                keys = "<Leader>";
+              }
+              {
+                mode = "n";
+                keys = "[";
+              }
+              {
+                mode = "n";
+                keys = "]";
+              }
+              {
+                mode = "i";
+                keys = "<C-x>";
+              }
+              {
+                mode = ["n" "x"];
+                keys = "g";
+              }
+              {
+                mode = ["n" "x"];
+                keys = "'";
+              }
+              {
+                mode = ["n" "x"];
+                keys = "`";
+              }
+              {
+                mode = ["n" "x"];
+                keys = "\"";
+              }
+              {
+                mode = ["i" "c"];
+                keys = "<C-r>";
+              }
+              {
+                mode = "n";
+                keys = "<C-w>";
+              }
+              {
+                mode = ["n" "x"];
+                keys = "z";
+              }
+            ];
+            clues = [
+              (mkRaw ''require("mini.clue").gen_clues.square_brackets()'')
+              (mkRaw ''require("mini.clue").gen_clues.builtin_completion()'')
+              (mkRaw ''require("mini.clue").gen_clues.g()'')
+              (mkRaw ''require("mini.clue").gen_clues.marks()'')
+              (mkRaw ''require("mini.clue").gen_clues.registers()'')
+              (mkRaw ''require("mini.clue").gen_clues.windows()'')
+              (mkRaw ''require("mini.clue").gen_clues.z()'')
+            ];
+          };
         };
       };
 
@@ -1494,7 +1344,7 @@ in {
           mappings = true;
           infoview = {
             orientation = "vertical";
-            width = infoviewWidth;
+            width = 40;
           };
         };
       };
@@ -1503,13 +1353,12 @@ in {
         enable = true;
         lazyLoad.settings.event = "DeferredUIEnter";
         settings = {
-          # 细条贴着行号左侧;删除用贴底 / 贴顶的八分之一块。
           signs = {
-            add.text = "▎";
-            change.text = "▎";
-            delete.text = "▁";
-            topdelete.text = "▔";
-            changedelete.text = "▎";
+            add.text = "┃";
+            change.text = "┃";
+            delete.text = "_";
+            topdelete.text = "‾";
+            changedelete.text = "~";
             untracked.text = "┆";
           };
           current_line_blame = true;
@@ -1785,41 +1634,11 @@ in {
       ];
     };
 
+    # 内置 document_color 的渲染把 extmark 写死在 range 起始列,只能画在
+    # token 前面。style 传函数就由我们接管渲染,才能和 highlight-colors 的
+    # eow 一样落在 token 之后。代价:自定义函数下内置不再提供 hl_group,
+    # 高亮组和 extmark 清理都得自己管。
     extraConfigLuaPre = ''
-      -- fillchars.eob 只能画左侧字符;虚拟行锚定在 EOF 之后,避免被末尾折叠隐藏。
-      do
-        local ns = vim.api.nvim_create_namespace("hank_end_of_buffer")
-        vim.api.nvim_set_decoration_provider(ns, {
-          on_win = function(_, _, buf)
-            if vim.bo[buf].buftype ~= "" then
-              vim.api.nvim_buf_clear_namespace(buf, ns, 0, -1)
-              vim.b[buf].hank_eof_stamp = nil
-              return false
-            end
-            local stamp = table.concat({ vim.api.nvim_buf_get_changedtick(buf), vim.o.lines, vim.o.columns }, ":")
-            if vim.b[buf].hank_eof_stamp ~= stamp then
-              local lines = {}
-              local stripe = { { string.rep("╱", vim.o.columns), "HankEndOfBuffer" } }
-              for row = 1, vim.o.lines do
-                lines[row] = stripe
-              end
-              vim.api.nvim_buf_set_extmark(buf, ns, vim.api.nvim_buf_line_count(buf), 0, {
-                id = 1,
-                virt_lines = lines,
-                virt_lines_above = true,
-                virt_lines_leftcol = true,
-                right_gravity = true,
-                undo_restore = false,
-              })
-              vim.b[buf].hank_eof_stamp = stamp
-            end
-            return false
-          end,
-        })
-      end
-
-      -- document_color 的内置 extmark 只能画在 token 前面;自定义渲染才能
-      -- 把色块放到 token 之后,高亮组和 extmark 清理也由这里负责。
       do
         local ns = vim.api.nvim_create_namespace("hank_lsp_document_color")
         -- 内置逻辑每个 buffer version 只 apply 一批,所以拿 changedtick 判批次:
@@ -1851,8 +1670,6 @@ in {
         pcall(vim.keymap.del, "n", key)
       end
 
-      -- 界面分层(docs/nvim-look.md):正文 base;侧栏和底部面板退后一级(mantle,
-      -- HankSunk);浮层用主题默认的 mantle 底加圆角边框。
       require("evergarden").setup({
         theme = {
           variant = "winter",
@@ -1867,128 +1684,8 @@ in {
           search = { "reverse", "bold" },
           incsearch = { "reverse", "bold" },
         },
-        overrides = function(t)
-          local blend = require("evergarden.utils").blend
-          return {
-            HankSunk = { t.text, t.mantle },
-            HankSunkBorder = { t.surface1, t.mantle },
-            HankSunkTitle = { t.subtext0, t.mantle, style = { "bold" } },
-            WinSeparator = { t.base, t.base },
-            NormalNC = { bg = blend(t.mantle, t.base, 0.5) },
-            CursorLine = { bg = blend(t.surface0, t.base, 0.45) },
-            CursorLineNr = { t.accent, style = { "bold" } },
-            LineNr = { t.overlay0 },
-            SnacksPickerMatch = { t.accent, style = { "bold" } },
-          }
-        end,
       })
       vim.cmd.colorscheme("evergarden")
-      -- 图标是 Material 的实心/空心成对码位:打开时实心,关闭时空心。
-      local panels, adapters = require("hank-panels"), require("hank-panels.adapters")
-      panels.setup({
-        panels = {
-          adapters.snacks({ id = "explorer", icon = 0xf024b, icon_inactive = 0xf0256 }),
-          adapters.snacks({
-            id = "git",
-            icon = 0xf062c,
-            source = "git_status",
-            opts = {
-              focus = "list",
-              auto_close = false,
-              -- 面板要常驻:结果为空时 snacks 默认弹一条 No results 就把 picker 关掉,
-              -- 工作区干净时 git 面板会一闪即逝。
-              show_empty = true,
-              jump = { close = false },
-              layout = { preset = "sidebar", preview = false, layout = { width = ${toString sidebarWidth} } },
-              -- 30 列放不下完整路径，默认格式会把文件名本身截掉；文件名放前面，目录跟在后面变暗。
-              formatters = { file = { filename_first = true } },
-            },
-          }),
-          adapters.window({
-            id = "outline",
-            icon = 0xf0645,
-            icon_inactive = 0xf13d2,
-            ft = "aerial",
-            open = function() require("aerial").open({ direction = "left" }) end,
-          }),
-          -- 底部面板:页签画在 hank-tabline 的底部两行里,同一时间只开一个。
-          adapters.snacks({
-            id = "problems",
-            side = "bottom",
-            icon = 0xf0028,
-            icon_inactive = 0xf05d6,
-            label = function()
-              local count = #vim.diagnostic.get()
-              return count > 0 and ("Problems " .. count) or "Problems"
-            end,
-            source = "diagnostics",
-            opts = {
-              focus = "list",
-              auto_close = false,
-              show_empty = true,
-              jump = { close = false },
-              layout = {
-                preview = false,
-                hidden = { "input" },
-                layout = {
-                  position = "bottom",
-                  height = ${toString bottomHeight},
-                  backdrop = false,
-                  border = "none",
-                  box = "vertical",
-                  { win = "input", height = 1, border = "none" },
-                  { win = "list", border = "none" },
-                },
-              },
-            },
-          }),
-          adapters.snacks_terminal({ id = "terminal", icon = 0xf018d, label = "Terminal" }),
-          adapters.window({
-            id = "quickfix",
-            side = "bottom",
-            icon = 0xf0279,
-            label = "Quickfix",
-            ft = "qf",
-            open = function() vim.cmd("botright copen ${toString bottomHeight}") end,
-          }),
-          adapters.window({
-            id = "messages",
-            side = "bottom",
-            icon = 0xf0369,
-            icon_inactive = 0xf036a,
-            label = "Messages",
-            ft = "noice",
-            -- noice 在 DeferredUIEnter 才加载。用 all 而不是 history:history 按消息
-            -- 类型过滤,:echomsg 之类进不去,列表为空时它不开窗口,只弹一条通知。
-            available = function() return package.loaded["noice"] ~= nil end,
-            open = function() require("noice").cmd("all") end,
-          }),
-          ${lib.optionalString dev ''
-        adapters.window({
-          id = "database",
-          icon = 0xf01bc,
-          icon_inactive = 0xf1632,
-          ft = "dbui",
-          open = function() vim.cmd("DBUI") end,
-        }),
-        adapters.lean_infoview({ id = "infoview", icon = 0xf02fc, icon_inactive = 0xf02fd }),
-      ''}
-        },
-      })
-      require("hank-tabline").setup({
-        underline = ${lib.boolToString config.my.nixvim.tabline.underline.enable},
-        animate = ${lib.boolToString config.my.nixvim.tabline.animation.enable},
-        project = ${lib.boolToString config.my.nixvim.tabline.project.enable},
-        palette = function() return require("evergarden.colors").get() end,
-        sidebars = {
-          left = { width = ${toString sidebarWidth}, sections = { panels.section("left") } },
-          right = { width = ${toString infoviewWidth}, sections = { panels.section("right") } },
-        },
-        bottom = {
-          sections = { panels.section("bottom") },
-          anchor = function() return panels.window("bottom") end,
-        },
-      })
     '';
   };
 }

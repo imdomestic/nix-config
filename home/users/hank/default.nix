@@ -20,9 +20,6 @@ in {
     ../../modules/token-theme
   ];
 
-  # 关闭第二行轨道,保留侧栏项目名(docs/nvim-tabline.md)。
-  my.nixvim.tabline.underline.enable = false;
-  my.nixvim.tabline.project.enable = true;
   # macOS shader redraw cost: docs/incidents.md#ghostty-shader-vsync.
   my.ghostty.neovideCursor.enable = false;
 

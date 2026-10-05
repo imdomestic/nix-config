@@ -1,5 +1,8 @@
 # 侧栏和底部面板
 
+> 历史记录：2026-10-05 已回退此轮界面改版，本文描述的定制外观/插件不再启用。
+> 回退范围与保留功能见 [决策记录](decisions.md#nixvim-visual-rollback-20261005)。
+
 自写插件 `pkgs/hank-panels/`，和顶栏插件一样通过 `vimUtils.buildVimPlugin`
 打包。它只做三件事：
 

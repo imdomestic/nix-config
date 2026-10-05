@@ -1,5 +1,8 @@
 # Hank 的顶栏
 
+> 历史记录：2026-10-05 已回退此轮界面改版，本文描述的定制外观/插件不再启用。
+> 回退范围与保留功能见 [决策记录](decisions.md#nixvim-visual-rollback-20261005)。
+
 自写插件源码在 `pkgs/hank-tabline/`，通过 `vimUtils.buildVimPlugin` 打包，
 由 `home/modules/nixvim/hank/default.nix` 的 `extraPlugins` 安装；不再加载
 `mini.tabline`。这是一份插件实现，不是复制进仓库的个人 Lua 配置。
