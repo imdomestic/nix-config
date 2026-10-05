@@ -10,12 +10,16 @@
   modelStats = pkgs.applyPatches {
     name = "opencode-model-stats-backend-timings";
     src = inputs.opencode-model-stats;
-    patches = [./opencode-model-stats-backend-timings.patch];
+    patches = [
+      ./opencode-model-stats-backend-timings.patch
+      ./opencode-model-stats-authenticated-endpoints.patch
+    ];
   };
   modelStatsPlugin = [
     "file://${modelStats}"
     {
       prefillWsUrl = "ws://taipan.inner.imdomestic.com:8000/prefill-ws";
+      prefillWsEndpoints = config.my.opencode.prefillEndpoints;
     }
   ];
   notificator = pkgs.fetchFromGitHub {
@@ -158,7 +162,21 @@
       syntaxPunctuation = gray3;
     };
 in {
-  imports = [inputs.sops-nix.homeManagerModules.sops];
+  imports = [
+    inputs.sops-nix.homeManagerModules.sops
+    {
+      options.my.opencode.prefillEndpoints = lib.mkOption {
+        type = lib.types.listOf (lib.types.submodule {
+          options = {
+            url = lib.mkOption {type = lib.types.str;};
+            apiKeyFile = lib.mkOption {type = lib.types.str;};
+          };
+        });
+        default = [];
+        description = "需要运行时 API key 的模型进度 WebSocket。";
+      };
+    }
+  ];
 
   # 与 .sops.yaml 的管理员收件人一致，运行时从用户的 SSH key 派生 age key。
   sops.age.sshKeyPaths = ["${config.home.homeDirectory}/.ssh/id_ed25519"];
