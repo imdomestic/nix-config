@@ -280,9 +280,6 @@ in {
       number = true;
       mouse = "a";
       showmode = false;
-      # 外部 agent（Claude Code 等）在另一个 tmux window 里改仓库文件，
-      # 切回来时未修改的 buffer 自动从磁盘重载。配合下面的 auto-reload 组。
-      autoread = true;
       breakindent = true;
       undofile = true;
       signcolumn = "yes:1";
@@ -293,7 +290,8 @@ in {
       cursorline = true;
       scrolloff = 10;
       laststatus = 3;
-      foldenable = true;
+      # hover、签名帮助、诊断浮窗等没有自己指定边框的浮动窗口统一用圆角。
+      winborder = "rounded";
       foldlevel = 99;
       foldlevelstart = 99;
       cmdheight = 0;
@@ -306,18 +304,31 @@ in {
       };
     };
 
-    filetype.extension = {
-      templ = "templ";
-    };
+    # 个人缩进偏好放 after/ftplugin:在 runtime 自带的 ftplugin 之后生效,
+    # 之后 vim-sleuth 再按文件内容调整,项目里有 .editorconfig 时以它为准。
+    # rust/python/zig/yaml 不列:runtime 的 ftplugin 已经设好同样的值。
+    # go 不列:gofmt 用 tab,runtime 本来就设的 noexpandtab。
+    files = let
+      indent = width: {
+        localOpts = {
+          expandtab = true;
+          tabstop = width;
+          softtabstop = width;
+          shiftwidth = width;
+        };
+      };
+      byWidth = width: fts: map (ft: lib.nameValuePair "after/ftplugin/${ft}.lua" (indent width)) fts;
+    in
+      lib.listToAttrs (
+        byWidth 2 ["cabal" "cmake" "cpp" "haskell" "json" "lua" "nix" "lean"]
+        ++ byWidth 4 ["c" "cs" "java" "kotlin" "php"]
+      );
 
     diagnostic.settings = {
       virtual_lines = false;
       virtual_text = true;
       severity_sort = true;
-      float = {
-        border = "rounded";
-        source = "if_many";
-      };
+      float.source = "if_many";
       underline.severity = mkRaw "vim.diagnostic.severity.ERROR";
       signs = {
         numhl.__raw = ''
@@ -346,11 +357,8 @@ in {
     autoGroups = {
       auto-reload.clear = true;
       highlight-yank.clear = true;
-      terminal-cleanup.clear = true;
       external-lsp.clear = true;
       lsp-document-color.clear = true;
-      indent-two.clear = true;
-      indent-four.clear = true;
       haskell-extra.clear = true;
       rust-extra.clear = true;
     };
@@ -409,6 +417,8 @@ in {
           ];
           group = "auto-reload";
           desc = "Check for external file changes (autoread only triggers on checktime)";
+          # 外部 agent（Claude Code 等）在另一个 tmux window 里改仓库文件，
+          # 切回来时未修改的 buffer 自动从磁盘重载。'autoread' 默认就开着。
           callback = mkRaw ''
             function()
               -- checktime 在 cmdline / cmdwin 里会抛 E11，nofile buffer 也无盘可查。
@@ -424,69 +434,7 @@ in {
           desc = "Highlight when yanking (copying) text";
           callback = mkRaw ''
             function()
-              vim.highlight.on_yank()
-            end
-          '';
-        }
-        {
-          event = "VimLeavePre";
-          group = "terminal-cleanup";
-          desc = "Exit: Kill all background terminals automatically";
-          callback = mkRaw ''
-            function()
-              for _, buf in ipairs(vim.api.nvim_list_bufs()) do
-                if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].buftype == "terminal" then
-                  vim.api.nvim_buf_delete(buf, { force = true })
-                end
-              end
-            end
-          '';
-        }
-        {
-          event = "FileType";
-          group = "indent-two";
-          pattern = [
-            "bs"
-            "cabal"
-            "cmake"
-            "cpp"
-            "haskell"
-            # java 不在这里:它归 indent-four(两边都列会让生效值取决于列表顺序)。
-            "json"
-            "lua"
-            "nix"
-            "lean"
-            "yaml"
-          ];
-          callback = mkRaw ''
-            function()
-              vim.bo.expandtab = true
-              vim.bo.tabstop = 2
-              vim.bo.softtabstop = 2
-              vim.bo.shiftwidth = 2
-            end
-          '';
-        }
-        {
-          event = "FileType";
-          group = "indent-four";
-          pattern = [
-            "rust"
-            "zig"
-            "python"
-            "php"
-            "csharp"
-            "kotlin"
-            "java"
-            "go"
-            "c"
-          ];
-          callback = mkRaw ''
-            function()
-              vim.bo.expandtab = true
-              vim.bo.tabstop = 4
-              vim.bo.softtabstop = 4
-              vim.bo.shiftwidth = 4
+              vim.hl.on_yank()
             end
           '';
         }
@@ -522,16 +470,6 @@ in {
 
     keymaps =
       [
-        {
-          mode = ["n" "o"];
-          key = "[b";
-          action = "<Cmd>bprev<CR>";
-        }
-        {
-          mode = ["n" "o"];
-          key = "]b";
-          action = "<Cmd>bnext<CR>";
-        }
         {
           mode = "n";
           key = "<leader>c";
@@ -901,19 +839,6 @@ in {
           icons = {};
           tabline = {};
           pairs = {};
-          comment = lib.optionalAttrs dev {
-            options.custom_commentstring = mkRaw ''
-              function()
-                -- ts-context-commentstring 按 ft 懒加载,tsx 之外 require
-                -- 不到,退回 buffer 自己的 commentstring。
-                local ok, ts_context = pcall(require, "ts_context_commentstring")
-                if not ok then
-                  return vim.bo.commentstring
-                end
-                return ts_context.calculate_commentstring() or vim.bo.commentstring
-              end
-            '';
-          };
           statusline = {
             use_icons = true;
             content.active = mkRaw ''
@@ -1049,14 +974,6 @@ in {
       ts-autotag = {
         enable = dev;
         lazyLoad.settings.ft = reactFiletypes ++ ["html" "xml" "markdown"];
-      };
-
-      ts-context-commentstring = {
-        enable = dev;
-        lazyLoad.settings.ft = reactFiletypes;
-        # 由 mini.comment 的 custom_commentstring 钩子按需调用,
-        # 不用它自己再挂一套 autocmd 改 commentstring。
-        settings.enable_autocmd = false;
       };
 
       package-info = {
@@ -1221,14 +1138,15 @@ in {
               };
             };
           };
-          signature.window = {
-            border = "rounded";
-            winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder";
+          # 在函数调用的括号里打字时,自动浮出参数列表并高亮当前参数。
+          signature = {
+            enabled = true;
+            window = {
+              border = "rounded";
+              winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder";
+            };
           };
-          appearance = {
-            use_nvim_cmp_as_default = true;
-            nerd_font_variant = "mono";
-          };
+          appearance.nerd_font_variant = "mono";
           sources = {
             default = [
               "lsp"
@@ -1551,18 +1469,9 @@ in {
           options.silent = true;
         }
 
-        # 下面四个原来是 plugins.lsp.keymaps.extra。那边的默认 mode 是 ""
+        # 下面两个原来是 plugins.lsp.keymaps.extra。那边的默认 mode 是 ""
         # (normal + visual + operator-pending),这里原样保留,迁移不改行为。
-        {
-          mode = "";
-          key = "<leader>ld";
-          action = mkRaw ''
-            function()
-              vim.diagnostic.open_float()
-            end
-          '';
-          options.desc = "LSP: Hover diagnostic";
-        }
+        # hover 和诊断浮窗用内置的 K / <C-w>d,边框由 opts.winborder 统一。
         {
           mode = "";
           key = "gh";
@@ -1572,16 +1481,6 @@ in {
             end
           '';
           options.desc = "LSP: Goto type hierarchy";
-        }
-        {
-          mode = "";
-          key = "K";
-          action = mkRaw ''
-            function()
-              vim.lsp.buf.hover({ border = "rounded" })
-            end
-          '';
-          options.desc = "LSP: Hover";
         }
         {
           mode = "";
