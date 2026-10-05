@@ -4,6 +4,25 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-05 · tank 上 Max 浏览器把 reddit 判成保留地址 {#tank-browser-poisoned-dns}
+
+Max 的浏览器打开 `www.reddit.com` 和 `old.reddit.com` 都失败,报
+`URL host resolves to a private, local, or reserved address`。这条来自 camoufox-mcp
+的导航前检查:它用系统解析器查一遍目标域名,只要有一条结果落在私有或保留网段就拒绝。
+tank 的解析结果是 `69.171.235.22`、`157.240.7.20`(Facebook)加 `2001::1`,典型的
+UDP 投毒;同一时刻经 DoH 问 1.1.1.1 得到的是 fastly 的正确地址。
+
+根因是 2026-09-07 那次修法只落在 h610 的主机配置上
+(`my.dae.foreignDnsOverTcp`,见 #max-native-runtime-dns)。Max 2026-09-27 迁到 tank
+后,DNS 由网关 r5s 提供,而 r5s 的 dae 仍让国外域名回落到国内 UDP DNS。r5s 现在也
+打开 `foreignDnsOverTcp`,并把 ddns-go 依赖的 `api.cloudflare.com` 设为不经代理的
+bootstrap 域名。
+
+误导点:同一时刻 tank 上 `curl https://www.reddit.com` 返回 200,连的正是 `2001::1`
+—— r5s 的 dae 按 SNI 嗅探转发,假地址照样能用,于是"网络是好的"。只有先解析、再按
+IP 判断的程序(这个浏览器检查)才会暴露投毒。报错文本也像 SSRF 防护误判,而不是 DNS
+问题。迁移只核对了 Max 自身的服务,没核对新主机的上游网关是否有同样的 DNS 设置。
+
 ## 2026-10-05 · ms7e56 的 Bonsai NInfer 174080 上下文实测 {#ms7e56-bonsai-ninfer-174080}
 
 RTX 5070 使用开放内核驱动 595.71.05，AMD Granite Ridge 核显的 PCI 地址为
