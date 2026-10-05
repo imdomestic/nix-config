@@ -23,6 +23,12 @@ bootstrap 域名。
 IP 判断的程序(这个浏览器检查)才会暴露投毒。报错文本也像 SSRF 防护误判,而不是 DNS
 问题。迁移只核对了 Max 自身的服务,没核对新主机的上游网关是否有同样的 DNS 设置。
 
+16:52 在 r6s 构建、直接 `nix copy --no-check-sigs` 到 r5s 后激活,先挂了 5 分钟的
+自动回滚定时器。dae 14 秒内重启完成;tank 刷新解析缓存后 reddit 解析到 fastly
+`151.101.x.x`,google、github 为真实地址,百度等国内域名不变,`curl` 均为 200,
+`*.inner.imdomestic.com` 仍走 tailscale0。确认后取消回滚。r5s 同时带上了此前未部署的
+`nexttrace`。经悉尼中转复制这 25 MiB 二十分钟没传完,改由 r6s 直推才完成。
+
 ## 2026-10-05 · ms7e56 的 Bonsai NInfer 174080 上下文实测 {#ms7e56-bonsai-ninfer-174080}
 
 RTX 5070 使用开放内核驱动 595.71.05，AMD Granite Ridge 核显的 PCI 地址为
