@@ -15,6 +15,12 @@ in {
     ../../modules/keyd
   ];
 
+  # tank (and Max on it since 2026-09-27) resolves through this gateway:
+  # docs/incidents.md#tank-browser-poisoned-dns.
+  my.dae.foreignDnsOverTcp = true;
+  # ddns-go must reach Cloudflare's API even while the proxy is down.
+  my.dae.bootstrapDomains = ["api.cloudflare.com"];
+
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
