@@ -59,9 +59,11 @@ llama-swap 的加载健康检查超时为 120 秒，OpenCode 请求超时为 600
 输入与输出共用 174080 的上下文容量；16384 是输出上限。
 
 核显为 AMD Granite Ridge Radeon，PCI `10:00.0`；NVIDIA 为 `01:00.0`。
-GNOME/Mutter 使用 AMD，重启后 GLX、Vulkan 默认设备均为 AMD。
-NVIDIA 空闲占用 1 MiB、可用 11774 MiB，没有图形进程。
-按用户说明，主机无需物理显示输出，保留现有显示器连接方式。
+主机通过 SSH 使用终端，两张显卡的 Linux 显示功能均停用，
+GNOME、GDM 和桌面应用已移除。2026-10-06 重启验证后，NVIDIA 空闲
+占用 0 MiB、可用 11752 MiB、驱动 Reserved 为 476 MiB，GPU 进程列表为空。
+两个模型的真实推理与工具调用通过，完整检查见 [计算节点记录](docs/ms7e56-gpu.md)。
+当前物理显示器仍然亮着，接口断开信号和显示器待机尚未通过验收。
 
 | K=3 的显存项目 | 字节 |
 | --- | ---: |
@@ -126,7 +128,7 @@ Hikari 在 Chat、Responses、upstream 三种入口均验证了 medium 锁定。
 
 ## 访问、OpenCode 与当前状态
 
-- ms7e56：`http://127.0.0.1:8080/v1`。
+- ms7e56：`http://ms7e56.inner.imdomestic.com:8080/v1`，本机访问通过 `lo`。
 - aegis：`http://ms7e56.inner.imdomestic.com:8080/v1`。
 - 网关绑定 `100.64.0.44:8080`，只允许 `tailscale0` 上 aegis 的 `100.64.0.25`。
 - SOPS 提供运行时 API key，密钥明文未写入 Nix store。缺失或错误密钥均返回 401。
