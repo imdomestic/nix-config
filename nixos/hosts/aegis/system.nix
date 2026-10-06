@@ -9,6 +9,7 @@
   imports = [
     ../../modules/nerdfonts
     ../../modules/aerospace/linwhite.nix
+    ../../../darwin/modules/linwhite-smb.nix
   ];
   system.stateVersion = 5;
 

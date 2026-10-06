@@ -13,6 +13,7 @@ in {
     ./system.nix
     ./hardware-configuration.nix
     ./compute.nix
+    ../../modules/linwhite-smb.nix
     ../../modules/bonsai-conversion.nix
     ../../modules/bonsai-ninfer.nix
     ../../modules/bonsai-tailnet.nix
