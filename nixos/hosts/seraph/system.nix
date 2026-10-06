@@ -84,6 +84,7 @@ in {
     };
   };
   networking.nftables.enable = true;
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [25565];
 
   nixpkgs.config.allowUnfree = true;
   my.host.useChinaMirror = false;

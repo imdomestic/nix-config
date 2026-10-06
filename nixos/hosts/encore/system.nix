@@ -113,7 +113,10 @@ in {
       IdleAction = "ignore";
     };
     # 串流：Mac 上的 Moonlight 连这里。端口在 minecraft.nix 的 tailscale0 规则里放。
-    sunshine.enable = true;
+    sunshine = {
+      enable = true;
+      capSysAdmin = true; # GNOME Wayland 的 KMS 屏幕捕获需要此权限。
+    };
     avahi = {
       enable = true;
       openFirewall = true;

@@ -4,9 +4,21 @@
   pkgs,
   ...
 }:
-# 只在 encore（MC 开发机）上装这两个脚本，不落到 Mac / 9950x 的 home。
+# 只在 encore（MC 开发机）上安装工作流入口。
 lib.mkIf (config.my.host.name == "encore") {
   home.packages = [
+    (pkgs.writeShellScriptBin "mc-build-remote" ''
+      set -euo pipefail
+      host="''${MC_SERVER_HOST:-seraph}"
+      root="$(git rev-parse --show-toplevel)"
+      # 构建与服务端使用独立副本，避免同步覆盖正在运行的服务端。
+      rsync -az --delete --exclude '.git/' --exclude '.gradle/' \
+        --exclude 'build/' --exclude 'runs/' --exclude '.direnv/' --exclude '.devenv/' \
+        "$root/" "$host:chorus-build/"
+      if (( $# == 0 )); then set -- build; fi
+      printf -v tasks ' %q' "$@"
+      ssh "$host" "cd ~/chorus-build && nix develop --no-pure-eval --max-jobs 2 --cores 4 --command ./gradlew --max-workers=8 $tasks"
+    '')
     (pkgs.writeShellScriptBin "mc-client" ''
       #!/usr/bin/env bash
       # mc-client —— 在 encore 上（从 SSH / tmux 里）启动 Fabric 开发客户端。
@@ -64,19 +76,18 @@ lib.mkIf (config.my.host.name == "encore") {
     '')
     (pkgs.writeShellScriptBin "mc-server-remote" ''
       #!/usr/bin/env bash
-      # mc-server-remote —— 在 encore 上运行：把当前工作区同步到 9950X，在那边跑 Fabric 开发服务端。
+      # mc-server-remote —— 在 encore 上运行：同步工作副本到 seraph，运行 Fabric 服务端。
       # 用来测“真·客户端/服务端分离”：客户端在 encore，服务端在另一台机器，走 tailscale。
       #
       #   mc-server-remote           同步代码 →（停掉旧服务端）→ 启动 → 跟随日志（Ctrl-C 只退出日志，服务端继续跑）
-      #   mc-server-remote --debug   服务端停在 5005 等调试器；同时建好 encore:5006 → 9950X:5005 的隧道，
-      #                              在 nvim 里 <leader>dc 选 “Attach: 9950X 服务端”
+      #   mc-server-remote --debug   服务端停在 5005 等调试器；建立 encore:5006 → seraph:5005 隧道。
       #   mc-server-remote stop      停掉远端服务端
       #
       # 客户端（mc-client）里：多人游戏 → 添加服务器 → <MC_SERVER_HOST>:25565
       set -euo pipefail
 
-      HOST="''${MC_SERVER_HOST:-9950x}"
-      REMOTE_DIR="''${MC_SERVER_DIR:-chorus}" # 远端 $HOME 下的目录
+      HOST="''${MC_SERVER_HOST:-seraph}"
+      REMOTE_DIR="''${MC_SERVER_DIR:-chorus-worker}" # 专用副本，禁止在这里维护提交
       SESSION="chorus-server"
       LOG=".cache/chorus-server.log" # 远端 $HOME 下；放在仓库外，免得被 rsync --delete 删掉
 
@@ -102,10 +113,11 @@ lib.mkIf (config.my.host.name == "encore") {
       }
       cd "$root"
 
+      stop_remote
       echo "→ 同步代码到 $HOST:~/$REMOTE_DIR"
       rsync -az --delete \
         --exclude '.gradle/' --exclude 'build/' --exclude 'bin/' --exclude 'runs/' \
-        --exclude '.direnv/' --exclude '.devenv*' \
+        --exclude '.direnv/' --exclude '.devenv/' --exclude '.git/' \
         ./ "$HOST:$REMOTE_DIR/"
 
       debug_flag=""
@@ -114,12 +126,12 @@ lib.mkIf (config.my.host.name == "encore") {
         if ssh -fN -o ExitOnForwardFailure=yes -L 5006:127.0.0.1:5005 "$HOST" 2>/dev/null; then
           echo "→ 调试隧道 encore:5006 → $HOST:5005 已建立"
         else
-          echo "→ 5006 端口已被占用（多半是上次的隧道还在），直接沿用"
+          echo "无法建立调试隧道；请先检查 5006 端口和 SSH 连接。" >&2
+          exit 1
         fi
       fi
 
       echo "→ 重启远端服务端"
-      stop_remote
 
       # 首次运行：同意 EULA；关掉正版验证（开发客户端用的是离线账号，不关进不去服）
       ssh "$HOST" bash -s -- "$REMOTE_DIR" <<'EOF'
@@ -137,10 +149,10 @@ lib.mkIf (config.my.host.name == "encore") {
 
       # 远端用不挂载的 tmux 会话跑（避免和 encore 上的 tmux 嵌套），输出同时写进日志文件
       ssh "$HOST" "tmux new-session -d -s $SESSION \
-        'cd ~/$REMOTE_DIR && nix develop --no-pure-eval --command ./gradlew :fabric:runServer $debug_flag 2>&1 | tee ~/$LOG'"
+        'cd ~/$REMOTE_DIR && nix develop --no-pure-eval --max-jobs 2 --cores 4 --command ./gradlew --max-workers=8 :fabric:runServer $debug_flag 2>&1 | tee ~/$LOG'"
 
       echo "→ 服务端已在 $HOST 启动（tmux 会话 $SESSION），下面是日志；Ctrl-C 只退出日志"
-      [[ -n "$debug_flag" ]] && echo "   服务端在等调试器：nvim 里 <leader>dc → Attach: 9950X 服务端"
+      [[ -n "$debug_flag" ]] && echo "   服务端在等调试器：nvim 里 <leader>dc → Attach: seraph 服务端"
       sleep 1
       exec ssh "$HOST" "tail -n 50 -F ~/$LOG"
     '')
