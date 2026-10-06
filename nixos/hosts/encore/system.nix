@@ -94,6 +94,12 @@ in {
       enable = true;
       autoSuspend = false;
     };
+    # SSH 进来跑 mc-client 时桌面得已经有人登录，否则没有 DISPLAY 可借。
+    # 新版 nixpkgs 把 autoLogin 从 gdm 子模块挪到了 displayManager 顶层。
+    displayManager.autoLogin = {
+      enable = true;
+      user = "linwhite";
+    };
     desktopManager.gnome.enable = true;
     pipewire = {
       enable = true;
@@ -106,6 +112,8 @@ in {
       HandleLidSwitchDocked = "ignore";
       IdleAction = "ignore";
     };
+    # 串流：Mac 上的 Moonlight 连这里。端口在 minecraft.nix 的 tailscale0 规则里放。
+    sunshine.enable = true;
     avahi = {
       enable = true;
       openFirewall = true;
@@ -186,7 +194,11 @@ in {
     sudo.wheelNeedsPassword = false;
   };
   users.users = {
-    linwhite.hashedPasswordFile = "/var/lib/user-passwords/linwhite";
+    linwhite = {
+      hashedPasswordFile = "/var/lib/user-passwords/linwhite";
+      # Sunshine 要写 /dev/uinput 做输入回注
+      extraGroups = ["uinput"];
+    };
     hank.hashedPasswordFile = "/var/lib/user-passwords/hank";
   };
   programs = {
