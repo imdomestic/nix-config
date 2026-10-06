@@ -130,6 +130,10 @@ in {
         {
           __unkeyed-1 = "<leader>d";
           group = "Debugger";
+          icon = {
+            icon = "󰃤"; # md-bug
+            color = "red";
+          };
         }
       ];
 
