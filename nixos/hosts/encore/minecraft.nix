@@ -254,7 +254,11 @@ in {
   networking.firewall.interfaces = lib.genAttrs ["wlo1" "tailscale0"] (_: {
     allowedTCPPorts = [25565];
     allowedUDPPorts = [19132];
-  });
+  }) // {
+    # Moonlight 只从 tailnet 连进 Sunshine，所以只在 tailscale0 上放流。
+    tailscale0.allowedTCPPorts = [25565 47984 47989 47990 48010];
+    tailscale0.allowedUDPPorts = [19132 47998 47999 48000 48002 48010];
+  };
   systemd.slices.minecraft.sliceConfig = {
     MemoryHigh = "18G";
     MemoryMax = "20G";

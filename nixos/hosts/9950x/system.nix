@@ -62,5 +62,8 @@
     ports = [2222];
   };
 
+  # 开发客户端（encore 上）经 tailnet 连 9950X 的 MC 服务端
+  networking.firewall.interfaces.tailscale0.allowedTCPPorts = [25565];
+
   system.stateVersion = "25.11";
 }
