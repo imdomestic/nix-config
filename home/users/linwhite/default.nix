@@ -9,7 +9,7 @@
   imports = [
     ../../modules/tmux
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
-    ../../modules/nixvim/linwhite.nix
+    ../../modules/nixvim/linwhite
     # MC 开发脚本（mc-client / mc-server-remote），模块内部只对 encore 生效
     ../../modules/chorus
   ];
