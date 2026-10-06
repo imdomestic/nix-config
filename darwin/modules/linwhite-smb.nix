@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
@@ -20,7 +19,7 @@ in {
         "${python}/bin/python3"
         "${../../scripts/mount-linwhite-smb.py}"
         "--server"
-        inputs.self.hosts.${host}.tsName
+        host
         "--share"
         "${host}-linwhite"
         "--shortcut"
