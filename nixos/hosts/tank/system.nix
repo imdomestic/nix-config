@@ -132,21 +132,8 @@ in {
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
 
-  # --- 构建并发 ---
-  #
-  # **默认值在这台上是灾难性超额订阅** —— `max-jobs = auto` 数的是 20 个线程
-  # 而不是 10 个物理核,再乘以 `cores = 0`,等于 400 个进程抢 10 个核,而且
-  # **比不超额还慢**(ARM 构建是纯 CPU 的 QEMU 模拟,SMT 几乎没有增益)。
-  # 实测数据见 docs/incidents.md#tank-build-concurrency。
-  #
-  # 6 × 2 = 12 路并行,略高于 10 个物理核(构建有一部分时间在等 I/O),
-  # 剩下的留给这台上跑着的 matrix-synapse、postgres、minecraft、samba、
-  # Prometheus/Grafana。
-  #
-  nix.settings = {
-    max-jobs = 6;
-    cores = 2;
-  };
+  # 限制同时构建的 derivation 数量；单个构建使用 Nix 默认的全部逻辑核。
+  nix.settings.max-jobs = 6;
 
   # 26.05 里 systemd initrd 已经是默认（这行是 no-op），但显式钉住：多设备 bcachefs
   # 当根不能走 script initrd —— 那条路径只等设备列表里的第一块盘
