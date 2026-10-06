@@ -17,6 +17,7 @@ in {
     ./system.nix
     ./minecraft.nix
     ./hardware-configuration.nix
+    ../../modules/linwhite-smb.nix
   ];
 
   externalModules = [
