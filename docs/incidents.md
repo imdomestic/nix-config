@@ -4,6 +4,41 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-06 · praxic 上 codelldb 启动即卡死,改用 Apple 的 lldb-dap {#codelldb-crashes-on-darwin}
+
+接 nvim-dap 时,C 和 Rust 的会话在 dap-ui 里停在 `Launching: …` 不动,
+dap-ui 打开了但永远不会停在断点上。praxic 是 Darwin 27,Java(java-debug,不经过
+LLDB)同一套配置一次就通。
+
+**先误判的方向**:DevToolsSecurity 当时确实是关的,以为卡在等 taskport 授权弹窗。
+开启后 Apple 的 `/usr/bin/lldb --batch -o run` 能正常停在断点,但 codelldb 照旧卡住,
+说明授权只是挡住了一层。
+
+真正的原因有三层,逐层验证:
+
+1. vscode-lldb 1.12.1 自带的 nixpkgs LLDB 21.1.8,直接跑 `lldb --batch -o "target create ./prog"`
+   就崩溃(只打印 "PLEASE submit a bug report",没有调用栈)。codelldb 在进程内用的就是
+   这份 liblldb。
+2. 让 codelldb 改用 Apple 的 LLDB(`--liblldb …/LLDB.framework/Versions/A/LLDB`)启动即报
+   `dlsym … _ZN4lldb7SBFrame23GetValueForVariablePathEPKc: symbol not found`:
+   codelldb 1.12 需要的 SB API,Apple 的 lldb-2103 没有。
+3. Apple 的 `xcrun lldb-dap` 可以调试,但 `console = "integratedTerminal"`(rustaceanvim 给
+   lldb 的默认值)会让它的终端启动器报 "Timed out trying to get messages from the debug
+   adapter" 后退出;C 程序加上同一选项也一样,所以不是 Rust 特有。
+
+做法:macOS 上 C/C++ 和 rustaceanvim 都走 `/usr/bin/xcrun lldb-dap`,rustaceanvim 的配置模板
+改成 `console = "internalConsole"`(程序输出进 REPL);Linux 保持 codelldb,那边没有在
+本次实测。实测结果:C 停在断点、F10 单步、S-F5 结束;Rust 经 rustaceanvim 构建后停在
+断点,`Vec` 等类型正常显示。
+
+顺带踩到的两个坑:
+
+- 写 `dap.nix` 时三个断点图标(U+F192、U+F059、U+F06A)在落盘时丢成了空串。图标文字为空时
+  nvim-dap 不报错,但断点根本放不上 —— `dap.breakpoints.get()` 返回空表。
+- praxic 的 rustup stable 工具链没装 rust-analyzer 组件,`rust-analyzer` 只是 rustup 的
+  代理,一运行就报 "Unknown binary",Rust 的 LSP 在这台机器上一直没起来过。测试时用
+  nixpkgs 的 rust-analyzer 临时顶在 PATH 前面。
+
 ## 2026-10-06 · ms7e56 通过 SSH 使用计算服务 {#ms7e56-compute-node}
 
 系统使用 `multi-user.target`，停用两张显卡的显示驱动、固件显示缓冲区和
