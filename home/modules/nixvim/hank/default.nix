@@ -800,6 +800,12 @@ in {
             enabled = true;
             ui_select = true;
             sources.explorer.layout.layout.width = 30;
+            # 树里只留竖线,不画 ├╴ / └╴ 的横向连接。
+            icons.tree = {
+              vertical = "│ ";
+              middle = "│ ";
+              last = "│ ";
+            };
           };
           terminal = {
             enabled = true;
