@@ -1,6 +1,7 @@
 {
   config,
   pkgs,
+  pkgs-unstable,
   ...
 }: {
   imports = [
@@ -21,6 +22,7 @@
         efiSysMountPoint = "/efi";
       };
     };
+    kernelPackages = pkgs.linuxPackages_latest;
   };
 
   networking = {
@@ -49,7 +51,7 @@
       open = true;
       nvidiaSettings = false;
       nvidiaPersistenced = true;
-      package = config.boot.kernelPackages.nvidiaPackages.production;
+      package = (pkgs-unstable.linuxPackagesFor config.boot.kernelPackages.kernel).nvidiaPackages.production;
     };
     nvidia-container-toolkit.enable = true;
   };
