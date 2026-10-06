@@ -6,7 +6,7 @@ in {
   system = "x86_64-linux";
   kind = "nixos";
   roles = ["server"];
-  tsName = "ms7e56.inner.imdomestic.com";
+  tsName = "seraph.inner.imdomestic.com";
 
   profiles = with nixosProfiles; [base];
   modules = [

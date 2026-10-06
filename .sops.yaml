@@ -11,7 +11,7 @@ keys:
   - &hank_268v age199f3re3sturx83zkmedc5qkz7aqra656w6cz9zttkcxg0slndudqlf8sca
   - &hank_encore age1wh7zpq8aaqx5anad9nxk9cr40q0rq2qcnsrpujmrmsf8z59aycsqhlpmth
   - &linwhite_encore age1kmgn6snvphehfluadsztazkvlj5q8u6rydzm3at0y3muu45ny43szct0qr
-  - &linwhite_ms7e56 age1svatkwy2klm39twkpv7rxfteampuzkyu3ccxtjzpmuz2kq3d6sus8l3hg4
+  - &linwhite_seraph age1svatkwy2klm39twkpv7rxfteampuzkyu3ccxtjzpmuz2kq3d6sus8l3hg4
   # extra admins: ed25519 pubkeys converted via ssh-to-age
   - &linwhite age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7 # linwhite@linwhite.top
   - &fendada age1ctfjwk8fkfuxq9rrsuenmqtx8l3jx5rt4hujvh525pgruxs69fls4qtj7z # 1823215739@qq.com
@@ -27,19 +27,19 @@ keys:
   - &host_r6s age1spxgjvmk89lxzu56nrssy3hsgkzkc79w9pkncesxdjmugk2t9vus56esfj
   - &host_r5s age1weu2ymkv0pa79n3f5rcxj90dya57lktk42q2kwl5ytug646dgfdqpgrzw5
   - &host_tank age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs
-  - &host_r5sjp age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq
+  - &host_gizmo age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq
   - &host_rpi4 age1lghdzjwhlwssu44ptp5853e48fy0pcxrxlpf4r7ruphplxna4vzqq6e2kh
   - &host_r2s age1gf9jpsr9zr2myn780m8emtk5qzfz87jqdlrju744cvmj3v02nqpsdkkueh
   - &host_taipan age1qpgrpyp6swk2a2hystwaryaulrvyrtjecmzzjlnjawsn50ckg3fqj8rsaf
-  - &host_ms7e56 age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f
+  - &host_seraph age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f
 
 creation_rules:
   - path_regex: secrets/clients/bonsai\.yaml$
     key_groups:
-      - age: [*linwhite, *linwhite_ms7e56, *host_ms7e56]
+      - age: [*linwhite, *linwhite_seraph, *host_seraph]
   - path_regex: secrets/clients/cliproxy\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_praxic, *hank_taipan, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_ms7e56, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank_taipan, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_seraph, *linwhite, *fendada, *kenneth, *host_h610]
   - path_regex: secrets/gaoji/account-auth\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
@@ -79,9 +79,9 @@ creation_rules:
   - path_regex: secrets/hosts/tank\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_tank]
-  - path_regex: secrets/hosts/r5sjp\.yaml$
+  - path_regex: secrets/hosts/gizmo\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_r5sjp]
+      - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_gizmo]
   - path_regex: secrets/hosts/rpi4\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_praxic, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_rpi4]
@@ -106,7 +106,7 @@ creation_rules:
           - *host_r6s
           - *host_r5s
           - *host_tank
-          - *host_r5sjp
+          - *host_gizmo
           - *host_rpi4
           - *host_r2s
           - *host_taipan

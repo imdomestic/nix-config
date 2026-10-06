@@ -1,6 +1,6 @@
-# ms7e56 Bonsai NInfer 部署记录
+# seraph Bonsai NInfer 部署记录
 
-日期：2026-10-05。配置分支：`feat/ms7e56-bonsai-ninfer`。
+日期：2026-10-05。配置分支：`feat/seraph-bonsai-ninfer`。
 
 服务器已经部署，两个模型的正式服务验证通过。aegis 主仓库已合并 NInfer 配置，
 独立 Home Manager 已激活，本地 OpenCode 能够使用两个模型。
@@ -62,7 +62,7 @@ llama-swap 的加载健康检查超时为 120 秒，OpenCode 请求超时为 600
 主机通过 SSH 使用终端，两张显卡的 Linux 显示功能均停用，
 GNOME、GDM 和桌面应用已移除。2026-10-06 重启验证后，NVIDIA 空闲
 占用 0 MiB、可用 11752 MiB、驱动 Reserved 为 476 MiB，GPU 进程列表为空。
-两个模型的真实推理与工具调用通过，完整检查见 [计算节点记录](docs/ms7e56-gpu.md)。
+两个模型的真实推理与工具调用通过，完整检查见 [计算节点记录](docs/seraph-gpu.md)。
 当前物理显示器仍然亮着，接口断开信号和显示器待机尚未通过验收。
 
 | K=3 的显存项目 | 字节 |
@@ -110,7 +110,7 @@ GNOME、GDM 和桌面应用已移除。2026-10-06 重启验证后，NVIDIA 空�
 
 这项质量记录覆盖该语料，服务继续固定使用 NVFP4。
 
-ms7e56 的 OpenCode 主力完成了真实 `read → edit → bash` 操作，修改问候函数并通过
+seraph 的 OpenCode 主力完成了真实 `read → edit → bash` 操作，修改问候函数并通过
 3 个 unittest；测试文件 SHA256 保持不变。`aggressive` agent 完成中文程序分析对话，
 服务日志确认使用 `bonsai-hikari`、medium、thinking 开启。
 
@@ -128,12 +128,12 @@ Hikari 在 Chat、Responses、upstream 三种入口均验证了 medium 锁定。
 
 ## 访问、OpenCode 与当前状态
 
-- ms7e56：`http://ms7e56.inner.imdomestic.com:8080/v1`，本机访问通过 `lo`。
-- aegis：`http://ms7e56.inner.imdomestic.com:8080/v1`。
+- seraph：`http://seraph.inner.imdomestic.com:8080/v1`，本机访问通过 `lo`。
+- aegis：`http://seraph.inner.imdomestic.com:8080/v1`。
 - 网关绑定 `100.64.0.44:8080`，只允许 `tailscale0` 上 aegis 的 `100.64.0.25`。
 - SOPS 提供运行时 API key，密钥明文未写入 Nix store。缺失或错误密钥均返回 401。
 - tank 的 `100.64.0.4` 访问被阻断，防火墙记录 5 个丢弃的数据包。
-- ms7e56 Home Manager 已激活，模型列表包含两个 Bonsai 模型。
+- seraph Home Manager 已激活，模型列表包含两个 Bonsai 模型。
 - aegis 已通过网关完成两个模型的中文问答和真实工具调用往返，4 组 API 检查通过。
 - aegis 主仓库 `~/.config/nix-config` 的 `main` 已合并 NInfer 分支，合并提交为 `340d16e`。
 - aegis 的 `just check`、`just hm-dry aegis linwhite` 和 `just hm aegis linwhite` 均通过。
@@ -144,7 +144,7 @@ Hikari 在 Chat、Responses、upstream 三种入口均验证了 medium 锁定。
 aegis 当前 Home Manager generation 为
 `/nix/store/4f2wqxxk7wqqi0ddabd492kgar40bk44-home-manager-generation`。
 自动核对确认其他 provider、agent 与 OpenCode 设置保持原样。
-主仓库的 ms7e56 系统求值结果与服务器正在运行的系统路径一致。
+主仓库的 seraph 系统求值结果与服务器正在运行的系统路径一致。
 
 保留其他 provider 和 agent。主力默认模型为 `local-bonsai/bonsai-main`，支持
 low / medium / high variants；`aggressive` 使用 `local-bonsai/bonsai-hikari`。
@@ -165,18 +165,18 @@ sudo systemctl start llama-swap bonsai-tailnet-gateway
 本次部署前的系统已经用 GC root 保留。恢复到核显与 CDI 配置完成、NInfer 尚未启用的系统：
 
 ```sh
-sudo nix-env --profile /nix/var/nix/profiles/system --set /nix/store/x7h705zazxbmn2lpzc296kx5xvp4qvzp-nixos-system-ms7e56-26.05.20260911.21a67dc
-sudo /nix/store/x7h705zazxbmn2lpzc296kx5xvp4qvzp-nixos-system-ms7e56-26.05.20260911.21a67dc/bin/switch-to-configuration switch
+sudo nix-env --profile /nix/var/nix/profiles/system --set /nix/store/x7h705zazxbmn2lpzc296kx5xvp4qvzp-nixos-system-seraph-26.05.20260911.21a67dc
+sudo /nix/store/x7h705zazxbmn2lpzc296kx5xvp4qvzp-nixos-system-seraph-26.05.20260911.21a67dc/bin/switch-to-configuration switch
 ```
 
-只关闭网络访问：使用文件编辑工具将 ms7e56 主机入口中的
+只关闭网络访问：使用文件编辑工具将 seraph 主机入口中的
 `services.bonsaiNinfer.tailnet.enable` 改为 false，运行 `just check`、
-`nixos-rebuild build --flake .#ms7e56`，然后执行需要 sudo 的 switch。
+`nixos-rebuild build --flake .#seraph`，然后执行需要 sudo 的 switch。
 
 关闭 Bonsai 服务：同样将 `services.bonsaiNinfer.enable` 改为 false。
 恢复 Home Manager 的默认模型时，使用文件编辑工具移除该主机的
 `home/modules/opencode/local-bonsai.nix` 导入，运行 `just hm-dry` 和 `just hm`。
-原有 provider 配置一直保留。ms7e56 激活前的 Home Manager generation 为：
+原有 provider 配置一直保留。seraph 激活前的 Home Manager generation 为：
 `/nix/store/39ja9v9irjhf7f605b57ipyss6kvy19q-home-manager-generation`，可运行其 `activate`。
 
 aegis 激活前的 Home Manager generation 为
@@ -188,7 +188,7 @@ aegis 激活前的 Home Manager generation 为
 
 ## 旧版文件清理
 
-按照用户的清理指令，已删除旧版 `feat/ms7e56-bonsai` 本地与远端分支、
+按照用户的清理指令，已删除旧版 `feat/seraph-bonsai` 本地与远端分支、
 专用工作目录、旧版下载资料包，以及服务器的 `/var/lib/llm-models/bonsai2/`。
 旧版配置源文件已经从当前配置移除。
 
@@ -201,5 +201,5 @@ aegis 激活前的 Home Manager generation 为
 `llama-swap` 和 Tailscale 网关均运行正常；清理后两个模型的中文问答与真实工具调用
 往返共 4 组检查全部通过。清理记录与复测响应包含在资料包的 `evidence/cleanup/` 中。
 
-完整测量说明位于 `docs/incidents.md#ms7e56-bonsai-ninfer-174080`，
-方案决定位于 `docs/decisions.md#ms7e56-bonsai-ninfer`。
+完整测量说明位于 `docs/incidents.md#seraph-bonsai-ninfer-174080`，
+方案决定位于 `docs/decisions.md#seraph-bonsai-ninfer`。

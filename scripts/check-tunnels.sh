@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 交叉核对 xray 反向代理两端的域名：r5sjp 是 bridge 端，其余是 portal 端，
+# 交叉核对 xray 反向代理两端的域名：gizmo 是 bridge 端，其余是 portal 端，
 # 两边注册的 `reverse-*.hank.internal` 必须一字不差，否则隧道建不起来。
 #
 # 这种不匹配不会有任何报错——xray 两端都正常启动、端口照常监听、Reality
@@ -15,7 +15,7 @@ import json
 import subprocess
 import sys
 
-BRIDGE_HOST = "r5sjp"
+BRIDGE_HOST = "gizmo"
 
 
 def xray_config(host):

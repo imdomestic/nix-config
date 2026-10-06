@@ -293,7 +293,7 @@
     content = let
       s = config.sops.placeholder;
 
-      # 每个 portal 一条 outbound:r5sjp 主动拨过去,把反向隧道建起来。
+      # 每个 portal 一条 outbound:gizmo 主动拨过去,把反向隧道建起来。
       # dest 和客户端 sni 必须同时变,没有只加不改的路径。先拿 rpi4 做过金丝雀
       # (30/30 建连成功、零握手错误)才推平其余几台。
       aliyun = "www.aliyun.com";
@@ -400,7 +400,7 @@
               cmd: ""
               ipv6reg: ""
               domains:
-                  - r5sjp:imdomestic.com
+                   - gizmo:imdomestic.com
             dns:
               name: cloudflare
               id: ""

@@ -18,8 +18,8 @@ Xray keeps the original routing:
 
 | TCP port | Purpose | Exit |
 | --- | --- | --- |
-| 3444 | Reverse bridge from r5sjp | r5sjp tunnel |
-| 54322 | User entry | r5sjp |
+| 3444 | Reverse bridge from gizmo | gizmo tunnel |
+| 54322 | User entry | gizmo |
 | 3445 | Reverse bridge from rpi4 | rpi4 tunnel |
 | 54324 | User entry | rpi4 |
 

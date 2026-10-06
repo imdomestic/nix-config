@@ -224,7 +224,7 @@ Do not run `switch` on the user's behalf unless asked.
 
 | 目标 | 内存 | 构建机 | 构建机地址 |
 |---|---|---|---|
-| `r2s` `r5s` `r5sjp` `rpi4` | 1–4 GB | `r6s`（8 核 / 7.6 GB / aarch64） | `hank@r6s` |
+| `r2s` `r5s` `gizmo` `rpi4` | 1–4 GB | `r6s`（8 核 / 7.6 GB / aarch64） | `hank@r6s` |
 | `tokyo` | 2 GB | `tank`（20 核 / 64 GB / x86_64） | `hank@tank` |
 
 ```sh

@@ -676,7 +676,7 @@ in {
         ];
 
         inbounds = [
-          # r5sjp 的 bridge 拨进来的新落点(Step 4 切换)。
+          # gizmo 的 bridge 拨进来的新落点(Step 4 切换)。
           (vlessIn "interconn2" 1444
             [(vision s."xray/interconn2_uuid")]
             (reality s."xray/interconn2_short_id"))

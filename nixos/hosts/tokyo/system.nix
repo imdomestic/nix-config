@@ -337,7 +337,7 @@ in {
         reverse.portals = [
           {
             tag = "portal-sh";
-            # 这台的目录名是 tokyo,但隧道两端一直用短名 sh：r5sjp 的
+            # 这台的目录名是 tokyo,但隧道两端一直用短名 sh：gizmo 的
             # bridge-sh 注册的是 reverse-sh.hank.internal,两边必须一字不差。
             domain = "reverse-sh.hank.internal";
           }
@@ -349,7 +349,7 @@ in {
         ];
 
         inbounds = [
-          # r5sjp 的 bridge 拨进来的新落点(Step 4 切换)。
+          # gizmo 的 bridge 拨进来的新落点(Step 4 切换)。
           (vlessIn "interconn2" 3444
             [(vision s."xray/interconn2_uuid")]
             (reality aliyun s."xray/reality_private_key" s."xray/interconn2_short_id"))

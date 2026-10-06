@@ -3,10 +3,10 @@
 2026-07-29 那轮凭据轮换之后剩下的几件事，都不紧急，但每件都有取舍，记在这里
 免得下次从头推一遍。
 
-拓扑速记：r5sjp（日本，主出口）作为 bridge 主动拨向各 portal 的 `interconn2`；
-客户端连 portal 的 `client-in2`，流量经反向隧道从 r5sjp 出去。2026-09-01 起 rpi4
+拓扑速记：gizmo（日本，主出口）作为 bridge 主动拨向各 portal 的 `interconn2`；
+客户端连 portal 的 `client-in2`，流量经反向隧道从 gizmo 出去。2026-09-01 起 rpi4
 （悉尼）也是 bridge，只接 h610 和 sh，作冗余出口，见
-`docs/decisions.md#rpi4-portal-to-bridge`。**r5sjp 只能经
+`docs/decisions.md#rpi4-portal-to-bridge`。**gizmo 只能经
 tailscale `100.64.0.16` 访问**，它的公网 IPv6 有防火墙，从外面连不进来。
 
 ---
@@ -30,7 +30,7 @@ finalmask 传输层，用真实 Minecraft 协议做伪装。作者写它的动�
   是叠在 REALITY 下面时 panic——而那正是会用到的组合。两个 PR 都是 closed 但
   **merged=False**，且 `transport/internet/finalmask/xmc/` 至今只有两个提交
   （`35387572` 初始加入、`6ab123bf` 加 padding/keep-alive），修复没有以任何形式进代码。
-- **客户端支持面未确认。** 如果只有 Xray-core 实现，那它只能用在 r5sjp↔portal
+- **客户端支持面未确认。** 如果只有 Xray-core 实现，那它只能用在 gizmo↔portal
   这条服务器对服务器的链路上；手机/电脑客户端（Egern、mihomo）用不了。这一点没查完。
 
 **重新评估的触发条件：** #6505 那类问题真的修掉，且进了 XTLS 的正式版（不是
@@ -46,11 +46,11 @@ r5s / r6s / r2s 三台 portal 都只有 v6（rpi4 已不是 portal），可以�
 `interconn2` 从 2444 搬到 443，同时消掉 xray 那条
 `REALITY: Listening on non-443 ports` 告警。
 
-优先搬 `interconn2` 而不是 `client-in2`——r5sjp 拨进来这一跳是跨境的，才是 GFW
+优先搬 `interconn2` 而不是 `client-in2`——gizmo 拨进来这一跳是跨境的，才是 GFW
 看得到的那段。h610 是 IPv4 且 443 入站被电信劫持（TCP 能 SYN-ACK 但不回数据），
 搬不了。
 
-需要 portal 的监听端口和 r5sjp 的拨号端口同步改，没有只加不改的路径。
+需要 portal 的监听端口和 gizmo 的拨号端口同步改，没有只加不改的路径。
 
 ## 3. r2s（已上线，隧道验证未记录）
 
@@ -60,11 +60,11 @@ r2s 已在 2026-09-15 的 fleet rollout 中构建、激活并通过 SSH 验收�
 
 2026-08-14 已用原 SSH host key 恢复 `host_r2s` 的 SOPS recipient，并新建
 `secrets/hosts/r2s.yaml`。WireGuard、DDNS 和全新轮换的 Xray 凭据都改由 SOPS
-提供；r5sjp 的 bridge/outbound、共享 DAE 节点以及 mihomo、sing-box 的节点列表
+提供；gizmo 的 bridge/outbound、共享 DAE 节点以及 mihomo、sing-box 的节点列表
 也重新纳入 r2s。
 
 配置侧的求值、SOPS 键完整性、Xray 配置与隧道域名可以离线检查；设备真正上线后
-还需要确认 `r2s.imdomestic.com` 已被 ddns-go 更新到当前 IPv6，并从 r5sjp 验证
+还需要确认 `r2s.imdomestic.com` 已被 ddns-go 更新到当前 IPv6，并从 gizmo 验证
 `interconn-r2s` 已建连。若机器重装后 SSH host key 变过，必须先更新这里的 age
 recipient，否则目标机无法解密新文件。
 
@@ -122,7 +122,7 @@ LAN 客户端的 tailscale UDP 也被卷进了 tun（日志里大量
 
 ### 结论：是 h610 单独那一条跨境链路差，不是整体
 
-从 r5sjp 用 iperf3 打每个 portal（TCP 基线 + UDP 丢包）：
+从 gizmo 用 iperf3 打每个 portal（TCP 基线 + UDP 丢包）：
 
     portal      运营商    TCP 吞吐          UDP@30M 丢包
     shanghai    阿里云    220 / 211 Mbit/s  0.31%
@@ -134,7 +134,7 @@ LAN 客户端的 tailscale UDP 也被卷进了 tun（日志里大量
 **h610 比最好的慢 40 倍。** 而它的 RTT 是 89ms——在任何延迟检查里都健康，
 这正是它能骗过所有按延迟选路的策略的原因。
 
-> 早先这一节写的是「根因是 r5sjp 那条路的丢包」，依据是 r5sjp 上 5.5% 的累计
+> 早先这一节写的是「根因是 gizmo 那条路的丢包」，依据是 gizmo 上 5.5% 的累计
 > TCP 重传率。那个结论**已被上面的对比推翻**：5.5% 是所有对端混在一起的数字，
 > 而 h610 流量第二大、路最差，那个统计基本是它一家撑起来的。教训是聚合指标
 > 不能用来给单条链路定罪。
@@ -154,7 +154,7 @@ LAN 客户端的 tailscale UDP 也被卷进了 tun（日志里大量
 
 ### 已排除
 
-h610 自身上行（直连 0/160 失败）、r5sjp 的 CPU/内存（load 0.00）、r5sjp 出网
+h610 自身上行（直连 0/160 失败）、gizmo 的 CPU/内存（load 0.00）、gizmo 出网
 （直连 60/60 全通）、网卡（errors/dropped 全 0）、检查目标本身、以及"流量压在
 单个节点上"（实测五个 bridge 分布均匀，但注意那个计数里绝大部分是 dae 自己的
 健康检查，不是用户流量，所以这条排除得不彻底）。
@@ -172,14 +172,14 @@ h610 自身上行（直连 0/160 失败）、r5sjp 的 CPU/内存（load 0.00）
 数量级的改善。
 
 **但 hysteria2 建不起来**：它是严格的 client→server，没有 xray `reverse` 那种
-反向拨号，而 r5sjp 的 IPv4 在 NAT 后（10.1.2.107）、IPv6 入站被 linwhite 家的
+反向拨号，而 gizmo 的 IPv4 在 NAT 后（10.1.2.107）、IPv6 入站被 linwhite 家的
 路由器挡着（实测发 UDP 到它两个公网 v6 地址都收不到）。要用得先请他开一个
-UDP 端口。开了之后 r5sjp 当 server、各 portal 当 client，反向隧道那套可以整个
+UDP 端口。开了之后 gizmo 当 server、各 portal 当 client，反向隧道那套可以整个
 拆掉。
 
 ### 结构性问题
 
-**五个节点共用一个出口，冗余是假的。** 任何 r5sjp 侧或跨境段的整体问题都会让
+**五个节点共用一个出口，冗余是假的。** 任何 gizmo 侧或跨境段的整体问题都会让
 五个同时失效，没有健康节点可切。选路策略再聪明也救不了这一类。
 
 ## 7. 选路：延迟指标看不见这个问题

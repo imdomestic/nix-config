@@ -6,7 +6,7 @@
 }: let
   bonsai = import ../../../lib/bonsai-models.nix;
   # API 与进度订阅经过同一网关，见 docs/incidents.md#bonsai-prefill-display。
-  serverHost = inputs.self.hosts.ms7e56.tsName;
+  serverHost = inputs.self.hosts.seraph.tsName;
 in {
   sops.secrets."bonsai/api_key".sopsFile = ../../../secrets/clients/bonsai.yaml;
   my.opencode.prefillEndpoints = [
@@ -19,7 +19,7 @@ in {
     model = lib.mkForce "local-bonsai/bonsai-main";
     provider.local-bonsai = {
       npm = "@ai-sdk/openai-compatible";
-      name = "Bonsai NInfer · ms7e56";
+      name = "Bonsai NInfer · seraph";
       options = {
         baseURL = "http://${serverHost}:${toString bonsai.port}/v1";
         apiKey = "{file:${config.sops.secrets."bonsai/api_key".path}}";

@@ -26,7 +26,7 @@ in {
     # 这台没有显示器,登录走串口/ssh,agetty 的默认登录提示完全够用。
     # tank 和 x470 是真桌面,它们那两处的 tuigreet 不动。
     ../../modules/keyd
-    # ts-relay:这台到 r5sjp 的直连绕洛杉矶(276ms),东京 DERP 反而只有 111ms。
+    # ts-relay:这台到 gizmo 的直连绕洛杉矶(276ms),东京 DERP 反而只有 111ms。
     # 见 docs/incidents.md#syd-jp-relay-beats-direct。
     ../../modules/ts-relay
     ../../modules/captive-portal
@@ -260,7 +260,7 @@ in {
   # **这台是 bridge,不是 portal。** 2026-09-01 搬到悉尼之后它没有任何公网入口
   # (hotspot 后面的 NAT,而且那条线没有 IPv6),所以只能由它主动拨出去。反向代理
   # 恰好就是为这种处境设计的:拨出去的一端叫 bridge,有公网入口的那端叫 portal。
-  # 形状照抄 r5sjp —— 那台也是 bridge,只是出口在日本。
+  # 形状照抄 gizmo —— 那台也是 bridge,只是出口在日本。
   # 来龙去脉见 docs/decisions.md#rpi4-portal-to-bridge。
   sops.secrets."xray/peers/h610/uuid" = {};
   sops.secrets."xray/peers/h610/public_key" = {};
@@ -318,7 +318,7 @@ in {
       builtins.toJSON {
         log.loglevel = "warning";
 
-        # 域名后缀 `-au` 是这条隧道和 r5sjp 那条的唯一区分。portal 侧按域名把
+        # 域名后缀 `-au` 是这条隧道和 gizmo 那条的唯一区分。portal 侧按域名把
         # 连接分派给不同的 portal tag,两边**必须一字不差**。
         reverse.bridges =
           map (h: {

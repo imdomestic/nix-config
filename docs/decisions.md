@@ -11,14 +11,14 @@
 
 ---
 
-## 2026-10-06 · ms7e56 采用 SSH 计算节点配置 {#ms7e56-compute-node}
+## 2026-10-06 · seraph 采用 SSH 计算节点配置 {#seraph-compute-node}
 
-用户通过 SSH 和终端使用 ms7e56，明确要求停用全部视频输出能力。
+用户通过 SSH 和终端使用 seraph，明确要求停用全部视频输出能力。
 主机入口仅导入基础系统配置，通过 `compute.nix` 声明 SSH 与 NVIDIA
 计算支持。两张显卡的显示模块在内核中禁用，GNOME/GDM 与用户桌面配置
 移除。终端诊断工具在主机用户模块中保留，CUDA、Bonsai 和开发工具继续提供服务。
 
-实机检查见 [计算节点记录](ms7e56-gpu.md)。
+实机检查见 [计算节点记录](seraph-gpu.md)。
 
 ## 2026-10-05 · Nixvim 回到 9 月 28 日界面改版前 {#nixvim-visual-rollback-20261005}
 
@@ -30,19 +30,19 @@ hank-tabline / hank-panels、EOF 斜纹、分层背景、失焦变暗和新 Git 
 保留随后加入的 Hank Java/JDTLS 配置、LSP 功能、VS Code 配置拆分，以及
 linwhite 输入法切换仅限 macOS 的修复。旧界面文档保留作历史记录。
 
-## 2026-10-05 · ms7e56 使用 NInfer 承载 Bonsai 2 {#ms7e56-bonsai-ninfer}
+## 2026-10-05 · seraph 使用 NInfer 承载 Bonsai 2 {#seraph-bonsai-ninfer}
 
 用户指定 Bonsai 2 使用 CraneBW 的 NInfer 三元权重实现，两个模型均采用
 NVFP4 KV、174080 token 上下文、174080 token KV 容量、MTP 和单个并发请求。
 服务使用 Podman 与 NVIDIA CDI，通过 llama-swap 按需启动并互斥切换。
 
-本次实现从 `origin/main` 的 `973aa36` 创建 `feat/ms7e56-bonsai-ninfer`，配置中移除旧的
+本次实现从 `origin/main` 的 `973aa36` 创建 `feat/seraph-bonsai-ninfer`，配置中移除旧的
 llama-server、PrismML 构建和 bonsai-models 服务。旧方案实测通过的上下文为
 主力 81920、Hikari 102400，用户要求的新运行参数由 NInfer 验证。
 
 模型文件与引擎镜像保存在 `/var/lib/` 下。Hikari GGUF 用作转换输入，
 主力使用指定仓库中包含 851 个张量的 GGUF。根据用户后续清理指令，旧的
-`feat/ms7e56-bonsai` 分支、旧部署目录、旧 GGUF 与旧引擎已经删除。
+`feat/seraph-bonsai` 分支、旧部署目录、旧 GGUF 与旧引擎已经删除。
 显卡模块和当前 NInfer 的转换材料、模型及镜像保留。
 174080 参数出现显存不足时，记录引擎缺口与
 显存占用，等待用户决定。
@@ -428,22 +428,22 @@ unit。API 地址始终是 Tailnet 的 `100.64.0.14:8000`,切换不要求客户�
 ## 2026-09-01 · rpi4 从 portal 改成 bridge {#rpi4-portal-to-bridge}
 
 rpi4 原本是六台 portal 之一:国内客户端连它的 `client-in2`(54322),流量经反向
-隧道到 r5sjp,从日本出去。搬到悉尼之后这个身份**已经名存实亡**,只是没人去
+隧道到 gizmo,从日本出去。搬到悉尼之后这个身份**已经名存实亡**,只是没人去
 删 —— 它在 hotspot 的 NAT 后面,没有任何公网入口;`ddns-go` 也早关了,而
 `rpi4.imdomestic.com` 还留着一条指向它国内旧地址的 AAAA。
 
-于是在此之前的一段时间里,r5sjp 一直在重试拨一条死链
+于是在此之前的一段时间里,gizmo 一直在重试拨一条死链
 (`rpi4.imdomestic.com:2444`),订阅里有一个连不上的节点,dae 的 `im` 组里也有
 一个死节点在参与选路。这次一并删掉。
 
 **改成 bridge 而不是修好 portal,是因为 portal 这个角色它当不了。** Xray 反向
 代理的两端分工是固定的:portal 是有公网入口、被拨的那端;bridge 是主动拨出去
-的那端,不需要任何入站可达性。悉尼这条线正好只满足后者 —— 这也正是 r5sjp 一直
+的那端,不需要任何入站可达性。悉尼这条线正好只满足后者 —— 这也正是 gizmo 一直
 用 bridge 的原因,它挂在 NTT 消费线上,同样没有稳定公网入口。
 
 所以现在有两条反向隧道,方向一致(国内 portal ← 境外 bridge),出口不同:
 
-- `reverse-<h>.hank.internal` → r5sjp(日本),客户端口 54322
+- `reverse-<h>.hank.internal` → gizmo(日本),客户端口 54322
 - `reverse-<h>-au.hank.internal` → rpi4(悉尼),客户端口 54324
 
 **只接 h610 和 sh 两台。** 其余几台 portal(r5s / r6s / r2s)的 ddns-go 只发
@@ -491,7 +491,7 @@ dae 那边还有一个额外的坑值得单独记:`im` 组是靠 `name(keyword: 
 (shanghai/tank/x470/h310/h610/r2s/r5s/r6s)照旧,它们在国内,那套规则是对的。
 
 那套规则的前提是「人在国内,需要翻墙出去」:`fallback: im`,而 im 组是经
-六个国内 portal 的反向隧道到 r5sjp(日本)。人到了悉尼,这个前提整个翻转:
+六个国内 portal 的反向隧道到 gizmo(日本)。人到了悉尼,这个前提整个翻转:
 
 **公寓网络的国际线路极好。** 本地有 Google Global Cache —— `ping
 www.google.com` 是 **0.7ms**(走 IPv6,`2001:4860:...`),1.1.1.1 / 8.8.8.8

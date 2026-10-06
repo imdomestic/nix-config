@@ -1,6 +1,6 @@
 # `ts-relay` —— 把某个 tailscale 对端从「打洞直连」按回「DERP 中转」。
 #
-# 存在的理由:直连不一定更快。悉尼→r5sjp 这条上,直连要绕 GTT 洛杉矶(276ms、
+# 存在的理由:直连不一定更快。悉尼→gizmo 这条上,直连要绕 GTT 洛杉矶(276ms、
 # 76 Mbps),而东京 DERP 是 111ms、22 Mbps。带宽和延迟是反的,没有哪个全面更优,
 # 所以只能按当下在干什么手动选。实测对照表见
 # docs/incidents.md#syd-jp-relay-beats-direct。

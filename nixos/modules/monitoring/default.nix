@@ -121,7 +121,7 @@ in {
       default = "30s";
       description = ''
         30s 而不是默认的 15s。抓取目标里有 rpi4/r2s/r5s/r6s 这些 ARM 小机器,
-        而且 r5sjp 在日本、shanghai 在机房,每次抓取都是一次跨站点往返。
+        而且 gizmo 在日本、shanghai 在机房,每次抓取都是一次跨站点往返。
         15s 对这套拓扑没有额外信息量,只是把采集本身变成负载。
       '';
     };
@@ -221,7 +221,7 @@ in {
 
       globalConfig = {
         scrape_interval = cfg.scrapeInterval;
-        # 抓取超时必须小于间隔,否则慢目标会让抓取排队堆积。r5sjp 跨海,
+        # 抓取超时必须小于间隔,否则慢目标会让抓取排队堆积。gizmo 跨海,
         # 给够 10s。
         scrape_timeout = "10s";
       };

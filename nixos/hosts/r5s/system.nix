@@ -441,7 +441,7 @@ in {
         ];
 
         inbounds = [
-          # r5sjp 的 bridge 拨进来的新落点(Step 4 切换)。
+          # gizmo 的 bridge 拨进来的新落点(Step 4 切换)。
           (vlessIn "interconn2" 2444
             [(vision s."xray/interconn2_uuid")]
             (reality aliyun s."xray/reality_private_key" s."xray/interconn2_short_id"))
@@ -459,7 +459,7 @@ in {
           }
         ];
 
-        # 四个入口一律丢进反向隧道,从 r5sjp 的日本出口出去。
+        # 四个入口一律丢进反向隧道,从 gizmo 的日本出口出去。
         routing.rules = [
           {
             type = "field";

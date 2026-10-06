@@ -70,7 +70,7 @@ in {
     services.prometheus.exporters.node = {
       enable = true;
 
-      # **只绑 tailscale 地址。** r2s/r5s/r5sjp/shanghai/r6s/rpi4 这几台是
+      # **只绑 tailscale 地址。** r2s/r5s/gizmo/shanghai/r6s/rpi4 这几台是
       # firewall.enable = false,`openFirewall` 在它们身上是空操作,绑定
       # 地址是那里唯一真正起作用的边界。
       #
