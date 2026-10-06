@@ -1,33 +1,44 @@
 # 调试:nvim-dap + dap-ui,界面和键位按 AstroNvim 的默认配置来。
-# 适配器:C/C++/Rust 用 codelldb;Java 走 jdtls 的 java-debug/java-test 插件;
+# 适配器:C/C++/Rust 在 Linux 用 codelldb、在 macOS 用 Apple 的 lldb-dap
+# (原因见 docs/incidents.md#codelldb-crashes-on-darwin);Java 走 jdtls 的
+# java-debug/java-test 插件;
 # Haskell 由 haskell-tools 在 attach 时自动发现配置,前提是项目 devshell 里
 # 有和项目 GHC 匹配的 haskell-debug-adapter(和 HLS 一样不由这里安装)。
 {
   inputs,
+  lib,
   pkgs,
   ...
 }: let
   mkRaw = inputs.nixvim.lib.nixvim.mkRaw;
+  inherit (pkgs.stdenv.hostPlatform) isDarwin;
   vscodeExt = pkg: id: "${pkg}/share/vscode/extensions/${id}";
-  # 扩展目录里的 lldb 软链接让 codelldb 自己找到 liblldb,不用传 --liblldb。
-  # macOS 上 nixpkgs 的包装脚本默认用 Xcode.app 里签过名的 debugserver。
-  codelldb = "${vscodeExt pkgs.vscode-extensions.vadimcn.vscode-lldb "vadimcn.vscode-lldb"}/adapter/codelldb";
   javaDebug = "${vscodeExt pkgs.vscode-extensions.vscjava.vscode-java-debug "vscjava.vscode-java-debug"}/server";
   javaTest = "${vscodeExt pkgs.vscode-extensions.vscjava.vscode-java-test "vscjava.vscode-java-test"}/server";
 
+  # 扩展目录里的 lldb 软链接让 codelldb 自己找到 liblldb,不用传 --liblldb。
   # nixvim 的 adapters.servers 自己补 type = "server",rustaceanvim 那份要显式带上。
   codelldbServer = {
     port = "\${port}";
     executable = {
-      command = codelldb;
+      command = "${vscodeExt pkgs.vscode-extensions.vadimcn.vscode-lldb "vadimcn.vscode-lldb"}/adapter/codelldb";
       args = ["--port" "\${port}"];
     };
   };
+  # xcrun 按当前生效的 Xcode / Command Line Tools 找 lldb-dap,换机器不用改路径。
+  lldbDap = {
+    command = "/usr/bin/xcrun";
+    args = ["lldb-dap"];
+  };
+  lldbAdapter =
+    if isDarwin
+    then "lldb-dap"
+    else "codelldb";
 
   lldbConfigurations = [
     {
       name = "Launch executable";
-      type = "codelldb";
+      type = lldbAdapter;
       request = "launch";
       program = mkRaw ''
         function()
@@ -39,7 +50,7 @@
     }
     {
       name = "Attach to process";
-      type = "codelldb";
+      type = lldbAdapter;
       request = "attach";
       pid = mkRaw ''require("dap.utils").pick_process'';
       cwd = "\${workspaceFolder}";
@@ -100,7 +111,10 @@ in {
             texthl = "DiagnosticWarn";
           };
         };
-        adapters.servers.codelldb = codelldbServer;
+        adapters =
+          if isDarwin
+          then {executables.lldb-dap = lldbDap;}
+          else {servers.codelldb = codelldbServer;};
         configurations = {
           c = lldbConfigurations;
           cpp = lldbConfigurations;
@@ -138,7 +152,29 @@ in {
         };
       };
 
-      rustaceanvim.settings.dap.adapter = codelldbServer // {type = "server";};
+      # rustaceanvim 按 type 区分:server 当 codelldb,executable 当 lldb 并
+      # 自动加载 rustc 自带的 LLDB 类型格式化命令。nixvim 把 executable 的
+      # args 声明成了字符串,列表只能以 raw Lua 传。
+      # macOS 上 rustaceanvim 给 lldb 默认的 console = "integratedTerminal" 会让
+      # lldb-dap 的终端启动器超时退出,改成输出到 REPL。
+      rustaceanvim.settings.dap =
+        if isDarwin
+        then {
+          adapter = {
+            type = "executable";
+            name = "lldb";
+            inherit (lldbDap) command;
+            args = mkRaw ''{ "lldb-dap" }'';
+          };
+          configuration = {
+            name = "Rust debug client";
+            type = "lldb";
+            request = "launch";
+            stopOnEntry = false;
+            console = "internalConsole";
+          };
+        }
+        else {adapter = codelldbServer // {type = "server";};};
 
       # 有 java-debug 插件时 nvim-jdtls 在 attach 时自己调用 setup_dap,
       # 按 F5 时再向 jdtls 要 main class 列表。java-test 那两个 jar 按
