@@ -117,7 +117,7 @@ in {
                 {
                   type = "java",
                   request = "attach",
-                  name = "Attach: 9950X 服务端 (隧道 5006)",
+                  name = "Attach: seraph 服务端 (隧道 5006)",
                   hostName = "127.0.0.1",
                   port = 5006,
                 },
