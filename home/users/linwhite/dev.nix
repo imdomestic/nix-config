@@ -4,7 +4,7 @@
   # 没有 dev 的机器由 linwhite/default.nix 提供精简版 nixvim(保留 nix 支持)。
   imports = [
     ../../profiles/dev.nix
-    ../../modules/nixvim/linwhite.nix
+    ../../modules/nixvim/linwhite
     ../../modules/opencode
   ];
 

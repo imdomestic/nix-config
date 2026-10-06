@@ -10,7 +10,7 @@
   javaTestServer = "${pkgs.vscode-extensions.vscjava.vscode-java-test}/share/vscode/extensions/vscjava.vscode-java-test/server";
   vscodeLldbExt = "${pkgs.vscode-extensions.vadimcn.vscode-lldb}/share/vscode/extensions/vadimcn.vscode-lldb";
 in {
-  imports = [./hank/default.nix];
+  imports = [./base.nix];
 
   programs.nixvim = {
     globals.maplocalleader = lib.mkForce ",";
@@ -322,11 +322,11 @@ in {
       luasnip = {
         enable = true;
         filetypeExtend.javascript = ["javascriptreact"];
-        # 下面把 blink 的 snippets source 换成了 luasnip,hank.nix 里那条
+        # 下面把 blink 的 snippets source 换成了 luasnip,base.nix 里那条
         # blink search_paths 就不生效了,仓库自带的 snippets 得由 luasnip 加载。
         # friendly-snippets 不用列:它的 nixvim 模块自己会往 fromVscode 塞一条。
         fromVscode = [
-          {paths = ./hank/snippets;}
+          {paths = ./snippets;}
         ];
       };
 
@@ -488,10 +488,10 @@ in {
       };
     };
 
-    # lua_ls 的额外设置。hank.nix 里那份(runtime/workspace)和这里的会在
-    # config.settings 上合并。lemminx 已经在 hank.nix 的 externalServers 里
+    # lua_ls 的额外设置。base.nix 里那份(runtime/workspace)和这里的会在
+    # config.settings 上合并。lemminx 已经在 base.nix 的 externalServers 里
     # 声明了,不用重复;原来的 taplo/lua_ls mkForce 是空转的 —— 那两个在
-    # hank.nix 里本来就无条件开着,删掉。
+    # base.nix 里本来就无条件开着,删掉。
     lsp.servers.lua_ls.config.settings.Lua = {
       hint = {
         enable = true;

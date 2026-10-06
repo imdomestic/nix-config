@@ -105,16 +105,19 @@ Neovim is configured with **nixvim** (flake input, pinned to the
 `nixos-26.05` branch). The module lives in `home/modules/nixvim/`. There is no
 `default.nix` at that root — Hank's terminal baseline is `hank/default.nix`,
 with `hank/vscode.nix` for VS Code and `hank/editing.nix` shared by both.
-`linwhite.nix` / `kenneth.nix` import `hank/default.nix` and override on top.
-Import these entry files explicitly.
+`kenneth/` and `linwhite/` are independent copies (forked from hank's on
+2026-10-06): each has its own `base.nix`, `editing.nix` and `snippets/`, plus
+`default.nix` with that user's overrides. A change under `hank/` does not reach
+them, and theirs do not reach hank; only `options.nix` is shared. Import these
+entry files explicitly.
 
 - **Never copy `.lua` files or a whole `nvim/` directory into the repo.**
 - Declare plugins via `plugins.*`, options via `opts`/`globals`, keymaps via
   `keymaps` — all in Nix.
 - Inline Lua is acceptable only for small glue that nixvim cannot express,
   via `extraConfigLua` or `plugins.<name>.settings.*.__raw`; keep it minimal.
-- Per-user variations follow the existing pattern (see
-  `home/modules/nixvim/options.nix` and `linwhite.nix`).
+- Per-user variations go in that user's own directory (see
+  `home/modules/nixvim/options.nix` and `linwhite/default.nix`).
 
 ## Layout conventions
 

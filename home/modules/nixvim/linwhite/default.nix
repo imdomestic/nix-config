@@ -1,4 +1,4 @@
-# linwhite = hank/default.nix 那套 + 输入法自动切换(macOS)。
+# linwhite = base.nix 那套 + 输入法自动切换(macOS)。
 {
   inputs,
   lib,
@@ -10,7 +10,7 @@
   javaDebugServer = "${pkgs.vscode-extensions.vscjava.vscode-java-debug}/share/vscode/extensions/vscjava.vscode-java-debug/server";
   javaTestServer = "${pkgs.vscode-extensions.vscjava.vscode-java-test}/share/vscode/extensions/vscjava.vscode-java-test/server";
 in {
-  imports = [./hank/default.nix];
+  imports = [./base.nix];
 
   programs.nixvim = {
     extraPlugins = lib.optionals pkgs.stdenv.isDarwin [
@@ -39,7 +39,7 @@ in {
     '';
 
     # chorus 工作流：jdtls 走 devenv 里 JDK 25 的 jdtls（PATH 守卫在
-    # hank/default.nix 的 lsp.servers.jdtls.exe），调试 bundles 用仓库里的
+    # base.nix 的 lsp.servers.jdtls.exe），调试 bundles 用仓库里的
     # vscode-java-debug / java-test jar。
     plugins = {
       dap = {
