@@ -449,8 +449,8 @@ in {
               local ht = require("haskell-tools")
               local opts = { noremap = true, silent = true, buffer = args.buf }
 
-              vim.keymap.set("n", "<space>ll", vim.lsp.codelens.run, opts)
-              vim.keymap.set("n", "<space>le", ht.lsp.buf_eval_all, opts)
+              vim.keymap.set("n", "<space>ll", vim.lsp.codelens.run, vim.tbl_extend("force", opts, { desc = "Run code lens" }))
+              vim.keymap.set("n", "<space>le", ht.lsp.buf_eval_all, vim.tbl_extend("force", opts, { desc = "Evaluate all snippets" }))
             end
           '';
         }
@@ -462,7 +462,7 @@ in {
             function(args)
               vim.keymap.set("n", "<leader>a", function()
                 vim.cmd.RustLsp("codeAction")
-              end, { silent = true, buffer = args.buf })
+              end, { silent = true, buffer = args.buf, desc = "Code action (rust-analyzer)" })
             end
           '';
         }
@@ -502,16 +502,19 @@ in {
           mode = "n";
           key = "<leader>q";
           action = "<Cmd>q<CR>";
+          options.desc = "Quit window";
         }
         {
           mode = "n";
           key = "<leader>Q";
           action = "<Cmd>qa!<CR>";
+          options.desc = "Quit all without saving";
         }
         {
           mode = "n";
           key = "<leader>w";
           action = "<Cmd>w<CR>";
+          options.desc = "Save file";
         }
         {
           # o 也要:operator-pending 序列(`3kj`)里同样是 gj/gk。
@@ -519,13 +522,19 @@ in {
           mode = ["n" "x" "o"];
           key = "j";
           action = "v:count == 0 ? 'gj' : 'j'";
-          options.expr = true;
+          options = {
+            expr = true;
+            desc = "Down (screen line)";
+          };
         }
         {
           mode = ["n" "x" "o"];
           key = "k";
           action = "v:count == 0 ? 'gk' : 'k'";
-          options.expr = true;
+          options = {
+            expr = true;
+            desc = "Up (screen line)";
+          };
         }
         {
           mode = "n";
@@ -609,6 +618,7 @@ in {
               vim.bo.shiftwidth = indent
             end
           '';
+          options.desc = "Set indent width";
         }
         {
           mode = "n";
@@ -911,33 +921,51 @@ in {
         };
       };
 
-      # 触发键、marks/registers、<C-w>/z/g 等内置提示都是 which-key 的默认行为,
-      # 这里只给 leader 下的前缀起组名。
-      which-key = {
+      # 触发键、marks/registers、<C-w>/z/g 等内置提示都是 which-key 的默认行为。
+      # 这里给 leader 前缀起组名,并给 which-key 的关键词规则匹配不到的键补图标;
+      # 组里没单独配图标的子项继承组的图标。图标都是 Nerd Font 的 md-* 字形。
+      which-key = let
+        entry = lhs: icon: color: extra:
+          {
+            __unkeyed-1 = lhs;
+            icon = {inherit icon color;};
+          }
+          // extra;
+        group = lhs: name: icon: color: entry lhs icon color {group = name;};
+      in {
         enable = true;
         lazyLoad.settings.event = "DeferredUIEnter";
-        settings.spec = [
-          {
-            __unkeyed-1 = "<leader>f";
-            group = "Find";
-          }
-          {
-            __unkeyed-1 = "<leader>l";
-            group = "LSP";
-          }
-          {
-            __unkeyed-1 = "<leader>h";
-            group = "Git hunks";
-          }
-          {
-            __unkeyed-1 = "<leader>t";
-            group = "Toggle";
-          }
-          {
-            __unkeyed-1 = "<leader>u";
-            group = "UI";
-          }
-        ];
+        settings.spec =
+          [
+            (group "<leader>f" "Find" "󰍉" "green") # md-magnify
+            (group "<leader>l" "LSP" "󰅩" "orange") # md-code_braces
+            (group "<leader>h" "Git hunks" "󰘬" "orange") # md-source_branch
+            (group "<leader>t" "Toggle" "󰔡" "yellow") # md-toggle_switch
+            (group "<leader>u" "UI" "󰍹" "cyan") # md-monitor
+            (entry "<leader>c" "󰧧" "red" {}) # md-delete_outline
+            (entry "<leader>/" "󰆂" "yellow" {mode = ["n" "x"];}) # md-comment_outline
+            (entry "<leader>q" "󰖭" "red" {}) # md-window_close
+            (entry "<leader>Q" "󰩈" "red" {}) # md-exit_run
+            (entry "<leader>w" "󰆓" "green" {}) # md-content_save
+            (entry "<leader>g" "󰊢" "orange" {}) # md-git
+            (entry "<leader>e" "󰙅" "blue" {}) # md-file_tree
+            (entry "<leader>ui" "󰉶" "cyan" {}) # md-format_indent_increase
+            (entry "gd" "󰓾" "green" {}) # md-target
+            (entry "gD" "󰩷" "green" {}) # md-target_variant
+            (entry "gr" "󰌹" "cyan" {}) # md-link_variant
+            (entry "gi" "󰣖" "orange" {}) # md-cogs
+            (entry "gh" "󱘎" "purple" {}) # md-family_tree
+            (entry "]m" "󰊕" "purple" {mode = ["n" "x" "o"];}) # md-function
+            (entry "[m" "󰊕" "purple" {mode = ["n" "x" "o"];}) # md-function
+            (entry "]]" "󰆧" "cyan" {mode = ["n" "x" "o"];}) # md-cube_outline
+            (entry "[[" "󰆧" "cyan" {mode = ["n" "x" "o"];}) # md-cube_outline
+            (entry "af" "󰊕" "purple" {mode = ["x" "o"];}) # md-function
+            (entry "if" "󰊕" "purple" {mode = ["x" "o"];}) # md-function
+            (entry "ac" "󰆧" "cyan" {mode = ["x" "o"];}) # md-cube_outline
+            (entry "ic" "󰆧" "cyan" {mode = ["x" "o"];}) # md-cube_outline
+          ]
+          # dadbod-ui 只在 dev 机器上有。
+          ++ lib.optional dev (entry "<leader>D" "󰆼" "purple" {}); # md-database
       };
 
       treesitter = {
@@ -1433,37 +1461,55 @@ in {
           mode = "n";
           key = "gd";
           lspBufAction = "definition";
-          options.silent = true;
+          options = {
+            silent = true;
+            desc = "Go to definition";
+          };
         }
         {
           mode = "n";
           key = "gD";
           lspBufAction = "declaration";
-          options.silent = true;
+          options = {
+            silent = true;
+            desc = "Go to declaration";
+          };
         }
         {
           mode = "n";
           key = "gr";
           lspBufAction = "references";
-          options.silent = true;
+          options = {
+            silent = true;
+            desc = "References";
+          };
         }
         {
           mode = "n";
           key = "gi";
           lspBufAction = "implementation";
-          options.silent = true;
+          options = {
+            silent = true;
+            desc = "Go to implementation";
+          };
         }
         {
           mode = "n";
           key = "<leader>lr";
           lspBufAction = "rename";
-          options.silent = true;
+          options = {
+            silent = true;
+            desc = "Rename symbol";
+          };
         }
         {
           mode = "n";
           key = "<leader>la";
           lspBufAction = "code_action";
-          options.silent = true;
+          options = {
+            silent = true;
+            desc = "Code action";
+          };
         }
 
         # 下面两个原来是 plugins.lsp.keymaps.extra。那边的默认 mode 是 ""
@@ -1477,7 +1523,7 @@ in {
               vim.lsp.buf.typehierarchy()
             end
           '';
-          options.desc = "LSP: Goto type hierarchy";
+          options.desc = "Type hierarchy";
         }
         {
           mode = "";
@@ -1489,7 +1535,7 @@ in {
               vim.lsp.inlay_hint.enable(not enabled, { bufnr = bufnr })
             end
           '';
-          options.desc = "LSP: Toggle inlay hints";
+          options.desc = "Toggle inlay hints";
         }
       ];
     };
@@ -1527,10 +1573,10 @@ in {
     '';
 
     extraConfigLuaPost = ''
-      -- nvim 0.11+ 内置了 grn/gra/grr/gri/grt。我们自己用的是 gr/gi 和
-      -- <leader>lr/<leader>la,功能完全重复;留着它们只会让 gr 每次都要等满
-      -- timeoutlen(300ms)去分辨后面还有没有 r/a/n/i/t。
-      for _, key in ipairs({ "grn", "gra", "grr", "gri", "grt" }) do
+      -- nvim 0.11+ 内置了 grn/gra/grr/gri/grt,0.12 又加了 grx(code lens)。我们自己
+      -- 用的是 gr/gi 和 <leader>lr/<leader>la,功能完全重复;留着任何一个 gr* 都会让
+      -- gr 每次等满 timeoutlen(300ms)去分辨后面还有没有字母。
+      for _, key in ipairs({ "grn", "gra", "grr", "gri", "grt", "grx" }) do
         pcall(vim.keymap.del, "n", key)
       end
 

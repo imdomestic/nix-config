@@ -37,11 +37,13 @@ in {
       mode = "n";
       key = "<Esc>";
       action = "<Cmd>nohlsearch<CR>";
+      options.desc = "Clear search highlight";
     }
     {
       mode = "n";
       key = ";";
       action = ":";
+      options.desc = "Command line";
     }
     {
       mode = ["n" "x" "o"];
@@ -86,6 +88,7 @@ in {
             .select_textobject("@function.outer", "textobjects")
         end
       '';
+      options.desc = "Around function";
     }
     {
       mode = ["x" "o"];
@@ -96,6 +99,7 @@ in {
             .select_textobject("@function.inner", "textobjects")
         end
       '';
+      options.desc = "Inside function";
     }
     {
       mode = ["x" "o"];
@@ -106,6 +110,7 @@ in {
             .select_textobject("@class.outer", "textobjects")
         end
       '';
+      options.desc = "Around class";
     }
     {
       mode = ["x" "o"];
@@ -116,6 +121,7 @@ in {
             .select_textobject("@class.inner", "textobjects")
         end
       '';
+      options.desc = "Inside class";
     }
 
     # move
@@ -128,6 +134,7 @@ in {
             .goto_next_start("@function.outer", "textobjects")
         end
       '';
+      options.desc = "Next function start";
     }
     {
       mode = ["n" "x" "o"];
@@ -138,6 +145,7 @@ in {
             .goto_previous_start("@function.outer", "textobjects")
         end
       '';
+      options.desc = "Previous function start";
     }
     {
       mode = ["n" "x" "o"];
@@ -148,6 +156,7 @@ in {
             .goto_next_start("@class.outer", "textobjects")
         end
       '';
+      options.desc = "Next class start";
     }
     {
       mode = ["n" "x" "o"];
@@ -158,6 +167,7 @@ in {
             .goto_previous_start("@class.outer", "textobjects")
         end
       '';
+      options.desc = "Previous class start";
     }
   ];
 }

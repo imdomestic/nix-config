@@ -43,7 +43,7 @@ in {
                 focus_id = "textDocument/hover",
               })
             end, args.buf)
-          end, { buffer = args.buf, desc = "LSP: Hover" })
+          end, { buffer = args.buf, desc = "Hover documentation" })
         end
       '';
     }
