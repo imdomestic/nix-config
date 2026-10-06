@@ -96,7 +96,7 @@ nix-config `3071dc2e5df69686ad1f5f195606060b9f8df7b2`。
 | --- | --- | --- |
 | h610 | h610（先行部署）；tank 复核相同目标闭包 | 已激活，Max/broker/数据库及 SSH 验收通过 |
 | tank、shanghai | tank | 构建、激活、SSH 验收通过 |
-| r2s、r5s、r5sjp、r6s | r6s | 构建、激活、SSH 验收通过 |
+| r2s、r5s、gizmo、r6s | r6s | 构建、激活、SSH 验收通过 |
 | b650 | b650 | 本机构建、激活、SSH 验收通过 |
 | rpi4 | rpi4，单任务、2 核、2 GiB 构建上限 | 本机构建、激活、SSH 验收通过 |
 | h310 | h310，单任务、2 核、4 GiB 构建上限 | 目标系统已生效，SSH 验收通过；switch 返回 4，见下 |

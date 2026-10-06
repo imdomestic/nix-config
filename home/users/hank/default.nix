@@ -1026,7 +1026,7 @@ in {
     # iproute2mac 不在这儿:profiles/dev.nix 的 darwin 分支早就有了,
     # praxic 的 system 那份纯属重复。
     ++ lib.optionals (config.my.host.name == "aarch64-wsl") [pkgs.distrobox]
-    ++ lib.optionals (config.my.host.name == "r5sjp") [pkgs.wakeonlan]
+    ++ lib.optionals (config.my.host.name == "gizmo") [pkgs.wakeonlan]
     # tank 的 hank 没引 gui.linux,所以这台的桌面工具单独列出。
     ++ lib.optionals (config.my.host.name == "tank") [
       pkgs.brightnessctl

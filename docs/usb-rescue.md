@@ -1,6 +1,6 @@
 # x86_64 救援U盘
 
-`nixosConfigurations.x86_64-rescue` 提供用于 encore、ms7e56 和其他 x86_64
+`nixosConfigurations.x86_64-rescue` 提供用于 encore、seraph 和其他 x86_64
 机器的 NixOS 救援与安装系统。UEFI 和传统 BIOS 均通过 GRUB 启动。
 系统包含通用硬件驱动及固件，根目录位于内存，安装介质以只读方式挂载。
 本地磁盘的分区、文件系统和固件启动项由维护操作显式管理。
@@ -18,12 +18,12 @@ SSH 关闭密码认证。局域网主机名为 `nixos-rescue.local`：
 ssh root@nixos-rescue.local
 ```
 
-ms7e56 的网线经 r5sjp 的 `br-lan` 桥接到路由器，救援系统从路由器获取
-`10.1.2.0/24` 网段地址。r5sjp 的局域网地址为 `10.1.2.107`。需要从
+seraph 的网线经 gizmo 的 `br-lan` 桥接到路由器，救援系统从路由器获取
+`10.1.2.0/24` 网段地址。gizmo 的局域网地址为 `10.1.2.107`。需要从
 Tailscale 网络进入该局域网时，可以使用：
 
 ```sh
-ssh -J hank@r5sjp root@<救援系统的局域网地址>
+ssh -J hank@gizmo root@<救援系统的局域网地址>
 ```
 
 控制台提供 `ip -brief address` 和 `nmcli device status` 查询网络。
@@ -89,7 +89,7 @@ UEFI、BIOS、SSH 公钥登录、有线 DHCP、DNS、Wi-Fi 配置及维护工具
 
 ## 本地系统启动
 
-ms7e56 的本地安装使用 GRUB。Windows 从 GRUB 菜单进入，Windows Boot
+seraph 的本地安装使用 GRUB。Windows 从 GRUB 菜单进入，Windows Boot
 Manager 的固件启动项在确认目标 EFI 分区后处理。encore 的具体配置和已验证
 行为见 [encore 安装记录](encore-installation.md)。
 
@@ -146,19 +146,19 @@ SSD 启动变量和 EFI 引导程序与维护前的备份一致。
 镜像、原有介质备份和测试记录位于 Mac 仓库的 `.work/usb-rescue/`，
 encore 的对应目录为 `/home/hank/.work/usb-rescue/`；两个目录均限制访问权限。
 
-2026-10-04 已在 MSI B850 GAMING PLUS WIFI（MS-7E56）的 ms7e56 实机上
-通过 UEFI 启动。Realtek RTL8126 有线网卡由 r8169 驱动，经 r5sjp 桥接
+2026-10-04 已在 MSI B850 GAMING PLUS WIFI（MS-7E56）的 seraph 实机上
+通过 UEFI 启动。Realtek RTL8126 有线网卡由 r8169 驱动，经 gizmo 桥接
 取得 `10.1.2.194`。`root`、`nixos` 公钥登录、sudo、DNS、内存根目录、
 Wi-Fi 配置和维护工具检查均通过，救援系统没有失败的 systemd 服务。
 
-## ms7e56 本地系统
+## seraph 本地系统
 
-主机配置为 `nixosConfigurations.ms7e56`，用户环境为
-`homeConfigurations."linwhite@ms7e56"`。系统通过 SSH 使用终端，提供
+主机配置为 `nixosConfigurations.seraph`，用户环境为
+`homeConfigurations."linwhite@seraph"`。系统通过 SSH 使用终端，提供
 RTX 5070 的 NVIDIA 开放内核驱动与 CUDA、AMD CPU 微码、有线 DHCP 和 Wi-Fi。
-两张显卡的 Linux 显示功能均停用，配置与检查见 [计算节点](ms7e56-gpu.md)。
-管理名称为 `ms7e56.inner.imdomestic.com`，局域网名称为
-`ms7e56.local`。Windows 远程名称为 `9950x.inner.imdomestic.com`，
+两张显卡的 Linux 显示功能均停用，配置与检查见 [计算节点](seraph-gpu.md)。
+管理名称为 `seraph.inner.imdomestic.com`，局域网名称为
+`seraph.local`。Windows 远程名称为 `9950x.inner.imdomestic.com`，
 WSL 配置为 `nixosConfigurations.9950x`。本地登录密码使用 encore 上
 linwhite 账户的现有密码。
 
@@ -186,23 +186,23 @@ GRUB 安装在新建 EFI 分区的 `EFI/BOOT/BOOTX64.EFI`，默认启动 NixOS�
 硬盘上的原有 EFI 分区，加载 `EFI/Microsoft/Boot/windows.efi`。
 该分区挂载到 `/windows-efi`。原 `EFI/Boot/bootx64.efi` 与 Windows
 引导程序逐字节一致，保存为同目录下的 `windows.efi`。
-`ms7e56-boot-entries.service` 在启动时
+`seraph-boot-entries.service` 在启动时
 维护 Windows 引导程序文件名，并备份、删除指向该分区的 Windows Boot
 Manager 固件启动项，同时清理 MSI 自动生成的光驱、通用可移动设备和
 网络设备 BBS 入口。
 
 linwhite 使用本机独立生成的 Ed25519 密钥，Home Manager 的 sops-nix
 通过对应的 age 接收者解密 OpenCode 凭据。系统与用户环境分别构建和
-部署，后续用户环境更新执行 `just hm ms7e56 linwhite`。
+部署，后续用户环境更新执行 `just hm seraph linwhite`。
 
 2026-10-04 已完成安装，并在U盘保持连接时验证从本地 SSD 重启。
-固件只保留 `Boot0002`（`GRUB NixOS ms7e56`）与 `Boot0001`（救援U盘），
+固件只保留 `Boot0002`（`GRUB NixOS seraph`）与 `Boot0001`（救援U盘），
 `BootOrder` 为 `0002,0001`，`BootCurrent` 为 `0002`。
 根目录使用 ext4 卷标 `NIXOSMS7E56`，安装后可用空间约 700 GiB。
 NVMe 设备编号在两次启动间发生变化，挂载和引导均通过 UUID 定位。
 
 有线地址为 `10.1.2.194`，Tailscale 地址为 `100.64.0.44`。已验证局域网
-SSH、经 r5sjp 跳转的 SSH、Tailscale SSH、linwhite 的 sudo、DNS、
+SSH、经 gizmo 跳转的 SSH、Tailscale SSH、linwhite 的 sudo、DNS、
 Home Manager 激活、凭据解密和终端工具。GNOME 的 Wayland 登录会话
 正常，NVIDIA 驱动 `595.71.05` 识别 RTX 5070 与 12,227 MiB 显存，
 系统和用户均没有失败的 systemd 服务。Windows EFI 文件和 GRUB 菜单
@@ -218,7 +218,7 @@ Mac 仓库的 `.work/9950x-install/`，以及本机
 一致。安装结束后再次计算U盘救援数据的 SHA-256，与原有镜像一致。
 
 本机主机名、Tailscale 节点名称、网络连接、磁盘卷标、GRUB 固件入口和
-SSH 密钥注释均使用 `ms7e56`。实际重启后通过局域网及
-`ms7e56.inner.imdomestic.com` 登录，系统与用户服务检查通过；系统配置
+SSH 密钥注释均使用 `seraph`。实际重启后通过局域网及
+`seraph.inner.imdomestic.com` 登录，系统与用户服务检查通过；系统配置
 与启动版本一致。Windows 节点保留 `9950x.inner.imdomestic.com` 和
 `100.64.0.17`，本机的 Tailscale 地址保持 `100.64.0.44`。

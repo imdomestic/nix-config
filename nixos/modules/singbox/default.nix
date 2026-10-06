@@ -277,7 +277,7 @@ in {
           # --- 自建基础设施直连 ---
           # dae 里对应 `domain(suffix: imdomestic.com) -> must_direct`。
           # 少了这条,末尾的 final = im 会把 ssh 到 <host>.imdomestic.com 也丢进
-          # im 组,而 im 组本身就是 portal -> 反向隧道 -> r5sjp;隧道一断,
+           # im 组,而 im 组本身就是 portal -> 反向隧道 -> gizmo;隧道一断,
           # 用来修隧道的 ssh 跟着断,没法回滚。
           (toDirect {domain_suffix = ["imdomestic.com"];})
 

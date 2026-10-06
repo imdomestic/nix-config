@@ -322,7 +322,7 @@ in {
 
             # 自建基础设施直连,必须排在兜底之前。没有这条的话,ssh 到
             # <host>.imdomestic.com 会被 MATCH,im 丢进代理,而 im 组本身就是
-            # portal -> 反向隧道 -> r5sjp;于是隧道一断,用来修隧道的 ssh 也
+            # portal -> 反向隧道 -> gizmo;于是隧道一断,用来修隧道的 ssh 也
             # 跟着断。dae 和 clash 两边都踩过,规则同源。
             "DOMAIN-SUFFIX,imdomestic.com,DIRECT"
 

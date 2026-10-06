@@ -144,7 +144,7 @@ with lib; let
         - 119.29.29.29
         - 8.8.8.8
 
-    # 端口 54322 = 各 portal 的 client-in2 入口(经隧道从 r5sjp 出);
+    # 端口 54322 = 各 portal 的 client-in2 入口(经隧道从 gizmo 出);
     # 54324 = client-au(经隧道从 rpi4 出)。每台每口的 uuid / public-key /
     # short-id 都是独立的,不共用。
     proxies:
@@ -184,7 +184,7 @@ with lib; let
 
       # ===== 自建基础设施直连 =====
       # 必须排在 MATCH,im 之前。没有这条的话,SSH 到 <host>.imdomestic.com 会被
-      # 兜底规则丢进 im 组,而 im 组本身就是经 portal -> 反向隧道 -> r5sjp;于是
+      # 兜底规则丢进 im 组,而 im 组本身就是经 portal -> 反向隧道 -> gizmo;于是
       # 隧道一断,用来修隧道的 SSH 也跟着断。dae 那边踩过一次,规则同源。
       - DOMAIN-SUFFIX,imdomestic.com,DIRECT
 

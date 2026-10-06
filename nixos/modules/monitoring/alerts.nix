@@ -24,7 +24,7 @@ in
           {
             alert = "HostUnreachable";
             expr = ''up{job="node"} == 0'';
-            # 10 分钟。r5sjp 跨海、shanghai 在机房,单次抓取失败很常见;
+            # 10 分钟。gizmo 跨海、shanghai 在机房,单次抓取失败很常见;
             # 真挂了 10 分钟也不差这一会儿。
             "for" = "10m";
             labels.severity = "critical";
@@ -200,7 +200,7 @@ in
             # 运营商调整 —— 链路会**静默**回落到经 h610 的 DERP。延迟上一个
             # 台阶,而且流量开始全部过 h610 的家宽上行。
             #
-            # 对 r5sjp 尤其要命:它是唯一出口,直连已经 177ms,降级成
+            # 对 gizmo 尤其要命:它是唯一出口,直连已经 177ms,降级成
             # DERP-经-国内会再翻一倍,整条代理链跟着一起烂。
             #
             # 只在 active 时判定 —— 空闲链路的 CurAddr 是空的,那是"不知道"
@@ -246,7 +246,7 @@ in
             # 全部变成 100% 丢包,于是一台机器下线就刷出 N-1 条告警 —— 而那
             # 件事 HostUnreachable 已经报了一条,说得更准。实测 r2s 离线时
             # 这条规则一口气 firing 了 7 次,把同时存在的**真问题**
-            # (多台到 r5sjp 12-20% 丢包)埋在里面看不见。
+            # (多台到 gizmo 12-20% 丢包)埋在里面看不见。
             expr = ''
               ping_loss_ratio > 0.25
               and on(instance, peer) tailscale_peer_online{kind="server"} == 1
@@ -256,7 +256,7 @@ in
             annotations.summary = "{{ $labels.instance }} → {{ $labels.peer }} 丢包 {{ $value | humanizePercentage }}";
           }
           {
-            # 不设固定阈值 —— 这个 fleet 跨中日两地,r6s 4ms 和 r5sjp 177ms
+            # 不设固定阈值 —— 这个 fleet 跨中日两地,r6s 4ms 和 gizmo 177ms
             # 都是正常的,一个数字盖不住。改成和自己过去一天的基线比:
             # 涨到 2 倍并且绝对值超过 50ms 才算异常。
             alert = "TailnetLatencyDegraded";

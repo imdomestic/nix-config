@@ -1,6 +1,6 @@
-# ms7e56 SSH 计算节点
+# seraph SSH 计算节点
 
-`nixos/hosts/ms7e56/compute.nix` 将系统设为通过 SSH 使用的计算节点，
+`nixos/hosts/seraph/compute.nix` 将系统设为通过 SSH 使用的计算节点，
 默认启动目标为 `multi-user.target`。GNOME、GDM、Xserver、音频、打印和
 蓝牙服务均停用，Home Manager 使用终端环境和开发工具。
 
@@ -26,11 +26,11 @@ Taipan 实机的全部 DP/HDMI 接口报告 `disconnected`，其 Mutter 规则�
 
 ## 2026-10-06 实机验证
 
-`just check`、`nixos-rebuild build`、`just hm-dry ms7e56 linwhite`、系统切换和
+`just check`、`nixos-rebuild build`、`just hm-dry seraph linwhite`、系统切换和
 Home Manager 激活均通过，随后完成整机重启。
 
 - boot ID：`f934bee3-505a-41ce-b014-16803f841c56`。
-- 系统：`/nix/store/r6h6c8fmglvfkn6d4wv94gy8n1raibxw-nixos-system-ms7e56-26.05.20260911.21a67dc`。
+- 系统：`/nix/store/r6h6c8fmglvfkn6d4wv94gy8n1raibxw-nixos-system-seraph-26.05.20260911.21a67dc`。
 - Home Manager：`/nix/store/mk277yl3hkq06j0gbr6wh47gpfdjygp7-home-manager-generation`。
 - SSH 分配并实际使用 `/dev/pts/0`；tmux、Zsh、Neovim 与 OpenCode 模型列表检查通过。
 - `amdgpu`、`radeon`、`nvidia_drm`、`nvidia_modeset` 均未加载。
@@ -60,5 +60,5 @@ Home Manager 激活均通过，随后完成整机重启。
 改动前的主机配置备份位于 `.work/compute-node/backups/20261006-0355/`。
 需要恢复时，使用文件编辑工具根据备份恢复 `default.nix`、`graphics.nix` 和
 `system.nix`，移除本次新增的 `compute.nix` 与 `home.nix`，再执行
-`just check`、`nixos-rebuild build --flake .#ms7e56` 和
-`just hm-dry ms7e56 linwhite`。检查通过后切换系统、激活 Home Manager 并重启。
+`just check`、`nixos-rebuild build --flake .#seraph` 和
+`just hm-dry seraph linwhite`。检查通过后切换系统、激活 Home Manager 并重启。

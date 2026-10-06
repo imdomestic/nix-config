@@ -3,7 +3,7 @@
 # 用量和到期不靠面板,靠 Xray 自己的 StatsService/HandlerService:
 # 每个用户在 friends-in 入口下有独立 email,statsquery 取增量,超限就
 # 用 rmu 踢掉 —— 热生效,不用重启 Xray,也就不会打断其它入口(包括
-# r5sjp 那条反向隧道)。
+# gizmo 那条反向隧道)。
 #
 # 用户的 UUID 和订阅 token 由控制器在运行时签发并只存在 stateDir 里,
 # 所以加一个朋友只要在这里加几行声明,既不用动 sops 也不会进 git。

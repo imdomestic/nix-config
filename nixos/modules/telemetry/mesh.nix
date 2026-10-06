@@ -5,8 +5,8 @@
 #   ping_exporter    → 延迟数字(min/mean/max/stddev + 丢包)
 #   textfile 采集器  → 这条链路是直连还是走 DERP 中继
 #
-# **只有数字是不够的。** "r5sjp 从 40ms 变成 200ms" 这句话本身没有行动指向;
-# "r5sjp 从直连降级成了经 h610 的中继" 才有。而后者只有各节点自己的 tailscaled
+# **只有数字是不够的。** "gizmo 从 40ms 变成 200ms" 这句话本身没有行动指向;
+# "gizmo 从直连降级成了经 h610 的中继" 才有。而后者只有各节点自己的 tailscaled
 # 知道 —— headscale 是控制平面,它不掌握两个节点之间走哪条路,所以社区那个
 # tailscale-exporter(走 headscale API)给不了这个信息。
 #
@@ -161,8 +161,8 @@ in {
         是否参与网状延迟探测。默认跟着 telemetry 走。
 
         全网状(8 台各 ping 其余 7 台,56 条有向边)而不是从 tank 单点辐射:
-        ICMP 那点流量可以忽略,但换来一个关键能力 —— 区分"r5sjp 从哪儿都慢"
-        (它自己的问题)和"r5sjp 只从 shanghai 慢"(那条路径的问题)。单点
+        ICMP 那点流量可以忽略,但换来一个关键能力 —— 区分"gizmo 从哪儿都慢"
+        (它自己的问题)和"gizmo 只从 shanghai 慢"(那条路径的问题)。单点
         测量永远分不开这两种。
       '';
     };

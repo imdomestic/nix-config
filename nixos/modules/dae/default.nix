@@ -139,7 +139,7 @@ in {
             # --- 存活检查 ---
             # 检查目标都带上兜底 IP，避免“检查目标的 DNS 解析又绕回 im 组”造成死锁，
             # 从而出现所有节点被同时判死(no alive dialer)。检查是直接经节点发起的，
-            # 不受下面 routing 规则影响，所以这里给的目标必须是经 r5sjp 出口能访问到的。
+            # 不受下面 routing 规则影响，所以这里给的目标必须是经 gizmo 出口能访问到的。
             tcp_check_url: 'http://cp.cloudflare.com,1.1.1.1'
             tcp_check_http_method: HEAD
             # 反向代理(portal/bridge)对 UDP 支持差，UDP 检查可能一直失败；
@@ -153,7 +153,7 @@ in {
 
         node {
             # imdomestic-* —— 五台 portal 的 client-in2(54322),经反向隧道从
-            # r5sjp 出去(日本)。au-* —— 同样两台 portal 的 client-au(54324),
+            # gizmo 出去(日本)。au-* —— 同样两台 portal 的 client-au(54324),
             # 经反向隧道从 rpi4 出去(悉尼)。
             # 内容来自 sops(dae/nodes),不进 nix store。
         ${config.sops.placeholder."dae/nodes"}
@@ -256,7 +256,7 @@ in {
 
             # 去自建基础设施的连接一律直连。没有这条的话，routing 末尾的
             # 中国路由模式的 `fallback: im` 会把 SSH 到 <host>.imdomestic.com 也
-            # 丢进 im 组，而 im 组本身就是经 portal -> 反向隧道 -> r5sjp。于是
+            # 丢进 im 组，而 im 组本身就是经 portal -> 反向隧道 -> gizmo。于是
             # 隧道一断，用来修隧道的 SSH 也跟着断，没法回滚。自己的机器本来也
             # 不需要走代理才能到达。
             # (原先只有 tailscale.imdomestic.com 一条，已被这条 suffix 规则覆盖。)

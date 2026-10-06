@@ -39,7 +39,7 @@ LLDB)同一套配置一次就通。
   代理,一运行就报 "Unknown binary",Rust 的 LSP 在这台机器上一直没起来过。测试时用
   nixpkgs 的 rust-analyzer 临时顶在 PATH 前面。
 
-## 2026-10-06 · ms7e56 通过 SSH 使用计算服务 {#ms7e56-compute-node}
+## 2026-10-06 · seraph 通过 SSH 使用计算服务 {#seraph-compute-node}
 
 系统使用 `multi-user.target`，停用两张显卡的显示驱动、固件显示缓冲区和
 全部桌面服务。Home Manager 提供终端及开发工具，独立完成构建和激活。
@@ -50,9 +50,9 @@ LLDB)同一套配置一次就通。
 工具调用通过。模型卸载后，显存 Used 为 0 MiB，Free 为 11752 MiB，
 Reserved 为 476 MiB；系统和用户均没有失败服务。
 
-配置、系统版本和检查证据见 [计算节点记录](ms7e56-gpu.md)。
+配置、系统版本和检查证据见 [计算节点记录](seraph-gpu.md)。
 
-## 2026-10-05 · ms7e56 的 5070 显示设备停用 {#ms7e56-display-isolation}
+## 2026-10-05 · seraph 的 5070 显示设备停用 {#seraph-display-isolation}
 
 `graphics.nix` 使用 `initcall_blacklist=sysfb_init` 停用 Linux 固件显示设备，
 通过 `module_blacklist=nvidia_drm,nvidia_modeset` 阻止加载 NVIDIA 显示模块，
@@ -66,7 +66,7 @@ NVIDIA 显示模块均未加载，5070 下没有 `simple-framebuffer` 设备。
 11752 MiB，Reserved 保持 476 MiB。显存统计不能只检查 Used：
 完整验收同时检查 DRM 设备归属、进程设备句柄和内核模块。
 
-配置、测量与恢复方式见 [显卡分工](ms7e56-gpu.md)。
+配置、测量与恢复方式见 [显卡分工](seraph-gpu.md)。
 
 ## 2026-10-05 · Bonsai NInfer 在 OpenCode 显示 prefill 速度 {#bonsai-prefill-display}
 
@@ -75,9 +75,9 @@ NVIDIA 显示模块均未加载，5070 下没有 `simple-framebuffer` 设备。
 插件在启动时读取文件，通过 Bun WebSocket 的 `Authorization` 请求头完成认证。
 配置文件只保存密钥文件路径。进度按 OpenCode session ID 关联到对应会话。
 
-aegis 与 ms7e56 的 Bonsai provider 均使用注册表中的
-`ms7e56.inner.imdomestic.com:8080`，使推理请求与进度订阅经过同一网关。
-ms7e56 访问自身地址经由 `lo`。服务端监听地址、访问白名单和 API key 规则保持原配置。
+aegis 与 seraph 的 Bonsai provider 均使用注册表中的
+`seraph.inner.imdomestic.com:8080`，使推理请求与进度订阅经过同一网关。
+seraph 访问自身地址经由 `lo`。服务端监听地址、访问白名单和 API key 规则保持原配置。
 
 验证使用实际 NInfer 请求与 OpenCode 1.18.34 终端文本：
 
@@ -116,7 +116,7 @@ IP 判断的程序(这个浏览器检查)才会暴露投毒。报错文本也像
 `*.inner.imdomestic.com` 仍走 tailscale0。确认后取消回滚。r5s 同时带上了此前未部署的
 `nexttrace`。经悉尼中转复制这 25 MiB 二十分钟没传完,改由 r6s 直推才完成。
 
-## 2026-10-05 · ms7e56 的 Bonsai NInfer 174080 上下文实测 {#ms7e56-bonsai-ninfer-174080}
+## 2026-10-05 · seraph 的 Bonsai NInfer 174080 上下文实测 {#seraph-bonsai-ninfer-174080}
 
 RTX 5070 使用开放内核驱动 595.71.05，AMD Granite Ridge 核显的 PCI 地址为
 `10:00.0`，NVIDIA 为 `01:00.0`。GNOME/Mutter 使用 AMD；重启后 GLX 和 Vulkan
@@ -287,7 +287,7 @@ with the original SNI: TLS 1.3, 2822-byte certificate chain. This CDN alias
 is an upstream dependency; retest it if REALITY fallback errors recur.
 
 After activation, fresh local Xray clients returned `219.104.128.80` through
-port 54322 (r5sjp) and `27.122.122.170` through port 54324 (rpi4).
+port 54322 (gizmo) and `27.122.122.170` through port 54324 (rpi4).
 The host itself returned `43.130.229.141`; DAE is absent.
 
 Installation and acceptance: [tokyo-migration.md](tokyo-migration.md).
@@ -1032,13 +1032,13 @@ VLESS 那个越界本身仍未修，这里修的只是恢复路径。
 ## 2026-09-13 · 在小 ARM 盒子上本地 build，把三台打下线 {#arm-boxes-oom-on-local-build}
 
 全量 `nix flake update` 之后按台 ssh 上去跑 `nixos-rebuild boot`。x86 那几台顺利，
-**r2s、r5s、r5sjp 三台 aarch64 全部在构建走到最后一步时从网络上消失**，rpi4 也掉过
+**r2s、r5s、gizmo 三台 aarch64 全部在构建走到最后一步时从网络上消失**，rpi4 也掉过
 一次。r5s 掉线还连带把 tank 拖下去了。当时机器在国内，人在悉尼，没有物理手段。
 
 触发点是 **maxops**。它挂在 `nixos/profiles/base.nix` 上，每台 NixOS 主机都吃；
 这次 input 从旧版跳到 `a5503bd`，于是每台都得从源码整编一个 Rust 项目。而它不在
 `flake.nix` 的 `packages` 里，CI 没有推 cachix，任何二进制缓存都命不中。r2s 只有
-1 GB 内存，r5s / r5sjp 是 4 GB，编译峰值直接把它们压垮。
+1 GB 内存，r5s / gizmo 是 4 GB，编译峰值直接把它们压垮。
 
 三台掉线的位置**完全一样**：日志最后一行都是 `dry-activate.drv`，紧接着 ssh 超时。
 这个巧合一开始被当成"构建到某个特定 derivation 时触发了网络重配"去查，方向是错的
@@ -1970,7 +1970,7 @@ tokens,同时 CUDA Graph 捕获只占 **0.46 GiB**。相同请求变成
 
 ## 2026-09-01 · 悉尼→日本:打洞比中转慢一倍,但带宽是中转的三倍 {#syd-jp-relay-beats-direct}
 
-起因是一个看着不合理的现象:同在悉尼那条上行后面,**Mac ping r5sjp 130ms,
+起因是一个看着不合理的现象:同在悉尼那条上行后面,**Mac ping gizmo 130ms,
 rpi4 稳定 276ms**。同一条线、同一个目标,差一倍。
 
 原因不在机器,在**隧道走法**。tailscale 给两台选了不同的路:
@@ -1993,7 +1993,7 @@ rpi4 那个 mdev 0.113ms 是关键信号:**抖动几乎为零 —— 不是拥�
 
 **悉尼 → 洛杉矶 → 东京,横穿太平洋两次。** 而 tailscale 自己的 netcheck 给出
 的真实悉尼→东京是 **105ms**(rpi4 上 `tok: 100.4ms`)。276 − 105 ≈ 170ms
-全是绕路的代价。r5sjp 挂在 NTT 消费线上,它的上游选了 GTT,这一段我们改不了。
+全是绕路的代价。gizmo 挂在 NTT 消费线上,它的上游选了 GTT,这一段我们改不了。
 
 Mac 之所以快,是因为它**打洞失败了** —— `tailscale ping 100.64.0.16` 从 Mac
 上全部超时(它在 rpi4 NAT + hotspot NAT 后面,三层 NAT),于是老实退回东京
@@ -2001,7 +2001,7 @@ DERP。rpi4 只隔一层 NAT,打洞成功,然后被那条烂路坑了 146ms。
 
 ### 两条路的完整对照
 
-同一台 rpi4、同一个 r5sjp,靠临时 nft 规则丢掉去往 `219.104.128.80:4632` 的
+同一台 rpi4、同一个 gizmo,靠临时 nft 规则丢掉去往 `219.104.128.80:4632` 的
 UDP 来切换(约 10 秒回落),iperf3 各跑 10 秒:
 
 | | 打洞 direct | 中转 DERP `tok` |
@@ -2033,7 +2033,7 @@ UDP 来切换(约 10 秒回落),iperf3 各跑 10 秒:
 tailscale 给它们选的路不同。**要比路径就必须在同一台机器上切换路径**,否则
 永远分不清是机器差异还是路径差异。
 
-**二、`ping` 到公网 IP 全丢包,差点以为链路不通。** r5sjp 那个 IP 和东京 DERP
+**二、`ping` 到公网 IP 全丢包,差点以为链路不通。** gizmo 那个 IP 和东京 DERP
 都不回 ICMP。真实路径得用 mtr 打**实际在用的那个 UDP 端口**(`-u -P 4632`)
 才看得见,ICMP 探测在这里完全没有参考价值。
 
@@ -2115,7 +2115,7 @@ rpi4 落到悉尼公寓之后,到国内 451ms。`nexttrace sh.imdomestic.com` �
 的路压根没走。
 
 **是时段性的,不是固定路由。** hank 白天测到日本约 120ms,当晚(悉尼傍晚)
-`tailscale ping r5sjp` 是 257ms —— 而且那是 direct(`219.104.128.80`),
+`tailscale ping gizmo` 是 257ms —— 而且那是 direct(`219.104.128.80`),
 不是 relay 绕的。同一条链路白天正常、高峰绕欧洲,像是 Superloop 在高峰
 把出国流量甩给 GTT transit。
 
@@ -2848,7 +2848,7 @@ NS 问一遍」,这个前提被 dae 拆掉了。
 
 ```
 h610 / shanghai (dae 开) : flags: qr rd ra      ← 递归解析器答的
-r5sjp           (dae 关) : flags: qr aa rd      ← 真·Cloudflare 权威
+gizmo           (dae 关) : flags: qr aa rd      ← 真·Cloudflare 权威
 ```
 
 于是 lego 的「问权威 NS」实际问到了 alidns,而 alidns 去查一条刚建几秒、

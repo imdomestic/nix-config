@@ -10,10 +10,10 @@
 #          singbox 用 `im-<name>`)。
 #   host   DNS 名。**au 节点和它对应的本土节点是同一台机器、同一个域名**,
 #          只有端口不同 —— 所以 host 推不出 name,反之亦然。
-#   port   54322 = client-in2,流量经反向隧道从 r5sjp(日本)出去。
+#   port   54322 = client-in2,流量经反向隧道从 gizmo(日本)出去。
 #          54324 = client-au,经反向隧道从 rpi4(悉尼)出去。
 #   secret secrets/clients/imdomestic.yaml 里的键名。
-#   exit   这个节点最终从哪儿出网:"jp" = r5sjp,"au" = rpi4。**它决定节点落进
+#   exit   这个节点最终从哪儿出网:"jp" = gizmo,"au" = rpi4。**它决定节点落进
 #          哪一个自动测速组** —— 别拿 port 或名字里的 "-au" 去判断。
 #
 # `exit` 的用法:**每个出口一个自动测速组(auto-jp / auto-au),两个出口绝不

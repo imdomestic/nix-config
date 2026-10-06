@@ -47,10 +47,10 @@ in {
     settings.main.no-auto-default = "*";
     wifi.powersave = false;
     ensureProfiles = {
-      environmentFiles = ["/var/lib/NetworkManager/ms7e56-wifi.env"];
-      profiles."ms7e56-ethernet" = {
+      environmentFiles = ["/var/lib/NetworkManager/seraph-wifi.env"];
+      profiles."seraph-ethernet" = {
         connection = {
-          id = "ms7e56-ethernet";
+          id = "seraph-ethernet";
           type = "ethernet";
           autoconnect = true;
           autoconnect-priority = 100;
@@ -63,9 +63,9 @@ in {
         };
         ipv6.method = "auto";
       };
-      profiles."ms7e56-wifi" = {
+      profiles."seraph-wifi" = {
         connection = {
-          id = "ms7e56-wifi";
+          id = "seraph-wifi";
           type = "wifi";
           autoconnect = true;
           autoconnect-retries = 0;
@@ -119,7 +119,7 @@ in {
     hybrid-sleep.enable = false;
     suspend-then-hibernate.enable = false;
   };
-  systemd.services."ms7e56-boot-entries" = {
+  systemd.services."seraph-boot-entries" = {
     description = "Keep Windows boot access in the GRUB menu";
     wantedBy = ["multi-user.target"];
     after = ["local-fs.target"];
@@ -130,7 +130,7 @@ in {
     serviceConfig = {
       Type = "oneshot";
       RemainAfterExit = true;
-      StateDirectory = "ms7e56-boot-entries";
+      StateDirectory = "seraph-boot-entries";
       StateDirectoryMode = "0700";
       UMask = "0077";
     };

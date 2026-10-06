@@ -24,7 +24,7 @@ in {
     ../../modules/keyd
   ];
 
-  # 用 vernesong fork 的 smart 策略组:实测这台到 r5sjp 的链路里,h610 那条
+  # 用 vernesong fork 的 smart 策略组:实测这台到 gizmo 的链路里,h610 那条
   # RTT 89ms 看着健康但吞吐只有 4.8 Mbit/s、丢包 13%,纯延迟指标分辨不出来,
   # 约 1/5 的流量会被送进去。smart 同时看 latency 和 lossRate。
   my.mihomo.smart = true;
@@ -436,7 +436,7 @@ in {
         ];
 
         inbounds = [
-          # r5sjp 的 bridge 拨进来的新落点(Step 4 切换)。
+          # gizmo 的 bridge 拨进来的新落点(Step 4 切换)。
           (vlessIn "interconn2" 2444
             [(vision s."xray/interconn2_uuid")]
             (reality aliyun s."xray/reality_private_key" s."xray/interconn2_short_id"))
@@ -454,7 +454,7 @@ in {
           }
         ];
 
-        # 四个入口一律丢进反向隧道,从 r5sjp 的日本出口出去。
+        # 四个入口一律丢进反向隧道,从 gizmo 的日本出口出去。
         routing.rules = [
           {
             type = "field";

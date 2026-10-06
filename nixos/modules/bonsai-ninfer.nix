@@ -92,8 +92,8 @@ in {
 
   config = lib.mkIf cfg.enable {
     assertions = [{
-      assertion = config.my.host.name == "ms7e56";
-      message = "Bonsai 的 SM120a 镜像与容量仅在 ms7e56 上验证。";
+      assertion = config.my.host.name == "seraph";
+      message = "Bonsai 的 SM120a 镜像与容量仅在 seraph 上验证。";
     }];
     sops.secrets."bonsai/api_key".sopsFile = ../../secrets/clients/bonsai.yaml;
     sops.templates."bonsai-environment".content = ''

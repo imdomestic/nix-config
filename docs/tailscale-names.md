@@ -138,7 +138,7 @@ dynamic aliases, and serve node/ping metrics through names. All 17 NixOS systems
 evaluated successfully. Eight bind-adapter checks passed; the earlier isolated
 nftables tests covered IPv4/IPv6 and private/public ports.
 
-Builds used clean Linux worktrees. r6s built r2s/r5s/r5sjp/rpi4; tank built
+Builds used clean Linux worktrees. r6s built r2s/r5s/gizmo/rpi4; tank built
 Shanghai. No small target compiled its system. No machine rebooted, and no
 standalone Home Manager profile was activated. The unrelated local marble edit
 and existing target checkouts were preserved.
@@ -182,7 +182,7 @@ Rollback timers were cancelled after verification; prior generations remain.
 | h610 | `299brvf4rb8ql83vqvdkzskidr6xm9dq` |
 | r2s | `y3cw0h41aa62r7pcl27cz0jycdpw7kr7` |
 | r5s | `wknjbzzdbgj2c0kg84yr3vxbjwszx75d` |
-| r5sjp | `zzlmsxza731zbxg7g1d6amhyjjg2gpla` |
+| gizmo | `zzlmsxza731zbxg7g1d6amhyjjg2gpla` |
 | r6s | `jc0fyydc6w1fpzwd7qml0flgqg6w9vjm` |
 | rpi4 | `hhji6lb3hdka4w9alyg4kfcd5wvb6p0p` |
 | shanghai | `6lzjzpmn7fh1ams1dwhznv52ih6na98l` |
