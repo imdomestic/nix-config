@@ -36,8 +36,9 @@ LLDB)同一套配置一次就通。
 - 写 `dap.nix` 时三个断点图标(U+F192、U+F059、U+F06A)在落盘时丢成了空串。图标文字为空时
   nvim-dap 不报错,但断点根本放不上 —— `dap.breakpoints.get()` 返回空表。
 - praxic 的 rustup stable 工具链没装 rust-analyzer 组件,`rust-analyzer` 只是 rustup 的
-  代理,一运行就报 "Unknown binary",Rust 的 LSP 在这台机器上一直没起来过。测试时用
-  nixpkgs 的 rust-analyzer 临时顶在 PATH 前面。
+  代理,一运行就报 "Unknown binary",Rust 的 LSP 在这台机器上一直没起来过。当天用
+  `rustup component add rust-analyzer` 补上(机器本地状态,不在仓库里),之后用正常
+  PATH 重跑 Rust 调试也通过。新的 Mac 上同样要先装这个组件。
 
 ## 2026-10-06 · seraph 通过 SSH 使用计算服务 {#seraph-compute-node}
 
