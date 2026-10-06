@@ -6,8 +6,11 @@ seraph 与 encore 使用 `nixos/modules/linwhite-smb.nix` 提供 `/home/linwhite
 
 | 服务器 | aegis 挂载目录 | 家目录快捷入口 | Finder 地址 |
 | --- | --- | --- | --- |
-| seraph | `/Volumes/seraph-linwhite` | `~/Servers/seraph` | `smb://linwhite@seraph.inner.imdomestic.com/seraph-linwhite` |
-| encore | `/Volumes/encore-linwhite` | `~/Servers/encore` | `smb://linwhite@encore.inner.imdomestic.com/encore-linwhite` |
+| seraph | `/Volumes/seraph-linwhite` | `~/Servers/seraph` | `smb://linwhite@seraph/seraph-linwhite` |
+| encore | `/Volumes/encore-linwhite` | `~/Servers/encore` | `smb://linwhite@encore/encore-linwhite` |
+
+aegis 的连接地址和钥匙串条目使用短名称 `seraph`、`encore`。Tailscale 的
+DNS 搜索域将这两个名称解析为对应服务器的 Tailscale 地址。
 
 Samba 只绑定服务器自己的 Tailscale IPv4 地址与 TCP 445 端口。Samba 的
 访问白名单和 nftables 规则均只允许 aegis 的 `100.64.0.25`；该地址已经通过
@@ -62,6 +65,9 @@ aegis 已使用 linwhite 账户建立 SMB 3.1.1 连接。两个共享均完成 1
 中文文件名、扩展属性、重命名、SHA-256 校验与删除验证；远端文件所有者为
 linwhite，文件权限为 `0600`，目录权限为 `0700`。卸载两个共享后，用户任务
 均在定时执行时自动重新挂载，退出状态为 `0`，随后再次通过文件操作验证。
+实际挂载来源为 `//linwhite@seraph/seraph-linwhite` 和
+`//linwhite@encore/encore-linwhite`；短名称配置的两个用户任务退出状态均为 `0`，
+并通过上述文件操作验证。
 
 两个服务只监听各自 Tailscale IPv4 地址的 TCP 445。seraph 与 encore 之间的
 SMB 连接均超时，nftables 拒绝规则的计数增加，验证了 aegis 地址限制。
