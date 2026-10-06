@@ -15,6 +15,16 @@
       "webhook_base_url" = "https://max.imdomestic.com:8443";
       "token" = config.sops.placeholder."max/admin-token";
     };
+    # Destiny 2 skill (opt-in per group with !destiny on). Players log in
+    # through Bungie in the browser; Bungie redirects to
+    # <webhook_base_url>/oauth/bungie/callback, which h610's nginx already
+    # forwards with its catch-all location. The application's Redirect URL
+    # must be exactly https://max.imdomestic.com:8443/oauth/bungie/callback.
+    "bungie" = {
+      "api_key" = config.sops.placeholder."max/bungie-api-key";
+      "client_id" = config.sops.placeholder."max/bungie-client-id";
+      "client_secret" = config.sops.placeholder."max/bungie-client-secret";
+    };
     "search" = {
       "enabled" = true;
       "exa_api_key" = config.sops.placeholder."max/search-exa-api-key";
@@ -308,7 +318,7 @@
     };
     "log_color" = "always";
   };
-  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token" "cliproxy-management-key"];
+  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token" "cliproxy-management-key" "bungie-api-key" "bungie-client-id" "bungie-client-secret"];
 in {
   sops.secrets =
     lib.genAttrs (map (name: "max/${name}") secretNames) (name: {
