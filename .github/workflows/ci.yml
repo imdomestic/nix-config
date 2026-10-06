@@ -85,6 +85,10 @@ jobs:
       - name: 预热 IFD(tank 的 cabal2nix)
         run: nix build .#nixosConfigurations.tank.config.system.build.toplevel --dry-run
 
+      # 旧版 nixpkgs 的源码导入也需要 IFD；见 docs/incidents.md#ci-bonsai-ifd-warmup。
+      - name: 预热 IFD(Bonsai 转换环境)
+        run: nix build .#packages.x86_64-linux.bonsai-convert-env --dry-run
+
       # --no-build:这里只要求值通过。真正的构建归 cachix.yml 和下面的 dry-run。
       #
       # **--all-systems 现在是安全的,但 2026-08-12 到 08-15 之间不是** —— 那段时间

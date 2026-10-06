@@ -4,6 +4,20 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-06 · Bonsai 转换环境缺少 CI 的 IFD 预热 {#ci-bonsai-ifd-warmup}
+
+合并 Bonsai NInfer 的 `340d16e` 后，`flake-check` 持续失败，直到更新
+Determinate Nix 的 `37c57ff` 仍报同一错误。失败位置是
+`packages.x86_64-linux.bonsai-convert-env`：包通过
+`import (fetchFromGitHub { ... })` 引入固定版本的旧 nixpkgs，求值需要先构建
+源码下载任务（IFD），但 `nix flake check --no-build --all-systems` 不允许它，
+干净 runner 因此报 `source.drv is not valid`。
+
+**容易误判的线索：** 各主机的 dry-run 和 cachix 构建通过，只有全量检查失败；
+Nix 更新后的红叉也是已有错误。现有预热步骤只覆盖 tank 的 cabal2nix，
+没有覆盖新加入的包。修复是在 flake check 前增加 Bonsai 转换环境的
+`nix build --dry-run`，让求值所需的源码先进入 store。
+
 ## 2026-10-06 · praxic 上 codelldb 启动即卡死,改用 Apple 的 lldb-dap {#codelldb-crashes-on-darwin}
 
 接 nvim-dap 时,C 和 Rust 的会话在 dap-ui 里停在 `Launching: …` 不动,
