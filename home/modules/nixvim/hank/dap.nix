@@ -126,6 +126,13 @@ in {
         settings.floating.border = "rounded";
       };
 
+      which-key.settings.spec = [
+        {
+          __unkeyed-1 = "<leader>d";
+          group = "Debugger";
+        }
+      ];
+
       # REPL 和 watch 里的补全:cmp-dap 是 nvim-cmp 的源,经 blink.compat 接进 blink。
       blink-compat.enable = true;
       cmp-dap.enable = true;

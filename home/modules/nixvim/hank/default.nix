@@ -908,64 +908,36 @@ in {
               end
             '';
           };
-          clue = {
-            triggers = [
-              {
-                mode = ["n" "x"];
-                keys = "<Leader>";
-              }
-              {
-                mode = "n";
-                keys = "[";
-              }
-              {
-                mode = "n";
-                keys = "]";
-              }
-              {
-                mode = "i";
-                keys = "<C-x>";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "g";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "'";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "`";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "\"";
-              }
-              {
-                mode = ["i" "c"];
-                keys = "<C-r>";
-              }
-              {
-                mode = "n";
-                keys = "<C-w>";
-              }
-              {
-                mode = ["n" "x"];
-                keys = "z";
-              }
-            ];
-            clues = [
-              (mkRaw ''require("mini.clue").gen_clues.square_brackets()'')
-              (mkRaw ''require("mini.clue").gen_clues.builtin_completion()'')
-              (mkRaw ''require("mini.clue").gen_clues.g()'')
-              (mkRaw ''require("mini.clue").gen_clues.marks()'')
-              (mkRaw ''require("mini.clue").gen_clues.registers()'')
-              (mkRaw ''require("mini.clue").gen_clues.windows()'')
-              (mkRaw ''require("mini.clue").gen_clues.z()'')
-            ];
-          };
         };
+      };
+
+      # 触发键、marks/registers、<C-w>/z/g 等内置提示都是 which-key 的默认行为,
+      # 这里只给 leader 下的前缀起组名。
+      which-key = {
+        enable = true;
+        lazyLoad.settings.event = "DeferredUIEnter";
+        settings.spec = [
+          {
+            __unkeyed-1 = "<leader>f";
+            group = "Find";
+          }
+          {
+            __unkeyed-1 = "<leader>l";
+            group = "LSP";
+          }
+          {
+            __unkeyed-1 = "<leader>h";
+            group = "Git hunks";
+          }
+          {
+            __unkeyed-1 = "<leader>t";
+            group = "Toggle";
+          }
+          {
+            __unkeyed-1 = "<leader>u";
+            group = "UI";
+          }
+        ];
       };
 
       treesitter = {
