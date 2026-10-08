@@ -878,7 +878,16 @@ in {
         mockDevIcons = true;
         modules = {
           icons = {};
-          tabline = {};
+          tabline = {
+            # jdt:// 缓冲区名是整条 URI,:t 会截到 query 尾巴;改取 ? 前路径的最后一段。
+            format = mkRaw ''
+              function(buf_id, label)
+                local name = vim.api.nvim_buf_get_name(buf_id)
+                label = name:match("^jdt://[^?]*/([^/?]+)") or label
+                return MiniTabline.default_format(buf_id, label)
+              end
+            '';
+          };
           pairs = {};
           statusline = {
             use_icons = true;
