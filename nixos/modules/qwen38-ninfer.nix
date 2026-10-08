@@ -40,9 +40,20 @@
     unloadTimeout = 60;
     useModelName = "qwen3.8-27b";
     # Responses 拒绝这些扩展字段，见 docs/incidents.md#qwen-responses-progress-injection。
-    filters.byPath."/v1/chat/completions".setParams = {
-      return_progress = true;
-      timings_per_token = true;
+    filters.byPath = {
+      "/v1/chat/completions".setParams = {
+        return_progress = true;
+        timings_per_token = true;
+      };
+      # Qwen 只有初始 system 消息，且没有加密推理表示；见 docs/incidents.md#qwen-codex-cli-responses。
+      "/v1/responses" = {
+        responsesSystemMessages = true;
+        stripParams = "include";
+      };
+      "/v1/responses/input_tokens" = {
+        responsesSystemMessages = true;
+        stripParams = "include";
+      };
     };
     capabilities = {
       "in" = ["text" "image"];
@@ -374,7 +385,10 @@ in {
     services.llama-swap = {
       enable = true;
       package = pkgs.llama-swap.overrideAttrs (old: {
-        patches = (old.patches or []) ++ [../../scripts/patches/llama-swap-parameter-defaults.patch];
+        patches = (old.patches or []) ++ [
+          ../../scripts/patches/llama-swap-parameter-defaults.patch
+          ../../scripts/patches/llama-swap-responses-system-messages.patch
+        ];
       });
       listenAddress = "127.0.0.1";
       port = llamaSwapPort;

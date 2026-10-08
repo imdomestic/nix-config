@@ -4,6 +4,24 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-08 · Codex CLI 的真实请求超出 NInfer Responses 子集 {#qwen-codex-cli-responses}
+
+普通 Responses 的 `200 / OK` 没有覆盖 Codex CLI 0.160.0 的实际请求。真实 CLI
+会发送 `custom` 工具、超过 64 字符的 Apps 工具名、
+`include: ["reasoning.encrypted_content"]`，以及 `developer` 消息；NInfer
+分别拒绝前三项，Qwen 内置模板则对最后一项报 `Unexpected message role`。
+**误导线索：** Responses 路由和基础 SSE 通过，被当成了完整客户端兼容性的证据。
+
+本机独立 `qwen` profile 使用 Qwen catalog，将 `apply_patch_tool_type` 设为
+`null` 并关闭 Apps；文件编辑仍通过终端工具完成。网关仅对 Qwen Responses
+合并顶层 `instructions` 和 `system` / `developer` 文本为初始 system 消息，
+保留用户、图像、推理和工具调用历史；计数接口使用相同转换。
+NInfer 没有加密推理表示，所以过滤 `include`，不伪造加密内容；明文推理仍可回放。
+
+补丁测试覆盖指令保留、工具和图像历史、幂等性、字符串输入，以及拒绝丢弃
+非文本特权消息。临时适配链路中，真实 CLI 已完成终端读取随机标记和工具结果回传，
+包括 `medium` 推理下的多请求循环；上线后还需用正式入口验证。
+
 ## 2026-10-08 · Qwen Responses 被两层进度参数注入阻断 {#qwen-responses-progress-injection}
 
 Codex 使用 `/v1/responses`，NInfer 会拒绝这个接口的未知参数。Qwen 原先在

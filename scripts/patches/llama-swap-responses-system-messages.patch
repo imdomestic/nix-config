@@ -1,0 +1,207 @@
+diff --git a/internal/config/filters.go b/internal/config/filters.go
+index a0be16d..c89ae64 100644
+--- a/internal/config/filters.go
++++ b/internal/config/filters.go
+@@ -27,6 +27,9 @@ type Filters struct {
+ 	// 不同协议分别配置请求字段，避免向 Responses 注入 Chat 专用参数。
+ 	ByPath map[string]Filters `yaml:"byPath"`
+ 
++	// Merge Responses instructions and privileged messages for system-only templates.
++	ResponsesSystemMessages bool `yaml:"responsesSystemMessages"`
++
+ 	// SetParamsByID maps requested model IDs to parameters to set/override in requests.
+ 	// Useful with aliases: a single loaded model can behave differently depending on
+ 	// which alias the client used. Applied after SetParams, so it can override those values.
+diff --git a/internal/server/filters.go b/internal/server/filters.go
+index 224ca34..187cf43 100644
+--- a/internal/server/filters.go
++++ b/internal/server/filters.go
+@@ -227,5 +227,9 @@ func applyFilters(body []byte, requested, useModelName string, f config.Filters)
+ 		}
+ 	}
+ 
++	if f.ResponsesSystemMessages {
++		return mergeResponsesSystemMessages(body)
++	}
++
+ 	return body, nil
+ }
+diff --git a/internal/server/responses_system_messages.go b/internal/server/responses_system_messages.go
+new file mode 100644
+index 0000000..f73f3bd
+--- /dev/null
++++ b/internal/server/responses_system_messages.go
+@@ -0,0 +1,101 @@
++package server
++
++import (
++	"bytes"
++	"encoding/json"
++	"fmt"
++	"strings"
++)
++
++// Qwen templates accept one initial system message, whereas Responses clients
++// send instructions separately and may replay developer messages in input.
++func mergeResponsesSystemMessages(body []byte) ([]byte, error) {
++	var request map[string]json.RawMessage
++	if err := json.Unmarshal(body, &request); err != nil {
++		return nil, err
++	}
++	var instructions []string
++	if raw := request["instructions"]; len(raw) > 0 && string(raw) != "null" {
++		var text string
++		if err := json.Unmarshal(raw, &text); err != nil {
++			return nil, fmt.Errorf("Responses instructions must be text: %w", err)
++		}
++		if text != "" {
++			instructions = append(instructions, text)
++		}
++	}
++	var input []json.RawMessage
++	raw := bytes.TrimSpace(request["input"])
++	if len(raw) > 0 && raw[0] == '"' {
++		var text string
++		if err := json.Unmarshal(raw, &text); err != nil {
++			return nil, err
++		}
++		item, _ := json.Marshal(map[string]any{"role": "user", "content": text})
++		input = append(input, item)
++	} else if len(raw) > 0 {
++		if err := json.Unmarshal(raw, &input); err != nil {
++			return nil, err
++		}
++	}
++	kept := make([]json.RawMessage, 0, len(input)+1)
++	for _, raw := range input {
++		var item struct {
++			Type    string          `json:"type"`
++			Role    string          `json:"role"`
++			Content json.RawMessage `json:"content"`
++		}
++		if err := json.Unmarshal(raw, &item); err != nil {
++			return nil, err
++		}
++		if (item.Type == "" || item.Type == "message") && (item.Role == "system" || item.Role == "developer") {
++			text, err := responsesInstructionText(item.Content)
++			if err != nil {
++				return nil, err
++			}
++			if text != "" {
++				instructions = append(instructions, text)
++			}
++		} else {
++			kept = append(kept, raw)
++		}
++	}
++	// Leave requests without instructions untouched, including string input.
++	if len(instructions) == 0 {
++		return body, nil
++	}
++	system, _ := json.Marshal(map[string]any{
++		"type": "message", "role": "system",
++		"content": []map[string]string{{"type": "input_text", "text": strings.Join(instructions, "\n\n")}},
++	})
++	kept = append([]json.RawMessage{system}, kept...)
++	encoded, err := json.Marshal(kept)
++	if err != nil {
++		return nil, err
++	}
++	request["input"] = encoded
++	delete(request, "instructions")
++	return json.Marshal(request)
++}
++
++func responsesInstructionText(raw json.RawMessage) (string, error) {
++	var text string
++	if json.Unmarshal(raw, &text) == nil {
++		return text, nil
++	}
++	var parts []struct {
++		Type string  `json:"type"`
++		Text *string `json:"text"`
++	}
++	if err := json.Unmarshal(raw, &parts); err != nil {
++		return "", fmt.Errorf("Responses privileged message must contain text: %w", err)
++	}
++	texts := make([]string, 0, len(parts))
++	for _, part := range parts {
++		if (part.Type != "input_text" && part.Type != "text") || part.Text == nil {
++			return "", fmt.Errorf("cannot merge non-text Responses privileged message")
++		}
++		texts = append(texts, *part.Text)
++	}
++	return strings.Join(texts, "\n"), nil
++}
+diff --git a/internal/server/responses_system_messages_test.go b/internal/server/responses_system_messages_test.go
+new file mode 100644
+index 0000000..e34e324
+--- /dev/null
++++ b/internal/server/responses_system_messages_test.go
+@@ -0,0 +1,66 @@
++package server
++
++import (
++	"encoding/json"
++	"github.com/mostlygeek/llama-swap/internal/config"
++	"github.com/tidwall/gjson"
++	"testing"
++)
++
++func TestResponsesSystemMessagesPreserveTranscript(t *testing.T) {
++	body := []byte(`{"model":"qwen","instructions":"base","input":[{"role":"developer","content":[{"type":"input_text","text":"rules"}]},{"role":"user","content":[{"type":"input_text","text":"read"},{"type":"input_image","image_url":"data:image/png;base64,AAAA"}]},{"type":"reasoning","summary":[{"type":"summary_text","text":"think"}]},{"type":"function_call","call_id":"call_1","name":"exec_command","arguments":"{}"},{"type":"function_call_output","call_id":"call_1","output":"OK"},{"role":"system","content":"later"}]}`)
++	got, err := applyFilters(body, "qwen", "", config.Filters{ResponsesSystemMessages: true})
++	if err != nil {
++		t.Fatal(err)
++	}
++	if gjson.GetBytes(got, "instructions").Exists() {
++		t.Fatal("instructions were not merged")
++	}
++	if text := gjson.GetBytes(got, "input.0.content.0.text").String(); text != "base\n\nrules\n\nlater" {
++		t.Fatalf("instruction loss: %q", text)
++	}
++	var before, after []json.RawMessage
++	if err := json.Unmarshal([]byte(gjson.GetBytes(body, "input").Raw), &before); err != nil {
++		t.Fatal(err)
++	}
++	if err := json.Unmarshal([]byte(gjson.GetBytes(got, "input").Raw), &after); err != nil {
++		t.Fatal(err)
++	}
++	if len(after) != 5 {
++		t.Fatalf("unexpected input count %d", len(after))
++	}
++	for i := 1; i < 5; i++ {
++		if string(before[i]) != string(after[i]) {
++			t.Fatalf("transcript item %d changed", i)
++		}
++	}
++	twice, err := applyFilters(got, "qwen", "", config.Filters{ResponsesSystemMessages: true})
++	if err != nil || string(twice) != string(got) {
++		t.Fatalf("not idempotent: %s, %v", twice, err)
++	}
++	unfiltered, err := applyFilters(body, "qwen", "", config.Filters{})
++	if err != nil || string(unfiltered) != string(body) {
++		t.Fatal("changed request without opt-in")
++	}
++}
++
++func TestResponsesSystemMessagesStringInput(t *testing.T) {
++	got, err := mergeResponsesSystemMessages([]byte(`{"instructions":"base","input":"hello"}`))
++	if err != nil {
++		t.Fatal(err)
++	}
++	if gjson.GetBytes(got, "input.0.role").String() != "system" || gjson.GetBytes(got, "input.1.content").String() != "hello" {
++		t.Fatalf("bad string input: %s", got)
++	}
++}
++
++func TestResponsesSystemMessagesRejectNonText(t *testing.T) {
++	for _, body := range []string{
++		`{"input":[{"role":"developer","content":[{"type":"input_image","image_url":"image"}]}]}`,
++		`{"input":[{"role":"developer","content":[{"type":"input_text"}]}]}`,
++	} {
++		if _, err := mergeResponsesSystemMessages([]byte(body)); err == nil {
++			t.Fatal("silently discarded unsupported privileged content")
++		}
++	}
++}
