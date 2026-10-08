@@ -4,6 +4,21 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-08 · Qwen Responses 被两层进度参数注入阻断 {#qwen-responses-progress-injection}
+
+Codex 使用 `/v1/responses`，NInfer 会拒绝这个接口的未知参数。Qwen 原先在
+llama-swap 的全局 `filters.setParams` 中注入 `return_progress` 和
+`timings_per_token`，导致 Responses 返回 400。
+
+**误导线索：** 把注入限定到 Chat Completions 后，临时 llama-swap 直连真实后端
+已经返回 200，但这没有覆盖外层 llama-swap-proxy。首次上线后，对外入口仍报
+`unknown parameter: return_progress`；外层启动日志确认其默认自动注入仍开启。
+
+最终由内层 llama-swap 的 `filters.byPath` 统一负责 Chat Completions 的进度和
+timings 参数，并复用已有按路径过滤补丁；外层增加
+`--disable-return-progress-injection`。带此标志的临时外层网关经过完整链路，
+Responses 和 Chat Completions 均返回 `200 / OK`，后者仍含后端 timings。
+
 ## 2026-10-06 · Bonsai 转换环境缺少 CI 的 IFD 预热 {#ci-bonsai-ifd-warmup}
 
 合并 Bonsai NInfer 的 `340d16e` 后，`flake-check` 持续失败，直到更新

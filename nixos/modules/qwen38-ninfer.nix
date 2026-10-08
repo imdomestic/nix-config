@@ -39,7 +39,7 @@
     ttl = 0;
     unloadTimeout = 60;
     useModelName = "qwen3.8-27b";
-    # Responses 不接受这些扩展字段；只给 OpenCode 的 Chat Completions 注入。
+    # Responses 拒绝这些扩展字段，见 docs/incidents.md#qwen-responses-progress-injection。
     filters.byPath."/v1/chat/completions".setParams = {
       return_progress = true;
       timings_per_token = true;
@@ -106,6 +106,7 @@
         --listen "$tailnet_address:${toString cfg.gatewayPort}" \
         --upstream http://127.0.0.1:${toString llamaSwapPort} \
         --config ${llamaSwapConfig} \
+        --disable-return-progress-injection \
         --sessions-dir ${cfg.stateDirectory}/llama-swap-proxy \
         --default-user hank \
         --opencode-hostname "$tailnet_address:${toString cfg.gatewayPort}"
