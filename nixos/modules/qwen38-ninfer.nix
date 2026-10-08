@@ -39,7 +39,8 @@
     ttl = 0;
     unloadTimeout = 60;
     useModelName = "qwen3.8-27b";
-    filters.setParams = {
+    # Responses 不接受这些扩展字段；只给 OpenCode 的 Chat Completions 注入。
+    filters.byPath."/v1/chat/completions".setParams = {
       return_progress = true;
       timings_per_token = true;
     };
@@ -371,6 +372,9 @@ in {
 
     services.llama-swap = {
       enable = true;
+      package = pkgs.llama-swap.overrideAttrs (old: {
+        patches = (old.patches or []) ++ [../../scripts/patches/llama-swap-parameter-defaults.patch];
+      });
       listenAddress = "127.0.0.1";
       port = llamaSwapPort;
       settings = llamaSwapSettings;
