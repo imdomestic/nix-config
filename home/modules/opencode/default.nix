@@ -223,7 +223,53 @@ in {
               input = ["text" "image"];
               output = ["text"];
             };
-          });
+          })
+          // lib.mapAttrs (_: model: {
+            inherit (model) name;
+            reasoning = true;
+            tool_call = true;
+            limit = {
+              context = 1048576;
+              output = model.output;
+            };
+            modalities = {
+              input = ["text" "image"];
+              output = ["text"];
+            };
+          }) {
+            "gemini-pro-agent" = {
+              name = "Gemini 3.1 Pro (High)";
+              output = 65535;
+            };
+            "gemini-3.1-pro-low" = {
+              name = "Gemini 3.1 Pro (Low)";
+              output = 65535;
+            };
+            "gemini-3-flash" = {
+              name = "Gemini 3 Flash";
+              output = 65536;
+            };
+            "gemini-3.6-flash-high" = {
+              name = "Gemini 3.6 Flash (High)";
+              output = 65536;
+            };
+            "gemini-3.7-flash-high" = {
+              name = "Gemini 3.7 Flash (High)";
+              output = 65536;
+            };
+            "gemini-3.8-flash-high" = {
+              name = "Gemini 3.8 Flash (High)";
+              output = 65536;
+            };
+            "gemini-3.1-flash-lite" = {
+              name = "Gemini 3.1 Flash Lite";
+              output = 65535;
+            };
+            "gemini-3.5-flash-lite" = {
+              name = "Gemini 3.5 Flash Lite";
+              output = 65535;
+            };
+          };
       };
       provider.ninfer = {
         npm = "@ai-sdk/openai-compatible";
