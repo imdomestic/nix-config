@@ -167,10 +167,13 @@ in {
       inherit config lib pkgs inputs;
     };
     system.build.windowsVMOEMDriver = pkgs.callPackage ../../../pkgs/268v-windows-oem-driver {};
+    system.build.windowsVMD3DProbe = pkgs.callPackage ../../../pkgs/vfio-d3d-probe {};
 
     # Reserve the only GPU at boot; see docs/268v-windows-vfio.md.
     specialisation.vfio.configuration = {
       my.windowsVM.passthrough = true;
+      # Preserve the working OEM-driver layout; see docs/268v-windows-vfio.md.
+      my.windowsVM.softwareDisplay = false;
       # Driver compatibility experiment; see docs/268v-windows-vfio.md.
       my.windowsVM.hideHypervisor = true;
       system.nixos.tags = ["vfio"];
