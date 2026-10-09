@@ -212,6 +212,65 @@ QEMU 运行目录并设定文件属主，客户机也禁用串口 getty，避免
 宿主 toplevel 仍与 generation 16 相同，没有执行额外系统切换。
 实际核显直通结果须等下一轮 tank 的 `linux-serial.log`，不能用这次基线替代。
 
+第七次实际结果（2026-10-09）：17:11:52 启动 Linux 客户机，17:12:24 收到完成
+标记，17:14:02 自动恢复普通系统与 `xe` 桌面。客户机 Linux 7.2.4 的 `xe`
+成功初始化 `8086:64a0`，创建 `renderD128`；eDP-1 为 connected，DP/HDMI 为
+disconnected。Mesa 26.1.8 的 Vulkan 枚举出 Intel LNL 集成 GPU（vendor
+`0x8086`、device `0x64a0`），另有 llvmpipe；并非仅软件渲染器。OpRegion 和
+扩展 VBT 签名也有效。这验证了 Linux 驱动与 Vulkan 设备枚举，**未运行 3D
+负载，也未人工确认内屏画面**，不能写成 Windows 或游戏已经成功。
+
+日志仍有 `GSC proxy component not bound`（客户机未传入 MEI）以及 CPU uncore
+MSR 访问告警；没有把“枚举成功”夸大为全部 GPU 功能通过。结果归档在 tank
+`/var/tmp/268v-vfio-probe-seventh-20261009/`。Linux 与 Windows 的虚拟 PCI 外设
+不同，BAR 分配地址也不同；此对照支持优先调查 Windows 初始化路径，但不能
+完全排除设备布局差异。
+第七次也出现相同的 `vfio_container_dma_map ... -22` / BAR peer-to-peer 警告，
+Linux 仍完成上述初始化，因此不能仅凭该警告认定 Windows Code 43 的根因。
+
+## Windows 原厂驱动对照
+
+下一轮保留第六次的 Windows VM 硬件与 CPU 参数，改用
+[联想 Yoga Slim 7 14ILL10 原厂驱动](https://support.lenovo.com/us/en/downloads/ds573068-intel-vga-driver-for-windows-11-64-bit-yoga-slim-7-14ill10-lenovo-slim-7-14ill10)。
+`xqy7067fvs1jttg0.exe` 的 SHA256 已与官网核对为
+`c6bdda995aad3d80a590cf1029bb4e7b23542566c85f98a4d1656f143a647418`。
+包内主 INF 为 `32.0.101.7026`，明确包含
+`PCI\VEN_8086&DEV_64A0&SUBSYS_383E17AA`。不要套用 11–14 代核显的 7085
+下载包；版本号接近不能代替硬件 ID 检查。
+
+下载、校验、解包和 ZIP 打包由
+`system.build.windowsVMOEMDriver` 声明；保留原始 INF/CAT/SYS 内容，INF 是
+UTF-16LE，构建检查按其编码读取。此构建目标不将驱动安装到宿主。
+
+```sh
+nix build --out-link /tmp/268v-oem-driver .#nixosConfigurations.268v.config.system.build.windowsVMOEMDriver --max-jobs 2 --cores 4
+sha256sum /tmp/268v-oem-driver/LenovoGraphics.zip
+```
+
+`scripts/vfio-probe/stage-lenovo.ps1` 在 Windows 管理员环境验证 ZIP hash 和
+两个 catalog 签名，确认 `oem9.inf` 仍是 9033，导出到
+`C:\IntelDrivers\Backup9033` 后预置原厂主驱动和扩展；均成功才移除旧主驱动。
+这只是驱动版本实验，实际绑定与 Code 43 状态须等下一轮直通报告。
+
+10 月 9 日普通模式实测 `Win32_DeviceGuard` 的
+`VirtualizationBasedSecurityStatus=0`，SecurityServicesConfigured/Running 均为
+`[0]`，没有修改 VBS 策略。采集脚本新增 Windows 版本、启动时间、VBS 状态和
+Display 驱动库列表；`HypervisorPresent=true` 只能说明当前普通 VM 能看到
+hypervisor，不能据此认定嵌套 Hyper-V 已启动。
+
+第八次准备已在 Windows 内执行：打包 ZIP 的 SHA256 为
+`c212abf4e3890d6a754998e06722cf7d7f0f05d9496caf0260dc2396b9249489`，两份 catalog
+均为 `Valid / Signature verified`，原 9033 主驱动导出成功并移除。7026 主驱动
+分配为 `oem17.inf`，扩展为 `oem22.inf`；PnP 为该 PCI/Subsystem ID 将二者列为
+Best Ranked。驱动库中的 `oem11.inf` 是另一份 `iigd_dch_d.inf` / 9033，没有
+出现在该设备的匹配驱动列表，因此未一并删除。断开状态的旧设备仍显示原来
+`oem9.inf` 的记录，不代表新驱动已绑定；实际绑定仍需下一轮确认。
+更新后的采集脚本已成功上报，基线在宿主
+`/var/tmp/268v-vfio-probe/baseline-before-eighth.json`；Windows 驱动变更日志在
+`C:\IntelDrivers\stage-lenovo.log`。构建包为
+`/nix/store/y7i3y9k7fbb8vf09psf63rwvzrd4fxcc-268v-windows-oem-driver-32.0.101.7026`，
+宿主运行闭包仍匹配 generation 16，无需系统切换。
+
 ## 2026-10-04 相似问题检索
 
 检索了 Lunar Lake、268V、Arc 140V、8086:64a0 与 passthrough / VFIO / Code 43

@@ -6,9 +6,17 @@ try {
     $intel = @(Get-PnpDevice -Class Display -PresentOnly | Where-Object InstanceId -like 'PCI\VEN_8086*')
     $report = [ordered]@{
         time = (Get-Date).ToString('o')
+        operatingSystem = Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber, LastBootUpTime
+        hypervisorPresent = (Get-CimInstance Win32_ComputerSystem).HypervisorPresent
+        deviceGuard = $(try {
+            Get-CimInstance -Namespace root\Microsoft\Windows\DeviceGuard -ClassName Win32_DeviceGuard | Select-Object VirtualizationBasedSecurityStatus, SecurityServicesConfigured, SecurityServicesRunning
+        } catch { $_.Exception.Message })
         display = @(Get-CimInstance Win32_VideoController | Select-Object Name, PNPDeviceID, DriverVersion, Status, ConfigManagerErrorCode, CurrentHorizontalResolution, CurrentVerticalResolution)
         problems = @(Get-CimInstance Win32_PnPEntity | Where-Object ConfigManagerErrorCode -ne 0 | Select-Object Name, PNPDeviceID, ConfigManagerErrorCode)
         drivers = (& pnputil.exe /enum-devices /class Display /drivers | Out-String)
+        displayDriverStore = $(try {
+            @(Get-WindowsDriver -Online -All | Where-Object ClassName -eq 'Display' | Select-Object Driver, OriginalFileName, ProviderName, Version)
+        } catch { $_.Exception.Message })
         intelProperties = @($intel | ForEach-Object {
             Get-PnpDeviceProperty -InstanceId $_.InstanceId -KeyName DEVPKEY_Device_ProblemStatus,DEVPKEY_Device_ProblemCode,DEVPKEY_Device_DriverInfPath -ErrorAction SilentlyContinue | Select-Object InstanceId, KeyName, Type, Data
         })
