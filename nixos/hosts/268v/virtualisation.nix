@@ -17,6 +17,7 @@
     desktop = checkedDomain {
       passthrough = false;
       hideHypervisor = false;
+      localInput = false;
     };
     vfio = checkedDomain {
       passthrough = true;
@@ -31,6 +32,12 @@
       hideHypervisor = true;
       softwareDisplay = false;
     };
+    localInput = checkedDomain {
+      passthrough = true;
+      hideHypervisor = true;
+      softwareDisplay = false;
+      localInput = true;
+    };
   };
 in {
   options.my.windowsVM = {
@@ -40,6 +47,7 @@ in {
       description = "Absolute runtime path to a Windows installation ISO; null ejects the CD.";
     };
     passthrough = lib.mkEnableOption "exclusive Arc 140V passthrough (use the vfio specialisation)";
+    localInput = lib.mkEnableOption "built-in keyboard and touchpad forwarding in VFIO mode";
     hideHypervisor = lib.mkEnableOption "basic CPUID/KVM signature hiding, without timing concealment";
     softwareDisplay = lib.mkOption {
       type = lib.types.bool;
@@ -66,6 +74,10 @@ in {
       {
         assertion = cfg.installISO == null || lib.hasPrefix "/" cfg.installISO;
         message = "my.windowsVM.installISO must be an absolute runtime path.";
+      }
+      {
+        assertion = !cfg.localInput || cfg.passthrough;
+        message = "Windows local input forwarding requires the exclusive VFIO mode.";
       }
     ];
 
@@ -152,6 +164,7 @@ in {
         cp ${checkedDomains.vfio} "$out/vfio.xml"
         cp ${checkedDomains.hidden} "$out/vfio-hidden.xml"
         cp ${checkedDomains.headless} "$out/vfio-headless.xml"
+        cp ${checkedDomains.localInput} "$out/vfio-local-input.xml"
         for definition in "$out"/*.xml; do
           virt-xml-validate "$definition" domain
         done
@@ -174,6 +187,9 @@ in {
       my.windowsVM.passthrough = true;
       # Preserve the working OEM-driver layout; see docs/268v-windows-vfio.md.
       my.windowsVM.softwareDisplay = false;
+      my.windowsVM.localInput = true;
+      # keyd otherwise holds an exclusive grab on the physical keyboard.
+      services.keyd.enable = lib.mkForce false;
       # Driver compatibility experiment; see docs/268v-windows-vfio.md.
       my.windowsVM.hideHypervisor = true;
       system.nixos.tags = ["vfio"];
