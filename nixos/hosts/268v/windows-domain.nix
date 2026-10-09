@@ -155,30 +155,35 @@ in
           index = 0;
         }
       ];
-      input = [
-        {
-          type = "tablet";
-          bus = "usb";
-        }
-        {
-          type = "keyboard";
-          bus = "ps2";
-        }
-      ] ++ lib.optionals cfg.localInput [
-        {
-          type = "evdev";
-          source = {
-            dev = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
-            grab = "all";
-            grabToggle = "shift-shift";
-            repeat = true;
-          };
-        }
-        {
-          type = "evdev";
-          source.dev = "/dev/input/by-path/pci-0000:00:19.0-platform-i2c_designware.3-event-mouse";
-        }
-      ];
+      input =
+        [
+          {
+            type =
+              if cfg.localInput
+              then "mouse"
+              else "tablet";
+            bus = "usb";
+          }
+          {
+            type = "keyboard";
+            bus = "ps2";
+          }
+        ]
+        ++ lib.optionals cfg.localInput [
+          {
+            type = "evdev";
+            source = {
+              dev = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
+              grab = "all";
+              grabToggle = "shift-shift";
+              repeat = true;
+            };
+          }
+          {
+            type = "evdev";
+            source.dev = "/dev/input/vfio-touchpad";
+          }
+        ];
       graphics = {
         type = "spice";
         autoport = true;

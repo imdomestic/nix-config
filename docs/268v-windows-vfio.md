@@ -3,8 +3,8 @@
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
 **第九次移除软件 VGA 后 Code 43 消失；第十次 Arc 140V 通过离屏 Direct3D 绘制
-及像素读回。第十一次用户反馈“好像有输出了”，但键盘等无法操作；显示稳定性、
-本机输入和游戏仍待验证，不能算本机游玩方案已完成。命运 2 尚未测试。**
+及像素读回。第十二次用户反馈触控板像绝对坐标，“其他好像没啥问题”；
+正修正触控板转发，显示稳定性和游戏仍待验证。命运 2 尚未测试。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -401,13 +401,18 @@ GPU 仍正常；Windows 识别 `LEN8AC3` / `Integrated Monitor (LEN140WQ+)`，
 通过 NixVirt 原生 input type=evdev 声明以下稳定路径，避免 event 编号跨启动变化：
 
 - 键盘：`/dev/input/by-path/platform-i8042-serio-0-event-kbd`
-- 触摸板：`/dev/input/by-path/pci-0000:00:19.0-platform-i2c_designware.3-event-mouse`
+- 触摸板原始输入：`/dev/input/by-path/pci-0000:00:19.0-platform-i2c_designware.3-event-mouse`
+- 触摸板交给 QEMU 的输入：`/dev/input/vfio-touchpad`，由下述 libinput 转换服务创建
 
 VFIO 模式关闭 `services.keyd`，避免其独占物理键盘，保留正常启动的键位映射。
-QEMU 将输入转送既有 PS/2 键盘/USB tablet，不要求新增 Windows 驱动。
+QEMU 将输入转送 PS/2 键盘/USB mouse，不要求新增 Windows 驱动。
+普通 SPICE 模式仍使用 USB tablet。
 同时按下再释放左右 Shift 可切换这一组设备的抓取状态；默认启动时抓取。
 用户确认这款键盘没有右 Ctrl，因此不使用常见的 ctrl-ctrl 组合。
-触摸板先提供绝对指针和物理按键，多指手势、轻触点击不在此基础转发的保证范围。
+触摸板经 libinput 提供相对移动、轻触点击和双指滚动；不提供 Windows Precision
+Touchpad 的三指/四指手势。`vfio-touchpad.service` 仅在 VFIO 模式运行，等待物理
+设备就绪，再创建 uinput 相对指针；NixVirt 等待该服务准备完成。
+转换程序只打开这一块触摸板，不读取键盘事件。
 没有传入整个 I2C/USB 控制器，也没有给 QEMU 用户加入通用 input 组。
 实现依据为 [QEMU 10.2.4 input-linux](https://github.com/qemu/qemu/blob/v10.2.4/ui/input-linux.c)
 与 [libvirt input 定义](https://libvirt.org/formatdomain.html#input-devices)。
@@ -432,6 +437,32 @@ generation 19：
 `/nix/store/fwlxiy2mh43dn653lswiv7jz00231hya-nixos-system-268v-26.05.20260911.21a67dc`。
 对应检查产物为 `/nix/store/fzm9lwjhbimyrsxj1ag70q6b412na4fz-268v-windows-vm-checks`。
 取消日志归档于 tank `/var/tmp/268v-vfio-probe-twelfth-aborted-20261009/`。
+
+第十二轮实际测试：19:48:22 Windows 启动，19:50:08 收到报告，20:01:54
+恢复普通 Linux 和软件 VGA 定义。Arc 140V 仍为 OK / ProblemCode 0，2880×1800，
+问题设备列表为空；QEMU 打开了键盘和触摸板，keyd 未运行。用户反馈触控板
+像绝对坐标，“其他好像没啥问题”。归档 tank `/var/tmp/268v-vfio-probe-twelfth-20261009/`。
+
+这里误判的是“有指针事件即可用”：QEMU input-linux 把触控板 ABS_X/Y 直接
+交给 tablet，缺少 Linux 桌面通常由 libinput 完成的相对位移和手势解释。
+因此不应仅修改 Windows 指针速度，也不必改核显或内核。现在由
+`pkgs/vfio-touchpad` 使用 [libinput pointer API](https://wayland.freedesktop.org/libinput/doc/latest/api/group__event__pointer.html)
+解释触控板，再用 libevdev/uinput 输出 REL_X/Y、鼠标按键和滚轮。QEMU 只读取
+转换后的设备。libinput 的小数位移累计保留，双指滚动结束时清零余量。
+
+`scripts/vfio-probe/touchpad-integration.py` 在本机通过：克隆设备能力创建
+模拟触控板，验证右滑产生相对 X、输出无 ABS 轴、抬手换位置不跳指针、轻触
+产生左键按下/松开、双指下滑产生滚轮事件。测试只读取真实设备的能力元数据，
+不抓取真实触摸板；退出时销毁模拟设备。需 root、python-evdev，并将构建后的
+`vfio-touchpad` 可执行文件路径作为唯一参数。真实 Windows 手感仍待下一轮验证。
+
+第十三轮准备：程序以 `-Wall -Wextra -Werror` 构建，五份 XML 和 QEMU 参数转换
+通过（USB mouse、虚拟相对指针、shift-shift）；普通/VFIO 系统完整构建通过。
+已应用 generation 20：
+`/nix/store/b4wzc2ad57j9x7dri3r1hn00q24b85vc-nixos-system-268v-26.05.20260911.21a67dc`。
+检查产物 `/nix/store/xy8h9ak19v3d0psqzs21qmm3agnzyzcs-268v-windows-vm-checks`。
+普通系统 keyd 仍 active、没有 vfio-touchpad unit。Windows 启动诊断任务已重建，
+随后从客户机命令行正常关机。控制器还会保存转换服务日志，失败时自动恢复。
 
 ## 2026-10-04 相似问题检索
 

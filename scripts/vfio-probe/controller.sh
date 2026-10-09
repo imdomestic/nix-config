@@ -50,6 +50,7 @@ capture() {
 
 evidence() {
     capture kernel.log 'journalctl -b -k --no-pager'
+    if $interactive; then capture touchpad.log 'journalctl -b -u vfio-touchpad.service --no-pager'; fi
     capture qemu.log "cat /var/log/libvirt/qemu/$domain.log"
     if [[ "$mode" == linux ]]; then
         capture linux-serial.log 'cat /var/lib/libvirt/qemu/vfio-linux-probe-serial.log'
@@ -165,6 +166,7 @@ remote 'readlink /run/current-system; cat /proc/cmdline; lspci -nnk -s 00:02.0; 
 remote 'test "$(basename "$(readlink /sys/bus/pci/devices/0000:00:02.0/driver)")" = vfio-pci'
 if $interactive; then
     remote '! systemctl is-active --quiet keyd.service'
+    remote 'systemctl is-active --quiet vfio-touchpad.service && test -c /dev/input/vfio-touchpad'
 fi
 deadline=$((SECONDS + 60))
 while ((SECONDS < deadline)); do
