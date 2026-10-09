@@ -2,7 +2,7 @@
 
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
-**第三至第五次测试均确认 Arc 140V 在 Windows 中报 Code 43；核显加速、内屏输出和命运 2 均未成功验证。**
+**第三至第六次测试均确认 Arc 140V 在 Windows 中报 Code 43；核显加速、内屏输出和命运 2 均未成功验证。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -162,6 +162,55 @@ tank 日志显示 16:07:07 发出 `virsh shutdown` 后，VM 始终未停止；16
 libvirt 已确认 `shut off (shutdown)`，未强制终止 VM。
 本轮继续第六次 CPU 特征对照，启动前先确认 VM 已停止，避免再次卡在同一步。
 最新 checkout 的 268V toplevel 与运行中的 generation 16 完全相同，无需重建系统。
+
+第六次实际结果（2026-10-09）：08:52:29 启动 Windows，08:53:52 收到报告，
+08:55:33 自动恢复普通系统、`xe` 与桌面。实际 QEMU 日志确认 CPU 参数为
+`host,migratable=off,hypervisor=off,kvm=off`，但 Intel `32.0.101.9033` 仍为
+Code 43；本次启动新增的 DxgKrnl 549 仍报告
+`StartAdapter_DpiFdoEnumChildDevicesFailed` / `The request is not supported`。
+因此这组基础隐藏设置未解决本机驱动故障，不能推导需要 CPUID 时序补丁。
+
+本轮客户机 ASLS=`0x7bbd2000`，OpRegion 3.2 签名有效；RVDA=`0x2000`、
+RVDS=7,680，客户机 `0x7bbd4000` 处实际读到 `$VBT LUNARLAKE` 扩展 VBT。
+内嵌 VBT 为空不构成缺失 VBT 的证据。这里只验证地址、大小和签名，尚未证明
+每个显示连接器的数据和驱动兼容。完整结果已归档至 **tank**
+`/var/tmp/268v-vfio-probe-sixth-20261009/`。旧 `b650` 现已更名为 `taipan`，
+控制程序允许 `taipan|tank`；上文中的 b650 是历史测试时的主机名。
+
+## Linux 客户机对照
+
+`system.build.windowsVMLinuxProbe` 从同一份 Windows domain 定义派生临时
+`vfio-linux-probe`，保留 Q35、OVMF、GPU 地址、ROM、CPU 特征和 16 GiB 内存。
+客户机使用宿主同版内核，根目录为 tmpfs，通过只读 9p 访问 `/nix/store`；
+不传入 Windows 虚拟磁盘、物理磁盘或网卡。NixOS oneshot 服务输出 PCI 驱动、
+DRM 连接器、`drm_info`、`vulkaninfo --summary` 和内核日志后自动关机。
+Vulkan 列出软件设备不算核显成功，必须核对 Intel 硬件设备和 `xe` 初始化结果。
+这用于区分跨客户机的设备问题与 Windows 初始化路径问题，不代表已经验证加速。
+
+```sh
+nix build --out-link /tmp/268v-linux-probe .#nixosConfigurations.268v.config.system.build.windowsVMLinuxProbe --max-jobs 2 --cores 4
+```
+
+构建产物包含 `desktop.xml`（不直通，用于先验证采集流程）和 `vfio.xml`。
+仅显式 `virsh create` 启动临时 VM，不加入 NixVirt 的持久 domain 列表；
+它使用独立的 NVRAM。串口文件需预先由 root 创建并交给 `qemu-libvirtd`：
+`/var/lib/libvirt/qemu/vfio-linux-probe-serial.log`。
+控制程序 `--linux` 模式读取宿主
+`/var/tmp/268v-vfio-probe/linux-probe/vfio.xml`，仍先确认 Windows 已关闭，
+再经过 VFIO 启动、采集、正常启动恢复流程。`--linux --check` 只做预检。
+每轮前归档并清空旧串口日志；Linux 报告完成标记只说明采集完成，不等于 GPU 成功。
+
+2026-10-09 已完成两份 XML schema/QEMU 参数校验，另检查无磁盘、无网卡、
+store 只读、GPU 只出现在 VFIO 版、NVRAM 与 Windows 分离。
+普通模式实际运行完成 `VFIO_LINUX_PROBE_DONE` 并自动关机；Vulkan 只列出
+`llvmpipe`，符合未传入核显的基线。新 `--domain` 参数已从该 VM 的 Q35 ECAM
+实际读出软件 VGA `1234:1111`。基线保存在宿主
+`/var/tmp/268v-vfio-probe/linux-baseline-20261009.log`。
+初次创建时串口路径位于 root-only 目录，QEMU 无法打开；已改为 libvirt 的
+QEMU 运行目录并设定文件属主，客户机也禁用串口 getty，避免与诊断输出共用终端。
+当前构建产物是 `/nix/store/ipwf2v2xhdk3l8dzr4qgaxj6p49b1yvs-268v-vfio-linux-probe`。
+宿主 toplevel 仍与 generation 16 相同，没有执行额外系统切换。
+实际核显直通结果须等下一轮 tank 的 `linux-serial.log`，不能用这次基线替代。
 
 ## 2026-10-04 相似问题检索
 

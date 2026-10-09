@@ -9,7 +9,7 @@ import subprocess
 def monitor(command):
     result = subprocess.run(
         [
-            "virsh", "-c", "qemu:///system", "qemu-monitor-command", "windows11",
+            "virsh", "-c", "qemu:///system", "qemu-monitor-command", args.domain,
             json.dumps({"execute": "human-monitor-command", "arguments": {
                 "command-line": command,
             }}),
@@ -36,6 +36,7 @@ def read_words(address, count):
 
 
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--domain", default="windows11")
 parser.add_argument("--bdf", default="00:02.0")
 args = parser.parse_args()
 match = re.fullmatch(r"([0-9a-fA-F]{2}):([0-9a-fA-F]{2})\.([0-7])", args.bdf)
