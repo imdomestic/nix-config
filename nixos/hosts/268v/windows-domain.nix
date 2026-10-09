@@ -170,7 +170,7 @@ in
           source = {
             dev = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
             grab = "all";
-            grabToggle = "ctrl-ctrl";
+            grabToggle = "shift-shift";
             repeat = true;
           };
         }
