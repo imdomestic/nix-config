@@ -26,6 +26,11 @@
       passthrough = true;
       hideHypervisor = true;
     };
+    headless = checkedDomain {
+      passthrough = true;
+      hideHypervisor = true;
+      softwareDisplay = false;
+    };
   };
 in {
   options.my.windowsVM = {
@@ -36,6 +41,11 @@ in {
     };
     passthrough = lib.mkEnableOption "exclusive Arc 140V passthrough (use the vfio specialisation)";
     hideHypervisor = lib.mkEnableOption "basic CPUID/KVM signature hiding, without timing concealment";
+    softwareDisplay = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Provide a software VGA console alongside any passed-through GPU.";
+    };
     memoryGiB = lib.mkOption {
       type = lib.types.ints.between 4 24;
       default = 16;
@@ -141,6 +151,7 @@ in {
         cp ${checkedDomains.desktop} "$out/desktop.xml"
         cp ${checkedDomains.vfio} "$out/vfio.xml"
         cp ${checkedDomains.hidden} "$out/vfio-hidden.xml"
+        cp ${checkedDomains.headless} "$out/vfio-headless.xml"
         for definition in "$out"/*.xml; do
           virt-xml-validate "$definition" domain
         done

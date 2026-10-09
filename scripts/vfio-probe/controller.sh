@@ -17,14 +17,19 @@ vfio=
 python=/nix/store/0if41r2dp11y0v833p5yrpgr8mdanqjk-python3-3.13.15-env/bin/python3
 rebooted=false
 mode=windows
+headless=false
 check=false
 for arg in "$@"; do
     case "$arg" in
         --linux) mode=linux ;;
+        --headless) headless=true ;;
         --check) check=true ;;
         *) log "Unknown argument: $arg"; exit 1 ;;
     esac
 done
+if $headless && [[ "$mode" == linux ]]; then
+    log '--headless applies only to Windows'; exit 1
+fi
 domain=windows11
 [[ "$mode" == linux ]] && domain=vfio-linux-probe
 
@@ -44,7 +49,7 @@ evidence() {
         capture guest.json 'cat /var/tmp/268v-vfio-probe/guest.json'
     fi
     capture firmware.json "$python /var/tmp/268v-vfio-probe/firmware.py --domain $domain"
-    if remote "virsh -c qemu:///system qemu-monitor-command $domain '{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"/tmp/268v-vfio-screen.png\",\"format\":\"png\"}}'"; then
+    if ! $headless && remote "virsh -c qemu:///system qemu-monitor-command $domain '{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"/tmp/268v-vfio-screen.png\",\"format\":\"png\"}}'"; then
         capture screen.png 'cat /tmp/268v-vfio-screen.png'
     fi
 }
@@ -68,6 +73,20 @@ restore() {
         current=$(remote 'readlink /run/current-system' 2>/dev/null || true)
         if [[ -n "$current" && "$current" != *268v-vfio* ]]; then
             remote 'systemctl is-active display-manager; lspci -nnk -s 00:02.0' >"$out/restored.txt" 2>&1 || true
+            if $headless; then
+                local definition_deadline=$((SECONDS + 60))
+                while ((SECONDS < definition_deadline)); do
+                    capture restored-domain.xml 'virsh -c qemu:///system dumpxml --inactive windows11'
+                    if [[ -f "$out/restored-domain.xml" ]] && grep -Eq "<model type=['\"]vga['\"]" "$out/restored-domain.xml" && ! grep -q '<hostdev' "$out/restored-domain.xml"; then
+                        log 'Normal Windows software VGA definition restored'
+                        break
+                    fi
+                    sleep 5
+                done
+                if ! grep -Eq "<model type=['\"]vga['\"]" "$out/restored-domain.xml" 2>/dev/null || grep -q '<hostdev' "$out/restored-domain.xml" 2>/dev/null; then
+                    log 'WARNING: normal Windows definition restoration was not confirmed'
+                fi
+            fi
             log "Normal system returned; results are in /var/tmp/268v-vfio-probe on $controller"
             return
         fi
@@ -93,6 +112,9 @@ if [[ "$mode" == linux ]]; then
     remote 'test -f /var/tmp/268v-vfio-probe/linux-probe/vfio.xml && test ! -s /var/lib/libvirt/qemu/vfio-linux-probe-serial.log'
 else
     remote 'test ! -e /var/tmp/268v-vfio-probe/guest.json'
+    if $headless; then
+        remote 'test -f /var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml && virsh -c qemu:///system domxml-to-native qemu-argv /var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml >/dev/null'
+    fi
 fi
 remote 'test -f /var/tmp/268v-vfio-probe/firmware.py'
 log "Using $normal and $vfio"
@@ -140,6 +162,11 @@ grep -q 'hostdev' "$out/domain.xml"
 if [[ "$mode" == linux ]]; then
     start='virsh -c qemu:///system create /var/tmp/268v-vfio-probe/linux-probe/vfio.xml'
 else
+    if $headless; then
+        # NixVirt restores the normal declaration at the return boot.
+        remote 'virsh -c qemu:///system define --validate /var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml'
+        log 'Applied Nix-generated Windows definition without software VGA'
+    fi
     remote "systemd-run --unit=268v-vfio-receiver --property=RuntimeMaxSec=600 $python /var/tmp/268v-vfio-probe/receiver.py"
     start='virsh -c qemu:///system start windows11'
 fi
