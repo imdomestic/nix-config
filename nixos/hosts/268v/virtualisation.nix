@@ -8,6 +8,7 @@
   cfg = config.my.windowsVM;
   virt = inputs.NixVirt.lib;
   domain = import ./windows-domain.nix {inherit config lib pkgs;};
+  touchpad = pkgs.callPackage ../../../pkgs/vfio-touchpad {};
   checkedDomain = overrides:
     virt.domain.writeXML (import ./windows-domain.nix {
       inherit lib pkgs;
@@ -81,7 +82,7 @@ in {
       }
     ];
 
-    boot.kernelModules = ["kvm-intel"];
+    boot.kernelModules = ["kvm-intel"] ++ lib.optional cfg.localInput "uinput";
     boot.kernelParams = ["intel_iommu=on"];
     # VFIO devices cannot be saved or restored with libvirt managed save.
     virtualisation.libvirtd.onBoot = "ignore";
@@ -155,6 +156,27 @@ in {
     ];
     systemd.services.nixvirt.after = ["systemd-tmpfiles-setup.service"];
 
+    # Raw evdev touchpad coordinates need libinput interpretation before QEMU.
+    services.udev.extraRules = lib.mkIf cfg.localInput ''
+      SUBSYSTEM=="input", KERNEL=="event*", ATTRS{name}=="VFIO relative touchpad", SYMLINK+="input/vfio-touchpad", ENV{LIBINPUT_IGNORE_DEVICE}="1"
+    '';
+    systemd.services.vfio-touchpad = lib.mkIf cfg.localInput {
+      description = "Translate the built-in touchpad for Windows VFIO";
+      wantedBy = ["multi-user.target"];
+      before = ["nixvirt.service"];
+      after = ["systemd-udev-trigger.service" "systemd-modules-load.service"];
+      serviceConfig = {
+        ExecStartPre = "${pkgs.systemd}/bin/udevadm wait --timeout=10 /dev/input/by-path/pci-0000:00:19.0-platform-i2c_designware.3-event-mouse";
+        ExecStart = "${touchpad}/bin/vfio-touchpad /dev/input/by-path/pci-0000:00:19.0-platform-i2c_designware.3-event-mouse";
+        ExecStartPost = "${pkgs.systemd}/bin/udevadm wait --timeout=10 /dev/input/vfio-touchpad";
+        TimeoutStartSec = 30;
+        NoNewPrivileges = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+      };
+    };
+    systemd.services.nixvirt.requires = lib.optionals cfg.localInput ["vfio-touchpad.service"];
+
     system.build.windowsVMChecks =
       pkgs.runCommand "268v-windows-vm-checks" {
         nativeBuildInputs = [pkgs.libvirt];
@@ -181,6 +203,7 @@ in {
     };
     system.build.windowsVMOEMDriver = pkgs.callPackage ../../../pkgs/268v-windows-oem-driver {};
     system.build.windowsVMD3DProbe = pkgs.callPackage ../../../pkgs/vfio-d3d-probe {};
+    system.build.windowsVMTouchpad = touchpad;
 
     # Reserve the only GPU at boot; see docs/268v-windows-vfio.md.
     specialisation.vfio.configuration = {
