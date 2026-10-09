@@ -3,8 +3,8 @@
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
 **第九次移除软件 VGA 后 Code 43 消失；第十次 Arc 140V 通过离屏 Direct3D 绘制
-及像素读回。但用户确认直通期间笔记本内屏一直黑，物理显示输出仍故障，不能算
-本机游玩方案已可用。命运 2 尚未测试。**
+及像素读回。第十一次用户反馈“好像有输出了”，但键盘等无法操作；显示稳定性、
+本机输入和游戏仍待验证，不能算本机游玩方案已完成。命运 2 尚未测试。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -386,6 +386,45 @@ WmiMonitorID、ConnectionParams、BasicDisplayParams、Brightness、PnP/DesktopM
 宿主当前 BIOS 为 QSCN13WW。本次仅下载并校验文件，未运行更新程序、刷写 BIOS
 或加载其 GOP；后续可研究离线提取显示模块。
 
+第十一次实际结果：19:26:27 启动 VM，19:30:01 收到报告，19:33:05 恢复 Linux。
+GPU 仍正常；Windows 识别 `LEN8AC3` / `Integrated Monitor (LEN140WQ+)`，
+显示器 active，VideoOutputTechnology=2147483648（内部连接），亮度 75%。
+用户随后反馈“刚刚好像有输出了，但是键盘等用不了”。本轮未改 ROM、GOP、GPU
+参数或亮度，因而不能写成 GOP 修复黑屏；输出时机和稳定性仍需交互确认。
+归档 tank `/var/tmp/268v-vfio-probe-eleventh-20261009/`。
+
+## 本机键盘与触摸板
+
+此前仅提供 PS/2 键盘和 USB tablet 虚拟设备，用 SPICE/QMP 注入输入；并未将
+宿主的真实键盘/触摸板接入。现在增加 `my.windowsVM.localInput`，默认关闭，
+仅 VFIO specialisation 开启；普通 Linux 桌面不抓取设备。
+通过 NixVirt 原生 input type=evdev 声明以下稳定路径，避免 event 编号跨启动变化：
+
+- 键盘：`/dev/input/by-path/platform-i8042-serio-0-event-kbd`
+- 触摸板：`/dev/input/by-path/pci-0000:00:19.0-platform-i2c_designware.3-event-mouse`
+
+VFIO 模式关闭 `services.keyd`，避免其独占物理键盘，保留正常启动的键位映射。
+QEMU 将输入转送既有 PS/2 键盘/USB tablet，不要求新增 Windows 驱动。
+同时按下再释放左右 Ctrl 可切换这一组设备的抓取状态；默认启动时抓取。
+触摸板先提供绝对指针和物理按键，多指手势、轻触点击不在此基础转发的保证范围。
+没有传入整个 I2C/USB 控制器，也没有给 QEMU 用户加入通用 input 组。
+实现依据为 [QEMU 10.2.4 input-linux](https://github.com/qemu/qemu/blob/v10.2.4/ui/input-linux.c)
+与 [libvirt input 定义](https://libvirt.org/formatdomain.html#input-devices)。
+
+`windowsVMChecks` 额外验证 `vfio-local-input.xml`；`controller.sh --interactive`
+使用这份 XML，并检查 VFIO 启动后 keyd 未运行。收到报告后保留最多 10 分钟供
+用户登录与测试输入；Windows 提前关闭则提前恢复普通系统。外层 transient unit
+使用 RuntimeMaxSec=2400。此轮还会保存 QEMU 已打开的输入设备路径，不记录按键
+内容。是否真正可用仍需本机按键和指针操作验证。
+
+第十二次准备：五份 XML 与 QEMU 参数转换验证通过，生成了两个 input-linux
+对象。已通过 `just switch 268v` 应用 generation 18：
+`/nix/store/rybpd7d39s6vdsgj5n4qr6rr8h4m9chz-nixos-system-268v-26.05.20260911.21a67dc`。
+普通系统 keyd 保持 active，VFIO 声明禁用它。检查产物为
+`/nix/store/pvamq28sb0i7h3q14fmp7jln8pqa5ik1-268v-windows-vm-checks`。
+Windows 诊断任务已重建为 Ready，并从客户机命令行正常关机；未在正常 Linux
+桌面上临时抓取实体键鼠进行试验。此处只记录准备，实际输入仍待第十二轮验证。
+
 ## 2026-10-04 相似问题检索
 
 检索了 Lunar Lake、268V、Arc 140V、8086:64a0 与 passthrough / VFIO / Code 43
@@ -644,7 +683,7 @@ nix build --no-link .#nixosConfigurations.268v.config.system.build.toplevel --ma
 ```
 
 `windowsVMChecks` 用 libvirt 的 Relax NG schema 验证普通、VFIO、VFIO 加基础隐藏、
-以及移除软件 VGA 的四份 XML，同时检查 ROM、固件和 VirtIO 光盘真实存在。
+移除软件 VGA、以及加入本机输入的五份 XML，同时检查 ROM、固件和 VirtIO 光盘真实存在。
 这不代替实际 PCI 设备测试。
 
 启用的是独立系统模块，不涉及 Home Manager；`just hm` 不会应用这里的改动。

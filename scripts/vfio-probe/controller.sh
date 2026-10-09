@@ -19,12 +19,14 @@ rebooted=false
 mode=windows
 headless=false
 graphics=false
+interactive=false
 check=false
 for arg in "$@"; do
     case "$arg" in
         --linux) mode=linux ;;
         --headless) headless=true ;;
         --graphics) graphics=true ;;
+        --interactive) interactive=true; headless=true ;;
         --check) check=true ;;
         *) log "Unknown argument: $arg"; exit 1 ;;
     esac
@@ -33,7 +35,9 @@ if [[ "$mode" == linux ]] && { $headless || $graphics; }; then
     log '--headless and --graphics apply only to Windows'; exit 1
 fi
 report_timeout=300
-$graphics && report_timeout=600
+if $graphics || $interactive; then report_timeout=600; fi
+headless_definition=/var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml
+$interactive && headless_definition=/var/tmp/268v-vfio-probe/windows-checks/vfio-local-input.xml
 domain=windows11
 [[ "$mode" == linux ]] && domain=vfio-linux-probe
 
@@ -117,7 +121,10 @@ if [[ "$mode" == linux ]]; then
 else
     remote 'test ! -e /var/tmp/268v-vfio-probe/guest.json'
     if $headless; then
-        remote 'test -f /var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml && virsh -c qemu:///system domxml-to-native qemu-argv /var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml >/dev/null'
+        remote "test -f $headless_definition && virsh -c qemu:///system domxml-to-native qemu-argv $headless_definition >/dev/null"
+    fi
+    if $interactive; then
+        remote 'test -c /dev/input/by-path/platform-i8042-serio-0-event-kbd && test -c /dev/input/by-path/pci-0000:00:19.0-platform-i2c_designware.3-event-mouse'
     fi
 fi
 remote 'test -f /var/tmp/268v-vfio-probe/firmware.py'
@@ -156,6 +163,9 @@ done
 log '268v reconnected after reboot; checking GPU binding'
 remote 'readlink /run/current-system; cat /proc/cmdline; lspci -nnk -s 00:02.0; systemctl show nixvirt -p Result -p ExecMainStatus' >"$out/host.txt"
 remote 'test "$(basename "$(readlink /sys/bus/pci/devices/0000:00:02.0/driver)")" = vfio-pci'
+if $interactive; then
+    remote '! systemctl is-active --quiet keyd.service'
+fi
 deadline=$((SECONDS + 60))
 while ((SECONDS < deadline)); do
     remote 'virsh -c qemu:///system dumpxml --inactive windows11' >"$out/domain.xml"
@@ -168,7 +178,7 @@ if [[ "$mode" == linux ]]; then
 else
     if $headless; then
         # NixVirt restores the normal declaration at the return boot.
-        remote 'virsh -c qemu:///system define --validate /var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml'
+        remote "virsh -c qemu:///system define --validate $headless_definition"
         log 'Applied Nix-generated Windows definition without software VGA'
     fi
     remote "systemd-run --unit=268v-vfio-receiver --property=RuntimeMaxSec=900 $python /var/tmp/268v-vfio-probe/receiver.py"
@@ -190,6 +200,18 @@ while ((SECONDS < deadline)); do
     fi
     if remote "$ready"; then
         log "$domain report received"
+        if $interactive; then
+            evidence
+            capture input.txt 'pid=$(cat /run/libvirt/qemu/windows11.pid); ls -l /proc/$pid/fd | grep /dev/input/; systemctl show keyd.service -p ActiveState'
+            log 'Interactive input test: keeping Windows available for up to 10 minutes'
+            interactive_deadline=$((SECONDS + 600))
+            while ((SECONDS < interactive_deadline)); do
+                state=$(remote 'virsh -c qemu:///system domstate windows11' 2>/dev/null || true)
+                [[ "$state" == 'shut off' ]] && break
+                sleep 5
+            done
+            log 'Interactive window ended; restoring normal boot'
+        fi
         exit 0
     fi
     if ((SECONDS >= next_capture)); then

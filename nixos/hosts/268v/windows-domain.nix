@@ -164,6 +164,20 @@ in
           type = "keyboard";
           bus = "ps2";
         }
+      ] ++ lib.optionals cfg.localInput [
+        {
+          type = "evdev";
+          source = {
+            dev = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
+            grab = "all";
+            grabToggle = "ctrl-ctrl";
+            repeat = true;
+          };
+        }
+        {
+          type = "evdev";
+          source.dev = "/dev/input/by-path/pci-0000:00:19.0-platform-i2c_designware.3-event-mouse";
+        }
       ];
       graphics = {
         type = "spice";
