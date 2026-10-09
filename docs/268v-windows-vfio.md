@@ -2,9 +2,9 @@
 
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
-**第九次移除软件 VGA 后，Windows Arc 140V 驱动初始化成功，Code 43 消失，报告
-2880×1800。此前第三至第六次及第八次均为 Code 43；实际 3D 渲染、人工确认内屏
-画面及命运 2 仍待验证。**
+**第九次移除软件 VGA 后 Code 43 消失；第十次 Arc 140V 通过离屏 Direct3D 绘制
+及像素读回。但用户确认直通期间笔记本内屏一直黑，物理显示输出仍故障，不能算
+本机游玩方案已可用。命运 2 尚未测试。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -349,6 +349,42 @@ VFIO 声明为 16 GiB、6 vCPU、passthrough/hideHypervisor=true、softwareDispl
 D3D 程序产物 `/nix/store/0jgqcc60pgmfrqi720rp5a3qjigm03gy-vfio-d3d-probe-x86_64-w64-mingw32-1`，
 EXE SHA256=`6143a30a1e51ec45796d82b343e2a41031cdf11b6c7b4ddbae2141fa1975fe1f`。
 SYSTEM 启动任务已带 `-Graphics` 重建为 Ready，实际核显结果仍待复测。
+
+第十次实际结果（2026-10-09）：18:43:51 启动 VM，18:45:37 收到报告，
+18:47:13 自动恢复 Linux、xe 和普通 Windows 声明。Arc 140V 状态 OK、
+ProblemCode=0、2880×1800；D3D11 使用 `8086:64a0`、feature level 11.1，
+120 帧 256×256 全部像素匹配，exitCode=0、timedOut=false、stderr 为空。
+没有新增 DxgKrnl 549。结果归档 tank `/var/tmp/268v-vfio-probe-tenth-20261009/`。
+
+## 内屏黑屏：渲染成功不等于显示输出成功
+
+同日用户明确确认：直通测试期间**笔记本内屏一直黑**，不是只看到了
+SPICE 的空白控制台。此前将“设备 OK + 2880×1800 + 离屏绘制通过”概括为
+成功容易误导；这些证据只说明驱动与渲染路径可用，未验证面板扫描输出。
+Steam 准备和键鼠配置因此暂缓，优先调查显示链路。
+
+普通 Linux 的有效基线：eDP-1 connected，pipe A 硬件 active，2880×1800@120，
+10 bpc、4 lane、port_clock=810000；intel_backlight actual=143/max=496，bl_power=0。
+只读显示状态保存在宿主 `/tmp/268v-host-display-info.txt`。新增 Windows 采集
+WmiMonitorID、ConnectionParams、BasicDisplayParams、Brightness、PnP/DesktopMonitor，
+用于区分显示器识别和亮度接口状态；即使报告 active 仍不能代替肉眼确认出图。
+
+当前 ROM 只有 IgdAssignmentDxe。上游另有 PlatformGopPolicy，配合从主机固件
+提取的 IntelGopDriver 可提供 GOP 显示初始化：
+[VfioIgdPkg 固定版本说明](https://github.com/tomitamoeko/VfioIgdPkg/blob/067328df2554c865cc0078cb922357301c4c36c6/README.md)。
+缺少 GOP 是否导致本机驱动加载后仍黑屏尚无证据，不能直接当作根因。
+
+第十一次准备保持 generation 17 及全部 GPU 参数，仅更新只读显示诊断。
+普通模式基线已成功上传：软件 VGA 的 Generic Monitor active，EDID/亮度 WMI
+类返回 Not supported，错误已独立记录，未阻断报告。基线为宿主
+`/var/tmp/268v-vfio-probe/baseline-before-eleventh.json`，新 SYSTEM 启动任务为 Ready。
+下一轮只用于取得直通状态下的显示器资料，不宣称修复黑屏。
+
+另下载 [联想原厂 QSCN33WW 包](https://support.lenovo.com/my/en/downloads/ds572995)
+至 `/tmp/268v-qscn33ww.exe`，SHA256 与官网一致：
+`a48db3d9ebd77f2c06fcc8d4431826d0ef8437b76b51a453090bae4cec9526f8`。
+宿主当前 BIOS 为 QSCN13WW。本次仅下载并校验文件，未运行更新程序、刷写 BIOS
+或加载其 GOP；后续可研究离线提取显示模块。
 
 ## 2026-10-04 相似问题检索
 

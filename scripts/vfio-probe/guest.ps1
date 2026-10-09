@@ -1,5 +1,16 @@
 param([int]$DelaySeconds = 60, [switch]$Graphics)
 $ErrorActionPreference = 'Stop'
+function Get-MonitorInfo {
+    $result = [ordered]@{}
+    foreach ($class in @('WmiMonitorID', 'WmiMonitorConnectionParams', 'WmiMonitorBasicDisplayParams', 'WmiMonitorBrightness')) {
+        try {
+            $result[$class] = @(Get-CimInstance -Namespace root\wmi -ClassName $class | Select-Object * -ExcludeProperty CimClass,CimInstanceProperties,CimSystemProperties,PSComputerName)
+        } catch { $result[$class] = [ordered]@{ error = $_.Exception.Message } }
+    }
+    $result.pnp = @(Get-PnpDevice -Class Monitor -PresentOnly -ErrorAction SilentlyContinue | Select-Object Status,FriendlyName,InstanceId)
+    $result.desktop = @(Get-CimInstance Win32_DesktopMonitor | Select-Object Name,PNPDeviceID,Status,Availability,ScreenWidth,ScreenHeight,MonitorManufacturer,MonitorType)
+    return $result
+}
 function Invoke-GraphicsProbe {
     $exe = 'C:\IntelDrivers\vfio-d3d-probe.exe'
     $p = New-Object System.Diagnostics.Process
@@ -35,6 +46,7 @@ try {
             Get-CimInstance -Namespace root\Microsoft\Windows\DeviceGuard -ClassName Win32_DeviceGuard | Select-Object VirtualizationBasedSecurityStatus, SecurityServicesConfigured, SecurityServicesRunning
         } catch { $_.Exception.Message })
         display = @(Get-CimInstance Win32_VideoController | Select-Object Name, PNPDeviceID, DriverVersion, Status, ConfigManagerErrorCode, CurrentHorizontalResolution, CurrentVerticalResolution)
+        monitors = Get-MonitorInfo
         problems = @(Get-CimInstance Win32_PnPEntity | Where-Object ConfigManagerErrorCode -ne 0 | Select-Object Name, PNPDeviceID, ConfigManagerErrorCode)
         drivers = (& pnputil.exe /enum-devices /class Display /drivers | Out-String)
         displayDriverStore = $(try {
