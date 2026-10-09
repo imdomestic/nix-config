@@ -148,6 +148,21 @@ b650 上保留的第五次结果不能当作本轮结果。控制脚本只允许
 运行，仍禁止在会被重启的 268V 本机运行。系统激活为 generation 16，QEMU
 转换校验确认 CPU 参数为 `host,migratable=off,hypervisor=off,kvm=off`。
 
+2026-10-09 接续核查：**10 月 4 日安排的第六次实际没有进入 VFIO 测试**。
+tank 日志显示 16:07:07 发出 `virsh shutdown` 后，VM 始终未停止；16:09:19
+控制程序以 `Guest did not shut down; aborting without reboot` 退出。误导点是
+启动前预检和 transient service 启动均成功，但两者都不代表宿主已经重启，
+更不能把后续 `systemctl show` 的默认 `Result=success` 当成试验成功。
+失败日志已另存 tank `/var/tmp/268v-vfio-probe-sixth-aborted-20261004/`。
+
+10 月 9 日 Windows 控制台仍能正常操作，`VFIOProbe` 任务为 Ready；
+`powercfg /QH SCHEME_CURRENT SUB_BUTTONS PBUTTONACTION` 显示 AC/DC 均为 3
+（正常关机），并非配置成了忽略电源按钮。没有查明上次 ACPI 请求未完成的原因，
+也未修改该电源策略。改从 Windows 管理员命令行执行 `shutdown.exe /s /t 0`，
+libvirt 已确认 `shut off (shutdown)`，未强制终止 VM。
+本轮继续第六次 CPU 特征对照，启动前先确认 VM 已停止，避免再次卡在同一步。
+最新 checkout 的 268V toplevel 与运行中的 generation 16 完全相同，无需重建系统。
+
 ## 2026-10-04 相似问题检索
 
 检索了 Lunar Lake、268V、Arc 140V、8086:64a0 与 passthrough / VFIO / Code 43
