@@ -18,18 +18,22 @@ python=/nix/store/0if41r2dp11y0v833p5yrpgr8mdanqjk-python3-3.13.15-env/bin/pytho
 rebooted=false
 mode=windows
 headless=false
+graphics=false
 check=false
 for arg in "$@"; do
     case "$arg" in
         --linux) mode=linux ;;
         --headless) headless=true ;;
+        --graphics) graphics=true ;;
         --check) check=true ;;
         *) log "Unknown argument: $arg"; exit 1 ;;
     esac
 done
-if $headless && [[ "$mode" == linux ]]; then
-    log '--headless applies only to Windows'; exit 1
+if [[ "$mode" == linux ]] && { $headless || $graphics; }; then
+    log '--headless and --graphics apply only to Windows'; exit 1
 fi
+report_timeout=300
+$graphics && report_timeout=600
 domain=windows11
 [[ "$mode" == linux ]] && domain=vfio-linux-probe
 
@@ -167,7 +171,7 @@ else
         remote 'virsh -c qemu:///system define --validate /var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml'
         log 'Applied Nix-generated Windows definition without software VGA'
     fi
-    remote "systemd-run --unit=268v-vfio-receiver --property=RuntimeMaxSec=600 $python /var/tmp/268v-vfio-probe/receiver.py"
+    remote "systemd-run --unit=268v-vfio-receiver --property=RuntimeMaxSec=900 $python /var/tmp/268v-vfio-probe/receiver.py"
     start='virsh -c qemu:///system start windows11'
 fi
 if ! remote "$start" >"$out/start.txt" 2>&1; then
@@ -176,7 +180,7 @@ if ! remote "$start" >"$out/start.txt" 2>&1; then
 fi
 capture domain.xml "virsh -c qemu:///system dumpxml $domain"
 log "$domain started with passthrough; waiting for diagnostics"
-deadline=$((SECONDS + 300))
+deadline=$((SECONDS + report_timeout))
 next_capture=$((SECONDS + 30))
 while ((SECONDS < deadline)); do
     if [[ "$mode" == linux ]]; then
@@ -195,4 +199,4 @@ while ((SECONDS < deadline)); do
     fi
     sleep 5
 done
-log 'Report deadline reached (300 seconds plus bounded in-flight evidence capture); restoring'
+log "Report deadline reached ($report_timeout seconds plus bounded in-flight evidence capture); restoring"

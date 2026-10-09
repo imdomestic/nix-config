@@ -2,7 +2,9 @@
 
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
-**第三至第六次及第八次测试均确认 Arc 140V 在 Windows 中报 Code 43；Windows 核显加速、内屏输出和命运 2 均未成功验证。**
+**第九次移除软件 VGA 后，Windows Arc 140V 驱动初始化成功，Code 43 消失，报告
+2880×1800。此前第三至第六次及第八次均为 Code 43；实际 3D 渲染、人工确认内屏
+画面及命运 2 仍待验证。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -305,6 +307,48 @@ Windows 的一次性 SYSTEM 启动任务已重建并确认 Ready，随后正常�
 仍匹配 generation 16，没有额外 system switch。此处记录的是准备状态，实际
 结果须检查 tank 工作目录的新报告；返回时另采集 `restored-domain.xml` 确认
 软件 VGA 恢复且 hostdev 已移除。
+
+第九次实际结果（2026-10-09）：18:13:28 启动 VM，18:18:22 收到报告，
+18:20:00 自动恢复 Linux / xe / 桌面以及普通 Windows 软件 VGA 定义。
+Arc 140V / `32.0.101.7026` / `oem17.inf` 状态为 OK，ProblemCode=0，
+报告分辨率 2880×1800；问题设备列表为空。最新一条 DxgKrnl 549 仍是第八次
+启动时的旧事件，本次没有新增该错误。OpRegion 和扩展 VBT 签名有效。
+结果已归档 tank `/var/tmp/268v-vfio-probe-ninth-20261009/`。
+
+这支持软件 VGA 与本机 Windows 驱动初始化存在兼容性问题，但移除设备也改变了
+自动分配的 PCI 外设位置，不能进一步断言是某个具体驱动逻辑的根因。成功组合
+仍包含原厂 7026 和基础 CPU 隐藏，尚未分别证明这两项是否必需。默认普通模式
+保留控制台；VFIO specialisation 现在声明 `softwareDisplay=false`。
+
+## Direct3D 绘制复测
+
+`system.build.windowsVMD3DProbe` 用 Nix 的 MinGW 交叉工具链构建仓库内的
+`pkgs/vfio-d3d-probe/main.cpp`。程序按
+[D3D11CreateDevice](https://learn.microsoft.com/en-us/windows/win32/api/d3d11/nf-d3d11-d3d11createdevice)
+创建硬件设备，核对 DXGI vendor/device 必须为 `8086:64a0`，不自动回退 WARP。
+它绘制 120 帧 256×256 的三角形，每帧复制到 staging texture 并读回核对全部
+RGBA 像素，最后检查设备移除状态。无交换链，不依赖用户登录或屏幕窗口；这只
+验证小型离屏绘制，不能代替游戏负载、帧率、显示扫描输出或长期稳定性测试。
+显式 `--warp` 只供软件自检，输出标明 WARP-selftest，不能算核显通过。
+
+`guest.ps1 -Graphics` 额外运行该程序并上传退出码和 stdout/stderr，执行超过
+60 秒即终止子进程。第九次 Windows 从 VM 启动到报告接近五分钟，因此控制器
+`--graphics` 将报告等待扩展至 600 秒；正常诊断仍为 300 秒，远端自动恢复保留。
+
+10 月 9 日第十次准备：WARP 自检完成 120 帧且全部像素匹配；普通 VM 的硬件
+模式实际返回 Microsoft Basic Render Driver (`1414:008c`)，程序按预期以 2
+退出，未误报核显通过。这也说明仅请求 D3D_DRIVER_TYPE_HARDWARE 不足以证明
+实际设备，必须核对 DXGI ID。新版 PowerShell 采集已上传这个失败结果并正确
+保存整数退出码；基线在宿主 `baseline-before-tenth.json`。
+最初使用 Start-Process/Get-Content 导致退出码为空和 JSON 包含文件属性，现改为
+直接持有 Process 与字符串流，复测报告约 70 KiB，exitCode=2、timedOut=false。
+
+已通过 `just switch 268v` 应用 generation 17：
+`/nix/store/4a690wcz0cpcmww8jf0lfqnvilmv48ii-nixos-system-268v-26.05.20260911.21a67dc`。
+VFIO 声明为 16 GiB、6 vCPU、passthrough/hideHypervisor=true、softwareDisplay=false。
+D3D 程序产物 `/nix/store/0jgqcc60pgmfrqi720rp5a3qjigm03gy-vfio-d3d-probe-x86_64-w64-mingw32-1`，
+EXE SHA256=`6143a30a1e51ec45796d82b343e2a41031cdf11b6c7b4ddbae2141fa1975fe1f`。
+SYSTEM 启动任务已带 `-Graphics` 重建为 Ready，实际核显结果仍待复测。
 
 ## 2026-10-04 相似问题检索
 

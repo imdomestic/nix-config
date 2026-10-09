@@ -1,5 +1,28 @@
-param([int]$DelaySeconds = 60)
+param([int]$DelaySeconds = 60, [switch]$Graphics)
 $ErrorActionPreference = 'Stop'
+function Invoke-GraphicsProbe {
+    $exe = 'C:\IntelDrivers\vfio-d3d-probe.exe'
+    $p = New-Object System.Diagnostics.Process
+    try {
+        $p.StartInfo.FileName = $exe
+        $p.StartInfo.UseShellExecute = $false
+        $p.StartInfo.CreateNoWindow = $true
+        $p.StartInfo.RedirectStandardOutput = $true
+        $p.StartInfo.RedirectStandardError = $true
+        $null = $p.Start()
+        $stdout = $p.StandardOutput.ReadToEndAsync()
+        $stderr = $p.StandardError.ReadToEndAsync()
+        $finished = $p.WaitForExit(60000)
+        if (-not $finished) { $p.Kill(); $p.WaitForExit() }
+        [ordered]@{
+            timedOut = -not $finished
+            exitCode = $p.ExitCode
+            stdout = $stdout.Result
+            stderr = $stderr.Result
+        }
+    } catch { [ordered]@{ error = $_.Exception.Message } }
+    finally { $p.Dispose() }
+}
 try {
     Start-Sleep -Seconds $DelaySeconds
     $boot = (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
@@ -31,6 +54,7 @@ try {
         graphicsLogs = @(Get-WinEvent -ListLog '*Dxg*','*Kernel-PnP*' -ErrorAction SilentlyContinue | Select-Object LogName, IsEnabled, RecordCount)
         secureBoot = $(try { Confirm-SecureBootUEFI } catch { $_.Exception.Message })
     }
+    if ($Graphics) { $report.d3d = Invoke-GraphicsProbe }
     $body = $report | ConvertTo-Json -Depth 5
     $body | Set-Content -Encoding UTF8 C:\IntelDrivers\vfio-report.json
     for ($attempt = 0; $attempt -lt 6; $attempt++) {
