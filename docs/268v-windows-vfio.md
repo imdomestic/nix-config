@@ -405,7 +405,8 @@ GPU 仍正常；Windows 识别 `LEN8AC3` / `Integrated Monitor (LEN140WQ+)`，
 
 VFIO 模式关闭 `services.keyd`，避免其独占物理键盘，保留正常启动的键位映射。
 QEMU 将输入转送既有 PS/2 键盘/USB tablet，不要求新增 Windows 驱动。
-同时按下再释放左右 Ctrl 可切换这一组设备的抓取状态；默认启动时抓取。
+同时按下再释放左右 Shift 可切换这一组设备的抓取状态；默认启动时抓取。
+用户确认这款键盘没有右 Ctrl，因此不使用常见的 ctrl-ctrl 组合。
 触摸板先提供绝对指针和物理按键，多指手势、轻触点击不在此基础转发的保证范围。
 没有传入整个 I2C/USB 控制器，也没有给 QEMU 用户加入通用 input 组。
 实现依据为 [QEMU 10.2.4 input-linux](https://github.com/qemu/qemu/blob/v10.2.4/ui/input-linux.c)
@@ -424,6 +425,13 @@ QEMU 将输入转送既有 PS/2 键盘/USB tablet，不要求新增 Windows 驱�
 `/nix/store/pvamq28sb0i7h3q14fmp7jln8pqa5ik1-268v-windows-vm-checks`。
 Windows 诊断任务已重建为 Ready，并从客户机命令行正常关机；未在正常 Linux
 桌面上临时抓取实体键鼠进行试验。此处只记录准备，实际输入仍待第十二轮验证。
+
+第十二轮首次排程在 19:40 的重启等待阶段取消，未重启宿主机：用户指出键盘
+没有右 Ctrl。改为 `shift-shift` 后重新通过五份 XML 检查和系统构建，并应用
+generation 19：
+`/nix/store/fwlxiy2mh43dn653lswiv7jz00231hya-nixos-system-268v-26.05.20260911.21a67dc`。
+对应检查产物为 `/nix/store/fzm9lwjhbimyrsxj1ag70q6b412na4fz-268v-windows-vm-checks`。
+取消日志归档于 tank `/var/tmp/268v-vfio-probe-twelfth-aborted-20261009/`。
 
 ## 2026-10-04 相似问题检索
 
