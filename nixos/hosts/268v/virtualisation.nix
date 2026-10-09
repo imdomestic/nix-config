@@ -155,6 +155,7 @@ in {
     system.build.windowsVMLinuxProbe = import ./windows-linux-probe.nix {
       inherit config lib pkgs inputs;
     };
+    system.build.windowsVMOEMDriver = pkgs.callPackage ../../../pkgs/268v-windows-oem-driver {};
 
     # Reserve the only GPU at boot; see docs/268v-windows-vfio.md.
     specialisation.vfio.configuration = {
