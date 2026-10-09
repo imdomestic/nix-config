@@ -152,6 +152,10 @@ in {
         test -f ${pkgs.virtio-win.src}
       '';
 
+    system.build.windowsVMLinuxProbe = import ./windows-linux-probe.nix {
+      inherit config lib pkgs inputs;
+    };
+
     # Reserve the only GPU at boot; see docs/268v-windows-vfio.md.
     specialisation.vfio.configuration = {
       my.windowsVM.passthrough = true;

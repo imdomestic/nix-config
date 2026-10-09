@@ -16,6 +16,17 @@ normal=
 vfio=
 python=/nix/store/0if41r2dp11y0v833p5yrpgr8mdanqjk-python3-3.13.15-env/bin/python3
 rebooted=false
+mode=windows
+check=false
+for arg in "$@"; do
+    case "$arg" in
+        --linux) mode=linux ;;
+        --check) check=true ;;
+        *) log "Unknown argument: $arg"; exit 1 ;;
+    esac
+done
+domain=windows11
+[[ "$mode" == linux ]] && domain=vfio-linux-probe
 
 capture() {
     local name=$1 command=$2
@@ -26,10 +37,14 @@ capture() {
 
 evidence() {
     capture kernel.log 'journalctl -b -k --no-pager'
-    capture qemu.log 'cat /var/log/libvirt/qemu/windows11.log'
-    capture guest.json 'cat /var/tmp/268v-vfio-probe/guest.json'
-    capture firmware.json "$python /var/tmp/268v-vfio-probe/firmware.py"
-    if remote "virsh -c qemu:///system qemu-monitor-command windows11 '{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"/tmp/268v-vfio-screen.png\",\"format\":\"png\"}}'"; then
+    capture qemu.log "cat /var/log/libvirt/qemu/$domain.log"
+    if [[ "$mode" == linux ]]; then
+        capture linux-serial.log 'cat /var/lib/libvirt/qemu/vfio-linux-probe-serial.log'
+    else
+        capture guest.json 'cat /var/tmp/268v-vfio-probe/guest.json'
+    fi
+    capture firmware.json "$python /var/tmp/268v-vfio-probe/firmware.py --domain $domain"
+    if remote "virsh -c qemu:///system qemu-monitor-command $domain '{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"/tmp/268v-vfio-screen.png\",\"format\":\"png\"}}'"; then
         capture screen.png 'cat /tmp/268v-vfio-screen.png'
     fi
 }
@@ -38,11 +53,11 @@ restore() {
     if ! $rebooted; then return; fi
     log 'Collecting evidence and restoring normal boot'
     evidence
-    remote 'virsh -c qemu:///system shutdown windows11' || true
+    remote "virsh -c qemu:///system shutdown $domain" || true
     local deadline=$((SECONDS + 90))
     while ((SECONDS < deadline)); do
-        state=$(remote 'virsh -c qemu:///system domstate windows11' 2>/dev/null || true)
-        [[ "$state" == 'shut off' ]] && break
+        state=$(remote "virsh -c qemu:///system domstate $domain" 2>/dev/null || true)
+        [[ "$state" == 'shut off' || ( "$mode" == linux && -z "$state" ) ]] && break
         sleep 5
     done
     # The normal default remains unchanged; set it once explicitly for this return.
@@ -74,11 +89,15 @@ normal="nixos-generation-${BASH_REMATCH[1]}.conf"
 vfio="nixos-generation-${BASH_REMATCH[1]}-specialisation-vfio.conf"
 remote "test -f /boot/loader/entries/$normal && test -f /boot/loader/entries/$vfio && test -x $python && test -f /var/tmp/268v-vfio-probe/receiver.py && virsh -c qemu:///system domstate windows11"
 remote "grep -Fq \"init=\$(readlink /run/current-system)/init \" /boot/loader/entries/$normal"
-remote 'test ! -e /var/tmp/268v-vfio-probe/guest.json'
+if [[ "$mode" == linux ]]; then
+    remote 'test -f /var/tmp/268v-vfio-probe/linux-probe/vfio.xml && test ! -s /var/lib/libvirt/qemu/vfio-linux-probe-serial.log'
+else
+    remote 'test ! -e /var/tmp/268v-vfio-probe/guest.json'
+fi
 remote 'test -f /var/tmp/268v-vfio-probe/firmware.py'
 log "Using $normal and $vfio"
 log 'Preflight passed'
-[[ ${1:-} == --check ]] && exit 0
+$check && exit 0
 log 'Probe scheduled; waiting 45 seconds before guest shutdown'
 sleep 45
 log 'Requesting normal Windows shutdown'
@@ -118,17 +137,28 @@ while ((SECONDS < deadline)); do
     sleep 5
 done
 grep -q 'hostdev' "$out/domain.xml"
-remote "systemd-run --unit=268v-vfio-receiver --property=RuntimeMaxSec=600 $python /var/tmp/268v-vfio-probe/receiver.py"
-if ! remote 'virsh -c qemu:///system start windows11' >"$out/start.txt" 2>&1; then
+if [[ "$mode" == linux ]]; then
+    start='virsh -c qemu:///system create /var/tmp/268v-vfio-probe/linux-probe/vfio.xml'
+else
+    remote "systemd-run --unit=268v-vfio-receiver --property=RuntimeMaxSec=600 $python /var/tmp/268v-vfio-probe/receiver.py"
+    start='virsh -c qemu:///system start windows11'
+fi
+if ! remote "$start" >"$out/start.txt" 2>&1; then
     log 'VM start failed; restoring normal boot'
     exit 1
 fi
-log 'VM started with passthrough; waiting for the one-shot Windows report'
+capture domain.xml "virsh -c qemu:///system dumpxml $domain"
+log "$domain started with passthrough; waiting for diagnostics"
 deadline=$((SECONDS + 300))
 next_capture=$((SECONDS + 30))
 while ((SECONDS < deadline)); do
-    if remote 'test -s /var/tmp/268v-vfio-probe/guest.json'; then
-        log 'Windows device report received'
+    if [[ "$mode" == linux ]]; then
+        ready="grep -q '^VFIO_LINUX_PROBE_DONE' /var/lib/libvirt/qemu/vfio-linux-probe-serial.log"
+    else
+        ready='test -s /var/tmp/268v-vfio-probe/guest.json'
+    fi
+    if remote "$ready"; then
+        log "$domain report received"
         exit 0
     fi
     if ((SECONDS >= next_capture)); then
@@ -138,4 +168,4 @@ while ((SECONDS < deadline)); do
     fi
     sleep 5
 done
-log 'Windows report deadline reached (300 seconds plus bounded in-flight evidence capture); restoring'
+log 'Report deadline reached (300 seconds plus bounded in-flight evidence capture); restoring'
