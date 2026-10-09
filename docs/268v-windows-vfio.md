@@ -2,7 +2,7 @@
 
 2026-10-02。目标是在 268V 上准备可回退的 KVM / Windows 11 / Arc 140V
 整卡直通实验环境。配置、网络、磁盘定义与 ROM 构建均由 Nix 管理。
-**第三至第六次测试均确认 Arc 140V 在 Windows 中报 Code 43；核显加速、内屏输出和命运 2 均未成功验证。**
+**第三至第六次及第八次测试均确认 Arc 140V 在 Windows 中报 Code 43；Windows 核显加速、内屏输出和命运 2 均未成功验证。**
 
 首次重启测试已完成：核显成功绑定 `vfio-pci`，但 QEMU 因
 `x-igd-legacy-mode` 参数类型错误拒绝启动 VM；随后自动恢复普通 NixOS / `xe`。
@@ -271,6 +271,41 @@ Best Ranked。驱动库中的 `oem11.inf` 是另一份 `iigd_dch_d.inf` / 9033�
 `/nix/store/y7i3y9k7fbb8vf09psf63rwvzrd4fxcc-268v-windows-oem-driver-32.0.101.7026`，
 宿主运行闭包仍匹配 generation 16，无需系统切换。
 
+第八次实际结果（2026-10-09）：17:43:20 启动 Windows，17:45:02 收到报告，
+17:46:48 自动恢复普通 Linux 与桌面。原厂 `32.0.101.7026` 主驱动 `oem17.inf`
+及扩展 `oem22.inf` 均正确绑定，但核显仍为 Code 43，ProblemStatus=0，分辨率
+为空；本次启动新增 DxgKrnl 549 仍是 `StartAdapter_DpiFdoEnumChildDevicesFailed`。
+VBS status=0、configured/running=[0]，HypervisorPresent=false，Secure Boot=false。
+因此原厂驱动替换没有解决问题，也没有运行嵌套 Hyper-V 的证据。结果归档在
+tank `/var/tmp/268v-vfio-probe-eighth-20261009/`。
+
+## 无软件 VGA 对照
+
+第九次仅移除软件 VGA，保留第八次原厂驱动、CPU、Q35、ROM、GPU 地址和内存。
+目标是检查第二张显示设备是否影响 Windows 的显示输出枚举，尚无证据证明它
+就是故障原因。[libvirt video 定义](https://libvirt.org/formatdomain.html#video-devices)
+要求显式 `type=none`，否则保留 SPICE 时可能自动补回默认显示设备。
+`my.windowsVM.softwareDisplay` 默认 true；`windowsVMChecks` 额外生成并验证
+`vfio-headless.xml`。普通系统与既有 VFIO 启动声明均保留原软件控制台。
+
+控制程序 `--headless` 仅在进入 VFIO 启动且 NixVirt 应用完成后，用该 Nix 产物
+临时定义同一个 Windows domain，再启动它；不创建副本，不重置 NVRAM/TPM。
+测试结束重启普通系统，由 NixVirt 恢复普通声明。预检读取宿主
+`/var/tmp/268v-vfio-probe/windows-checks/vfio-headless.xml` 并校验 QEMU 转换。
+Windows 启动任务通过网桥回传结果，无需登录；此轮跳过 SPICE 截图。
+当前 ROM 不含 GOP，所以测试期间没有固件控制台；若 Windows 未启动并回传，
+只能记为无报告，不能据黑屏判断驱动成败。远端超时恢复机制保持启用。
+
+10 月 9 日第九次准备完成：四份 XML schema 与 QEMU 属性检查通过，实际
+`domxml-to-native` 输出没有软件显示设备；逐项比较确认与 `vfio-hidden.xml`
+仅 video 元素不同。构建产物为
+`/nix/store/zyazpqnka0nxznxc3735irxzx20bgdd8-268v-windows-vm-checks`。
+Windows 的一次性 SYSTEM 启动任务已重建并确认 Ready，随后正常关机；宿主无
+旧 guest.json。18:10:37 tank 的 `--headless --check` 预检通过。运行系统闭包
+仍匹配 generation 16，没有额外 system switch。此处记录的是准备状态，实际
+结果须检查 tank 工作目录的新报告；返回时另采集 `restored-domain.xml` 确认
+软件 VGA 恢复且 hostdev 已移除。
+
 ## 2026-10-04 相似问题检索
 
 检索了 Lunar Lake、268V、Arc 140V、8086:64a0 与 passthrough / VFIO / Code 43
@@ -528,7 +563,8 @@ nix build --no-link .#nixosConfigurations.268v.config.system.build.windowsVMChec
 nix build --no-link .#nixosConfigurations.268v.config.system.build.toplevel --max-jobs 2 --cores 4
 ```
 
-`windowsVMChecks` 用 libvirt 的 Relax NG schema 验证普通、VFIO、VFIO 加基础隐藏
-三份 XML，同时检查 ROM、固件和 VirtIO 光盘真实存在。这不代替实际 PCI 设备测试。
+`windowsVMChecks` 用 libvirt 的 Relax NG schema 验证普通、VFIO、VFIO 加基础隐藏、
+以及移除软件 VGA 的四份 XML，同时检查 ROM、固件和 VirtIO 光盘真实存在。
+这不代替实际 PCI 设备测试。
 
 启用的是独立系统模块，不涉及 Home Manager；`just hm` 不会应用这里的改动。

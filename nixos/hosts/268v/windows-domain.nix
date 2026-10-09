@@ -174,11 +174,14 @@ in
         };
         gl.enable = false;
       };
-      # Keep a software console while bringing up the Intel Windows driver.
-      video.model = {
-        type = "vga";
-        primary = true;
-      };
+      # Explicit none prevents libvirt from adding a fallback video device.
+      video.model =
+        if cfg.softwareDisplay
+        then {
+          type = "vga";
+          primary = true;
+        }
+        else {type = "none";};
       sound.model = "ich9";
       audio = {
         id = 1;
