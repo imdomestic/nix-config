@@ -4,6 +4,58 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-11 · r5s 的 dae 把 sh 解析回已退役的上海 IP,im 组只剩国内反向隧道 {#r5s-dae-stale-sh-address}
+
+tank 上的 Max 从 10-10 起反复报 `getAddrInfo … www.bungie.net … Temporary failure
+in name resolution`:12:29、18:29 的清单同步和 19 点、23:08 的玩家调用都失败,同一
+时刻百度、LLM 接口都正常。tank 连续 30 次绕过缓存解析都成功,r5s 上游 3–4 ms;失败
+是间歇性的。
+
+国外域名的 DNS 在 r5s 的 dae 里走 `tcp://8.8.8.8`,经 `im` 组出去(见
+#tank-browser-poisoned-dns)。r5s 日志留下的 10.4 小时(10-10 23:17 起)里,`im`
+组「Group has no dialer alive」50 次;`imdomestic-h610-v2`、`imdomestic-r6s-v2`
+的 tcp4 检查各掉 100 多次。每次全组判死,bungie.net 就解析不出来。
+
+真正的问题不在这几条抖动的隧道上,而在它们本该被绕开:`imdomestic-sh-v2`(r5s →
+tokyo:54322 → gizmo)这段时间 9 成以上是 NOT ALIVE,`au-sh` 同样。tokyo 的 xray
+8 天没重启,四个端口都在听,别家的 222.191.x、27.122.x、116.147.x 一直连得进来。
+r5s 自己经 dae 解析 `sh.imdomestic.com` 得到的是 **`45.67.223.32`(TTL 0)**,
+也就是 10-02 迁走的上海 VPS([tokyo-migration.md](tokyo-migration.md));权威 NS、1.1.1.1、223.5.5.5、
+114、移动下发的两台 DNS 绕过 dae 查都是 `43.130.229.141`。LAN 上的 tank 经 dae 查
+也是新地址,h610 的 dae(09-27 起一直没重启)本机查也是新地址。坏的只有 r5s 这一
+个 dae 实例的本机解析,dae 拨 sh 节点用的正是这一份。
+
+tokyo 的 xray 日志给出了断点:r5s 出口 `112.24.128.36` 10-03 到 10-08 每天约 1.8 万
+次连接,10-09 01:43:35 JST(00:43:35 CST)之后只剩零星几次。r5s 的 dae 是 10-05
+16:52 启动的,之前三天多一直正常 —— 不是启动时缓存了旧地址。是什么在 10-09 凌晨
+把旧地址喂进去的查不到了:r5s 的 journal 上限 100M,dae 在 `log_level: info` 下每条
+连接一行,日志只留得住 10 小时左右;现在能问到的每个上游都返回新地址,nix-config 历
+史里也从没出现过 `45.67.223.32`。
+
+10-11 10:55 `systemctl restart dae`,6 秒恢复。r5s 本机立刻解析到 `43.130.229.141`,
+tokyo 同一分钟收到 r5s 经 54322 和 54324 的健康检查。r5s → tokyo 实测 63 ms、40 包
+零丢包、抖动 0.46 ms。之后 42 分钟里 `im` 组没有一次全组判死(此前 10.4 小时 50
+次),sh 只掉过一次、停 20 秒;h610/r6s/r5s 三条反向隧道照旧会掉,但总有 sh 兜底。
+
+误导点:
+
+- 现象是「国外 DNS 间歇失败」+「几条 im 节点频繁判死」,第一反应是代理线路质量差。
+  其实质量最好的那条一直没在用,统计每个 dialer 的掉线次数时它因为「一直是死的」
+  掉线次数反而最少。要看的是**停机时长**,不是掉线次数。
+- 在 r5s 上按 IP 测 tokyo 端口没有意义:r5s 本机流量也过 dae,未知外国 IP 落到
+  `fallback: im`,测的是代理而不是直连。把探测程序复制成 `/tmp/tailscale` 才命中
+  `pname(tailscale) -> must_direct`。同理,r5s 上 `dig @1.1.1.1` 也被 dae 截住回答
+  (TTL 0 就是标志)。
+- 对旧 IP 的探测有的「Connection refused」、有的超时、22 口还能连上 —— 是旧 IP
+  现在的主人在回应,tokyo 抓包一个 SYN 都没收到。r5s 是运营商级 NAT(ppp0
+  `100.112.139.46`),一开始按 ppp0 地址在 tokyo 上找记录也找不到,要用
+  `curl -4 4.ipw.cn` 拿真实出口。
+- 先前在 r5s 上 `ping` 出的 167 ms、20% 丢包同样是对旧 IP 量的。
+
+没有解决的:dae 为什么会在本机解析里一直给出旧地址、且不随 TTL 过期刷新。下次 sh
+长时间 NOT ALIVE,先在 r5s 上比对 `resolvectl query sh.imdomestic.com` 和绕过 dae
+的结果(`cp $(command -v dig) /tmp/tailscale` 再用它查),不一致就重启 dae。
+
 ## 2026-10-08 · Codex CLI 的真实请求超出 NInfer Responses 子集 {#qwen-codex-cli-responses}
 
 普通 Responses 的 `200 / OK` 没有覆盖 Codex CLI 0.160.0 的实际请求。真实 CLI
