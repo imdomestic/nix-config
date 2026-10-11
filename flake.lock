@@ -1166,11 +1166,11 @@
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1791687317,
-        "narHash": "sha256-/7ICN1i6MQW9m9INJPkwN064Os8jp3uSeG4crkCzH7k=",
+        "lastModified": 1791688056,
+        "narHash": "sha256-EpnWwOcTs1PtKzocvlq7li7BVhTYpMYdjf+HiU+TFbM=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "f645cf2c27510bba09fca5f13f78a0505f801425",
+        "rev": "8e40e047483b422addf45de1e8f37a74f25340f6",
         "type": "github"
       },
       "original": {
