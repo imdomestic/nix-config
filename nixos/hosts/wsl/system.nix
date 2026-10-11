@@ -125,11 +125,11 @@ in {
     image = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
     autoStart = false;
 
-    environment = {
-      HTTP_PROXY = "http://127.0.0.1:7897";
-      HTTPS_PROXY = "http://127.0.0.1:7897";
-      NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
-    };
+    # environment = {
+    #   HTTP_PROXY = "http://127.0.0.1:7897";
+    #   HTTPS_PROXY = "http://127.0.0.1:7897";
+    #   NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
+    # };
 
     volumes = [
       "/var/lib/qwen38/ninfer-models:/models:ro"
@@ -196,13 +196,13 @@ in {
   # Default 262K profile; routing details: docs/incidents.md#wsl-ninfer-model-gateway.
   virtualisation.oci-containers.containers.qwen38-long = {
     image = "localhost/ninfer:qwen38-24g-550d0ac-1880c63";
-    autoStart = true;
+    autoStart = false;
 
-    environment = {
-      HTTP_PROXY = "http://127.0.0.1:7897";
-      HTTPS_PROXY = "http://127.0.0.1:7897";
-      NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
-    };
+    # environment = {
+    #   HTTP_PROXY = "http://127.0.0.1:7897";
+    #   HTTPS_PROXY = "http://127.0.0.1:7897";
+    #   NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
+    # };
 
     volumes = [
       "/var/lib/qwen38/ninfer-models:/models:ro"
@@ -271,12 +271,12 @@ in {
     image = "docker.io/vllm/vllm-openai:v0.28.0";
     autoStart = false;
 
-    environment = {
-      MAX_JOBS = "2";
-      HTTP_PROXY = "http://127.0.0.1:7897";
-      HTTPS_PROXY = "http://127.0.0.1:7897";
-      NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
-    };
+    # environment = {
+    #   MAX_JOBS = "2";
+    #   HTTP_PROXY = "http://127.0.0.1:7897";
+    #   HTTPS_PROXY = "http://127.0.0.1:7897";
+    #   NO_PROXY = "127.0.0.1,localhost,100.64.0.14";
+    # };
 
     volumes = [
       "/var/lib/qwen38/huggingface:/root/.cache/huggingface"
@@ -328,17 +328,21 @@ in {
     "d /var/lib/qwen38/llama-swap-proxy 0750 llama-swap-proxy llama-swap-proxy -"
   ];
 
+  # Inference stays disabled, including manual starts: docs/decisions.md#wsl-inference-disabled.
   systemd.services.podman-qwen38 = {
+    enable = false;
     after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
     requires = ["nvidia-container-toolkit-cdi-generator.service"];
     conflicts = ["podman-qwen38-long.service" "podman-qwen38-vllm.service"];
   };
   systemd.services.podman-qwen38-long = {
+    enable = false;
     after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
     requires = ["nvidia-container-toolkit-cdi-generator.service"];
     conflicts = ["podman-qwen38.service" "podman-qwen38-vllm.service"];
   };
   systemd.services.podman-qwen38-vllm = {
+    enable = false;
     after = ["network-online.target" "nvidia-container-toolkit-cdi-generator.service"];
     requires = ["nvidia-container-toolkit-cdi-generator.service"];
     conflicts = [
@@ -350,7 +354,7 @@ in {
   };
 
   services.llama-swap = {
-    enable = true;
+    enable = false;
     listenAddress = "127.0.0.1";
     port = llamaSwapPort;
     settings = llamaSwapSettings;
@@ -359,6 +363,7 @@ in {
   # llama-swap only starts/stops the declarative OCI units; NInfer remains
   # owned by NixOS rather than by an ad-hoc container command.
   systemd.services.llama-swap = {
+    enable = false;
     conflicts = ["podman-qwen38-vllm.service"];
     serviceConfig = {
       DynamicUser = lib.mkForce false;
@@ -377,6 +382,7 @@ in {
   };
 
   systemd.services.llama-swap-proxy = {
+    enable = false;
     description = "Tailnet OpenAI gateway for llama-swap";
     wantedBy = ["multi-user.target"];
     wants = ["network-online.target" "tailscaled.service"];
@@ -413,8 +419,8 @@ in {
     };
   };
 
-  networking.proxy.default = "http://127.0.0.1:7897";
-  networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain,100.64.0.14";
+  # networking.proxy.default = "http://127.0.0.1:7897";
+  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain,100.64.0.14";
   services.resolved = {
     enable = true;
     settings.Resolve.FallbackDNS = ["223.5.5.5"];

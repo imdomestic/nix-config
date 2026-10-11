@@ -11,6 +11,20 @@
 
 ---
 
+## 2026-10-11 · 禁用 WSL 的全部推理服务 {#wsl-inference-disabled}
+
+按用户要求关闭 WSL 上的 Qwen/NInfer 84K、262K、vLLM 备用档，以及
+llama-swap 和 Tailnet 网关。保留模型、镜像和参数；OCI 档均不自动启动，
+五个 systemd 服务通过原生 `enable = false` 声明式屏蔽。
+
+当前机器先停止服务，并在 `/etc/systemd/system.control/` 为上述五个 unit
+建立指向 `/dev/null` 的持久屏蔽。未进行整机切换，运行的系统 generation
+保持不变；WSL 原有的本地代理禁用修改一并提交。服务、容器、进程和
+8000/8001/8100/8101 监听均已停止。
+
+将来重新启用时，除修改声明式配置，还需删除该目录中这五个服务的
+屏蔽链接并执行 `systemctl daemon-reload`。
+
 ## 2026-10-06 · seraph 采用 SSH 计算节点配置 {#seraph-compute-node}
 
 用户通过 SSH 和终端使用 seraph，明确要求停用全部视频输出能力。
