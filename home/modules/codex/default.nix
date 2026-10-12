@@ -19,7 +19,6 @@ in {
         "context-used"
         "weekly-limit"
       ];
-      status_line_use_colors = true;
     };
   };
 
