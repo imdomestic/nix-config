@@ -296,7 +296,7 @@
     # Learns group expressions and jargon behind the Historian cursor; the
     # first run relearns the whole history on taipan's local model.
     "lingo" = {
-      "profile" = "qwen3.8-27b-lingo";
+      "profile" = "gpt-5.6-luna";
     };
     "stickers" = {
       "caption_profile" = "gpt-5.6-luna";
