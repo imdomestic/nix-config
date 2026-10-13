@@ -10,8 +10,11 @@
     ../../modules/nerdfonts
     ../../modules/aerospace/linwhite.nix
     ../../../darwin/modules/linwhite-smb.nix
+    ../../../darwin/modules/lidguard
   ];
   system.stateVersion = 5;
+
+  services.lidguard.enable = true;
 
   system.defaults = {
     dock.autohide = false;
