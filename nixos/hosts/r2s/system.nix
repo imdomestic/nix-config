@@ -438,13 +438,6 @@ in {
   time.timeZone = "Asia/Hong_Kong";
   i18n.defaultLocale = "en_US.UTF-8";
 
-  environment.etc = {
-    "systemd/journald.conf.d/99-storage.conf".text = ''
-      [Journal]
-      Storage=volatile
-    '';
-  };
-
   users.users.nixos = {
     isNormalUser = true;
     extraGroups = ["wheel"];

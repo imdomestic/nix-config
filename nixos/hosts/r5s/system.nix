@@ -29,9 +29,6 @@ in {
       device = "/dev/disk/by-label/NIXOS";
       fsType = "ext4";
     };
-    "/var/log" = {
-      fsType = "tmpfs";
-    };
   };
 
   hardware.firmware = [
@@ -181,12 +178,6 @@ in {
   };
 
   i18n.defaultLocale = "en_US.UTF-8";
-  environment.etc = {
-    "systemd/journald.conf.d/99-storage.conf".text = ''
-      [Journal]
-      Storage=volatile
-    '';
-  };
 
   networking = {
     firewall.enable = false;
