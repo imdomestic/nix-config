@@ -4,6 +4,37 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-14 · Max 晚上回复慢:tank 到 h610 的移动↔电信互联丢包,cliproxy 搬到 tank {#max-evening-cross-carrier}
+
+Max 的回复每晚 20–22 点变慢。近 7 天 gemini-3.8-flash 一轮回复的中位数平时约 20 秒,
+20 点 116 秒、21 点 286 秒,p90 到 23–28 分钟;gpt-5.6-luna 同时变慢,连很小的图片
+描述调用也卡过 36 分钟。两者都经 h610 上的 cliproxy(:8317)。
+
+tank 是移动宽带(`2409:…`),h610 是电信(`240e:…`),tailscale 走 IPv6 直连。h610
+上 Prometheus 的 `ping_loss_ratio`:h610 → tank 21–22 点丢包 42–56%,RTT 从 13 ms
+涨到 55–101 ms;tank 同一局域网的 r5s → h610 同样 42–54%,电信的 r6s → tank 39–52%;
+而 r6s ↔ h610(电信对电信)、tokyo → h610 一直是 0%。tank 的 TCP 重传率平时
+0.5–1%,这时升到 12–15%。坏的是移动和电信之间的互联,不是哪一台机器。
+
+h610 自己出境那段同一时间也变差(TCP 重传 3.5% → 8–12%,cliproxy 上游报 EOF、
+TLS 握手超时、DNS 解析失败),cliproxy 请求的中位数从 8–12 秒涨到 35–86 秒,但这
+是次要的一层。
+
+Max 把它放大了:流式请求一个字节都没收到时最多尝试 6 次,每次只受 profile 的整体
+`timeout_seconds` 约束(gemini 300 秒),中间退避 2/8/20/45/90 秒,最坏 1965 秒 ——
+10-13 晚上真有一次 gemini 调用正好 1965 秒。同一个对话的回合是串行的,一个卡住,后
+面的消息都排队。
+
+处理:cliproxy 搬到 tank,和 Max 在同一台机器上;出境走网关 r5s 的 dae(gizmo 打
+r5s 的 portal 是 131 Mbit/s,h610 是 4.8 Mbit/s,见 [proxy-todo.md](proxy-todo.md))。
+h610:8317 保留一个 TCP 转发给没改配置的客户端。代价是电信那边的客户端(h610 本机、
+r6s 后面的机器)现在要反过来跨这段互联。
+
+误导点:
+
+- dae `im` 组的节点整天每小时 ALIVE/NOT ALIVE 来回 60 次左右,和慢的时段对不上,
+  不是原因。
+
 ## 2026-10-11 · r5s 的 dae 把 sh 解析回已退役的上海 IP,im 组只剩国内反向隧道 {#r5s-dae-stale-sh-address}
 
 tank 上的 Max 从 10-10 起反复报 `getAddrInfo … www.bungie.net … Temporary failure

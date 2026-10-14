@@ -16,7 +16,7 @@
   mkCliProxyProfile = model: aliases: {
     provider = "cliproxy";
     protocol = "openai-chat";
-    base_url = "http://h610.inner.imdomestic.com:8317/v1";
+    base_url = "http://tank.inner.imdomestic.com:8317/v1";
     api_key_env = "CLIPROXY_API_KEY";
     inherit model aliases;
     timeout_seconds = 180;
@@ -110,7 +110,6 @@ in {
   imports = [
     ../../modules/airport
     ../../modules/imsub
-    ../../modules/cliproxy
     # 2026-07-31 试过 mihomo,因为 cliproxy 一直 EOF 而回滚,见
     # docs/proxy-todo.md 第 9 节。r6s 上同一份配置是好的,所以问题多半出在
     # 这台的链路质量(五条里最差)上,而不是配置本身。下面 my.mihomo.* 那几行
@@ -142,12 +141,33 @@ in {
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
-  # 把 ChatGPT 订阅包成 OpenAI 兼容 API。只绑 tailscale 地址 —— 见模块里
-  # bindAddress 的说明,公网上不该有这个监听。
-  services.cliproxy = {
-    enable = true;
-    bindAddress = config.my.host.tsName;
+  # cliproxy 2026-10-14 搬到了 tank(见 tank/system.nix)。这里只剩一个 TCP 转发,
+  # 让手机、别人的机器这类不归本仓库管、还写着 h610:8317 的客户端照旧能用。
+  # 本仓库里的客户端都已直连 tank;等 tank 上 cliproxy 的日志里不再有
+  # 100.64.0.3 的来源,这段就可以删。
+  #
+  # 写死 100.64.0.3 加 FreeBind:socket 开机就要 bind,那时 tailscale 地址可能
+  # 还不存在。不监听通配地址,公网上不该有这个端口(理由同 modules/cliproxy 的
+  # bindAddress)。
+  systemd.sockets.cliproxy-forward = {
+    wantedBy = ["sockets.target"];
+    listenStreams = ["100.64.0.3:8317"];
+    socketConfig.FreeBind = true;
   };
+  systemd.services.cliproxy-forward = {
+    description = "Forward the old h610 cliproxy port to tank";
+    serviceConfig = {
+      # tank 的 tailnet 地址。cliproxy 只听 IPv4,写名字的话解析出 IPv6 就连不上。
+      ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 100.64.0.4:8317";
+      DynamicUser = true;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+    };
+  };
+  # gaoji 的环境文件(qq-deepseek-bot-postgres.env)还要这把调用密钥,原先由
+  # cliproxy 模块声明。
+  sops.secrets."cliproxy/api_key".sopsFile = ../../../secrets/clients/cliproxy.yaml;
 
   # 重新启用 modules/mihomo 时这几行就位,现在 import 注释掉了所以是死设置
   # (选项由该模块定义,模块不 import 时这些赋值会导致求值失败,所以一并注释)。
@@ -783,7 +803,7 @@ in {
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
-  my.tailscale.bindServices = ["ollama" "headplane" "cliproxy"];
+  my.tailscale.bindServices = ["ollama" "headplane"];
 
   services.ollama = {
     enable = true;

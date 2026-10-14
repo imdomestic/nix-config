@@ -79,9 +79,28 @@ in {
     ../../modules/keyd
     ../../modules/monitoring
     ../../modules/qq-bot-postgres-ha.nix
+    ../../modules/cliproxy
     # ../../modules/minecraft/wuxi.nix
     # ../../modules/dae
   ];
+
+  # 把 ChatGPT/Gemini 订阅包成 OpenAI 兼容 API。只绑 tailscale 地址 —— 见模块里
+  # bindAddress 的说明,公网上不该有这个监听。
+  #
+  # 2026-10-14 从 h610 搬过来:最大的调用方是本机的 Max,而 tank(移动)到
+  # h610(电信)这一跳每晚 21–22 点丢包 40–55%,Max 的回复跟着慢到十几二十分钟。
+  # 见 docs/incidents.md#max-evening-cross-carrier。出境走网关 r5s 的 dae。
+  # h610 上留了个转发,没跟着改配置的客户端照旧连 h610:8317。
+  services.cliproxy = {
+    enable = true;
+    bindAddress = config.my.host.tsName;
+  };
+  my.tailscale.bindServices = ["cliproxy"];
+  # 管理口令和 Max 读的是同一个值,tank 上只留 tank-max.yaml 这一份。
+  sops.secrets."cliproxy/management_key" = {
+    sopsFile = ../../../secrets/hosts/tank-max.yaml;
+    key = "cliproxy-management-key";
+  };
 
   # 监控的第一份。**开关不在这里** —— my.monitoring.enable 默认读 registry 里
   # 的 roles(见 ./default.nix 的 "monitor")。在这儿再写一遍是冗余的,而只写
@@ -386,8 +405,8 @@ in {
       enable = false;
       trustedInterfaces = ["enp5s0" "ens6" "br-lan"];
       checkReversePath = false;
-      # NFS。只对 tailscale 放行(exports 里给的也是 tailnet 地址)。
-      interfaces.tailscale0.allowedTCPPorts = [2049];
+      # NFS 和 cliproxy。只对 tailscale 放行(exports 里给的也是 tailnet 地址)。
+      interfaces.tailscale0.allowedTCPPorts = [2049 8317];
     };
   };
 

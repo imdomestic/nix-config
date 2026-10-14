@@ -40,7 +40,7 @@ creation_rules:
       - age: [*linwhite, *linwhite_seraph, *host_seraph]
   - path_regex: secrets/clients/cliproxy\.yaml$
     key_groups:
-      - age: [*hank_hackintosh, *hank_praxic, *hank_wsl, *hank_taipan, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_seraph, *linwhite, *fendada, *kenneth, *host_h610]
+      - age: [*hank_hackintosh, *hank_praxic, *hank_wsl, *hank_taipan, *hank1, *hank2, *hank3, *hank_268v, *hank_encore, *linwhite_encore, *linwhite_seraph, *linwhite, *fendada, *kenneth, *host_h610, *host_tank]
   - path_regex: secrets/gaoji/account-auth\.yaml$
     key_groups:
       - age: [*hank_hackintosh, *hank_praxic, *hank_wsl, *hank1, *hank2, *hank3, *linwhite, *fendada, *kenneth, *host_h610]
