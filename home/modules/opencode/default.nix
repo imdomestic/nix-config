@@ -194,12 +194,12 @@ in {
       instructions = ["${shellStrategy}/shell_strategy.md"];
       provider.cliproxy = {
         npm = "@ai-sdk/openai";
-        name = "CLIProxy (h610)";
+        name = "CLIProxy (tank)";
         options = {
-          baseURL = "http://h610.inner.imdomestic.com:8317/v1";
+          baseURL = "http://tank.inner.imdomestic.com:8317/v1";
           apiKey = "{file:${config.sops.secrets."cliproxy/api_key".path}}";
         };
-        # h610 /v1/models 的对话模型；Responses API 保留推理与工具调用。
+        # tank /v1/models 的对话模型；Responses API 保留推理与工具调用。
         models =
           lib.genAttrs [
             "gpt-6.1-sol"

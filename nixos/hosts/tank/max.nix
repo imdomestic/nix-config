@@ -97,7 +97,7 @@
         "gpt-5.6-terra" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-terra-api-key";
-          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
+          "base_url" = "http://tank.inner.imdomestic.com:8317/v1";
           "model" = "gpt-5.6-terra";
           "price_input" = 2;
           "price_cached_input" = 0.2;
@@ -109,7 +109,7 @@
         "gpt-6-astra" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-6-astra-api-key";
-          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
+          "base_url" = "http://tank.inner.imdomestic.com:8317/v1";
           "model" = "gpt-6-astra";
           "price_input" = 10;
           "price_cached_input" = 1;
@@ -121,7 +121,7 @@
         "gpt-5.6-sol" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-sol-api-key";
-          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
+          "base_url" = "http://tank.inner.imdomestic.com:8317/v1";
           "model" = "gpt-5.6-sol";
           "price_input" = 4;
           "price_cached_input" = 0.4;
@@ -133,7 +133,7 @@
         "gpt-5.6-luna" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-luna-api-key";
-          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
+          "base_url" = "http://tank.inner.imdomestic.com:8317/v1";
           "model" = "gpt-5.6-luna";
           "price_input" = 0.2;
           "price_cached_input" = 0.02;
@@ -145,7 +145,7 @@
         "gpt-5.6-luna-medium" = {
           "protocol" = "responses";
           "api_key" = config.sops.placeholder."max/llm-profiles-gpt-5.6-luna-medium-api-key";
-          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
+          "base_url" = "http://tank.inner.imdomestic.com:8317/v1";
           "model" = "gpt-5.6-luna";
           "price_input" = 0.2;
           "price_cached_input" = 0.02;
@@ -157,7 +157,7 @@
         "gemini-3.8-flash" = {
           "protocol" = "openai";
           "api_key" = config.sops.placeholder."max/llm-profiles-gemini-3.8-flash-api-key";
-          "base_url" = "http://h610.inner.imdomestic.com:8317/v1";
+          "base_url" = "http://tank.inner.imdomestic.com:8317/v1";
           "model" = "gemini-3.8-flash-high";
           "effort" = "high";
           "timeout_seconds" = 300;
@@ -322,7 +322,7 @@
       "access_token" = config.sops.placeholder."max/server-access-token";
     };
     "cliproxy" = {
-      "base_url" = "http://h610.inner.imdomestic.com:8317";
+      "base_url" = "http://tank.inner.imdomestic.com:8317";
       "management_key" = config.sops.placeholder."max/cliproxy-management-key";
     };
     "log_color" = "always";

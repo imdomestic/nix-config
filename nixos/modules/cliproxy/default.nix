@@ -94,8 +94,8 @@ in {
           # 写 false 只是留个字面记录,实际不起作用:设了 MANAGEMENT_PASSWORD
           # 之后程序内部会把 allowRemote 一起打开(handler.go 的
           # allowRemoteOverride)。而且它只把 127.0.0.1/::1 算"本地",本机连
-          # tailscale 地址的源 IP 是 100.64.0.3,怎么都算远程 —— 想靠这个开关
-          # 把管理口关在环回里是做不到的。
+          # tailscale 地址的源 IP 是本机的 tailnet 地址,怎么都算远程 —— 想靠
+          # 这个开关把管理口关在环回里是做不到的。
           #
           # 所以这把口令的权限边界要当真:拿到它的人可以直接下载 auths/ 里的
           # OAuth 凭据(GET /v0/management/auth-files/download)。tailnet 上还有
@@ -165,7 +165,7 @@ in {
     # 登录辅助。设备码流程不需要回调端口、不需要浏览器、不需要 SSH 隧道 ——
     # 它打印一个 URL 和一段码,你在任意一台有浏览器的机器上开那个 URL 输码即可。
     # 上游文档主推的是 `-no-browser` + `ssh -L 1455:...` 那套,那套在这里更麻烦:
-    # 它会去 api.ipify.org 猜公网 IP 来拼 ssh 命令,而这台机器经 dae 出去,
+    # 它会去 api.ipify.org 猜公网 IP 来拼 ssh 命令,而这台机器经代理出去,
     # 猜出来的是日本出口的地址,拼出来的 ssh 命令是错的。
     environment.systemPackages = [
       (pkgs.writeShellScriptBin "cliproxy-login" ''
