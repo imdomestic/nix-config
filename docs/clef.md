@@ -34,7 +34,7 @@ curl --fail-with-body http://taipan:8000/v1/systemone \
 JSON
 ```
 
-The initial profile is **4,096 input tokens and one concurrent request**.
+The default profile is **8,192 input tokens and one concurrent request**.
 The complete encoded state, questions, criteria and images must fit that
 window. History is supplied as part of `state` when needed by the decision.
 
@@ -50,11 +50,11 @@ the backend directly while another model is active.
 - Runtime: official Ollama 0.40.4 container, with NVIDIA CDI and host networking.
 - Unit: `podman-clef.service`, started on demand by llama-swap.
 - Persistent model directory: `/var/lib/clef-ollama`.
-- Source model: `clef:27b-q4_K_M`; the local `clef-27b-4k` derivative shares
-  its blobs and sets `num_ctx = 4096`.
+- Source model: `clef:27b-q4_K_M`; the local `clef-27b-8k` derivative shares
+  its blobs and sets `num_ctx = 8192`.
 - The upstream package sets `num_ctx = 16384`, which overrides the environment
   default. Setting only `OLLAMA_CONTEXT_LENGTH` does not establish the intended
-  4K profile.
+  8K profile.
 - `scripts/patches/llama-swap-systemone.patch` adds model dispatch for
   `/v1/systemone`; this uses the existing model-name rewrite, concurrency and
   switching pipeline.
@@ -65,7 +65,7 @@ Initialization downloads the source model only if it is missing, then creates
 the local derivative through Ollama's API. It does not refresh an existing
 source tag on every start.
 
-The readiness probe retrieves `/v1/models/clef-27b-4k`, ensuring that the local
+The readiness probe retrieves `/v1/models/clef-27b-8k`, ensuring that the local
 model exists before routing requests. Startup and version findings are in
 [the incident record](incidents.md#taipan-clef-decision-startup).
 
@@ -100,15 +100,26 @@ measurement. Startup buffers can therefore depend on the configured window
 even for a short request. Verify allocations in startup logs and requests
 instead of copying NInfer's KV settings.
 
-The validation script tests cold/warm requests, a longer input, 32 questions,
-image decisions, context overflow and recovery. With `--check-swap`, it also
+On 2026-10-15, near-full-window text requests passed at 8K and 12K with 65/65
+layers on the GPU. At 12K only 434 MiB remained free; 16K ran with 59/65 layers
+on the GPU and took 7.894 seconds for 16,277 input tokens. The default remains
+8K to leave room for image processing. This establishes a tested all-GPU range,
+not an absolute model or CPU-offload limit. See the
+[context comparison](incidents.md#taipan-clef-context-limit).
+
+The validation script tests cold/warm requests, a longer input, a near-full
+window, 32 questions, image decisions, a long state with a 1024×1024 image,
+context overflow and recovery. With `--check-swap`, it also
 switches to Qwen and back. GPU memory is sampled every 100 ms; sub-interval
 peaks may be missed.
 
 ```sh
 python3 scripts/test-clef-deployment.py \
-  --check-swap --output /tmp/clef-validation.json
+  --context 8192 --check-swap --output /tmp/clef-validation.json
 ```
+
+`--context` must match the deployed model; it controls test input lengths and
+does not reconfigure the server. `--model` defaults to the gateway's `clef-27b`.
 
 Measured memory, latency and acceptance results are in
 [the 2026-10-15 incident record](incidents.md#taipan-clef-decision-startup).
