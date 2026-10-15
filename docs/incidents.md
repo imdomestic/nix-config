@@ -4,6 +4,130 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-15 · macOS 原生视频壁纸解锁黑屏与减速末段卡顿 {#macos-native-aerial-temporal-ramp}
+
+M1 Pro、macOS 27.0.1（26A434），把 Dreaming City 4K240 视频替换进苹果原生
+Landscape → **Golden Gate Sunset** 槽位，希望屏保播放、解锁后平滑减速并停在当时
+画面，不依赖 Aerial。最终用户实测确认：**减速顺滑，停帧正常，不再黑屏**。
+这是本机用户媒体目录的实际修改，不是 Nix 配置或 flake 输出。
+
+**第一层问题：240 fps 不等于符合原生播放器的取帧要求。** 原始 MOV 是
+3840×2160、240 fps、Main10，但没有 `tscl` / `tsas` sample groups。屏保能播放，
+解锁时原生播放器报 `WallpaperExtensionKit.VideoSampleReadingErrors Code=4`
+（`noTemporalInfo`），桌面变黑。`tscl` 描述帧的时域层和依赖约束，`tsas` 描述时域
+子层访问点；这些在 MOV 内部，不是资源清单旁边的一份播放参数。
+[已有的逆向与编码复现](https://github.com/AlexisBCD/macos-custom-video-wallpaper-fix)
+提供了线索，本机日志、文件结构和后续解锁测试与之吻合。
+
+**第二层问题：有时域层也不代表减速顺滑。** 用 VideoToolbox 开启层级编码后，
+4 层版本解决黑屏，但减速最后几秒仍明显逐帧跳动。修正容器层数声明后用户感觉有所
+改善，仍不及苹果原片。苹果原片和转换版都是 300 秒、72,000 帧、240 fps；通过
+`AVAssetReader` 读完整段，排序后的 PTS 间隔都是 1/240 秒，重复接缝也连续。
+因此总长度、标称帧率和时间戳缺口不能解释这个对照结果。
+
+本机 `WallpaperExtensionKit` 的分析副本可见 `rampDownCurrentTSALevel`、
+`rampDownTargetTSALevel`、读取 temporal/TSA/STSA 附件的路径，运行日志也有
+`RAMP-DOWN switch from level … to level …`。原生减速包含按时域层选帧，不只是
+改变播放时钟。[Aerial 4.1.7 的 renderer](https://github.com/AerialScreensaver/Aerial/blob/v4.1.7/WallpaperExtension/Rendering/VideoRenderer.swift)
+则自行控制时钟，高帧率内容约 3 秒减速、120 Hz 更新速率，并在减速时关闭按刷新率
+主动丢帧；不能把它的实现直接当成苹果私有播放器的算法。
+
+做过一个关键对照：原视频实际所有 VCL NAL 的 temporal ID 都为 0，给它补上真实
+对应的单层 `tscl`，不改压缩画面，重复成同样的 5 分钟。五段画面数据的 SHA-256
+都与原视频一致。用户确认**减速丝滑了，但最后切静止画面时黑屏**。这次没有
+`Code=4`；日志显示播放器完成暂停并把独立的 still layer 移到最上方。单层文件没有
+TSA 帧，可能使交接失效；这是推测，不能把缺少 TSA 认定为已独立证明的唯一原因。
+
+**本机验证有效的组合：两层编码、真实 TSA 标记、正确的容器描述。**
+
+| 项目 | 最终值 / 做法 |
+| --- | --- |
+| 画面 | 3840×2160，240 fps，HEVC Main10，10-bit 4:2:0，约 24.093 Mbit/s |
+| 颜色 | 保留源视频 BT.709 primaries/matrix、sRGB transfer；不盲目改成苹果原片的 transfer |
+| 时域结构 | `BaseLayerFrameRate = 120`，实际 NAL / sample 附件均为层 0、1 |
+| 切换点 | 层 1 有真实 `TSA_N`（NAL type 2），附件 `HEVCTemporalSubLayerAccess = true` |
+| 编码选项 | 硬件 HEVC、`RealTime = false`、允许帧重排、关键帧间隔 1200、平均码率 24 Mbit/s |
+| 请求层数 | 本机 supported-property dictionary 支持 `NumberOfTemporalLayers`，设为 2；它是私有键，必须验证实际输出 |
+| 封装 | `AVAssetWriterInput(outputSettings: nil, sourceFormatHint: …)`，保留压缩 sample 附件，`mediaTimeScale = 240000` |
+| 总长 | 编码 60 秒一次，再复制压缩 sample 五次；300 秒、72,000 帧，不是把内容放慢五倍 |
+
+原生减速的取样路径能保留这两层中的帧，同时文件具有真实的时域访问标记。与单层
+试验相比，这一组合既顺滑又能停帧。但不要推导成「层数越少越好」或「5 层有问题」：
+苹果 5 层原片本身很顺滑，本轮没有隔离每个编码选项的独立贡献。
+
+**封装后还有两处必须检查，不能只看编码 API 返回成功：**
+
+- 本次 `VTCompressionSession → AVAssetWriter` 产物的 VPS/SPS 和 NAL 实际是 2 层，
+  `hvcC.numTemporalLayers` 却写成 1。按 VPS/SPS 验证真实层数后，修正 `hvcC`
+  配置字节的第 3–5 位：`(old & ~0x38) | (actualLayers << 3)`。不能只改声明成
+  5 层来假装拥有苹果的结构。曾请求 5 层、API 返回成功，实际仍只有 4 层。
+- `tscl` 的 profile compatibility / constraint 字段也出现不符合本片 VPS/SPS 的值。
+  在确认各子层继承同一 profile/tier/level 后，按**本片**参数集重建这些字段，保留
+  每帧真实层归属。不要复制金门桥的 sample-group 表。此项单独修正没有改善卡顿，
+  因此不能把它记录成卡顿的根因。修正前后 `mdat` 哈希相同，画面未被这一步重新压缩。
+
+拼接时 PTS 和 DTS 一起偏移并保留重排关系，消除源时间原点，再对齐到 1/240 秒。
+用视频 track 的时间范围和实际帧数确定循环长度；不要直接使用可能包含 edit / 起始
+偏移的 asset 总时长。本次原素材通过 reader 读出的首帧 PTS 为 0.0125 秒，直接复制
+asset duration 的中间版累计出了 300.05 秒，已丢弃。跳过 `numSamples == 0` 的
+结束标记，否则会报 `No sample format`。最终用苹果 reader 验证：首帧 PTS 0、末帧
+299.995833…，全部 71,999 个间隔均为 1/240 秒，四个内部接缝连续。不要把直接解析
+`ctts` 时的有符号偏移误读成缺帧，应用媒体 API 复核。
+
+**本机复用材料与命令。** 源码、可执行文件、参数检查、sample-group 审计和日志保留在：
+
+```text
+~/Library/Application Support/native-wallpaper-backups/20261015-104745-v2/repair/
+```
+
+`encode_native_experiment.swift` 编码；`remux_flat.swift` 的 **`repeat` 模式**复制
+压缩帧；`fix_temporal_descriptions.py` 根据本片 VPS/SPS 修正声明。
+`repeat-flat` 是导致最终停帧黑屏的单层诊断模式，不是最终方案。复用示例（使用独立
+临时目录，输入原始视频，不对既有输出原地重复处理）：
+
+```sh
+aerial_repair="$HOME/Library/Application Support/native-wallpaper-backups/20261015-104745-v2/repair"
+aerial_source="$HOME/Downloads/Dreaming-City-macOS-4K240-v2/Dreaming-City-Orbit-4K240-v2.mov"
+aerial_work=$(mktemp -d)
+"$aerial_repair/encode_native_experiment" encode "$aerial_source" \
+  "$aerial_work/60s.mov" 24 120 0 com.apple.videotoolbox.videoencoder.ave.hevc 2
+"$aerial_repair/remux_flat" repeat "$aerial_work/60s.mov" "$aerial_work/5min-unfixed.mov" 5
+python3 "$aerial_repair/fix_temporal_descriptions.py" \
+  "$aerial_work/5min-unfixed.mov" "$aerial_work/5min.mov"
+python3 "$aerial_repair/inspect_mov.py" "$aerial_work/5min.mov"
+"$aerial_repair/audit_sample_groups" "$aerial_work/5min.mov"
+```
+
+需要重编译 Swift 工具时，先取消 Nix shell 带入的 `SDKROOT` / `DEVELOPER_DIR`，
+再用 `/Library/Developer/CommandLineTools/usr/bin/swiftc -swift-version 5 -O`
+和当前 Command Line Tools 的 macOS SDK；本次是 `MacOSX27.0.sdk`。混用 Nix 的旧
+SDK 和新 Swift 编译器会先在系统模块导入阶段失败。
+
+**安装与恢复。** 本次槽位 UUID 是 `4207734D-74FE-4F92-B5E1-6EC8DEE24A15`，
+不是「Dynamic Wallpapers」里的另一个 Golden Gate。安装到
+`~/Library/Application Support/com.apple.wallpaper/aerials/videos/<UUID>.mov`，先写
+同目录临时文件再原子替换，随后依次 `killall -KILL WallpaperAerialsExtension`、
+`killall -KILL WallpaperAgent`。检查 `Store/Index.plist` 的 all-Spaces / system-default
+选择仍是 `com.apple.wallpaper.choice.aerials`，配置里的 assetID 是上述 UUID；用
+`lsof` 确认新播放器确实打开这个槽位。资源清单中只查到名称、分类、预览图、URL 等，
+没有找到须随视频替换的减速参数；受保护容器缓存未完整读取，不能据此声称排除了
+所有外部缓存影响。
+
+最终视频在原下载目录的 `Dreaming-City-Orbit-4K240-native-two-layer-5min.mov`。
+上述备份目录保留苹果 `GoldenGateSunset.original.mov`、`Tahoe.original.mov` 和
+`Restore original Golden Gate Sunset.command`；恢复脚本只恢复金门桥槽位。Tahoe
+已恢复苹果原片，原始输入视频保留。系统更新或重新下载资源可能覆盖手工替换。
+
+**容易误判的点与验收边界：**
+
+- 预览能播，不代表解锁能停帧；有 `tscl` / `tsas`，也不代表描述和实际 NAL 相符。
+- 延长视频解决不了每次解锁末段的顿挫；短片的片尾循环失败应单独排查。
+- 本次以用户实际触发屏保、解锁后的「顺滑，而且停帧正常」作为验收，不把静态元数据
+  检查或无错误日志当成视觉验收。静止时观察到原生 agent / extension CPU 为 0%，
+  但未测功耗；动画期间保留更多帧可能增加解码负载，不能承诺与苹果原片耗电相同。
+- Aerial 应用、启动项、扩展注册及约 21 GB 应用数据已清理。保留的 Aerial 源码只是
+  调查材料；最终没有新增壁纸扩展、常驻播放器或定时重启脚本，也没有改系统框架。
+
 ## 2026-10-14 · Max 晚上回复慢:tank 到 h610 的移动↔电信互联丢包,cliproxy 搬到 tank {#max-evening-cross-carrier}
 
 Max 的回复每晚 20–22 点变慢。近 7 天 gemini-3.8-flash 一轮回复的中位数平时约 20 秒,
