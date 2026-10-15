@@ -26,6 +26,7 @@ in {
 
   modules = [
     ./system.nix
+    ./chorus-archive.nix
     ./gaoji.nix
     ./gaoji-web.nix
     ./max.nix
