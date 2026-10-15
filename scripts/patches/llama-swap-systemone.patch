@@ -1,0 +1,11 @@
+diff --git a/internal/server/server.go b/internal/server/server.go
+--- a/internal/server/server.go
++++ b/internal/server/server.go
+@@ -47,6 +47,7 @@
+ // modelPostJSONRoutes are endpoints with a model id in the JSON request body.
+ var modelPostJSONRoutes = []string{
+ 	"/v1/chat/completions",
++	"/v1/systemone",
+ 	"/v1/responses",
+ 	"/v1/completions",
+ 	"/v1/messages",

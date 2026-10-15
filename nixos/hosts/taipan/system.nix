@@ -6,6 +6,7 @@
 }: {
   imports = [
     ../../modules/qwen38-ninfer.nix
+    ../../modules/clef-ollama.nix
   ];
 
   boot = {
