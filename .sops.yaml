@@ -35,6 +35,9 @@ keys:
   - &host_seraph age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f
 
 creation_rules:
+  - path_regex: secrets/hosts/seraph\.yaml$
+    key_groups:
+      - age: [*linwhite, *linwhite_seraph, *host_seraph]
   - path_regex: secrets/clients/bonsai\.yaml$
     key_groups:
       - age: [*linwhite, *linwhite_seraph, *host_seraph]
