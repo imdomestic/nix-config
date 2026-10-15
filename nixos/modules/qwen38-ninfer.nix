@@ -97,7 +97,7 @@
     };
   };
 
-  llamaSwapConfig = (pkgs.formats.yaml {}).generate "llama-swap-qwen38.yaml" llamaSwapSettings;
+  llamaSwapConfig = (pkgs.formats.yaml {}).generate "llama-swap-qwen38.yaml" config.services.llama-swap.settings;
   llamaSwapProxy = (pkgs.callPackage inputs.llama-swap-proxy {}).overrideAttrs (old: {
     patches = (old.patches or []) ++ [../hosts/wsl/llama-swap-proxy-backend-timings.patch];
     vendorHash = "sha256-LS+PBnNbtSr3cibu8Nb6DEkko78EVO2l+1hxgsj5Iiw=";
@@ -385,10 +385,13 @@ in {
     services.llama-swap = {
       enable = true;
       package = pkgs.llama-swap.overrideAttrs (old: {
-        patches = (old.patches or []) ++ [
-          ../../scripts/patches/llama-swap-parameter-defaults.patch
-          ../../scripts/patches/llama-swap-responses-system-messages.patch
-        ];
+        patches =
+          (old.patches or [])
+          ++ [
+            ../../scripts/patches/llama-swap-parameter-defaults.patch
+            ../../scripts/patches/llama-swap-responses-system-messages.patch
+            ../../scripts/patches/llama-swap-systemone.patch
+          ];
       });
       listenAddress = "127.0.0.1";
       port = llamaSwapPort;
