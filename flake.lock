@@ -1162,20 +1162,46 @@
     "max": {
       "inputs": {
         "devenv": "devenv_2",
+        "microvm": "microvm",
         "nixpkgs": "nixpkgs_6",
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1792032392,
-        "narHash": "sha256-+B+GXlziIV0T9nBpitzHKKM0hEmQJfeum0zaCV1PYBQ=",
+        "lastModified": 1792039982,
+        "narHash": "sha256-yZY4e42ysPvEY2amOHsdfCxGeSkSJIpie1Z4BGin2M0=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "df2f9ebb9537d0e879885b25412c000890e08887",
+        "rev": "7c3c61a1739f4383b0c0ca2aad9f8068739e1c07",
         "type": "github"
       },
       "original": {
         "owner": "HCHogan",
         "repo": "max",
+        "type": "github"
+      }
+    },
+    "microvm": {
+      "inputs": {
+        "nixpkgs": [
+          "max",
+          "nixpkgs"
+        ],
+        "spectrum": [
+          "max",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1791551030,
+        "narHash": "sha256-jTx3O3MKqPjv+cDfBFQ5zlKECBEwzF91scC+mSumZyE=",
+        "owner": "astro",
+        "repo": "microvm.nix",
+        "rev": "f13928fe9900e91709d7ce581eefa47eaafa79e1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "astro",
+        "repo": "microvm.nix",
         "type": "github"
       }
     },
