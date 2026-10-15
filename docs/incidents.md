@@ -4,13 +4,63 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-15 · Taipan Clef 输入上限：12K 接近显存边界，默认提高到 8K {#taipan-clef-context-limit}
+
+用户要求提高输入长度并确认大致上限。在原有 Clef Q4_K_M、Ollama 0.40.4、
+单并发配置上，创建共享同一份权重的临时派生模型，分别设置 `num_ctx` 为
+8,192、12,288、16,384。通过 SSH 转发访问仅 loopback 监听的 Ollama；测试期间
+Clef 保持 llama-swap 的当前独占模型，两个 Qwen 后端没有同时加载。
+
+**误导点：标称窗口、HTTP 200 和显存占用不能单独证明全 GPU 可用。**
+Ollama 模型页标称 Clef 64K，上游包默认 `num_ctx = 16384`，但本机能力需要
+单独测试。短请求能成功，也不能证明接近满窗口时的峰值。16K 的实际长请求
+同样返回 200，却已经自动把 6 层留在 CPU。必须同时核对 `usage.input_tokens`、
+启动日志的 `n_ctx/n_batch/n_ubatch`、offload 层数和 GPU 采样。
+
+还有一个测试陷阱：本机网关的 `/upstream/clef-27b/v1/systemone` 仍然把请求
+model 重写为配置的 4K 派生名。第一次尝试实际得到的仍是 4K，接近 8K 的输入
+返回 400；确认响应 model 后，改用 SSH 转发测试派生模型。正式验收走公共
+`/v1/systemone`，并要求实际 token 数接近配置长度，防止再次测错模型。
+
+以下是单次合成文本请求，不是业务准确率或持续负载测试；每 100 ms 采样 GPU，
+可能漏掉更短的峰值。padding 后放置退款工单，各档均正确选择 billing 并判断退款。
+
+| 配置窗口 | 实际输入 token | GPU 层数 | 主计算 buffer | 请求耗时 | 请求 GPU 峰值 | 最低空闲 |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 8,192 | 8,085 | 65/65 | 2,549.91 MiB | 3.268 s | 22,158 MiB | 1,816 MiB |
+| 12,288 | 12,181 | 65/65 | 3,846.05 MiB | 5.034 s | 23,540 MiB | 434 MiB |
+| 16,384 | 16,277 | 59/65 | 5,269.75 MiB | 7.894 s | 23,402 MiB | 572 MiB |
+
+16K 的 GPU 权重 buffer 从 17,648.74 降至 16,000.06 MiB，CPU 映射模型区增至
+3,361.56 MiB；其热态 226-token 短请求为 0.164 s，8K 同请求为 0.097 s。
+表中的峰值取各档完成加载后的长请求阶段，避免混入卸载前上一档的显存。
+
+**结论与配置。** 当前版本与硬件下，12K 是已测试的全 GPU 上边界档位，
+434 MiB 余量偏小；16K 可以 CPU/GPU 混合运行，不能称为绝对输入上限。
+默认从 4K 提高到 **8K、单并发**，保留图片和临时计算空间。没有逐 token 搜索
+极限，也没有验证 32K/64K 或任意图片组合。`contextLength` 同时控制派生模型
+参数、环境默认值及网关 metadata/capabilities，健康检查也指向新的 8K 派生名。
+
+**8K 上线验收。** 经正常 Tailnet 网关调用，首个 226-token 请求为 34.189 s，
+热态同请求 0.096 s；8,085-token 请求为 3.317 s、GPU 峰值 22,158 MiB。
+长文本与 1024×1024 图片合计 7,575 token，2.228 s 正确识别红色，
+GPU 峰值 22,254 MiB、最低空闲 1,720 MiB。32 个问题通过；超限请求返回
+400，随后短请求仍返回 200。Nix 求值、远端构建、dry-activate 和真实 activation
+均完成。切到 Qwen 为 9.613 s，切回 Clef 为 35.246 s，均正常响应；
+最后恢复 8K Clef 常驻，系统无失败单元。切换阶段的 Qwen 显存不计入 Clef 峰值。
+
+探测脚本、三个档位的原始 JSON、100 ms GPU 采样及容器日志保存在 Taipan 的
+`/var/lib/clef-ollama/deployment-20261015-8k/`。正式部署后的验收见同目录
+`validation.json`；复测方法见 [Clef runbook](clef.md)。
+
 ## 2026-10-15 · Taipan 部署 Clef 27B：运行时版本、就绪检查与显存实测 {#taipan-clef-decision-startup}
 
 Taipan 已在 Linux 在线，实测为 Ryzen 7 9800X3D、RTX 5090 D v2
 （24,455 MiB 显存）、约 30 GiB 系统内存，NVIDIA 595.99.02。
 初始显存占用 34 MiB，空闲 23,940 MiB。部署了官方 Clef 27B Q4_K_M，
 通过现有 Tailnet 网关的 `POST http://taipan:8000/v1/systemone` 调用，
-模型名 `clef-27b`，4,096 输入 token、单并发，与两个 Qwen 档位互斥加载。
+模型名 `clef-27b`，初始 4,096 输入 token、单并发，与两个 Qwen 档位互斥加载；
+后续提高到 8K，见[输入上限测试](#taipan-clef-context-limit)。
 配置、初始化方法和请求示例见 [Clef runbook](clef.md)。
 
 **误导点一：模型页的最低版本不能代替真实拉取验证。** 页面写 Ollama 0.35.1

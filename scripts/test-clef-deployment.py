@@ -15,7 +15,7 @@ import zlib
 from pathlib import Path
 
 
-def red_png():
+def red_png(size=256):
     def chunk(kind, data):
         return (
             struct.pack(">I", len(data))
@@ -24,9 +24,9 @@ def red_png():
             + struct.pack(">I", zlib.crc32(kind + data))
         )
 
-    pixels = (b"\x00" + b"\xff\x00\x00" * 256) * 256
+    pixels = (b"\x00" + b"\xff\x00\x00" * size) * size
     image = b"\x89PNG\r\n\x1a\n"
-    image += chunk(b"IHDR", struct.pack(">2I5B", 256, 256, 8, 2, 0, 0, 0))
+    image += chunk(b"IHDR", struct.pack(">2I5B", size, size, 8, 2, 0, 0, 0))
     image += chunk(b"IDAT", zlib.compress(pixels)) + chunk(b"IEND", b"")
     return base64.b64encode(image).decode()
 
@@ -35,6 +35,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://taipan:8000")
     parser.add_argument("--ssh", default="hank@taipan")
+    parser.add_argument("--model", default="clef-27b")
+    parser.add_argument("--context", type=int, default=8192)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--check-swap", action="store_true")
     args = parser.parse_args()
@@ -109,7 +111,7 @@ def main():
 
     def decide(name, state, schema=questions):
         response = request(
-            name, {"model": "clef-27b", "state": state, "questions": schema}
+            name, {"model": args.model, "state": state, "questions": schema}
         )
         if schema is questions:
             assert response["answers"]["team"]["choice"] == "billing", response
@@ -125,6 +127,14 @@ def main():
         decide("warm_short", ticket)
         filler = "Unrelated archive entry: the office inventory was checked.\n"
         decide("long_state", filler * 230 + "\nCurrent customer ticket:\n" + ticket)
+        response = decide(
+            "near_context",
+            "Archive padding; only the final ticket is relevant.\n"
+            + " x" * (args.context - 350)
+            + "\nCurrent customer ticket:\n"
+            + ticket,
+        )
+        assert args.context - 350 < response["usage"]["input_tokens"] <= args.context
         many = {
             f"refund_{i}": {"type": "noul", "instructions": "Is a refund requested?"}
             for i in range(32)
@@ -134,9 +144,27 @@ def main():
         response = request(
             "image",
             {
-                "model": "clef-27b",
+                "model": args.model,
                 "state": "Identify the solid color in this image.",
                 "images": [red_png()],
+                "questions": {
+                    "color": {
+                        "type": "choice",
+                        "instructions": "What color is the image?",
+                        "criteria": {"red": "Red", "blue": "Blue", "green": "Green"},
+                    }
+                },
+            },
+        )
+        assert response["answers"]["color"]["choice"] == "red", response
+        response = request(
+            "long_state_and_image",
+            {
+                "model": args.model,
+                "state": "Ignore this padding:\n"
+                + " x" * (args.context - 1800)
+                + "\nIdentify the solid color in this image.",
+                "images": [red_png(1024)],
                 "questions": {
                     "color": {
                         "type": "choice",
@@ -150,8 +178,8 @@ def main():
         request(
             "context_overflow",
             {
-                "model": "clef-27b",
-                "state": " benign note." * 1800,
+                "model": args.model,
+                "state": " x" * args.context,
                 "questions": questions,
             },
             expected=(400, 413),
@@ -174,6 +202,8 @@ def main():
             ["ssh", args.ssh, "curl -fsS http://127.0.0.1:11434/api/ps"], text=True
         )
         report = {
+            "configured_context": args.context,
+            "model": args.model,
             "results": results,
             "ollama_ps": json.loads(model_status),
             "sampling_interval_ms": 100,

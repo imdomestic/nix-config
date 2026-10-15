@@ -5,7 +5,9 @@
   ...
 }: let
   sourceModel = "clef:27b-q4_K_M";
-  model = "clef-27b-4k";
+  # Leave GPU headroom: docs/incidents.md#taipan-clef-context-limit.
+  contextLength = 8192;
+  model = "clef-27b-8k";
   port = 11434;
   stateDirectory = "/var/lib/clef-ollama";
   initialize = pkgs.writeShellApplication {
@@ -23,7 +25,7 @@
         --json ${lib.escapeShellArg (builtins.toJSON {
         inherit model;
         from = sourceModel;
-        parameters.num_ctx = 4096;
+        parameters.num_ctx = contextLength;
         stream = false;
       })}
     '';
@@ -58,7 +60,7 @@ in {
     environment = {
       OLLAMA_HOST = "127.0.0.1:${toString port}";
       OLLAMA_MODELS = "/models";
-      OLLAMA_CONTEXT_LENGTH = "4096";
+      OLLAMA_CONTEXT_LENGTH = toString contextLength;
       OLLAMA_NUM_PARALLEL = "1";
       OLLAMA_MAX_LOADED_MODELS = "1";
       OLLAMA_KEEP_ALIVE = "-1";
@@ -94,13 +96,13 @@ in {
     unloadTimeout = 60;
     metadata = {
       model_type = "decision";
-      context = 4096;
+      context = contextLength;
     };
     capabilities = {
       "in" = ["text" "image"];
       "out" = ["decision"];
       tools = false;
-      context = 4096;
+      context = contextLength;
     };
   };
 }
