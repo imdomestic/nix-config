@@ -4,6 +4,73 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-15 · Taipan 部署 Clef 27B：运行时版本、就绪检查与显存实测 {#taipan-clef-decision-startup}
+
+Taipan 已在 Linux 在线，实测为 Ryzen 7 9800X3D、RTX 5090 D v2
+（24,455 MiB 显存）、约 30 GiB 系统内存，NVIDIA 595.99.02。
+初始显存占用 34 MiB，空闲 23,940 MiB。部署了官方 Clef 27B Q4_K_M，
+通过现有 Tailnet 网关的 `POST http://taipan:8000/v1/systemone` 调用，
+模型名 `clef-27b`，4,096 输入 token、单并发，与两个 Qwen 档位互斥加载。
+配置、初始化方法和请求示例见 [Clef runbook](clef.md)。
+
+**误导点一：模型页的最低版本不能代替真实拉取验证。** 页面写 Ollama 0.35.1
+可用，但实际拉取当前 Q4_K_M 包返回 HTTP 412，要求更新版本。它的 manifest
+选择了 `llamacpp` runner。改用稳定版 0.40.4，并固定官方镜像摘要
+`sha256:926d40fd6eeeebd346b5c358a63de2a10ec995371cd93dd22f1843200694b1a6`。
+主模型 19,232,219,200 bytes，视觉投影器 931,146,304 bytes，均完成完整 SHA-256
+校验；source manifest 为 `7885241a86db4803ff95b6a8fc60dc132a5f9612a76db786a304cfa8c760f84b`。
+
+**误导点二：HTTP 已监听不等于派生模型已创建。** 上游参数带 `num_ctx = 16384`，
+只设置 `OLLAMA_CONTEXT_LENGTH=4096` 会被它覆盖，所以初始化创建共享权重的
+`clef-27b-4k` 派生模型。原先健康检查 `/api/version` 在初始化 hook 完成前即返回
+200，首个请求随即 404 `model 'clef-27b-4k' not found`；同一秒稍后 `/api/create`
+才成功。改为检查 `GET /v1/models/clef-27b-4k`，等待模型存在。修复后重新创建容器，
+首个请求直接 200：154 输入 token、31.459 秒，随后同请求 0.067 秒。
+
+**误导点三：没有生成用 KV cache，仍然要预算计算缓冲区。** 官方 PyTorch
+参考实现显式 `use_cache=False`；Ollama 0.40.4 的 `LlamaServerBatch` 对带决策头的
+模型把物理 batch 设为有效上下文长度。当前 GGUF 为 `clef` 架构、64 个主干 block、
+4 个决策 block、2 个 routing block。启动日志确认 `n_ctx = n_batch = n_ubatch = 4096`，
+主图内存分解中 context 为 0 MiB，但还有这些分配：
+
+| 项目 | 日志值 |
+| --- | ---: |
+| GPU 主模型权重 buffer | 17,648.74 MiB |
+| CPU 映射的模型区 | 682.04 MiB |
+| GPU 主计算 buffer | 1,317.77 MiB |
+| 视觉模型大小 | 887.99 MiB |
+| GPU 视觉计算 buffer | 237.43 MiB |
+| CPU 主计算 buffer | 352.17 MiB |
+
+65/65 层已 offload 到 GPU；CPU 映射区依然存在。`nvidia-smi` 还包含 CUDA 运行时、
+分配器及临时空间，不能简单拿文件大小当作最终显存占用。实际长度、视觉 token、
+问题/选项数量、并发、物理 batch、精度和 attention 实现都会影响开销；预留和复用
+buffer 也使显存占用不必随每个短请求线性变化。Ollama 对 2,048 及以上 batch 的
+2 GiB 额外 allowance 是调度估计，不是本次实测开销。
+
+**验收。** 以下均为同一轮合成请求的单次端到端测量，包含网络，不是稳定均值；
+GPU 每 100 ms 采样，可能漏掉更短的峰值。
+
+| 请求 | 输入 token | 耗时 | GPU 峰值 |
+| --- | ---: | ---: | ---: |
+| 首次加载权重，两个判断 | 226 | 31.744 s | 20,760 MiB |
+| 热态，两个判断 | 226 | 0.102 s | 20,768 MiB |
+| 较长 state | 2,991 | 1.187 s | 20,808 MiB |
+| 32 个问题 | 2,745 | 1.254 s | 20,814 MiB |
+| 256×256 红色图片分类 | 217 | 1.979 s | 20,858 MiB |
+
+文本路由选择 billing，退款判断为 true；图片选择 red。5,611 token 的超限请求
+返回 400，随后正常请求仍返回 200。Clef 测试阶段最低空闲显存为 3,116 MiB。
+切到现有 `qwen3.8-27b-aligned` 用 9.369 秒，返回 `READY.`；切回 Clef 用
+35.094 秒并正确决策，确认容器确实互斥。切回阶段的采样会包含卸载前的 Qwen
+显存，不能把那一行的高值算作 Clef 独占峰值。最终 Clef 常驻约 20.3–20.4 GiB，
+保留约 3 GiB 空闲，系统无失败单元。
+
+完整结果和启动日志保存在 Taipan 的
+`/var/lib/clef-ollama/deployment-20261015/`；复测脚本为
+`scripts/test-clef-deployment.py`。Nix 求值、远端构建、dry-activate、真实 activation
+均完成。大上下文、高并发以及更大图片的峰值未由这次测试证明。
+
 ## 2026-10-15 · macOS 原生视频壁纸解锁黑屏与减速末段卡顿 {#macos-native-aerial-temporal-ramp}
 
 M1 Pro、macOS 27.0.1（26A434），把 Dreaming City 4K240 视频替换进苹果原生
