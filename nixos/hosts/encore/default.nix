@@ -18,6 +18,7 @@ in {
     ./minecraft.nix
     ./hardware-configuration.nix
     ../../modules/linwhite-smb.nix
+    ../../modules/chorus
   ];
 
   externalModules = [
