@@ -53,7 +53,7 @@ in {
   ];
 
   virtualisation.oci-containers.containers.clef = {
-    image = "docker.io/ollama/ollama:0.40.4";
+    image = "docker.io/ollama/ollama:0.40.4@sha256:926d40fd6eeeebd346b5c358a63de2a10ec995371cd93dd22f1843200694b1a6";
     autoStart = false;
     environment = {
       OLLAMA_HOST = "127.0.0.1:${toString port}";
