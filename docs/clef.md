@@ -65,6 +65,10 @@ Initialization downloads the source model only if it is missing, then creates
 the local derivative through Ollama's API. It does not refresh an existing
 source tag on every start.
 
+The readiness probe retrieves `/v1/models/clef-27b-4k`, ensuring that the local
+model exists before routing requests. Startup and version findings are in
+[the incident record](incidents.md#taipan-clef-decision-startup).
+
 The 2026-10-15 upstream model blobs are:
 
 | Asset | Bytes | SHA-256 |
@@ -73,6 +77,11 @@ The 2026-10-15 upstream model blobs are:
 | Vision projector | 931,146,304 | `2a3e89934a6dbd7d4c53868cd810b89c50095dd324f846d62f4e8c779547e234` |
 
 These are file sizes, with runtime allocations accounted for separately.
+The source manifest SHA-256 is
+`7885241a86db4803ff95b6a8fc60dc132a5f9612a76db786a304cfa8c760f84b`.
+When preseeding blobs offline, install their complete manifest, config and
+parameter blobs before starting Ollama, so the model is recognized and the
+blobs are referenced during startup cleanup.
 
 ## Memory and validation
 
@@ -101,14 +110,8 @@ python3 scripts/test-clef-deployment.py \
   --check-swap --output /tmp/clef-validation.json
 ```
 
-## Version trap
-
-On 2026-10-15 the model page still said Ollama 0.35.1 was sufficient. The real
-registry rejected that version with HTTP 412 and requested a newer runtime.
-The current package manifest selects the `llamacpp` runner; 0.40.4 is the
-stable release with updated native decision-model support. Verify a real
-pull/load, including the auxiliary decision head, before treating a model
-page's minimum version as sufficient.
+Measured memory, latency and acceptance results are in
+[the 2026-10-15 incident record](incidents.md#taipan-clef-decision-startup).
 
 Primary references:
 [Cloudflare model and reference code](https://huggingface.co/Cloudflare/clef),

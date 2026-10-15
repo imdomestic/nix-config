@@ -86,7 +86,8 @@ in {
     description = "Cloudflare Clef 27B Q4_K_M decision model; use /v1/systemone";
     cmd = lib.getExe runner;
     proxy = "http://127.0.0.1:${toString port}";
-    checkEndpoint = "/api/version";
+    # Model initialization must finish first: docs/incidents.md#taipan-clef-decision-startup.
+    checkEndpoint = "/v1/models/${model}";
     useModelName = model;
     concurrencyLimit = 1;
     ttl = 0;
