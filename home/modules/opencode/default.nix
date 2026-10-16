@@ -6,6 +6,7 @@
   ...
 }: let
   system = pkgs.stdenv.hostPlatform.system;
+  cliproxy = import ../../../lib/cliproxy-models.nix;
   tuiPath = "${config.xdg.configHome}/opencode/tui.json";
   modelStats = pkgs.applyPatches {
     name = "opencode-model-stats-backend-timings";
@@ -163,7 +164,7 @@
     };
 in {
   imports = [
-    inputs.sops-nix.homeManagerModules.sops
+    ../sops
     {
       options.my.opencode.prefillEndpoints = lib.mkOption {
         type = lib.types.listOf (lib.types.submodule {
@@ -178,8 +179,6 @@ in {
     }
   ];
 
-  # 与 .sops.yaml 的管理员收件人一致，运行时从用户的 SSH key 派生 age key。
-  sops.age.sshKeyPaths = ["${config.home.homeDirectory}/.ssh/id_ed25519"];
   sops.secrets."cliproxy/api_key" = {
     sopsFile = ../../../secrets/clients/cliproxy.yaml;
   };
@@ -196,29 +195,15 @@ in {
         npm = "@ai-sdk/openai";
         name = "CLIProxy (tank)";
         options = {
-          baseURL = "http://tank.inner.imdomestic.com:8317/v1";
+          baseURL = cliproxy.baseUrl;
           apiKey = "{file:${config.sops.secrets."cliproxy/api_key".path}}";
         };
-        # tank /v1/models 的对话模型；Responses API 保留推理与工具调用。
         models =
-          lib.genAttrs [
-            "gpt-6.1-sol"
-            "gpt-6-astra"
-            "gpt-6-sol"
-            "gpt-6-luna"
-            "gpt-5.6-sol"
-            "gpt-5.6-terra"
-            "gpt-5.6-luna"
-            "gpt-5.5"
-          ] (model: {
+          lib.genAttrs cliproxy.gpt.ids (model: {
             name = model;
             reasoning = true;
             tool_call = true;
-            limit = {
-              context = 1050000;
-              input = 922000;
-              output = 128000;
-            };
+            limit = {inherit (cliproxy.gpt) context input output;};
             modalities = {
               input = ["text" "image"];
               output = ["text"];
@@ -229,47 +214,15 @@ in {
             reasoning = true;
             tool_call = true;
             limit = {
-              context = 1048576;
-              output = model.output;
+              inherit (cliproxy.gemini) context;
+              inherit (model) output;
             };
             modalities = {
               input = ["text" "image"];
               output = ["text"];
             };
-          }) {
-            "gemini-pro-agent" = {
-              name = "Gemini 3.1 Pro (High)";
-              output = 65535;
-            };
-            "gemini-3.1-pro-low" = {
-              name = "Gemini 3.1 Pro (Low)";
-              output = 65535;
-            };
-            "gemini-3-flash" = {
-              name = "Gemini 3 Flash";
-              output = 65536;
-            };
-            "gemini-3.6-flash-high" = {
-              name = "Gemini 3.6 Flash (High)";
-              output = 65536;
-            };
-            "gemini-3.7-flash-high" = {
-              name = "Gemini 3.7 Flash (High)";
-              output = 65536;
-            };
-            "gemini-3.8-flash-high" = {
-              name = "Gemini 3.8 Flash (High)";
-              output = 65536;
-            };
-            "gemini-3.1-flash-lite" = {
-              name = "Gemini 3.1 Flash Lite";
-              output = 65535;
-            };
-            "gemini-3.5-flash-lite" = {
-              name = "Gemini 3.5 Flash Lite";
-              output = 65535;
-            };
-          };
+          })
+          cliproxy.gemini.models;
       };
       provider.ninfer = {
         npm = "@ai-sdk/openai-compatible";
