@@ -20,24 +20,8 @@
   gemini = {
     context = 1048576;
     models = {
-      "gemini-pro-agent" = {
-        name = "Gemini 3.1 Pro (High)";
-        output = 65535;
-      };
-      "gemini-3.1-pro-low" = {
-        name = "Gemini 3.1 Pro (Low)";
-        output = 65535;
-      };
       "gemini-3-flash" = {
         name = "Gemini 3 Flash";
-        output = 65536;
-      };
-      "gemini-3.6-flash-high" = {
-        name = "Gemini 3.6 Flash (High)";
-        output = 65536;
-      };
-      "gemini-3.7-flash-high" = {
-        name = "Gemini 3.7 Flash (High)";
         output = 65536;
       };
       "gemini-3.8-flash-high" = {
