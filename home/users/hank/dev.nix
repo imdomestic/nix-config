@@ -11,6 +11,7 @@
     ../../modules/lazygit
     ../../modules/codex
     ../../modules/opencode
+    ../../modules/pi
   ];
 
   home.sessionVariables = {
