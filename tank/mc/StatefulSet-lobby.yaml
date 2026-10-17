@@ -47,7 +47,7 @@ spec:
               value: PAPER
             - name: VERSION
               value: 1.21.1
-          image: ghcr.io/imdomestic/mc-server:3yk54whwrphw
+          image: ghcr.io/imdomestic/mc-server:z2gd9qdami0n
           name: server
           ports:
             - containerPort: 25565
