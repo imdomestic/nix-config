@@ -31,6 +31,8 @@ import java.util.logging.Logger;
  *   <li>LOBBY 模式：空了一段时间后 Ready，回到可回收的空闲池，这台服之后还会被复用。
  *   <li>ROOM 模式：有人来过之后，空了一段时间就存盘并 Shutdown，由 Fleet 换一台新的。
  *       从没被用过的房间不关：它是 Fleet 里待命的那台，关掉只会让 Fleet 不停地重建。
+ *   <li>对局阶段：平台层能读到的话（{@link Platform#phase()}），变了就写到 GameServer 的
+ *       agones.dev/sdk-phase 标签上。Velocity 的快速加入只进 waiting 的房间。
  * </ul>
  */
 public final class Lifecycle implements AutoCloseable {
@@ -50,6 +52,14 @@ public final class Lifecycle implements AutoCloseable {
     void saveAll();
 
     Logger logger();
+
+    /**
+     * 当前对局阶段：waiting、starting、playing、ended 之一。返回 null 表示不知道，标签保持不变；
+     * 没有对局概念的服（大厅）不用实现。在主线程上调用。
+     */
+    default String phase() {
+      return null;
+    }
   }
 
   public record Settings(Mode mode, Duration idle) {
@@ -66,6 +76,8 @@ public final class Lifecycle implements AutoCloseable {
   }
 
   private static final String PLAYERS_LIST = "players";
+  /** SDK 写的标签会被 Agones 加上前缀，GameServer 上实际是 agones.dev/sdk-phase。 */
+  public static final String PHASE_LABEL = "phase";
   private static final Duration RETRY_SHUTDOWN = Duration.ofSeconds(10);
 
   private final AgonesSdk sdk;
@@ -86,6 +98,8 @@ public final class Lifecycle implements AutoCloseable {
   private boolean transitionInFlight;
   private Instant emptySince;
   private Instant shutdownRequestedAt;
+  private String reportedPhase;
+  private boolean phaseInFlight;
 
   public Lifecycle(AgonesSdk sdk, Settings settings, Platform platform) {
     this.sdk = sdk;
@@ -125,10 +139,13 @@ public final class Lifecycle implements AutoCloseable {
     ticking = true;
     sdk.health().exceptionally(e -> warn("health", "health ping 失败", e));
     int players = platform.onlinePlayers();
+    String phase = platform.phase();
     synchronized (this) {
       if (!started) {
         return;
       }
+      // 在 Ready 之前写：路由插件第一次看到这台服时就知道它在等人。
+      reportPhase(phase);
       if (!readyConfirmed) {
         requestReady();
         return;
@@ -227,6 +244,24 @@ public final class Lifecycle implements AutoCloseable {
           log.info("Agones: Ready（模式 " + settings.mode() + "，空闲阈值 " + settings.idle().toSeconds() + " 秒）");
         } else {
           warn("ready", "Ready 失败，下次 tick 重试", e);
+        }
+      }
+    });
+  }
+
+  private void reportPhase(String phase) {
+    if (phase == null || phase.equals(reportedPhase) || phaseInFlight) {
+      return;
+    }
+    phaseInFlight = true;
+    sdk.setLabel(PHASE_LABEL, phase).whenComplete((ok, e) -> {
+      synchronized (this) {
+        phaseInFlight = false;
+        if (e == null) {
+          reportedPhase = phase;
+          log.info("Agones: 对局阶段 " + phase);
+        } else {
+          warn("phase", "写对局阶段失败，下次 tick 重试", e);
         }
       }
     });

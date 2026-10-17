@@ -31,6 +31,8 @@ import org.slf4j.Logger;
  * <p>开房间就是创建一个 GameServerAllocation：Agones 原子地从对应 Fleet 里挑一台 Ready 的服
  * 标成 Allocated，同时写上房间码、可见性和房主。之后谁在什么房间、房间是谁的，都从
  * GameServer 上读（{@link Routes}），插件只在内存里记还在等分配的请求。
+ *
+ * <p>队长进了房间，队员跟着进（{@link Parties}）；/play 找房间时按整队的人数留位置。
  */
 final class Rooms {
   private static final String CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -43,6 +45,7 @@ final class Rooms {
   private final ProxyServer proxy;
   private final Object plugin;
   private final Routes routes;
+  private final Parties parties;
   private final Optional<KubeClient> kube;
   private final String namespace;
   private final Logger logger;
@@ -51,21 +54,27 @@ final class Rooms {
   /** 被房主关掉的房间：后端名 → 关闭时间，用来把踢人提示换成"房间已关闭"。 */
   private final Map<String, Instant> closing = new ConcurrentHashMap<>();
 
-  Rooms(ProxyServer proxy, Object plugin, Routes routes, Optional<KubeClient> kube, String namespace, Logger logger) {
+  Rooms(ProxyServer proxy, Object plugin, Routes routes, Parties parties, Optional<KubeClient> kube,
+      String namespace, Logger logger) {
     this.proxy = proxy;
     this.plugin = plugin;
     this.routes = routes;
+    this.parties = parties;
     this.kube = kube;
     this.namespace = namespace;
     this.logger = logger;
   }
 
-  /** 进同类型里最满、但还没满的公开房间；没有就开一个公开房间。 */
+  /**
+   * 进同类型里最满、还在等人、装得下整队的公开房间；没有就开一个公开房间。队员不用管：
+   * 队长连上房间时 {@link #onConnected} 会把他们带过去。
+   */
   void play(Player player, String kind) {
     if (!checkKind(player, kind)) {
       return;
     }
-    routes.quickJoin(kind, currentServer(player)).ifPresentOrElse(
+    int slots = 1 + parties.followers(player).size();
+    routes.quickJoin(kind, currentServer(player), slots).ifPresentOrElse(
         server -> player.createConnectionRequest(server).fireAndForget(),
         () -> allocate(player, kind, true));
   }
@@ -83,7 +92,7 @@ final class Rooms {
       player.sendMessage(Component.text("没有房间 " + code.toUpperCase(java.util.Locale.ROOT), NamedTextColor.RED));
       return;
     }
-    if (server.get().equals(currentServer(player))) {
+    if (isOn(player, server.get())) {
       player.sendMessage(Component.text("你已经在这个房间里了", NamedTextColor.YELLOW));
       return;
     }
@@ -98,8 +107,8 @@ final class Rooms {
     }
     source.sendMessage(Component.text("公开房间（点击加入）：", NamedTextColor.GOLD));
     for (Routes.Route r : rooms) {
-      String line = String.format("  %s  %s  %d/%d  房主 %s",
-          r.room(), r.kind(), routes.players(r), routes.softCap(r), r.ownerName() == null ? "-" : r.ownerName());
+      String line = String.format("  %s  %s  %d/%d  %s  房主 %s", r.room(), r.kind(), routes.players(r),
+          routes.softCap(r), r.phaseText(), r.ownerName() == null ? "-" : r.ownerName());
       source.sendMessage(Component.text(line, NamedTextColor.WHITE)
           .clickEvent(ClickEvent.runCommand("/room join " + r.room()))
           .hoverEvent(HoverEvent.showText(Component.text("加入房间 " + r.room()))));
@@ -113,9 +122,9 @@ final class Rooms {
       return;
     }
     Routes.Route r = room.get();
-    player.sendMessage(Component.text(String.format("房间 %s：%s，%s，%d/%d 人，房主 %s",
+    player.sendMessage(Component.text(String.format("房间 %s：%s，%s，%d/%d 人，%s，房主 %s",
         r.room(), r.kind(), r.isPublic() ? "公开" : "私有", routes.players(r), routes.softCap(r),
-        r.ownerName() == null ? "-" : r.ownerName()), NamedTextColor.AQUA));
+        r.phase() == null ? "-" : r.phaseText(), r.ownerName() == null ? "-" : r.ownerName()), NamedTextColor.AQUA));
   }
 
   void invite(Player player, String targetName) {
@@ -177,12 +186,55 @@ final class Rooms {
     return original.orElse(Component.text("连接断开", NamedTextColor.YELLOW));
   }
 
-  /** 进入房间时告诉玩家房间码和常用命令。 */
-  void announce(Player player, RegisteredServer server) {
-    routes.routeOf(server).filter(Routes.Route::isRoom).ifPresent(r -> player.sendMessage(
-        Component.text("你进入了房间 " + r.room() + "（" + r.kind() + "，" + (r.isPublic() ? "公开" : "私有")
+  /** 进入房间时告诉玩家房间码和常用命令；进房间的是队长的话，把队员也带进来。 */
+  void onConnected(Player player, RegisteredServer server) {
+    Optional<Routes.Route> room = routes.routeOf(server).filter(Routes.Route::isRoom);
+    if (room.isEmpty()) {
+      return;
+    }
+    Routes.Route r = room.get();
+    player.sendMessage(Component.text("你进入了房间 " + r.room() + "（" + r.kind() + "，" + (r.isPublic() ? "公开" : "私有")
             + "，房主 " + (r.ownerName() == null ? "-" : r.ownerName()) + "）。", NamedTextColor.AQUA)
-            .append(Component.text(" /room invite <玩家> 邀请朋友，/lobby 回大厅", NamedTextColor.GRAY))));
+        .append(Component.text(" /room invite <玩家> 邀请朋友，/lobby 回大厅", NamedTextColor.GRAY)));
+    pull(player, parties.followers(player), server, "房间 " + r.room());
+  }
+
+  /** /party warp：把队员都拉到队长现在所在的服，大厅也行。 */
+  void warpParty(Player leader) {
+    if (!parties.isLeader(leader)) {
+      leader.sendMessage(Component.text("只有队长能召集队员", NamedTextColor.RED));
+      return;
+    }
+    RegisteredServer server = currentServer(leader);
+    if (server == null) {
+      return;
+    }
+    List<Player> moved = pull(leader, parties.followers(leader), server, where(server));
+    leader.sendMessage(Component.text(moved.isEmpty() ? "队员都已经在这里了" : "已召集 " + moved.size() + " 名队员",
+        NamedTextColor.GREEN));
+  }
+
+  /** 刚入队的人：队长在房间里的话直接带进去。 */
+  void joinLeader(Player member, Player leader) {
+    RegisteredServer server = currentServer(leader);
+    routes.routeOf(server).filter(Routes.Route::isRoom)
+        .ifPresent(r -> pull(leader, List.of(member), server, "房间 " + r.room()));
+  }
+
+  private List<Player> pull(Player leader, List<Player> members, RegisteredServer server, String where) {
+    List<Player> moved = members.stream().filter(m -> !isOn(m, server)).toList();
+    for (Player member : moved) {
+      cancelPending(member);
+      member.sendMessage(Component.text("跟着队长 " + leader.getUsername() + " 去" + where, NamedTextColor.GRAY));
+      member.createConnectionRequest(server).fireAndForget();
+    }
+    return moved;
+  }
+
+  private String where(RegisteredServer server) {
+    return routes.routeOf(server)
+        .map(r -> r.isRoom() ? "房间 " + r.room() : r.kind())
+        .orElse(server.getServerInfo().getName());
   }
 
   void cancelPending(Player player) {
@@ -327,5 +379,11 @@ final class Rooms {
 
   private static RegisteredServer currentServer(Player player) {
     return player.getCurrentServer().map(c -> c.getServer()).orElse(null);
+  }
+
+  /** 按 ServerInfo 比：后端重新注册后是另一个对象。 */
+  private static boolean isOn(Player player, RegisteredServer server) {
+    RegisteredServer current = currentServer(player);
+    return current != null && current.getServerInfo().equals(server.getServerInfo());
   }
 }

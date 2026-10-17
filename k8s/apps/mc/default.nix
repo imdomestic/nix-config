@@ -369,6 +369,7 @@ in {
       configMaps.velocity.data."velocity.toml" = velocityToml;
 
       # 路由插件：监听 GameServer、开房间（创建 GameServerAllocation）、房主关房（删 GameServer）。
+      # 对局阶段的标签（agones.dev/sdk-phase）由房间自己通过 SDK 写，插件不改 GameServer。
       serviceAccounts.velocity-router = {};
       roles.velocity-router.rules = [
         {
@@ -418,6 +419,8 @@ in {
                   VELOCITY_FORWARDING_SECRET.valueFrom = forwardingSecret;
                 };
                 ports.minecraft.containerPort = 25565;
+                # 路由插件的只读状态接口（GET /v1/status），给 QQ bot 查在线和房间。
+                ports.status.containerPort = 8080;
                 volumeMounts."/config".name = "config";
                 resources = {
                   requests.memory = "768Mi";
@@ -429,13 +432,18 @@ in {
         };
       };
 
-      # k3s 自带的 servicelb 会在 tank 上占住 25565，tailnet 和局域网都能连。
+      # k3s 自带的 servicelb 会在 tank 上占住 25565 和 25580，tailnet 和局域网都能连。
+      # 状态接口不带私有房间的房间码，所以和游戏端口一样不设认证。
       services.proxy.spec = {
         type = "LoadBalancer";
         selector.app = "proxy";
         ports.minecraft = {
           port = 25565;
           targetPort = 25565;
+        };
+        ports.status = {
+          port = 25580;
+          targetPort = 8080;
         };
       };
     };

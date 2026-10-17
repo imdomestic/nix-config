@@ -1,6 +1,6 @@
 # Minecraft 网络与 chorusd 待办
 
-本文是 2026-10-17 一轮讨论定下的结论和待办。目前只到设计阶段，**下面没有一项已经开始做**。
+本文是 2026-10-17 一轮讨论定下的结论和待办，之后的进展直接在各条目上打勾、注明日期。
 
 相关文档和仓库：
 
@@ -164,7 +164,7 @@
 
 ### Velocity
 
-- [x] **路由插件**（`minecraft/velocity-router`）：只读监听 GameServer，按 Pod IP 注册和注销后端，进服和被踢时选大厅，提供 `/lobby` 和 `/play <类型>`。按虚拟主机名路由还没做。
+- [x] **路由插件**（`minecraft/velocity-router`）：监听 GameServer，按 Pod IP 注册和注销后端，进服和被踢时选大厅，提供 `/lobby`、`/play`、`/room`、`/party` 和状态接口，见下面"bingo 与匹配"。按虚拟主机名路由还没做。
 - [ ] **玩家被房间踢出时，按 `getClientBrand()` 分流：**
   - Fabric 和原版客户端送回大厅；
   - Forge、NeoForge 客户端直接断开，并给出提示。
@@ -216,10 +216,21 @@
   - 没有空闲的服时，开房请求每 5 秒重试一次，最多 6 分钟，等 FleetAutoscaler 补上。
   - 被分配了但没人进的房间：`agones-core` 订阅自己的 GameServer，看到被分配就重新开始空闲计时，2 分钟后回收。
   - 都已用测试客户端实测：私有房间凭码加入、`/room info`、房主关房后送回大厅，公开房间的 `/room list` 和 `/play` 快速加入，以及没人进的房间被回收。
-- [ ] **第二期：**
-  - `/party`：组队，队长 `/play` 时整队进同一个房间；
-  - 通过 bingo 的 API 把"等待中 / 游戏中"写到 GameServer 标签上，`/play` 只进还在等待的房间；
-  - 给 QQ bot 开放房间列表和在线情况。
+- [x] **第二期（2026-10-18）：**
+  - **组队 `/party`（别名 `/p`）**：`invite`（也可以直接 `/p <玩家>`）、`accept`、`list`、`leave`、`warp`、`kick`、`transfer`、`disband`。
+    - 队长不管用 `/play`、`/room create` 还是 `/room join` 进了房间，队员都会被带进同一个房间。`/play` 找房间时按整队人数留位置。
+    - `/party warp` 把队员拉到队长所在的服，大厅也行。
+    - 队伍只存在 Velocity 的内存里，代理重启就散。房间状态放在 GameServer 上，是因为 QQ bot 和多副本 Velocity 要读；队伍只有这台代理自己用，以后多副本时再挪到共享存储。
+  - **对局阶段**：`agones-fabric` 用反射读 bingo 的 `BingoApi.getGame().getStatus()`（bingo 的 API 没发到 Maven 仓库），每秒对比一次，变了就通过 SDK 写标签 `agones.dev/sdk-phase`：`waiting`、`starting`、`playing`、`ended`。
+    - `/play` 只进 `waiting` 的房间。已经开打的房间还能凭房间码进。
+    - `/room list` 和 `/room info` 显示阶段。没有这个标签的服当作一直在等人。
+  - **状态接口**：路由插件在 8080 端口提供只读的 `GET /v1/status`，servicelb 映射到 `tank.inner.imdomestic.com:25580`。返回：
+    - `online`：在线人数；
+    - `players[]`：`name`，`kind`（`lobby`、`bingo`……），在公开房间里时还有 `room`；
+    - `rooms[]`：`kind`、`visibility`、`code`（只有公开房间有）、`phase`、`owner`、`softCap`、`players`（名字列表）。
+
+    私有房间只给类型和成员，不给房间码，因为房间码就是进私有房间的凭据。所以和游戏端口一样，不设认证。
+- [ ] **max 接状态接口。** max 的普通群沙箱连不到宿主和 tailnet，开了运维的群才能直接 curl。要让所有群都能查，得在 max 里加一个宿主侧的工具去读 `/v1/status`。
 - [x] 对局结束后，由 mod 调 `Shutdown()`：走 ROOM 模式的空闲回收。bingo 这个 mod 本身能在一台服里连续开很多轮，我们选择所有人离开后整台换掉，保证每个房间都是干净的。
 
 ### 生存服

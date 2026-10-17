@@ -29,6 +29,8 @@ import org.slf4j.Logger;
  *   <li>{@value #LABEL_SOFT_CAP}：选服时的软上限，没有就用插件的默认值。
  *   <li>{@value #LABEL_ROOM}、{@value #LABEL_VISIBILITY}：房间码和 public/private，开房间时写入。
  *   <li>注解 {@value #ANNOTATION_OWNER}、{@value #ANNOTATION_OWNER_NAME}：房主的 UUID 和名字。
+ *   <li>{@value #LABEL_PHASE}：对局阶段（waiting、starting、playing、ended），由服务器上的
+ *       agones-core 通过 SDK 写入。没有这个标签的服当作一直在等人。
  * </ul>
  */
 final class Routes {
@@ -39,6 +41,8 @@ final class Routes {
   static final String LABEL_VISIBILITY = "mc.imdomestic.com/visibility";
   static final String ANNOTATION_OWNER = "mc.imdomestic.com/owner";
   static final String ANNOTATION_OWNER_NAME = "mc.imdomestic.com/owner-name";
+  static final String LABEL_PHASE = "agones.dev/sdk-phase";
+  static final String PHASE_WAITING = "waiting";
   static final String KIND_LOBBY = "lobby";
 
   /** Reserved 也算：它只是暂时不让 GSA 分配，玩家照样能连。 */
@@ -56,10 +60,26 @@ final class Routes {
       String room,
       boolean isPublic,
       String ownerId,
-      String ownerName) {
+      String ownerName,
+      String phase) {
 
     boolean isRoom() {
       return room != null && "Allocated".equals(state);
+    }
+
+    /** 快速加入只进还在等人的房间；已经开打的房间只能凭房间码进。 */
+    boolean isWaiting() {
+      return phase == null || PHASE_WAITING.equals(phase);
+    }
+
+    String phaseText() {
+      return phase == null ? "" : switch (phase) {
+        case "waiting" -> "等待中";
+        case "starting" -> "即将开始";
+        case "playing" -> "游戏中";
+        case "ended" -> "已结束";
+        default -> phase;
+      };
     }
   }
 
@@ -139,15 +159,15 @@ final class Routes {
   }
 
   /**
-   * /play 用：同类型里最满、但还没到软上限的公开房间。只挑已经开成房间的，待命的空服要经过
-   * 分配（带上房间码）才会被用到。
+   * /play 用：同类型里最满、还在等人、并且再进 slots 个人也不超过软上限的公开房间。只挑已经
+   * 开成房间的，待命的空服要经过分配（带上房间码）才会被用到。
    */
-  synchronized Optional<RegisteredServer> quickJoin(String kind, RegisteredServer exclude) {
+  synchronized Optional<RegisteredServer> quickJoin(String kind, RegisteredServer exclude, int slots) {
     return routes.values().stream()
-        .filter(r -> kind.equals(r.kind()) && r.isRoom() && r.isPublic())
+        .filter(r -> kind.equals(r.kind()) && r.isRoom() && r.isPublic() && r.isWaiting())
         .flatMap(r -> server(r).stream()
             .filter(s -> !same(s, exclude))
-            .filter(s -> s.getPlayersConnected().size() < softCap(r)))
+            .filter(s -> s.getPlayersConnected().size() + slots <= softCap(r)))
         .max(Comparator.<RegisteredServer>comparingInt(s -> s.getPlayersConnected().size())
             .thenComparing(s -> s.getServerInfo().getName(), Comparator.reverseOrder()));
   }
@@ -162,8 +182,13 @@ final class Routes {
   }
 
   synchronized List<Route> publicRooms(String kind) {
+    return rooms().stream().filter(r -> r.isPublic() && (kind == null || kind.equals(r.kind()))).toList();
+  }
+
+  /** 所有房间，包括私有的。 */
+  synchronized List<Route> rooms() {
     return routes.values().stream()
-        .filter(r -> r.isRoom() && r.isPublic() && (kind == null || kind.equals(r.kind())))
+        .filter(Route::isRoom)
         .sorted(Comparator.comparing(Route::kind).thenComparing(Route::room))
         .toList();
   }
@@ -255,7 +280,8 @@ final class Routes {
         string(labels, LABEL_ROOM),
         !"private".equals(string(labels, LABEL_VISIBILITY)),
         string(annotations, ANNOTATION_OWNER),
-        string(annotations, ANNOTATION_OWNER_NAME)));
+        string(annotations, ANNOTATION_OWNER_NAME),
+        string(labels, LABEL_PHASE)));
   }
 
   /** PortPolicy None 下没有 hostPort，Velocity 在集群里直接连 Pod IP；status.address 是节点地址。 */
