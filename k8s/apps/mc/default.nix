@@ -1,12 +1,16 @@
-# 用 tank 上的旧服存档（/data/srv/minecraft）搭的测试网络：Velocity + 大厅 + bingo。
+# 运营网络：Velocity（带路由插件）+ 大厅 Fleet + bingo。
 #
-# 目的是先验证集群、存储、网络和 GitOps 这条链；大厅和 bingo 之后会换成 Agones
-# Fleet，镜像改成 CI 构建的。旧服的定义见 nixos/modules/minecraft/wuxi.nix。
+# 大厅是 Agones Fleet，由 minecraft/agones-paper 插件上报状态，Velocity 上的
+# minecraft/velocity-router 按 GameServer 动态注册后端。bingo 还是用旧存档的 StatefulSet，
+# 之后再换。旧服的定义见 nixos/modules/minecraft/wuxi.nix。
 {lib, ...}: let
+  tag = import ../../../minecraft/image-tag.nix;
+
   images = {
+    # CI（.github/workflows/k8s.yml）构建，tag 是 minecraft/ 的内容哈希。
+    lobby = "ghcr.io/imdomestic/mc-lobby:${tag}";
+    proxy = "ghcr.io/imdomestic/mc-proxy:${tag}";
     server = "itzg/minecraft-server:2026.9.2-java21";
-    # Velocity 4.2 要 Java 25。
-    proxy = "itzg/mc-proxy:2026.10.0-java25";
     seed = "busybox:1.37.0";
   };
 
@@ -15,7 +19,7 @@
     key = "secret";
   };
 
-  # 和旧服一样，跨版本兼容由代理上的 Via 负责。
+  # 和旧服一样，跨版本兼容由代理上的 Via 负责；动态后端的版本由路由插件告诉 Via。
   viaPlugins = [
     "https://github.com/ViaVersion/ViaVersion/releases/download/5.12.0/ViaVersion-5.12.0.jar"
     "https://github.com/ViaVersion/ViaBackwards/releases/download/5.12.0/ViaBackwards-5.12.0.jar"
@@ -29,7 +33,8 @@
     "https://cdn.modrinth.com/data/mHeNceaH/versions/Vb6yPYhc/bingo-2.9.7%2Bmc1.21.11.jar"
   ];
 
-  # 旧服是离线模式，存档里的玩家数据按离线 UUID 存。测试期间保持一致，只在 tailnet 内可达。
+  # 旧服是离线模式，存档里的玩家数据按离线 UUID 存。测试期间保持一致，只在 tailnet 和局域网内可达。
+  # 大厅不在这里：它是动态后端，由路由插件注册；try 留空，进服时由插件选大厅。
   velocityToml = ''
     config-version = "2.7"
     bind = "0.0.0.0:25565"
@@ -47,9 +52,8 @@
     enable-player-address-logging = true
 
     [servers]
-    lobby = "lobby:25565"
     bingo = "bingo:25565"
-    try = ["lobby"]
+    try = []
 
     [forced-hosts]
 
@@ -85,12 +89,170 @@
         secret: ''${CFG_FORWARDING_SECRET}
   '';
 
-  # 一台后端：StatefulSet + 同名 Service。第一次启动时把旧存档拷进 PVC。
+  # 大厅存档里只拷世界和管理数据：服务端 jar、库和缓存由 itzg 每次启动时自己准备。
+  lobbySeedPaths = [
+    "world"
+    "world_nether"
+    "world_the_end"
+    "config"
+    "bukkit.yml"
+    "spigot.yml"
+    "ops.json"
+    "whitelist.json"
+    "banned-players.json"
+    "banned-ips.json"
+    "usercache.json"
+  ];
+
+  lobbyFleet = {
+    apiVersion = "agones.dev/v1";
+    kind = "Fleet";
+    metadata.name = "lobby";
+    # replicas 交给 FleetAutoscaler，这里不写，否则 Argo CD 会和它来回改。
+    spec.template = {
+      metadata.labels = {
+        "mc.imdomestic.com/kind" = "lobby";
+        # Paper 1.21.1。
+        "mc.imdomestic.com/protocol" = "767";
+      };
+      spec = {
+        container = "server";
+        # 不占 hostPort，Velocity 在集群里直连 Pod IP。默认协议是 UDP，MC 要 TCP。
+        ports = [
+          {
+            name = "minecraft";
+            portPolicy = "None";
+            containerPort = 25565;
+            protocol = "TCP";
+          }
+        ];
+        # 每次启动都要下载 Paper，插件启用之前没人 ping。之后插件每秒 ping 一次，
+        # 连续 60 秒没有才判 Unhealthy，扛得住 GC 和存盘的卡顿。
+        health = {
+          initialDelaySeconds = 180;
+          periodSeconds = 5;
+          failureThreshold = 12;
+        };
+        lists.players.capacity = 100;
+        template.spec = {
+          initContainers = [
+            {
+              name = "seed";
+              image = images.seed;
+              command = [
+                "sh"
+                "-c"
+                ''
+                  for p in ${lib.concatStringsSep " " lobbySeedPaths}; do
+                    if [ -e "/seed/$p" ]; then cp -a "/seed/$p" /data/; fi
+                  done
+                ''
+              ];
+              volumeMounts = [
+                {
+                  name = "data";
+                  mountPath = "/data";
+                }
+                {
+                  name = "seed";
+                  mountPath = "/seed";
+                  readOnly = true;
+                }
+              ];
+            }
+          ];
+          containers = [
+            {
+              name = "server";
+              image = images.lobby;
+              env =
+                lib.mapAttrsToList (name: value: {inherit name value;}) {
+                  EULA = "TRUE";
+                  TYPE = "PAPER";
+                  VERSION = "1.21.1";
+                  PAPER_BUILD = "133";
+                  ONLINE_MODE = "FALSE";
+                  ENFORCE_SECURE_PROFILE = "FALSE";
+                  MOTD = "lobby";
+                  ALLOW_NETHER = "FALSE";
+                  SPAWN_PROTECTION = "999";
+                  MODE = "adventure";
+                  # 堆交给 JVM 按容器上限算，留出堆外内存。
+                  MEMORY = "";
+                  JVM_XX_OPTS = "-XX:MaxRAMPercentage=75";
+                  MC_AGONES_MODE = "lobby";
+                }
+                ++ [
+                  {
+                    name = "CFG_FORWARDING_SECRET";
+                    valueFrom = forwardingSecret;
+                  }
+                ];
+              resources = {
+                requests.memory = "3Gi";
+                limits.memory = "3Gi";
+              };
+              volumeMounts = [
+                {
+                  name = "data";
+                  mountPath = "/data";
+                }
+                {
+                  name = "config";
+                  mountPath = "/config";
+                }
+              ];
+            }
+          ];
+          # 大厅不保存玩家改动：每次启动都从旧存档重新拷一份。
+          volumes = [
+            {
+              name = "data";
+              emptyDir = {};
+            }
+            {
+              name = "config";
+              configMap.name = "lobby-config";
+            }
+            {
+              name = "seed";
+              hostPath = {
+                path = "/data/srv/minecraft/lobby";
+                type = "Directory";
+              };
+            }
+          ];
+        };
+      };
+    };
+  };
+
+  # 永远留一台没人的大厅待命：插件让有人的大厅进入 Allocated，缩容只会删 Ready 的。
+  lobbyAutoscaler = {
+    apiVersion = "autoscaling.agones.dev/v1";
+    kind = "FleetAutoscaler";
+    metadata.name = "lobby";
+    spec = {
+      fleetName = "lobby";
+      policy = {
+        type = "Buffer";
+        buffer = {
+          bufferSize = 1;
+          minReplicas = 1;
+          maxReplicas = 3;
+        };
+      };
+      sync = {
+        type = "FixedInterval";
+        fixedInterval.seconds = 30;
+      };
+    };
+  };
+
+  # 一台带 PVC 的后端：StatefulSet + 同名 Service。第一次启动时把旧存档拷进 PVC。
   mkServer = name: {
     env,
     memoryLimit,
-    extraVolumeMounts ? {},
-    extraVolumes ? {},
   }: {
     statefulSets.${name}.spec = {
       serviceName = name;
@@ -118,13 +280,12 @@
                 EULA.value = "TRUE";
                 ONLINE_MODE.value = "FALSE";
                 ENFORCE_SECURE_PROFILE.value = "FALSE";
-                # 堆交给 JVM 按容器上限算，留出堆外内存。
                 MEMORY.value = "";
                 JVM_XX_OPTS.value = "-XX:MaxRAMPercentage=75";
               }
               // env;
             ports.minecraft.containerPort = 25565;
-            volumeMounts = {"/data".name = "data";} // extraVolumeMounts;
+            volumeMounts."/data".name = "data";
             resources = {
               requests.memory = memoryLimit;
               limits.memory = memoryLimit;
@@ -135,14 +296,10 @@
               periodSeconds = 10;
             };
           };
-          volumes =
-            {
-              seed.hostPath = {
-                path = "/data/srv/minecraft/${name}";
-                type = "Directory";
-              };
-            }
-            // extraVolumes;
+          volumes.seed.hostPath = {
+            path = "/data/srv/minecraft/${name}";
+            type = "Directory";
+          };
         };
       };
       volumeClaimTemplates = [
@@ -170,22 +327,10 @@ in {
     # 命名空间和 velocity-forwarding 密钥一起由 nixos/hosts/tank/k3s.nix 建。
     createNamespace = false;
 
-    resources = lib.mkMerge [
-      (mkServer "lobby" {
-        memoryLimit = "3Gi";
-        env = {
-          TYPE.value = "PAPER";
-          VERSION.value = "1.21.1";
-          PAPER_BUILD.value = "133";
-          MOTD.value = "lobby";
-          ALLOW_NETHER.value = "FALSE";
-          SPAWN_PROTECTION.value = "999";
-          CFG_FORWARDING_SECRET.valueFrom = forwardingSecret;
-        };
-        extraVolumeMounts."/config".name = "config";
-        extraVolumes.config.configMap.name = "lobby-config";
-      })
+    # Fleet 和 FleetAutoscaler 没有 nixidy 的类型定义，原样放进去。
+    yamls = map builtins.toJSON [lobbyFleet lobbyAutoscaler];
 
+    resources = lib.mkMerge [
       (mkServer "bingo" {
         memoryLimit = "4Gi";
         env = {
@@ -202,12 +347,37 @@ in {
         configMaps.lobby-config.data."paper-global.yml" = paperGlobal;
         configMaps.velocity.data."velocity.toml" = velocityToml;
 
+        # 路由插件只读 GameServer。
+        serviceAccounts.velocity-router = {};
+        roles.velocity-router.rules = [
+          {
+            apiGroups = ["agones.dev"];
+            resources = ["gameservers"];
+            verbs = ["get" "list" "watch"];
+          }
+        ];
+        roleBindings.velocity-router = {
+          roleRef = {
+            apiGroup = "rbac.authorization.k8s.io";
+            kind = "Role";
+            name = "velocity-router";
+          };
+          subjects = [
+            {
+              kind = "ServiceAccount";
+              name = "velocity-router";
+              namespace = "mc";
+            }
+          ];
+        };
+
         deployments.proxy.spec = {
           replicas = 1;
           selector.matchLabels.app = "proxy";
           template = {
             metadata.labels.app = "proxy";
             spec = {
+              serviceAccountName = "velocity-router";
               containers.proxy = {
                 image = images.proxy;
                 env = {
