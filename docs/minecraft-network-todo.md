@@ -147,8 +147,13 @@
   - Velocity 设 `force-key-authentication = false`；
   - 后端设 `enforce-secure-profile=false`。
 - [ ] Geyser + Floodgate，给基岩版用。
+- [ ] **ViaVersion、ViaBackwards、ViaRewind 装在 Velocity 上**，大厅、bingo 等所有原版兼容的后端都能覆盖到。
+  - 路由插件注册后端时，调用 `ProtocolDetectorService.setProtocolVersion` 告诉 Via 这个后端的版本；注销时调用 `uncacheProtocolVersion`。
+  - 不这么做的话，新房间在 Via 第一次探测到它的版本之前，会被当成 Velocity 支持的最低版本。
+- [ ] **带 mod 的房间（`fabric-pack`、`forge-pack`）要求客户端版本完全一致。** 版本不符时由路由插件直接拒绝并给出提示，不让 Via 去翻译。
 - [ ] **定 GameServer 的标签约定**，至少包括：
   - 路由用的主机名；
+  - 后端的协议版本号；
   - 接受哪类客户端（`vanilla`、`fabric-pack`、`forge-pack`）；
   - 服务器类型。
 
@@ -168,7 +173,7 @@
 
 ### 大厅
 
-- [ ] **Paper 最新版，加 ViaVersion、ViaBackwards、ViaRewind。** 这三个插件装在大厅上，不装在 Velocity 上。
+- [ ] **Paper 最新版。** 跨版本兼容由 Velocity 上的 Via 负责。如果以后想认真照顾 1.8 客户端的体验，再看 Paper 端还需要补哪些修正，有一部分修正只能装在后端。
 - [ ] **只用所有版本的原版客户端都认得的东西**：箱子菜单、告示牌、命令。资源包设为可选。
 - [ ] **Fleet + FleetAutoscaler**，用 List 策略按剩余空位扩缩。
 
