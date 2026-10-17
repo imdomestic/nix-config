@@ -47,7 +47,7 @@
 - **运营集群（2026-10-17 起）是 tank 上的单节点 k3s。**
   - 节点配置在 `nixos/hosts/tank/k3s.nix`，集群内容在 `k8s/`，由 Argo CD 从 `k8s-rendered` 分支同步。
   - 目前跑着一套用旧存档搭的测试网络：Velocity + 大厅（Paper 1.21.1）+ bingo（Fabric 1.21.11）。
-  - 大厅已经是 Agones Fleet：`minecraft/agones-paper` 上报状态，Velocity 上的 `minecraft/velocity-router` 动态注册后端。bingo 还是 StatefulSet。
+  - 大厅和 bingo 都是 Agones Fleet：`minecraft/agones-paper`、`minecraft/agones-fabric` 上报状态，Velocity 上的 `minecraft/velocity-router` 动态注册后端。玩家在大厅用 `/play bingo` 进 bingo。
   - 测试网络是离线模式，在 tailnet 内连 `tank.inner.imdomestic.com:25565`。tank 的防火墙是关着的，局域网 192.168.20.0/24 也能连。
   - kubectl 和 k9s 用 `tank` 这个 context，见 `home/modules/kube`。
 - **k3s 只有一个 server，就是 encore。**
@@ -163,7 +163,7 @@
 
 ### Velocity
 
-- [x] **路由插件**（`minecraft/velocity-router`）：只读监听 GameServer，按 Pod IP 注册和注销后端，进服和被踢时选大厅，提供 `/lobby`。按虚拟主机名路由还没做。
+- [x] **路由插件**（`minecraft/velocity-router`）：只读监听 GameServer，按 Pod IP 注册和注销后端，进服和被踢时选大厅，提供 `/lobby` 和 `/play <类型>`。按虚拟主机名路由还没做。
 - [ ] **玩家被房间踢出时，按 `getClientBrand()` 分流：**
   - Fabric 和原版客户端送回大厅；
   - Forge、NeoForge 客户端直接断开，并给出提示。
@@ -185,14 +185,16 @@
 
 ### Agones 集成（Java）
 
-- [ ] **结构**：core（Agones REST 客户端、空闲计时、玩家列表）加 paper、fabric 两个适配层。core 和 paper 已完成（`minecraft/agones-core`、`minecraft/agones-paper`），fabric 还没做。
+- [x] **结构**：core（Agones REST 客户端、空闲计时、玩家列表）加 paper、fabric 两个适配层，都在 `minecraft/` 下。fabric 适配层目前针对 1.21.11（Loom remap）。
 - [x] **健康检查**：
   - `Health()` 在 tick 里调用；
   - 服务器还没开始 tick 的启动阶段，先用后台线程 ping；
   - `failureThreshold` 调到总共约 60 秒，扛得住 GC 和存盘造成的卡顿。
 - [x] 玩家进出时增删 `players` 列表。这用的是 Agones 的 Lists 功能，目前还是 beta。
 - [ ] **空闲回收**：空闲 N 分钟后调 `Shutdown()`，N 从 GameServer 注解读取。存盘和归档必须在 `Shutdown()` 之前做完。
-  - 已实现 ROOM 模式（存盘后 Shutdown），空闲时长目前读环境变量 `MC_AGONES_IDLE_SECONDS`，还没改成读注解，也还没实测。
+  - ROOM 模式已在 bingo 上实测：最后一个人离开约 2 分钟后存盘、Shutdown，Fleet 补一台新的。只有被用过（Allocated 过）的房间才会被回收，待命的空房间不动。
+  - 空闲时长目前读环境变量 `MC_AGONES_IDLE_SECONDS`，还没改成读注解。
+  - 1.21.2 起的服务端要关掉 `pause-when-empty-seconds`，否则空服会停 tick、health ping 跟着停，见 `docs/incidents.md#mc-pause-when-empty`。
 - [x] **大厅的状态切换**：第一个人进来时调 `Allocate()`，人走光后调 `Ready()`。
 - [x] **端口设置**：`protocol: TCP`（默认是 UDP），`portPolicy: None`。
 
@@ -204,15 +206,15 @@
 
 ### bingo 与匹配
 
-- [ ] **确认 bingo 的 mod 只需要装在服务端**，否则原版和基岩版客户端进不去。
-- [ ] Fleet + FleetAutoscaler 的 Buffer 策略，保持几台热备。
+- [x] **确认 bingo 的 mod 只需要装在服务端**：Modrinth 上标的是服务端可选、客户端可选，原版客户端能进。
+- [x] Fleet + FleetAutoscaler 的 Buffer 策略，保持一台热备。每台 bingo 都是新生成的世界，只从旧存档拷 bingo 的配置。
 - [ ] **匹配服务：**
   - 队列和组队信息先放内存；
   - 凑够人就发起 GSA 分配，分组信息写进 metadata；
   - 通过事件流通知 Velocity 把玩家送过去；
   - RBAC 只允许它写自己的命名空间；
   - 不用 Open Match。
-- [ ] 对局结束后，由 mod 调 `Shutdown()`。
+- [x] 对局结束后，由 mod 调 `Shutdown()`：走 ROOM 模式的空闲回收。bingo 这个 mod 本身能在一台服里连续开很多轮，我们选择所有人离开后整台换掉，保证每个房间都是干净的。
 
 ### 生存服
 
