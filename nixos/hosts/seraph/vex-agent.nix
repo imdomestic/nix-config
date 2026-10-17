@@ -2,15 +2,15 @@
   assertions = [
     {
       assertion = config.networking.hostName == "seraph";
-      message = "Chorus k3s agent requires seraph";
+      message = "Vex k3s agent requires seraph";
     }
     {
       assertion = config.networking.nftables.enable;
-      message = "Chorus k3s requires the nftables firewall";
+      message = "Vex k3s requires the nftables firewall";
     }
     {
       assertion = config.services.k3s.package.version == "1.35.7+k3s1";
-      message = "Chorus requires k3s 1.35.7+k3s1";
+      message = "Vex requires k3s 1.35.7+k3s1";
     }
   ];
 
@@ -51,9 +51,9 @@
     iifname { "cni0", "flannel.1" } ip saddr 10.42.0.0/16 accept
   '';
   systemd.services.k3s = {
-    environment.TMPDIR = "/var/cache/chorus-k3s";
+    environment.TMPDIR = "/var/cache/vex-k3s";
     serviceConfig = {
-      CacheDirectory = "chorus-k3s";
+      CacheDirectory = "vex-k3s";
       CacheDirectoryMode = "0700";
     };
   };

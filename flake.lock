@@ -1901,6 +1901,22 @@
     },
     "nixpkgs_14": {
       "locked": {
+        "lastModified": 1789114715,
+        "narHash": "sha256-ugpsyk3NM2s87vXfUiIIiibbJ4Pp0JPS5p/3mfs+q+c=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "21a67dc470149f337cecafbe965d8d252a390518",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "21a67dc470149f337cecafbe965d8d252a390518",
+        "type": "github"
+      }
+    },
+    "nixpkgs_15": {
+      "locked": {
         "lastModified": 1787631388,
         "narHash": "sha256-vMiXptXarfSdJb1Gkc+FYVOAibuBRj7qxGa8z68q1Uw=",
         "owner": "NixOS",
@@ -2340,6 +2356,7 @@
         "steam-servers": "steam-servers",
         "system-manager": "system-manager",
         "thymis": "thymis",
+        "vex": "vex",
         "wayland-scroll-factor": "wayland-scroll-factor",
         "wg-config": "wg-config",
         "zen-browser": "zen-browser",
@@ -3035,6 +3052,25 @@
         "type": "github"
       }
     },
+    "vex": {
+      "inputs": {
+        "nixpkgs": "nixpkgs_14"
+      },
+      "locked": {
+        "lastModified": 1792263144,
+        "narHash": "sha256-7qc8AUoDVlQNW0+A/IxtmR5dD3ikDNDoS/9WqHgT6Kg=",
+        "owner": "imdomestic",
+        "repo": "vex",
+        "rev": "b9c48aad76ab4b5ca42ae9fb42a76cf372db9afa",
+        "type": "github"
+      },
+      "original": {
+        "owner": "imdomestic",
+        "ref": "feat/vex-p1",
+        "repo": "vex",
+        "type": "github"
+      }
+    },
     "wayland-scroll-factor": {
       "inputs": {
         "flake-utils": "flake-utils_5",
@@ -3101,7 +3137,7 @@
       "inputs": {
         "crane": "crane_2",
         "flake-utils": "flake-utils_6",
-        "nixpkgs": "nixpkgs_14",
+        "nixpkgs": "nixpkgs_15",
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {

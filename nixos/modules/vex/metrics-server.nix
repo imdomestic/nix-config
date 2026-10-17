@@ -18,7 +18,7 @@ in {
   assertions = [
     {
       assertion = config.services.k3s.package.version == "1.35.7+k3s1";
-      message = "Chorus metrics-server manifests require k3s 1.35.7+k3s1";
+      message = "Vex metrics-server manifests require k3s 1.35.7+k3s1";
     }
   ];
 
@@ -27,6 +27,6 @@ in {
     ${lib.concatMapStringsSep "\n" (name: ''
       ${pkgs.coreutils}/bin/touch ${manifestsDirectory}/metrics-server/${name}.yaml.skip
     '') packagedManifests}
-    ${pkgs.coreutils}/bin/install -m 0644 ${./manifests/chorus-metrics-server.yaml} ${manifestsDirectory}/chorus-metrics-server.yaml
+    ${pkgs.coreutils}/bin/install -m 0644 ${./manifests/vex-metrics-server.yaml} ${manifestsDirectory}/vex-metrics-server.yaml
   '';
 }
