@@ -15,6 +15,7 @@ in {
 
   modules = [
     ./system.nix
+    ./cooling.nix
     ./minecraft.nix
     ./hardware-configuration.nix
     ../../modules/linwhite-smb.nix
