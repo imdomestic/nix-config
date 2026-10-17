@@ -4,6 +4,7 @@
 # Argo CD 的根 Application、密钥和命名空间在 nixos/hosts/tank/k3s.nix 里。
 {
   imports = [
+    ./apps/access
     ./apps/agones
     ./apps/mc
   ];

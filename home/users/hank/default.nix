@@ -12,6 +12,7 @@ in {
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
     ../../modules/nixvim/hank/default.nix
     ../../modules/vscode
+    ../../modules/kube
     ../../modules/ghostty/neovide-cursor.nix
     # 只 import 不 enable:2026-08-28 整套试过一轮,终端那边不合用,退回
     # kanso + evergarden。模块留着(默认关),想再试就
@@ -974,8 +975,7 @@ in {
   home.sessionVariables = {
     SNACKS_GHOSTTY = "1";
 
-    # 原来在 programs.zsh.envExtra 里,只有 zsh 看得见。
-    KUBECONFIG = "${config.home.homeDirectory}/.config/k3s.yaml";
+    # KUBECONFIG 在 modules/kube 里。
     TERMINAL = "ghostty";
 
     LESS = "--RAW-CONTROL-CHARS";
