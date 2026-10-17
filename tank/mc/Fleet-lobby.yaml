@@ -69,6 +69,7 @@ spec:
                   name: data
                 - mountPath: /config
                   name: config
+          enableServiceLinks: false
           initContainers:
             - command:
                 - sh
