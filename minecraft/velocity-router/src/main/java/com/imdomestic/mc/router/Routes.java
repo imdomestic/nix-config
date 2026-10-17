@@ -11,32 +11,57 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import org.slf4j.Logger;
 
 /**
- * GameServer 到 Velocity 后端的映射。只管理自己注册的后端，velocity.toml 里的静态后端不碰。
+ * GameServer 到 Velocity 后端的映射，也是房间的登记表。只管理自己注册的后端，velocity.toml
+ * 里的静态后端不碰。所有房间信息都来自 GameServer 本身，插件不另存状态。
  *
  * <p>运营网络内部的标签约定（见 docs/minecraft-network-todo.md）：
  * <ul>
- *   <li>{@value #LABEL_KIND}：服务器类型，比如 lobby。没有这个标签的 GameServer 不路由。
+ *   <li>{@value #LABEL_KIND}：服务器类型，比如 bingo。没有这个标签的 GameServer 不路由。
  *   <li>{@value #LABEL_PROTOCOL}：后端的协议版本号，告诉 Velocity 上的 Via。
  *   <li>{@value #LABEL_SOFT_CAP}：选服时的软上限，没有就用插件的默认值。
+ *   <li>{@value #LABEL_ROOM}、{@value #LABEL_VISIBILITY}：房间码和 public/private，开房间时写入。
+ *   <li>注解 {@value #ANNOTATION_OWNER}、{@value #ANNOTATION_OWNER_NAME}：房主的 UUID 和名字。
  * </ul>
  */
 final class Routes {
   static final String LABEL_KIND = "mc.imdomestic.com/kind";
   static final String LABEL_PROTOCOL = "mc.imdomestic.com/protocol";
   static final String LABEL_SOFT_CAP = "mc.imdomestic.com/soft-cap";
+  static final String LABEL_ROOM = "mc.imdomestic.com/room";
+  static final String LABEL_VISIBILITY = "mc.imdomestic.com/visibility";
+  static final String ANNOTATION_OWNER = "mc.imdomestic.com/owner";
+  static final String ANNOTATION_OWNER_NAME = "mc.imdomestic.com/owner-name";
   static final String KIND_LOBBY = "lobby";
 
   /** Reserved 也算：它只是暂时不让 GSA 分配，玩家照样能连。 */
   private static final Set<String> ROUTABLE_STATES = Set.of("Ready", "Allocated", "Reserved");
   private static final int DEFAULT_PORT = 25565;
 
-  record Route(String name, String kind, InetSocketAddress address, int protocol, int softCap) {}
+  /** 一台后端。room 为 null 的是还没被开成房间的待命服（或者大厅）。 */
+  record Route(
+      String name,
+      String kind,
+      InetSocketAddress address,
+      int protocol,
+      int softCap,
+      String state,
+      String room,
+      boolean isPublic,
+      String ownerId,
+      String ownerName) {
+
+    boolean isRoom() {
+      return room != null && "Allocated".equals(state);
+    }
+  }
 
   private final ProxyServer proxy;
   private final Logger logger;
@@ -72,13 +97,20 @@ final class Routes {
       remove(name);
       return;
     }
-    if (wanted.get().equals(current)) {
+    Route next = wanted.get();
+    // 地址没变就只更新登记信息（状态、房间码……）。重新注册会换掉 Velocity 里的后端对象，
+    // 已经连在上面的玩家就不算在新对象的人数里了。
+    if (current != null && current.address().equals(next.address())) {
+      if (next.protocol() != current.protocol() && next.protocol() > 0) {
+        via.ifPresent(v -> v.setProtocol(name, next.protocol()));
+      }
+      routes.put(name, next);
       return;
     }
     if (current != null) {
       unregister(current);
     }
-    register(wanted.get());
+    register(next);
   }
 
   synchronized void remove(String name) {
@@ -92,44 +124,85 @@ final class Routes {
    * 动态的大厅（kind=lobby 的 GameServer）优先；没有的话退回 velocity.toml 里 try 列表上的
    * 静态后端，常驻的大厅就是这么接进来的。
    */
-  Optional<RegisteredServer> pickLobby(RegisteredServer exclude) {
-    return pick(KIND_LOBBY, exclude).or(() -> proxy.getConfiguration().getAttemptConnectionOrder().stream()
-        .map(proxy::getServer)
-        .flatMap(Optional::stream)
-        .filter(s -> exclude == null || !s.getServerInfo().equals(exclude.getServerInfo()))
-        .findFirst());
+  synchronized Optional<RegisteredServer> pickLobby(RegisteredServer exclude) {
+    Comparator<RegisteredServer> byPlayers = Comparator.comparingInt(s -> s.getPlayersConnected().size());
+    return routes.values().stream()
+        .filter(r -> KIND_LOBBY.equals(r.kind()))
+        .flatMap(r -> server(r).stream())
+        .filter(s -> !same(s, exclude))
+        .min(byPlayers)
+        .or(() -> proxy.getConfiguration().getAttemptConnectionOrder().stream()
+            .map(proxy::getServer)
+            .flatMap(Optional::stream)
+            .filter(s -> !same(s, exclude))
+            .findFirst());
   }
 
   /**
-   * 选一台指定类型的服：优先人最多、但还没到软上限的那台，把人往少数几台上集中，空出来的
-   * 才能被 Fleet 缩容回收；都满了就挑人最少的。
+   * /play 用：同类型里最满、但还没到软上限的公开房间。只挑已经开成房间的，待命的空服要经过
+   * 分配（带上房间码）才会被用到。
    */
-  synchronized Optional<RegisteredServer> pick(String kind, RegisteredServer exclude) {
-    record Candidate(RegisteredServer server, int players, int softCap) {}
-    List<Candidate> candidates = routes.values().stream()
-        .filter(r -> kind.equals(r.kind()))
-        .flatMap(r -> proxy.getServer(r.name()).stream()
-            .map(s -> new Candidate(s, s.getPlayersConnected().size(), r.softCap() > 0 ? r.softCap() : defaultSoftCap)))
-        .filter(c -> exclude == null || !c.server().getServerInfo().equals(exclude.getServerInfo()))
-        .sorted(Comparator.comparingInt(Candidate::players).reversed()
-            .thenComparing(c -> c.server().getServerInfo().getName()))
-        .toList();
-    return candidates.stream()
-        .filter(c -> c.players() < c.softCap())
-        .findFirst()
-        .or(() -> candidates.stream().min(Comparator.comparingInt(Candidate::players)))
-        .map(Candidate::server);
+  synchronized Optional<RegisteredServer> quickJoin(String kind, RegisteredServer exclude) {
+    return routes.values().stream()
+        .filter(r -> kind.equals(r.kind()) && r.isRoom() && r.isPublic())
+        .flatMap(r -> server(r).stream()
+            .filter(s -> !same(s, exclude))
+            .filter(s -> s.getPlayersConnected().size() < softCap(r)))
+        .max(Comparator.<RegisteredServer>comparingInt(s -> s.getPlayersConnected().size())
+            .thenComparing(s -> s.getServerInfo().getName(), Comparator.reverseOrder()));
   }
 
-  /** 现在有可用服务器的类型，给 /play 补全用。 */
-  synchronized Set<String> kinds() {
-    Set<String> kinds = new java.util.TreeSet<>();
+  synchronized Optional<Route> room(String code) {
+    String wanted = code.toUpperCase(Locale.ROOT);
+    return routes.values().stream().filter(r -> r.isRoom() && wanted.equals(r.room())).findFirst();
+  }
+
+  synchronized Optional<Route> routeOf(RegisteredServer server) {
+    return server == null ? Optional.empty() : Optional.ofNullable(routes.get(server.getServerInfo().getName()));
+  }
+
+  synchronized List<Route> publicRooms(String kind) {
+    return routes.values().stream()
+        .filter(r -> r.isRoom() && r.isPublic() && (kind == null || kind.equals(r.kind())))
+        .sorted(Comparator.comparing(Route::kind).thenComparing(Route::room))
+        .toList();
+  }
+
+  synchronized Set<String> roomCodes() {
+    Set<String> codes = new TreeSet<>();
     for (Route r : routes.values()) {
-      if (r.kind() != null) {
+      if (r.isRoom()) {
+        codes.add(r.room());
+      }
+    }
+    return codes;
+  }
+
+  /** 能开房间的类型：有 GameServer 的类型，大厅除外。 */
+  synchronized Set<String> roomKinds() {
+    Set<String> kinds = new TreeSet<>();
+    for (Route r : routes.values()) {
+      if (r.kind() != null && !KIND_LOBBY.equals(r.kind())) {
         kinds.add(r.kind());
       }
     }
     return kinds;
+  }
+
+  int players(Route route) {
+    return server(route).map(s -> s.getPlayersConnected().size()).orElse(0);
+  }
+
+  int softCap(Route route) {
+    return route.softCap() > 0 ? route.softCap() : defaultSoftCap;
+  }
+
+  Optional<RegisteredServer> server(Route route) {
+    return proxy.getServer(route.name());
+  }
+
+  private static boolean same(RegisteredServer a, RegisteredServer b) {
+    return b != null && a.getServerInfo().equals(b.getServerInfo());
   }
 
   private void register(Route route) {
@@ -168,13 +241,21 @@ final class Routes {
     if (address == null) {
       return Optional.empty();
     }
-    JsonObject labels = metadata.getAsJsonObject("labels");
-    String kind = labels == null ? null : string(labels, LABEL_KIND);
-    String protocol = labels == null ? null : string(labels, LABEL_PROTOCOL);
-    String softCap = labels == null ? null : string(labels, LABEL_SOFT_CAP);
-    return Optional.of(new Route(name(gs), kind, new InetSocketAddress(address, port(status)),
+    JsonObject labels = metadata.has("labels") ? metadata.getAsJsonObject("labels") : new JsonObject();
+    JsonObject annotations = metadata.has("annotations") ? metadata.getAsJsonObject("annotations") : new JsonObject();
+    String protocol = string(labels, LABEL_PROTOCOL);
+    String softCap = string(labels, LABEL_SOFT_CAP);
+    return Optional.of(new Route(
+        name(gs),
+        string(labels, LABEL_KIND),
+        new InetSocketAddress(address, port(status)),
         protocol == null ? -1 : Integer.parseInt(protocol),
-        softCap == null ? -1 : Integer.parseInt(softCap)));
+        softCap == null ? -1 : Integer.parseInt(softCap),
+        state,
+        string(labels, LABEL_ROOM),
+        !"private".equals(string(labels, LABEL_VISIBILITY)),
+        string(annotations, ANNOTATION_OWNER),
+        string(annotations, ANNOTATION_OWNER_NAME)));
   }
 
   /** PortPolicy None 下没有 hostPort，Velocity 在集群里直接连 Pod IP；status.address 是节点地址。 */

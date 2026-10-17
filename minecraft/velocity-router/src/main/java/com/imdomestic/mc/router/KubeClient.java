@@ -23,7 +23,8 @@ import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 
 /**
- * 只读的 k8s API 客户端，用 Pod 里挂载的 ServiceAccount 凭据。
+ * k8s API 客户端，用 Pod 里挂载的 ServiceAccount 凭据。能做什么由 RBAC 决定：
+ * 读写 GameServer、创建 GameServerAllocation，见 k8s/apps/mc。
  *
  * <p>没用 fabric8 / client-java：插件只需要 list 和 watch 一种资源，而那两个库要把几十 MB 的
  * 依赖 shade 进 Velocity 插件。JSON 用 Velocity 自带的 Gson。
@@ -79,6 +80,27 @@ final class KubeClient {
     return JsonParser.parseString(response.body()).getAsJsonObject();
   }
 
+  JsonObject post(String path, JsonObject body) throws IOException, InterruptedException {
+    HttpRequest request = builder(path, Duration.ofSeconds(30))
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+        .build();
+    HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() / 100 != 2) {
+      throw new IOException("POST " + path + " -> " + response.statusCode() + ": " + response.body());
+    }
+    return JsonParser.parseString(response.body()).getAsJsonObject();
+  }
+
+  /** 已经不存在（404）也算成功。 */
+  void delete(String path) throws IOException, InterruptedException {
+    HttpRequest request = builder(path, Duration.ofSeconds(30)).DELETE().build();
+    HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() / 100 != 2 && response.statusCode() != 404) {
+      throw new IOException("DELETE " + path + " -> " + response.statusCode() + ": " + response.body());
+    }
+  }
+
   /** 阻塞读取 watch 流，每个事件回调一次；服务端按 timeoutSeconds 关流时正常返回。 */
   void watch(String pathAndQuery, Consumer<JsonObject> onEvent) throws IOException, InterruptedException {
     // 不设请求超时：watch 本来就是长连接，结束由服务端的 timeoutSeconds 决定。
@@ -99,15 +121,18 @@ final class KubeClient {
   }
 
   private HttpRequest request(String pathAndQuery, Duration timeout) throws IOException {
+    return builder(pathAndQuery, timeout).GET().build();
+  }
+
+  private HttpRequest.Builder builder(String pathAndQuery, Duration timeout) throws IOException {
     // 每次都重新读：投射进来的 token 会定期轮换。
     String token = Files.readString(SERVICE_ACCOUNT.resolve("token")).strip();
     HttpRequest.Builder builder = HttpRequest.newBuilder(base.resolve(pathAndQuery))
         .header("Authorization", "Bearer " + token)
-        .header("Accept", "application/json")
-        .GET();
+        .header("Accept", "application/json");
     if (timeout != null) {
       builder.timeout(timeout);
     }
-    return builder.build();
+    return builder;
   }
 }
