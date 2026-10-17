@@ -14,6 +14,11 @@
     seed = "busybox:1.37.0";
   };
 
+  # k8s 默认往 Pod 里注入同命名空间每个 Service 的环境变量。Velocity 的 Service 叫 proxy，
+  # 注入的 PROXY_PORT=tcp://... 会被 itzg 当成 HTTP 代理，启动时下载服务端就卡死。
+  # 见 docs/incidents.md#mc-service-links-proxy。
+  noServiceLinks.enableServiceLinks = false;
+
   forwardingSecret.secretKeyRef = {
     name = "velocity-forwarding";
     key = "secret";
@@ -134,7 +139,7 @@
           failureThreshold = 12;
         };
         lists.players.capacity = 100;
-        template.spec = {
+        template.spec = noServiceLinks // {
           initContainers = [
             {
               name = "seed";
@@ -260,7 +265,7 @@
       selector.matchLabels.app = name;
       template = {
         metadata.labels.app = name;
-        spec = {
+        spec = noServiceLinks // {
           # 原存档只读挂载，拷一次后留下标记文件，之后的重启不会再覆盖。
           initContainers.seed = {
             image = images.seed;
@@ -376,7 +381,7 @@ in {
           selector.matchLabels.app = "proxy";
           template = {
             metadata.labels.app = "proxy";
-            spec = {
+            spec = noServiceLinks // {
               serviceAccountName = "velocity-router";
               containers.proxy = {
                 image = images.proxy;
