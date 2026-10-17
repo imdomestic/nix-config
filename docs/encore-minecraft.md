@@ -1,5 +1,7 @@
 # encore Minecraft 服务
 
+本文记录的是旧布局，这些服务目前已被 `nixos/modules/chorus/legacy-minecraft.nix` 停用。新方案见 `docs/minecraft-network-todo.md`。
+
 encore 承载 Minecraft 服务，tokyo 的 Gate 通过 Tailscale 将玩家连接转发到 encore。
 
 ## 连接地址
