@@ -47,7 +47,8 @@
 - **运营集群（2026-10-17 起）是 tank 上的单节点 k3s。**
   - 节点配置在 `nixos/hosts/tank/k3s.nix`，集群内容在 `k8s/`，由 Argo CD 从 `k8s-rendered` 分支同步。
   - 目前跑着一套用旧存档搭的测试网络：Velocity + 大厅（Paper 1.21.1）+ bingo（Fabric 1.21.11）。
-  - 大厅和 bingo 都是 Agones Fleet：`minecraft/agones-paper`、`minecraft/agones-fabric` 上报状态，Velocity 上的 `minecraft/velocity-router` 动态注册后端。玩家在大厅用 `/play bingo` 进 bingo。
+  - 大厅是常驻的 StatefulSet，世界存在 PVC 里，作为静态后端写在 velocity.toml。
+  - bingo 是 Agones Fleet：`minecraft/agones-fabric` 上报状态，Velocity 上的 `minecraft/velocity-router` 动态注册。玩家在大厅用 `/play bingo` 进 bingo，房间关掉时被送回大厅。
   - 测试网络是离线模式，在 tailnet 内连 `tank.inner.imdomestic.com:25565`。tank 的防火墙是关着的，局域网 192.168.20.0/24 也能连。
   - kubectl 和 k9s 用 `tank` 这个 context，见 `home/modules/kube`。
 - **k3s 只有一个 server，就是 encore。**
@@ -195,14 +196,14 @@
   - ROOM 模式已在 bingo 上实测：最后一个人离开约 2 分钟后存盘、Shutdown，Fleet 补一台新的。只有被用过（Allocated 过）的房间才会被回收，待命的空房间不动。
   - 空闲时长目前读环境变量 `MC_AGONES_IDLE_SECONDS`，还没改成读注解。
   - 1.21.2 起的服务端要关掉 `pause-when-empty-seconds`，否则空服会停 tick、health ping 跟着停，见 `docs/incidents.md#mc-pause-when-empty`。
-- [x] **大厅的状态切换**：第一个人进来时调 `Allocate()`，人走光后调 `Ready()`。
+- [x] **可复用房间的状态切换**（core 的 LOBBY 模式）：第一个人进来时调 `Allocate()`，人走光后调 `Ready()`。大厅改回常驻后暂时没有用到它。
 - [x] **端口设置**：`protocol: TCP`（默认是 UDP），`portPolicy: None`。
 
 ### 大厅
 
 - [ ] **Paper 最新版。** 跨版本兼容由 Velocity 上的 Via 负责。如果以后想认真照顾 1.8 客户端的体验，再看 Paper 端还需要补哪些修正，有一部分修正只能装在后端。
 - [ ] **只用所有版本的原版客户端都认得的东西**：箱子菜单、告示牌、命令。资源包设为可选。
-- [ ] **Fleet + FleetAutoscaler**，用 List 策略按剩余空位扩缩。Fleet 已经上线，目前用的是 Buffer 策略：始终留一台空大厅待命。
+- [x] **大厅不做 Fleet，常驻就行（2026-10-18 定）**：StatefulSet 加 PVC，世界持久保存，作为静态后端写在 velocity.toml 的 `try` 里。路由插件选大厅时，没有动态大厅就退回 `try` 列表，所以进服、被踢回大厅和 `/lobby` 都走它。人多到一台装不下时再考虑多实例。
 
 ### bingo 与匹配
 
@@ -235,7 +236,7 @@
   - 原因：nix-config 是公开仓库，不能挂自托管 runner。fork 提交的 PR 会用 PR 里改过的工作流文件来运行，可以直接指定这个 runner。
   - 我们自己的镜像只包含自己的 jar，在 GitHub 托管的 runner 上构建，公开推到 ghcr。
   - 服务端 jar 由 itzg 镜像在启动时按固定版本下载。
-  - 如果启动时下载拖慢了扩容，再把服务端 jar 单独做成按 MC 版本区分的私有镜像（很少变，放在 tank 上），通过 image volume 挂进容器。
+  - 小游戏房间每次启动都要下载一遍服务端，这一点接受（2026-10-18）：Fleet 总有一台待命，玩家感觉不到。真成了问题，再把服务端 jar 单独做成按 MC 版本区分的私有镜像（很少变，放在 tank 上），通过 image volume 挂进容器。
 - [x] **镜像 tag 用源码的内容哈希**：目前按整个 `minecraft/` 目录算（`minecraft/image-tag.nix`），没有按组件拆。
 - [x] **ghcr 上新建的包默认是私有的**，集群匿名拉取会 401。`mc-lobby`、`mc-proxy` 已手动改成公开，以后新增的镜像也要在 GitHub 上改一次。
   - CI 构建镜像时和 nixidy 渲染时，用同一个 `nix eval` 表达式算出同一个值，不需要机器人提交来改 tag。
