@@ -17,7 +17,8 @@ data:
     enable-player-address-logging = true
 
     [servers]
-    try = []
+    lobby = "lobby:25565"
+    try = ["lobby"]
 
     [forced-hosts]
 
