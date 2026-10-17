@@ -1,8 +1,8 @@
 # kubectl / k9s 连 tank 上的运营集群。
 #
-# kubeconfig 里只有 API 地址和 CA 证书，没有凭据：每次要 token 时，exec 插件用现有
-# 的 ssh root@tank 现签一个 12 小时的 ServiceAccount token（账号在
-# k8s/apps/access）。哪台机器 ssh 不上 root@tank，这个 context 就用不了。
+# kubeconfig 里只有 API 地址和 CA 证书，没有长期凭据：exec 插件用现有的
+# ssh root@tank 现签一个 12 小时的 ServiceAccount token（账号在 k8s/apps/access）。
+# 哪台机器 ssh 不上 root@tank，这个 context 就用不了。
 {
   config,
   lib,
@@ -11,16 +11,27 @@
 }: let
   home = config.home.homeDirectory;
 
+  jq = lib.getExe pkgs.jq;
   tankToken = pkgs.writeShellScript "kube-tank-token" ''
     set -euo pipefail
+    # kubectl 每条命令都会调一次这个插件，而签一次要走一趟 ssh（实测近 10 秒）。
+    # 所以把还没过期的 token 缓存下来，离过期不到 10 分钟才重新签。
+    cache="''${XDG_CACHE_HOME:-$HOME/.cache}/kube/tank-token.json"
+    if ${jq} -e '(.status.expirationTimestamp | fromdateiso8601) > now + 600' "$cache" >/dev/null 2>&1; then
+      exec cat "$cache"
+    fi
+    mkdir -p "$(dirname "$cache")"
+    umask 077
     # 用 PATH 里的 ssh，才吃得到 ~/.ssh/config 和系统的 agent。
     ssh -o BatchMode=yes root@tank.inner.imdomestic.com \
       k3s kubectl create token hank --namespace kube-system --duration 12h --output json |
-      ${lib.getExe pkgs.jq} '{
+      ${jq} '{
         apiVersion: "client.authentication.k8s.io/v1",
         kind: "ExecCredential",
         status: {token: .status.token, expirationTimestamp: .status.expirationTimestamp}
-      }'
+      }' >"$cache.tmp"
+    mv "$cache.tmp" "$cache"
+    exec cat "$cache"
   '';
 
   tankKubeconfig = {
