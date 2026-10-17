@@ -3059,16 +3059,16 @@
       "locked": {
         "lastModified": 1792263144,
         "narHash": "sha256-7qc8AUoDVlQNW0+A/IxtmR5dD3ikDNDoS/9WqHgT6Kg=",
-        "owner": "imdomestic",
-        "repo": "vex",
+        "ref": "feat/vex-p1",
         "rev": "b9c48aad76ab4b5ca42ae9fb42a76cf372db9afa",
-        "type": "github"
+        "revCount": 18,
+        "type": "git",
+        "url": "ssh://git@github.com/imdomestic/vex"
       },
       "original": {
-        "owner": "imdomestic",
         "ref": "feat/vex-p1",
-        "repo": "vex",
-        "type": "github"
+        "type": "git",
+        "url": "ssh://git@github.com/imdomestic/vex"
       }
     },
     "wayland-scroll-factor": {
