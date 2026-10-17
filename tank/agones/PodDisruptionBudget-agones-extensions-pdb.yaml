@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agones-extensions-pdb
+  namespace: agones-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      agones.dev/role: extensions
+      app: agones
+      heritage: Helm
+      release: agones

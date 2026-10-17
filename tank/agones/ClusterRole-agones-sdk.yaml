@@ -1,0 +1,25 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: agones
+    chart: agones-1.61.0
+    heritage: Helm
+    release: agones
+  name: agones-sdk
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - agones.dev
+    resources:
+      - gameservers
+    verbs:
+      - list
+      - patch
+      - watch

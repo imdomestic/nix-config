@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mc
+  namespace: argocd
+spec:
+  destination:
+    namespace: mc
+    server: https://kubernetes.default.svc
+  project: default
+  source:
+    path: ./tank/mc
+    repoURL: https://github.com/imdomestic/nix-config.git
+    targetRevision: k8s-rendered
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

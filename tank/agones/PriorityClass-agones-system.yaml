@@ -1,0 +1,7 @@
+apiVersion: scheduling.k8s.io/v1
+description: This priority class should be used for Agones service pods only.
+globalDefault: false
+kind: PriorityClass
+metadata:
+  name: agones-system
+value: 1000000
