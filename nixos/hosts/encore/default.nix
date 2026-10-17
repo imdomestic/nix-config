@@ -20,7 +20,8 @@ in {
     ./retained-services.nix
     ./hardware-configuration.nix
     ../../modules/linwhite-smb.nix
-    ../../modules/chorus
+    ../../modules/vex
+    ./vex.nix
   ];
 
   externalModules = [

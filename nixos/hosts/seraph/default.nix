@@ -13,7 +13,7 @@ in {
     ./system.nix
     ./hardware-configuration.nix
     ./compute.nix
-    ./chorus-agent.nix
+    ./vex-agent.nix
     ../../modules/linwhite-smb.nix
     ../../modules/bonsai-conversion.nix
     ../../modules/bonsai-ninfer.nix

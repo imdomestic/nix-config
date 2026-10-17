@@ -1320,7 +1320,7 @@ in {
       dns = {
         base_domain = "inner.imdomestic.com";
         magic_dns = true;
-        nameservers.split."chorus.internal" = ["100.64.0.43"];
+        nameservers.split."vex.internal" = ["100.64.0.43"];
         override_local_dns = false;
       };
       ip_prefixes = ["100.64.0.0/10"];

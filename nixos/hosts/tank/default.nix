@@ -27,7 +27,7 @@ in {
   modules = [
     ./system.nix
     ./k3s.nix
-    ./chorus-archive.nix
+    ./vex-archive.nix
     ./gaoji.nix
     ./gaoji-web.nix
     ./max.nix
