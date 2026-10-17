@@ -60,6 +60,7 @@ spec:
           volumeMounts:
             - mountPath: /data
               name: data
+      enableServiceLinks: false
       initContainers:
         - command:
             - sh

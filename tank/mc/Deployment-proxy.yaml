@@ -45,6 +45,7 @@ spec:
           volumeMounts:
             - mountPath: /config
               name: config
+      enableServiceLinks: false
       serviceAccountName: velocity-router
       volumes:
         - configMap:
