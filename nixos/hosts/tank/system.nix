@@ -643,28 +643,6 @@ in {
     bandwidth = 128000;
   };
 
-  services.k3s = {
-    enable = false;
-    role = "server";
-    tokenFile = config.sops.secrets."k3s/token".path;
-    clusterInit = true;
-    extraFlags = [
-      "--node-ip=10.0.0.66"
-      "--node-external-ip=10.0.0.66"
-      "--bind-address=10.0.0.66"
-      "--advertise-address=10.0.0.66"
-      "--flannel-iface=wg0"
-      "--disable traefik"
-    ];
-    manifests = {
-      "00-argocd-ns".content = {
-        apiVersion = "v1";
-        kind = "Namespace";
-        metadata.name = "argocd";
-      };
-    };
-  };
-
   systemd.nspawn."debian-guest" = {
     enable = true;
     execConfig = {
@@ -785,7 +763,6 @@ in {
   sops.secrets."ddns/web_password_bcrypt" = {};
   sops.secrets."matrix/registration_shared_secret" = {};
   sops.secrets."murmur/password" = {};
-  sops.secrets."k3s/token" = {};
   sops.secrets."matrix/turn_yaml".owner = "matrix-synapse";
 
   sops.templates."ddns-go-config.yaml" = {
