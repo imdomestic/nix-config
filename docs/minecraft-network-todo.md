@@ -47,6 +47,7 @@
 - **运营集群（2026-10-17 起）是 tank 上的单节点 k3s。**
   - 节点配置在 `nixos/hosts/tank/k3s.nix`，集群内容在 `k8s/`，由 Argo CD 从 `k8s-rendered` 分支同步。
   - 目前跑着一套用旧存档搭的测试网络：Velocity + 大厅（Paper 1.21.1）+ bingo（Fabric 1.21.11）。
+  - 大厅已经是 Agones Fleet：`minecraft/agones-paper` 上报状态，Velocity 上的 `minecraft/velocity-router` 动态注册后端。bingo 还是 StatefulSet。
   - 测试网络是离线模式，在 tailnet 内连 `tank.inner.imdomestic.com:25565`。tank 的防火墙是关着的，局域网 192.168.20.0/24 也能连。
   - kubectl 和 k9s 用 `tank` 这个 context，见 `home/modules/kube`。
 - **k3s 只有一个 server，就是 encore。**
@@ -162,7 +163,7 @@
 
 ### Velocity
 
-- [ ] **路由插件**：只读监听 GameServer，注册和注销后端，按虚拟主机名路由。
+- [x] **路由插件**（`minecraft/velocity-router`）：只读监听 GameServer，按 Pod IP 注册和注销后端，进服和被踢时选大厅，提供 `/lobby`。按虚拟主机名路由还没做。
 - [ ] **玩家被房间踢出时，按 `getClientBrand()` 分流：**
   - Fabric 和原版客户端送回大厅；
   - Forge、NeoForge 客户端直接断开，并给出提示。
@@ -170,11 +171,11 @@
   - Velocity 设 `force-key-authentication = false`；
   - 后端设 `enforce-secure-profile=false`。
 - [ ] Geyser + Floodgate，给基岩版用。
-- [ ] **ViaVersion、ViaBackwards、ViaRewind 装在 Velocity 上**，大厅、bingo 等所有原版兼容的后端都能覆盖到。
+- [x] **ViaVersion、ViaBackwards、ViaRewind 装在 Velocity 上**，大厅、bingo 等所有原版兼容的后端都能覆盖到。
   - 路由插件注册后端时，调用 `ProtocolDetectorService.setProtocolVersion` 告诉 Via 这个后端的版本；注销时调用 `uncacheProtocolVersion`。
   - 不这么做的话，新房间在 Via 第一次探测到它的版本之前，会被当成 Velocity 支持的最低版本。
 - [ ] **带 mod 的房间（`fabric-pack`、`forge-pack`）要求客户端版本完全一致。** 版本不符时由路由插件直接拒绝并给出提示，不让 Via 去翻译。
-- [ ] **定 GameServer 的标签约定**，至少包括：
+- [ ] **定 GameServer 的标签约定**（`mc.imdomestic.com/kind` 和 `mc.imdomestic.com/protocol` 已经在用），至少包括：
   - 路由用的主机名；
   - 后端的协议版本号；
   - 接受哪类客户端（`vanilla`、`fabric-pack`、`forge-pack`）；
@@ -184,21 +185,22 @@
 
 ### Agones 集成（Java）
 
-- [ ] **结构**：core（Agones REST 客户端、空闲计时、玩家列表）加 paper、fabric 两个适配层。
-- [ ] **健康检查**：
+- [ ] **结构**：core（Agones REST 客户端、空闲计时、玩家列表）加 paper、fabric 两个适配层。core 和 paper 已完成（`minecraft/agones-core`、`minecraft/agones-paper`），fabric 还没做。
+- [x] **健康检查**：
   - `Health()` 在 tick 里调用；
   - 服务器还没开始 tick 的启动阶段，先用后台线程 ping；
   - `failureThreshold` 调到总共约 60 秒，扛得住 GC 和存盘造成的卡顿。
-- [ ] 玩家进出时增删 `players` 列表。这用的是 Agones 的 Lists 功能，目前还是 beta。
+- [x] 玩家进出时增删 `players` 列表。这用的是 Agones 的 Lists 功能，目前还是 beta。
 - [ ] **空闲回收**：空闲 N 分钟后调 `Shutdown()`，N 从 GameServer 注解读取。存盘和归档必须在 `Shutdown()` 之前做完。
-- [ ] **大厅的状态切换**：第一个人进来时调 `Allocate()`，人走光后调 `Ready()`。
-- [ ] **端口设置**：`protocol: TCP`（默认是 UDP），`portPolicy: None`。
+  - 已实现 ROOM 模式（存盘后 Shutdown），空闲时长目前读环境变量 `MC_AGONES_IDLE_SECONDS`，还没改成读注解，也还没实测。
+- [x] **大厅的状态切换**：第一个人进来时调 `Allocate()`，人走光后调 `Ready()`。
+- [x] **端口设置**：`protocol: TCP`（默认是 UDP），`portPolicy: None`。
 
 ### 大厅
 
 - [ ] **Paper 最新版。** 跨版本兼容由 Velocity 上的 Via 负责。如果以后想认真照顾 1.8 客户端的体验，再看 Paper 端还需要补哪些修正，有一部分修正只能装在后端。
 - [ ] **只用所有版本的原版客户端都认得的东西**：箱子菜单、告示牌、命令。资源包设为可选。
-- [ ] **Fleet + FleetAutoscaler**，用 List 策略按剩余空位扩缩。
+- [ ] **Fleet + FleetAutoscaler**，用 List 策略按剩余空位扩缩。Fleet 已经上线，目前用的是 Buffer 策略：始终留一台空大厅待命。
 
 ### bingo 与匹配
 
@@ -223,16 +225,17 @@
 
 ## 5. 运营网络：构建与发布
 
-- [ ] **源码放在 nix-config 顶层的 `minecraft/` 目录，不放 `pkgs/`。** `pkgs/` 里的东西会进入 flake 的 `packages` 输出，被 CI 构建后推到公开的 cachix。
-- [ ] **构建全部交给 GitHub Actions，Nix 不构建任何 mod 或镜像。**
+- [x] **源码放在 nix-config 顶层的 `minecraft/` 目录，不放 `pkgs/`。** `pkgs/` 里的东西会进入 flake 的 `packages` 输出，被 CI 构建后推到公开的 cachix。
+- [x] **构建全部交给 GitHub Actions，Nix 不构建任何 mod 或镜像。**
   - Nix 只提供开发环境：`nix develop` 里的 JDK 和 Gradle。
   - 工作流按路径过滤：`minecraft/**` 的改动不触发主机的 dry-build 矩阵，主机配置的改动也不触发 mod 构建。
-- [ ] **镜像里不打包 Mojang 的服务端 jar。**
+- [x] **镜像里不打包 Mojang 的服务端 jar。**
   - 原因：nix-config 是公开仓库，不能挂自托管 runner。fork 提交的 PR 会用 PR 里改过的工作流文件来运行，可以直接指定这个 runner。
   - 我们自己的镜像只包含自己的 jar，在 GitHub 托管的 runner 上构建，公开推到 ghcr。
   - 服务端 jar 由 itzg 镜像在启动时按固定版本下载。
   - 如果启动时下载拖慢了扩容，再把服务端 jar 单独做成按 MC 版本区分的私有镜像（很少变，放在 tank 上），通过 image volume 挂进容器。
-- [ ] **镜像 tag 用组件源码的内容哈希**，哈希范围包括这个组件依赖的共享代码目录。
+- [x] **镜像 tag 用源码的内容哈希**：目前按整个 `minecraft/` 目录算（`minecraft/image-tag.nix`），没有按组件拆。
+- [x] **ghcr 上新建的包默认是私有的**，集群匿名拉取会 401。`mc-lobby`、`mc-proxy` 已手动改成公开，以后新增的镜像也要在 GitHub 上改一次。
   - CI 构建镜像时和 nixidy 渲染时，用同一个 `nix eval` 表达式算出同一个值，不需要机器人提交来改 tag。
   - 同一个工作流里先推镜像，再推渲染分支，避免 Argo CD 去拉一个还不存在的镜像。
 - [ ] **测试和上线：**
