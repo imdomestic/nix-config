@@ -6,9 +6,9 @@ spec:
   fleetName: bingo
   policy:
     buffer:
-      bufferSize: 1
-      maxReplicas: 4
-      minReplicas: 1
+      bufferSize: 2
+      maxReplicas: 6
+      minReplicas: 2
     type: Buffer
   sync:
     fixedInterval:
