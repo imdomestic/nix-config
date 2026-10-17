@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "agones-bridge",
+  "version": "${version}",
+  "name": "AgonesBridge",
+  "description": "把服务器状态同步给 Agones：Ready、Health、Allocate 和 players 列表。",
+  "license": "MIT",
+  "environment": "server",
+  "entrypoints": {
+    "server": ["com.imdomestic.mc.agones.fabric.AgonesFabricMod"]
+  },
+  "depends": {
+    "fabricloader": ">=0.16",
+    "fabric-api": "*",
+    "minecraft": ">=1.21 <1.22"
+  }
+}

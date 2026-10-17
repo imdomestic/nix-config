@@ -22,9 +22,9 @@ import java.util.logging.Logger;
  *   <li>Health：每次 tick 都 ping，主线程卡住 ping 就停，Agones 据此判 Unhealthy。
  *       主线程开始 tick 之前由后台线程代 ping，否则加载慢的服会在启动阶段被误杀。
  *   <li>Ready：服务器加载完成后发一次，失败就在下一次 tick 重试。
- *   <li>LOBBY 模式：有人时 Allocate（Fleet 缩容不会删 Allocated 的服），空了一段时间后
- *       Ready（回到可回收的空闲池）。
- *   <li>ROOM 模式：空了一段时间后存盘并 Shutdown。
+ *   <li>有人时 Allocate：Fleet 缩容和滚动更新不会删 Allocated 的服。两种模式都这样。
+ *   <li>LOBBY 模式：空了一段时间后 Ready，回到可回收的空闲池，这台服之后还会被复用。
+ *   <li>ROOM 模式：空了一段时间后存盘并 Shutdown，由 Fleet 换一台新的。
  * </ul>
  */
 public final class Lifecycle implements AutoCloseable {
@@ -125,7 +125,7 @@ public final class Lifecycle implements AutoCloseable {
       }
       if (players > 0) {
         emptySince = null;
-        if (settings.mode() == Mode.LOBBY && !allocated && !transitionInFlight) {
+        if (!allocated && !transitionInFlight) {
           transition("allocate", sdk.allocate(), true);
         }
         return;

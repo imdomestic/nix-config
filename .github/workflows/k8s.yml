@@ -51,7 +51,7 @@ jobs:
         run: |
           tag=$(nix eval --raw .#mcImageTag)
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          for img in lobby proxy; do
+          for img in server proxy; do
             if ! docker manifest inspect "ghcr.io/imdomestic/mc-$img:$tag" >/dev/null 2>&1; then
               echo "build=true" >> "$GITHUB_OUTPUT"
               exit 0
@@ -74,9 +74,10 @@ jobs:
         if: steps.tag.outputs.build == 'true'
         run: |
           tag="${{ steps.tag.outputs.tag }}"
-          cp minecraft/agones-paper/build/libs/agones-paper.jar minecraft/images/lobby/
+          cp minecraft/agones-paper/build/libs/agones-paper.jar minecraft/agones-fabric/build/libs/agones-fabric.jar \
+            minecraft/images/server/
           cp minecraft/velocity-router/build/libs/velocity-router.jar minecraft/images/proxy/
-          for img in lobby proxy; do
+          for img in server proxy; do
             ref="ghcr.io/imdomestic/mc-$img:$tag"
             # source 标签把包关联到这个仓库。
             docker build \
