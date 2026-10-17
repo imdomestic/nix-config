@@ -17,14 +17,13 @@ in {
     ./system.nix
     ./cooling.nix
     ./keyboard.nix
-    ./minecraft.nix
+    ./retained-services.nix
     ./hardware-configuration.nix
     ../../modules/linwhite-smb.nix
     ../../modules/chorus
   ];
 
   externalModules = [
-    inputs.nix-minecraft.nixosModules.minecraft-servers
     inputs.nixos-hardware.nixosModules.asus-zephyrus-gu603h
     inputs.nix-index-database.nixosModules.default
   ];
