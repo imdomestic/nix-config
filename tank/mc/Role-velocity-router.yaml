@@ -12,3 +12,10 @@ rules:
       - get
       - list
       - watch
+      - delete
+  - apiGroups:
+      - allocation.agones.dev
+    resources:
+      - gameserverallocations
+    verbs:
+      - create
