@@ -4,6 +4,16 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-18 · tank 集群里的大厅 GameServer 反复被换掉：Service 名把 itzg 引到了假代理 {#mc-service-links-proxy}
+
+大厅改成 Agones Fleet 之后，GameServer 一直停在 Scheduled，3 分钟后被判 Unhealthy、删掉、换一台新的，如此循环。服务端容器的日志停在 `[init] Resolving type given PAPER`，插件根本没有加载。
+
+**误导点：看起来像 tank 到 PaperMC 的网络慢。** 从 tank 本机和 Pod 里 curl `fill.papermc.io` 都只要 1 秒左右；同一个 itzg 镜像在第一次部署时也下载成功过。真正的线索在进程参数里：itzg 的下载器带着 `-Dhttp.proxyPort=tcp://10.43.98.42:25565`。
+
+**原因：** k8s 默认把同命名空间里每个 Service 的地址以环境变量注入新 Pod（`enableServiceLinks`）。Velocity 的 Service 叫 `proxy`，于是每个 Pod 都有 `PROXY_PORT=tcp://<Velocity 的 ClusterIP>:25565`，而 itzg 把 `PROXY_*` 当作 HTTP 代理配置，下载请求全发给了 Velocity。第一次部署时 Pod 比 Service 先建，没有这些变量，所以那次是好的。
+
+修法：`k8s/apps/mc` 里所有 Pod 都设 `enableServiceLinks = false`。Unhealthy 本身是正确的行为：插件没加载就没人 ping，180 秒宽限期一过就该换掉。
+
 ## 2026-10-15 · Taipan Clef 输入上限：12K 接近显存边界，默认提高到 8K {#taipan-clef-context-limit}
 
 用户要求提高输入长度并确认大致上限。在原有 Clef Q4_K_M、Ollama 0.40.4、
