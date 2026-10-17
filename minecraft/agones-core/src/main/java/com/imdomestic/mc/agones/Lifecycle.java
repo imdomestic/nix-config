@@ -1,5 +1,7 @@
 package com.imdomestic.mc.agones;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -24,6 +26,8 @@ import java.util.logging.Logger;
  *       所以服务器不能自己停 tick：1.21.2 起的 pause-when-empty-seconds 必须关掉。
  *   <li>Ready：服务器加载完成后发一次，失败就在下一次 tick 重试。
  *   <li>有人时 Allocate：Fleet 缩容和滚动更新不会删 Allocated 的服。两种模式都这样。
+ *   <li>被外部分配（Velocity 开房间时发的 GameServerAllocation）也算用过：从被分配的那一刻
+ *       重新开始空闲计时，没人来的房间同样会被回收。靠 WatchGameServer 知道这件事。
  *   <li>LOBBY 模式：空了一段时间后 Ready，回到可回收的空闲池，这台服之后还会被复用。
  *   <li>ROOM 模式：有人来过之后，空了一段时间就存盘并 Shutdown，由 Fleet 换一台新的。
  *       从没被用过的房间不关：它是 Fleet 里待命的那台，关掉只会让 Fleet 不停地重建。
@@ -69,6 +73,7 @@ public final class Lifecycle implements AutoCloseable {
   private final Platform platform;
   private final Logger log;
   private final ScheduledExecutorService startupPinger;
+  private final Thread watcher;
   private final Map<String, Instant> lastLogged = new HashMap<>();
 
   private volatile boolean ticking;
@@ -92,6 +97,8 @@ public final class Lifecycle implements AutoCloseable {
       t.setDaemon(true);
       return t;
     });
+    this.watcher = new Thread(this::watchLoop, "agones-watch");
+    this.watcher.setDaemon(true);
   }
 
   public Settings settings() {
@@ -111,6 +118,7 @@ public final class Lifecycle implements AutoCloseable {
 
   public synchronized void serverStarted() {
     started = true;
+    watcher.start();
   }
 
   public void tick(Instant now) {
@@ -166,6 +174,44 @@ public final class Lifecycle implements AutoCloseable {
   @Override
   public void close() {
     startupPinger.shutdownNow();
+    watcher.interrupt();
+  }
+
+  private void watchLoop() {
+    while (!Thread.currentThread().isInterrupted()) {
+      try {
+        sdk.watchGameServer(this::onGameServer);
+      } catch (InterruptedException e) {
+        return;
+      } catch (Exception e) {
+        warn("watch", "WatchGameServer 断开，5 秒后重连", e);
+      }
+      try {
+        Thread.sleep(5_000);
+      } catch (InterruptedException e) {
+        return;
+      }
+    }
+  }
+
+  private void onGameServer(String line) {
+    JsonObject root = JsonParser.parseString(line).getAsJsonObject();
+    JsonObject gs = root.has("result") ? root.getAsJsonObject("result") : root;
+    JsonObject status = gs.getAsJsonObject("status");
+    if (status == null || !status.has("state")) {
+      return;
+    }
+    if (!"Allocated".equals(status.get("state").getAsString())) {
+      return;
+    }
+    synchronized (this) {
+      if (!allocated) {
+        allocated = true;
+        // 给被分配后要进来的玩家留出时间，否则从 Ready 起就在跑的空闲计时会立刻关服。
+        emptySince = Instant.now();
+        log.info("Agones: 被外部分配，空闲计时从现在开始");
+      }
+    }
   }
 
   private void requestReady() {

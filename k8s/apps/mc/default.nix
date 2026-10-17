@@ -215,8 +215,11 @@
     };
   };
 
-  # 始终留一台没人的待命：插件让有人的服进入 Allocated，缩容只会删 Ready 的。
-  mkAutoscaler = name: maxReplicas: {
+  # 始终留 bufferSize 台没人的待命：开房间就是从里面分配一台，缩容只会删 Ready 的。
+  mkAutoscaler = name: {
+    bufferSize,
+    maxReplicas,
+  }: {
     apiVersion = "autoscaling.agones.dev/v1";
     kind = "FleetAutoscaler";
     metadata.name = name;
@@ -225,9 +228,8 @@
       policy = {
         type = "Buffer";
         buffer = {
-          bufferSize = 1;
-          minReplicas = 1;
-          inherit maxReplicas;
+          inherit bufferSize maxReplicas;
+          minReplicas = bufferSize;
         };
       };
       sync = {
@@ -277,7 +279,11 @@ in {
     # Fleet 和 FleetAutoscaler 没有 nixidy 的类型定义，原样放进去。
     yamls = map builtins.toJSON [
       bingo
-      (mkAutoscaler "bingo" 4)
+      # 待命两台：bingo 冷启动约 5 分钟，前后脚开两个房间时第二个人不用等。
+      (mkAutoscaler "bingo" {
+        bufferSize = 2;
+        maxReplicas = 6;
+      })
     ];
 
     resources = {
@@ -362,13 +368,18 @@ in {
       configMaps.lobby-config.data."paper-global.yml" = paperGlobal;
       configMaps.velocity.data."velocity.toml" = velocityToml;
 
-      # 路由插件只读 GameServer。
+      # 路由插件：监听 GameServer、开房间（创建 GameServerAllocation）、房主关房（删 GameServer）。
       serviceAccounts.velocity-router = {};
       roles.velocity-router.rules = [
         {
           apiGroups = ["agones.dev"];
           resources = ["gameservers"];
-          verbs = ["get" "list" "watch"];
+          verbs = ["get" "list" "watch" "delete"];
+        }
+        {
+          apiGroups = ["allocation.agones.dev"];
+          resources = ["gameserverallocations"];
+          verbs = ["create"];
         }
       ];
       roleBindings.velocity-router = {

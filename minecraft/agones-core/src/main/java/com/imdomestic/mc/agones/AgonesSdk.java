@@ -8,6 +8,8 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * Agones SDK sidecar 的 REST 接口（localhost:$AGONES_SDK_HTTP_PORT）。
@@ -64,6 +66,21 @@ public final class AgonesSdk {
   /** 值不在列表里时 sidecar 回 404，当作成功。 */
   public CompletableFuture<Void> listRemove(String list, String value) {
     return send("POST", "/v1beta1/lists/" + list + ":removeValue", "{\"value\":" + quote(value) + "}", Set.of(404));
+  }
+
+  /**
+   * 阻塞读取 GameServer 的变化（WatchGameServer），每次变化回调一行 JSON；流断了就返回，
+   * 由调用方决定是否重连。每行是 {"result": GameServer}。
+   */
+  public void watchGameServer(Consumer<String> onUpdate) throws java.io.IOException, InterruptedException {
+    HttpRequest request = HttpRequest.newBuilder(base.resolve("/watch/gameserver")).GET().build();
+    HttpResponse<Stream<String>> response = http.send(request, HttpResponse.BodyHandlers.ofLines());
+    try (Stream<String> lines = response.body()) {
+      if (response.statusCode() != 200) {
+        throw new AgonesException("GET /watch/gameserver -> " + response.statusCode());
+      }
+      lines.filter(line -> !line.isBlank()).forEach(onUpdate);
+    }
   }
 
   private CompletableFuture<Void> send(String method, String path, String body, Set<Integer> alsoOk) {
