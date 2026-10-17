@@ -22,6 +22,15 @@
 
 两边不共用 Velocity、身份系统、集群和启动器。对 chorusd 来说，运营网络只是一个普通用户：用它给 bingo mod、大厅插件开预览服。
 
+运营网络各部分的管理方式：
+
+| 内容 | 怎么管 |
+|---|---|
+| 节点：k3s 本身、etcd、网卡、镜像源 | NixOS |
+| 集群里装的东西：Agones、CNPG、Velocity、各个 Fleet 等 | 用 nixidy 写，渲染成 YAML，由 Argo CD 应用 |
+| 运行时对象：分配出来的服、Pod | 不写进配置，由控制器创建 |
+| mod、插件、匹配服务的源码 | 放在 nix-config 顶层的 `minecraft/`，由 GitHub Actions 构建；Nix 不构建任何 mod 或镜像 |
+
 相关仓库：
 
 | 仓库 | 作者 | 内容 |
@@ -102,10 +111,20 @@
   - 不要用 tank 或 tokyo：跨公网延迟 98ms，etcd 会频繁重新选主。
 - [ ] **入口用虚拟 IP**：kube-vip 或 MetalLB 的 L2 模式。tokyo 的转发改为指向这个 IP。
 - [ ] **公网入口**：定域名；tokyo 转发 TCP 25565 和 UDP 19132（后者给 Geyser）。
-- [ ] 装 Agones。
-- [ ] 选 GitOps 工具：Flux 还是 Argo CD，还没定。
+- [ ] **集群里装的东西用 nixidy + Argo CD 管理。**
+  - nixidy 作为 flake 输入，集群配置写在顶层的 `k8s/` 目录。
+  - Agones、CNPG 的 CRD 生成带类型的选项；它们的 Helm chart 由 Nix 按 hash 固定版本，再渲染成普通 YAML。
+  - CI 在 main 上渲染，推到一个专门的分支，比如 `k8s-rendered`。Argo CD 跟踪这个分支，配置里删掉的资源也由它清理。
+  - 本地加一个 `just k8s-diff`：渲染后跑 `kubectl diff`。
+  - NixOS 只负责引导：用 `services.k3s.autoDeployCharts` 装上 Argo CD 和根 Application。其他集群内容不写进 `services.k3s.manifests`，因为删掉 manifest 文件不会删掉对应的资源。
+  - Fleet 的配置里不写 `replicas`，或者在 Argo CD 里对 `/spec/replicas` 设 `ignoreDifferences`。否则 FleetAutoscaler 和 Argo CD 会来回改这个字段。
+- [ ] **密钥走 sops-nix。**
+  - 由 server 主机把 Secret manifest 写进 k3s 的 manifests 目录，复用现有的 sops 流程和 `just check-sops`。
+  - 渲染出来的 YAML 里不能有任何密钥：仓库和渲染分支都是公开的。
+- [ ] 用 nixidy 装 Agones（Helm chart）。
+- [ ] **临时操作可以直接用 kubectl**（查看、drain、紧急扩缩），但事后要把改动写回配置。Argo CD 的自动修复会把手动改动改回去，紧急情况下先暂停自动同步。
 - [ ] **tank 上部署三样存储服务：**
-  - 镜像仓库：`services.dockerRegistry`；
+  - 镜像仓库：`services.dockerRegistry`。只在需要私有镜像时才用得上，见第 5 节；
   - restic rest-server：`services.restic.server`；
   - Garage：`services.garage`，只存数据库备份。
 - [ ] **CNPG 加 Barman Cloud Plugin，备份到 Garage。**
@@ -200,15 +219,25 @@
 
 ## 5. 运营网络：构建与发布
 
-- [ ] **每个 commit 由 GitHub Actions 构建。**
-  - 含 Mojang 服务端 jar 的基础镜像只推到 tank 的私有仓库，由 tank 上的自托管 runner 构建。
-  - **自托管 runner 只给私有仓库用。** 公开仓库的 `pull_request` 绝不能触发它。
+- [ ] **源码放在 nix-config 顶层的 `minecraft/` 目录，不放 `pkgs/`。** `pkgs/` 里的东西会进入 flake 的 `packages` 输出，被 CI 构建后推到公开的 cachix。
+- [ ] **构建全部交给 GitHub Actions，Nix 不构建任何 mod 或镜像。**
+  - Nix 只提供开发环境：`nix develop` 里的 JDK 和 Gradle。
+  - 工作流按路径过滤：`minecraft/**` 的改动不触发主机的 dry-build 矩阵，主机配置的改动也不触发 mod 构建。
+- [ ] **镜像里不打包 Mojang 的服务端 jar。**
+  - 原因：nix-config 是公开仓库，不能挂自托管 runner。fork 提交的 PR 会用 PR 里改过的工作流文件来运行，可以直接指定这个 runner。
+  - 我们自己的镜像只包含自己的 jar，在 GitHub 托管的 runner 上构建，公开推到 ghcr。
+  - 服务端 jar 由 itzg 镜像在启动时按固定版本下载。
+  - 如果启动时下载拖慢了扩容，再把服务端 jar 单独做成按 MC 版本区分的私有镜像（很少变，放在 tank 上），通过 image volume 挂进容器。
+- [ ] **镜像 tag 用组件源码的内容哈希**，哈希范围包括这个组件依赖的共享代码目录。
+  - CI 构建镜像时和 nixidy 渲染时，用同一个 `nix eval` 表达式算出同一个值，不需要机器人提交来改 tag。
+  - 同一个工作流里先推镜像，再推渲染分支，避免 Argo CD 去拉一个还不存在的镜像。
+- [ ] **测试和上线：**
+  - PR 的构建产物上传到 chorusd，开预览服测试。只有仓库内分支的 PR 能这么做，fork 的 PR 拿不到密钥。
+  - 合并到 main 后自动上线。Fleet 滚动更新只替换 Ready 状态的服，正在进行的对局会打完再结束。
 - [ ] **要公开给开发者的东西：**
   - 镜像发到 ghcr；
   - jar 发到 R2 上的静态 Maven 仓库。不用 GitHub Packages，因为它的 Maven 仓库即使公开，拉取也要 token；
   - 版本号：每个 commit 发 `x.y.z-g<sha12>`，每个分支维护一个 `<branch>-SNAPSHOT`。
-- [ ] **上线方式**：通过 GitOps 提 PR，修改 Fleet 的镜像 tag。滚动更新只替换处于 Ready 状态的服，正在进行的对局会打完再结束。
-- [ ] 上线前先用 chorusd 开预览服测一遍。
 
 ## 不做的事
 
@@ -219,3 +248,7 @@
 - **给玩家做定制启动器**：玩家用任意启动器就行。
 - **游戏内下载 mod（比如 AutoModpack）**：mod 只在游戏启动时加载，每切一次房间就得重启游戏。改为由启动器在进游戏前同步。
 - **世界做高可用**：同一个世界同一时间只能有一个进程写入。可用性靠 restic 快速恢复。
+- **用 Nix 构建 mod 和镜像**：这些产物是给集群用的，不是给 NixOS 主机用的。用 Nix 构建还得另外锁一份 Gradle 依赖，而 Fabric 的 Loom 会自己下载 MC 本体，在 Nix 沙箱里很难构建。
+- **把集群内容写进 `services.k3s.manifests`**：删掉 manifest 文件不会删掉资源，而且每次发布都要对主机做一次 switch。
+- **在 nix-config 上挂自托管 runner**：仓库是公开的，fork 的 PR 能指定这个 runner。
+- **命令式管理集群**：改动无从追溯，控制面重建时也没法恢复。
