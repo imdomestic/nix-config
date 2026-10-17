@@ -8,6 +8,9 @@ spec:
     - name: minecraft
       port: 25565
       targetPort: 25565
+    - name: status
+      port: 25580
+      targetPort: 8080
   selector:
     app: proxy
   type: LoadBalancer

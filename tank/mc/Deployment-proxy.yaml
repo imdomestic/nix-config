@@ -32,11 +32,13 @@ spec:
                   name: velocity-forwarding
             - name: VELOCITY_VERSION
               value: 4.2.0
-          image: ghcr.io/imdomestic/mc-proxy:3yk54whwrphw
+          image: ghcr.io/imdomestic/mc-proxy:z2gd9qdami0n
           name: proxy
           ports:
             - containerPort: 25565
               name: minecraft
+            - containerPort: 8080
+              name: status
           resources:
             limits:
               memory: 768Mi
