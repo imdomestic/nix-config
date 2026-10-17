@@ -4,6 +4,16 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-18 · bingo 的 GameServer 空着一分钟就被判 Unhealthy：服务器自己停了 tick {#mc-pause-when-empty}
+
+bingo 改成 Fleet 之后，GameServer 能到 Ready，但只要没人在线，一两分钟后就被判 Unhealthy、换一台新的。大厅没有这个问题。
+
+**误导点：先看到的是 sidecar 存活探针超时**（`Liveness probe failed: .../healthz: context deadline exceeded`），像是 sidecar 本身或者端口出了问题。逐秒采样后发现 sidecar 的 `/healthz` 一直秒回 200，端口也没有冲突；真正的转折点在服务端日志里：`Server empty for 60 seconds, pausing`。
+
+**原因：** 原版从 1.21.2 起加了 `pause-when-empty-seconds`（默认 60），没人时专用服务器会停止 tick。`minecraft/agones-core` 的 health ping 放在主线程的 tick 里（为的是主线程卡死时能被判死），tick 一停 ping 就停，60 秒后 Agones 判 Unhealthy。大厅是 Paper 1.21.1，没有这个功能。
+
+修法：所有后端设 `PAUSE_WHEN_EMPTY_SECONDS=0`（`k8s/apps/mc`）。之后再出现的新版本服务端都要带上这一项。
+
 ## 2026-10-18 · tank 集群里的大厅 GameServer 反复被换掉：Service 名把 itzg 引到了假代理 {#mc-service-links-proxy}
 
 大厅改成 Agones Fleet 之后，GameServer 一直停在 Scheduled，3 分钟后被判 Unhealthy、删掉、换一台新的，如此循环。服务端容器的日志停在 `[init] Resolving type given PAPER`，插件根本没有加载。
