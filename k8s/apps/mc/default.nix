@@ -1,6 +1,7 @@
-# 运营网络：Velocity（带路由插件）+ 大厅 Fleet + bingo Fleet。
+# 运营网络：Velocity（带路由插件）+ 常驻大厅 + bingo Fleet。
 #
-# 后端都是 Agones Fleet，由 minecraft/agones-{paper,fabric} 上报状态，Velocity 上的
+# 大厅是常驻的 StatefulSet，世界存在 PVC 里，作为静态后端写在 velocity.toml。小游戏房间
+# 是 Agones Fleet，由 minecraft/agones-{paper,fabric} 上报状态，Velocity 上的
 # minecraft/velocity-router 按 GameServer 动态注册。旧服的定义见
 # nixos/modules/minecraft/wuxi.nix，存档在 tank 的 /data/srv/minecraft。
 {lib, ...}: let
@@ -31,7 +32,7 @@
   ];
 
   # 旧服是离线模式，存档里的玩家数据按离线 UUID 存。测试期间保持一致，只在 tailnet 和局域网内可达。
-  # 后端全是动态的，由路由插件注册；try 留空，进服时由插件选大厅。
+  # 静态后端只有常驻大厅；小游戏房间由路由插件动态注册。
   velocityToml = ''
     config-version = "2.7"
     bind = "0.0.0.0:25565"
@@ -49,7 +50,8 @@
     enable-player-address-logging = true
 
     [servers]
-    try = []
+    lobby = "lobby:25565"
+    try = ["lobby"]
 
     [forced-hosts]
 
@@ -235,39 +237,8 @@
     };
   };
 
-  # 管理数据（OP、白名单、封禁）两种后端都拷。
+  # 管理数据（OP、白名单、封禁）：房间从旧存档里只拷这些和自己的配置。
   adminFiles = ["ops.json" "whitelist.json" "banned-players.json" "banned-ips.json" "usercache.json"];
-
-  # 大厅是 LOBBY 模式：没人时回到 Ready 被复用。世界每次从旧存档重拷，玩家的改动不保存。
-  lobby = mkFleet "lobby" {
-    labels."mc.imdomestic.com/protocol" = "767"; # Paper 1.21.1
-    env = {
-      TYPE = "PAPER";
-      VERSION = "1.21.1";
-      PAPER_BUILD = "133";
-      MOTD = "lobby";
-      ALLOW_NETHER = "FALSE";
-      SPAWN_PROTECTION = "999";
-      MODE = "adventure";
-      MC_AGONES_MODE = "lobby";
-    };
-    secretEnv = "CFG_FORWARDING_SECRET";
-    memory = "3Gi";
-    seedPaths = ["world" "world_nether" "world_the_end" "config" "bukkit.yml" "spigot.yml"] ++ adminFiles;
-    healthDelay = 180;
-    extraVolumes = [
-      {
-        name = "config";
-        configMap.name = "lobby-config";
-      }
-    ];
-    extraMounts = [
-      {
-        name = "config";
-        mountPath = "/config";
-      }
-    ];
-  };
 
   # bingo 是 ROOM 模式：所有人离开 2 分钟后存盘、Shutdown，由 Fleet 换一台新的。
   # 世界不从旧存档拷，每台都是新生成的；只拷 bingo 的配置。mod 只装在服务端，原版客户端能进。
@@ -305,13 +276,89 @@ in {
 
     # Fleet 和 FleetAutoscaler 没有 nixidy 的类型定义，原样放进去。
     yamls = map builtins.toJSON [
-      lobby
-      (mkAutoscaler "lobby" 3)
       bingo
       (mkAutoscaler "bingo" 4)
     ];
 
     resources = {
+      # 常驻大厅：PVC 第一次挂上时从旧存档整份拷一次，之后世界一直保留。
+      # 不在 Agones 下运行，镜像里的插件什么都不做。
+      statefulSets.lobby.spec = {
+        serviceName = "lobby";
+        replicas = 1;
+        selector.matchLabels.app = "lobby";
+        template = {
+          metadata.labels.app = "lobby";
+          spec =
+            noServiceLinks
+            // {
+              initContainers.seed = {
+                image = images.seed;
+                command = ["sh" "-c" "[ -e /data/.seeded ] || { cp -a /seed/. /data/ && touch /data/.seeded; }"];
+                volumeMounts = {
+                  "/data".name = "data";
+                  "/seed" = {
+                    name = "seed";
+                    readOnly = true;
+                  };
+                };
+              };
+              containers.server = {
+                image = images.server;
+                env =
+                  lib.mapAttrs (_: value: {inherit value;}) (commonEnv
+                    // {
+                      TYPE = "PAPER";
+                      VERSION = "1.21.1";
+                      PAPER_BUILD = "133";
+                      MOTD = "lobby";
+                      ALLOW_NETHER = "FALSE";
+                      SPAWN_PROTECTION = "999";
+                      MODE = "adventure";
+                    })
+                  // {CFG_FORWARDING_SECRET.valueFrom = forwardingSecret;};
+                ports.minecraft.containerPort = 25565;
+                volumeMounts = {
+                  "/data".name = "data";
+                  "/config".name = "config";
+                };
+                resources = {
+                  requests.memory = "3Gi";
+                  limits.memory = "3Gi";
+                };
+                readinessProbe = {
+                  exec.command = ["mc-health"];
+                  initialDelaySeconds = 30;
+                  periodSeconds = 10;
+                };
+              };
+              volumes = {
+                config.configMap.name = "lobby-config";
+                seed.hostPath = {
+                  path = "/data/srv/minecraft/lobby";
+                  type = "Directory";
+                };
+              };
+            };
+        };
+        volumeClaimTemplates = [
+          {
+            metadata.name = "data";
+            spec = {
+              accessModes = ["ReadWriteOnce"];
+              resources.requests.storage = "10Gi";
+            };
+          }
+        ];
+      };
+      services.lobby.spec = {
+        selector.app = "lobby";
+        ports.minecraft = {
+          port = 25565;
+          targetPort = 25565;
+        };
+      };
+
       configMaps.lobby-config.data."paper-global.yml" = paperGlobal;
       configMaps.velocity.data."velocity.toml" = velocityToml;
 
