@@ -208,13 +208,18 @@
 ### bingo 与匹配
 
 - [x] **确认 bingo 的 mod 只需要装在服务端**：Modrinth 上标的是服务端可选、客户端可选，原版客户端能进。
-- [x] Fleet + FleetAutoscaler 的 Buffer 策略，保持一台热备。每台 bingo 都是新生成的世界，只从旧存档拷 bingo 的配置。
-- [ ] **匹配服务：**
-  - 队列和组队信息先放内存；
-  - 凑够人就发起 GSA 分配，分组信息写进 metadata；
-  - 通过事件流通知 Velocity 把玩家送过去；
-  - RBAC 只允许它写自己的命名空间；
-  - 不用 Open Match。
+- [x] Fleet + FleetAutoscaler 的 Buffer 策略，保持两台热备（bingo 冷启动约 5 分钟）。每台 bingo 都是新生成的世界，只从旧存档拷 bingo 的配置。
+- [x] **房间和快速匹配（第一期，2026-10-18）**，写在 `minecraft/velocity-router` 里：
+  - 不做单独的匹配服务，也不做"凑够 N 人再开"的队列：bingo 自带房间内大厅和准备倒计时，人进了房间自己会凑齐。所以匹配就是"进一个有空位的公开房间，没有就开一个"。
+  - 房间状态全在 GameServer 上：开房间是一次 GameServerAllocation，同时写入标签 `mc.imdomestic.com/room`（4 位房间码）、`mc.imdomestic.com/visibility`，注解 `mc.imdomestic.com/owner`、`owner-name`。插件内存里只有还在等分配的请求，所以多副本 Velocity 和以后的 QQ bot 读到的是同一份。
+  - 命令：`/play <类型>`（进最满但没满的公开房间，没有就开一个）、`/room create <类型> [private]`、`/room join <房间码>`、`/room list [类型]`（可点击加入）、`/room invite <玩家>`、`/room info`、`/room close`（房主删掉 GameServer，里面的人回大厅）。不限制每人开的房间数，`/server` 也不拦。
+  - 没有空闲的服时，开房请求每 5 秒重试一次，最多 6 分钟，等 FleetAutoscaler 补上。
+  - 被分配了但没人进的房间：`agones-core` 订阅自己的 GameServer，看到被分配就重新开始空闲计时，2 分钟后回收。
+  - 都已用测试客户端实测：私有房间凭码加入、`/room info`、房主关房后送回大厅，公开房间的 `/room list` 和 `/play` 快速加入，以及没人进的房间被回收。
+- [ ] **第二期：**
+  - `/party`：组队，队长 `/play` 时整队进同一个房间；
+  - 通过 bingo 的 API 把"等待中 / 游戏中"写到 GameServer 标签上，`/play` 只进还在等待的房间；
+  - 给 QQ bot 开放房间列表和在线情况。
 - [x] 对局结束后，由 mod 调 `Shutdown()`：走 ROOM 模式的空闲回收。bingo 这个 mod 本身能在一台服里连续开很多轮，我们选择所有人离开后整台换掉，保证每个房间都是干净的。
 
 ### 生存服
