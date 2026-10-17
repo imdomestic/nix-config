@@ -98,6 +98,7 @@ final class RoomCommand implements SimpleCommand {
         "  /room invite <玩家>             邀请别人进你所在的房间",
         "  /room info                      当前房间的信息",
         "  /room close                     房主关闭房间",
+        "  /party                          组队，队长进房间时队员跟着进",
         "  /lobby                          回大厅",
         "可选类型：" + String.join("、", rooms.kinds())), NamedTextColor.AQUA));
   }

@@ -24,20 +24,22 @@ import org.slf4j.Logger;
 
 /**
  * 运营网络的路由：把 Agones GameServer 动态注册成 Velocity 后端，进服和被踢时选大厅，
- * 提供 /lobby、/play 和 /room。见 docs/minecraft-network-todo.md。
+ * 提供 /lobby、/play、/room 和 /party，以及给 QQ bot 读的状态接口。见 docs/minecraft-network-todo.md。
  */
 @Plugin(
     id = "router",
     name = "Router",
-    version = "0.2.0",
-    description = "按 Agones GameServer 动态注册后端，开房间和匹配",
+    version = "0.3.0",
+    description = "按 Agones GameServer 动态注册后端，开房间、匹配和组队",
     dependencies = {@Dependency(id = "viaversion", optional = true)})
 public final class RouterPlugin {
   private final ProxyServer proxy;
   private final Logger logger;
   private Routes routes;
   private Rooms rooms;
+  private Parties parties;
   private GameServerWatcher watcher;
+  private StatusServer status;
 
   @Inject
   public RouterPlugin(ProxyServer proxy, Logger logger) {
@@ -61,7 +63,14 @@ public final class RouterPlugin {
     } else {
       logger.warn("不在集群里运行，只用 velocity.toml 里的静态后端，不能开房间");
     }
-    rooms = new Rooms(proxy, this, routes, kube, namespace, logger);
+    parties = new Parties(proxy, routes);
+    rooms = new Rooms(proxy, this, routes, parties, kube, namespace, logger);
+
+    // 0 表示不开。
+    int statusPort = envInt("ROUTER_STATUS_PORT", 8080);
+    if (statusPort > 0) {
+      status = StatusServer.start(statusPort, proxy, routes, logger);
+    }
 
     CommandManager commands = proxy.getCommandManager();
     commands.register(commands.metaBuilder("lobby").aliases("hub").plugin(this).build(), (SimpleCommand) invocation -> {
@@ -96,12 +105,17 @@ public final class RouterPlugin {
     });
 
     commands.register(commands.metaBuilder("room").plugin(this).build(), new RoomCommand(proxy, rooms));
+    commands.register(commands.metaBuilder("party").aliases("p").plugin(this).build(),
+        new PartyCommand(proxy, parties, rooms));
   }
 
   @Subscribe
   public void onShutdown(ProxyShutdownEvent event) {
     if (watcher != null) {
       watcher.stop();
+    }
+    if (status != null) {
+      status.stop();
     }
   }
 
@@ -112,12 +126,13 @@ public final class RouterPlugin {
 
   @Subscribe
   public void onServerConnected(ServerConnectedEvent event) {
-    rooms.announce(event.getPlayer(), event.getServer());
+    rooms.onConnected(event.getPlayer(), event.getServer());
   }
 
   @Subscribe
   public void onDisconnect(DisconnectEvent event) {
     rooms.cancelPending(event.getPlayer());
+    parties.disconnected(event.getPlayer());
   }
 
   /** 被任何后端踢出（包括房间关闭）时，送去另一个大厅；没有大厅就按 Velocity 默认处理。 */

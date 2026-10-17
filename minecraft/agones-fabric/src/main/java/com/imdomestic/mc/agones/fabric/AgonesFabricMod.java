@@ -26,6 +26,7 @@ public final class AgonesFabricMod implements DedicatedServerModInitializer {
       LOG.info("没有 AGONES_SDK_HTTP_PORT，不在 Agones 下运行，mod 不做任何事");
       return;
     }
+    Optional<BingoPhase> bingo = BingoPhase.detect(LOG);
     lifecycle = new Lifecycle(sdk.get(), Lifecycle.Settings.fromEnvironment(), new Lifecycle.Platform() {
       @Override
       public int onlinePlayers() {
@@ -41,6 +42,11 @@ public final class AgonesFabricMod implements DedicatedServerModInitializer {
       @Override
       public Logger logger() {
         return LOG;
+      }
+
+      @Override
+      public String phase() {
+        return bingo.map(BingoPhase::current).orElse(null);
       }
     });
     // mod 初始化发生在世界加载之前，从这里开始代 ping，直到主线程开始 tick。
