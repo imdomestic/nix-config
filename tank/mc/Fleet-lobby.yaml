@@ -1,0 +1,97 @@
+apiVersion: agones.dev/v1
+kind: Fleet
+metadata:
+  name: lobby
+spec:
+  template:
+    metadata:
+      labels:
+        mc.imdomestic.com/kind: lobby
+        mc.imdomestic.com/protocol: "767"
+    spec:
+      container: server
+      health:
+        failureThreshold: 12
+        initialDelaySeconds: 180
+        periodSeconds: 5
+      lists:
+        players:
+          capacity: 100
+      ports:
+        - containerPort: 25565
+          name: minecraft
+          portPolicy: None
+          protocol: TCP
+      template:
+        spec:
+          containers:
+            - env:
+                - name: ALLOW_NETHER
+                  value: "FALSE"
+                - name: ENFORCE_SECURE_PROFILE
+                  value: "FALSE"
+                - name: EULA
+                  value: "TRUE"
+                - name: JVM_XX_OPTS
+                  value: -XX:MaxRAMPercentage=75
+                - name: MC_AGONES_MODE
+                  value: lobby
+                - name: MEMORY
+                  value: ""
+                - name: MODE
+                  value: adventure
+                - name: MOTD
+                  value: lobby
+                - name: ONLINE_MODE
+                  value: "FALSE"
+                - name: PAPER_BUILD
+                  value: "133"
+                - name: SPAWN_PROTECTION
+                  value: "999"
+                - name: TYPE
+                  value: PAPER
+                - name: VERSION
+                  value: 1.21.1
+                - name: CFG_FORWARDING_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      key: secret
+                      name: velocity-forwarding
+              image: ghcr.io/imdomestic/mc-lobby:8n0m9l3k76iy
+              name: server
+              resources:
+                limits:
+                  memory: 3Gi
+                requests:
+                  memory: 3Gi
+              volumeMounts:
+                - mountPath: /data
+                  name: data
+                - mountPath: /config
+                  name: config
+          initContainers:
+            - command:
+                - sh
+                - -c
+                - |
+                  for p in world world_nether world_the_end config bukkit.yml spigot.yml ops.json whitelist.json banned-players.json banned-ips.json usercache.json; do
+                    if [ -e "/seed/$p" ]; then cp -a "/seed/$p" /data/; fi
+                  done
+              image: busybox:1.37.0
+              name: seed
+              volumeMounts:
+                - mountPath: /data
+                  name: data
+                - mountPath: /seed
+                  name: seed
+                  readOnly: true
+          volumes:
+            - emptyDir: {}
+              name: data
+            - configMap:
+                name: lobby-config
+              name: config
+            - hostPath:
+                path: /data/srv/minecraft/lobby
+                type: Directory
+              name: seed

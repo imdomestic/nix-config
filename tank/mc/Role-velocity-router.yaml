@@ -1,0 +1,14 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: velocity-router
+  namespace: mc
+rules:
+  - apiGroups:
+      - agones.dev
+    resources:
+      - gameservers
+    verbs:
+      - get
+      - list
+      - watch
