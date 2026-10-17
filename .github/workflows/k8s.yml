@@ -1,0 +1,62 @@
+name: k8s-render
+
+# 运营集群（tank 上的 k3s）的配置：渲染 nixidy 环境，推到 k8s-rendered 分支的
+# tank/ 下，Argo CD 从那里拉。源码在 k8s/，根 Application 在
+# nixos/hosts/tank/k3s.nix。渲染分支是公开的，里面不能有任何密钥。
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "k8s/**"
+      - "flake.nix"
+      - "flake.lock"
+      - ".github/workflows/k8s.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 两次渲染同时推同一个分支会互相覆盖，排队执行，不取消。
+concurrency:
+  group: k8s-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # flake 里有私有 input。nixidyEnvs 用不到它们，但别赌 nix 一定惰性取。
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: 渲染
+        run: nix build .#nixidyEnvs.x86_64-linux.tank.environmentPackage -o result
+
+      - name: 推到 k8s-rendered
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth=1 origin k8s-rendered; then
+            git worktree add --detach rendered FETCH_HEAD
+          else
+            git worktree add --orphan -b k8s-rendered rendered
+          fi
+          # store 里的文件是只读的，拷过来时给回写权限，下次 --delete 才删得掉。
+          rsync -rL --delete --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r result/ rendered/tank/
+          cd rendered
+          git add -A
+          if git diff --cached --quiet; then
+            echo "渲染结果没有变化"
+            exit 0
+          fi
+          git commit -m "render tank from ${GITHUB_SHA::12}"
+          git push origin HEAD:refs/heads/k8s-rendered

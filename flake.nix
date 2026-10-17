@@ -76,6 +76,15 @@
       # 是 nixpkgs 最后一个支持 x86_64-darwin 的版本,不值得为它单开一条流水线。
     };
 
+    # 运营集群（tank 上的 k3s）的 k8s 配置。.github/workflows/k8s.yml 渲染后推到
+    # k8s-rendered 分支，Argo CD 从那里拉。本地看渲染结果：
+    #   nix run github:arnarg/nixidy -- build .#tank
+    nixidyEnvs = inputs.nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-darwin"] (system:
+      inputs.nixidy.lib.mkEnvs {
+        pkgs = inputs.nixpkgs.legacyPackages.${system};
+        envs.tank.modules = [./k8s/tank.nix];
+      });
+
     # **CI 矩阵的唯一真源。** ci.yml 原来手抄一份 17 条的 include 列表,而它已经
     # 漂了:h310(2026-08-14 加的)、marble、alex 三台从来没进过矩阵 —— 其中 h310
     # 正是把 `nix flake check` 撑爆的那台(docs/incidents.md#deploy-schema-timeout),
@@ -255,6 +264,12 @@
     };
 
     nix-minecraft.url = "github:Infinidoge/nix-minecraft";
+
+    # 运营集群的 k8s 配置用 Nix 写，渲染成 YAML 交给 Argo CD，见 k8s/。
+    nixidy = {
+      url = "github:arnarg/nixidy/latest";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     thymis.url = "github:Thymis-io/thymis/v0.3";
     steam-servers.url = "github:scottbot95/nix-steam-servers";
