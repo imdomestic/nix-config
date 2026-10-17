@@ -88,8 +88,16 @@ final class Routes {
     }
   }
 
+  /**
+   * 动态的大厅（kind=lobby 的 GameServer）优先；没有的话退回 velocity.toml 里 try 列表上的
+   * 静态后端，常驻的大厅就是这么接进来的。
+   */
   Optional<RegisteredServer> pickLobby(RegisteredServer exclude) {
-    return pick(KIND_LOBBY, exclude);
+    return pick(KIND_LOBBY, exclude).or(() -> proxy.getConfiguration().getAttemptConnectionOrder().stream()
+        .map(proxy::getServer)
+        .flatMap(Optional::stream)
+        .filter(s -> exclude == null || !s.getServerInfo().equals(exclude.getServerInfo()))
+        .findFirst());
   }
 
   /**
