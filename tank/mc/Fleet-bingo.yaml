@@ -1,0 +1,95 @@
+apiVersion: agones.dev/v1
+kind: Fleet
+metadata:
+  name: bingo
+spec:
+  template:
+    metadata:
+      labels:
+        mc.imdomestic.com/kind: bingo
+        mc.imdomestic.com/protocol: "774"
+        mc.imdomestic.com/soft-cap: "16"
+    spec:
+      container: server
+      health:
+        failureThreshold: 12
+        initialDelaySeconds: 300
+        periodSeconds: 5
+      lists:
+        players:
+          capacity: 100
+      ports:
+        - containerPort: 25565
+          name: minecraft
+          portPolicy: None
+          protocol: TCP
+      template:
+        spec:
+          containers:
+            - env:
+                - name: ENFORCE_SECURE_PROFILE
+                  value: "FALSE"
+                - name: EULA
+                  value: "TRUE"
+                - name: FABRIC_LOADER_VERSION
+                  value: 0.19.5
+                - name: JVM_XX_OPTS
+                  value: -XX:MaxRAMPercentage=75
+                - name: MC_AGONES_IDLE_SECONDS
+                  value: "120"
+                - name: MC_AGONES_MODE
+                  value: room
+                - name: MEMORY
+                  value: ""
+                - name: MODS
+                  value: https://cdn.modrinth.com/data/P7dR8mSH/versions/DdVHbeR1/fabric-api-0.141.1%2B1.21.11.jar,https://cdn.modrinth.com/data/8dI2tmqs/versions/nR8AIdvx/FabricProxy-Lite-2.11.0.jar,https://cdn.modrinth.com/data/gvQqBUqZ/versions/gl30uZvp/lithium-fabric-0.21.2%2Bmc1.21.11.jar,https://cdn.modrinth.com/data/mHeNceaH/versions/Vb6yPYhc/bingo-2.9.7%2Bmc1.21.11.jar
+                - name: MOTD
+                  value: bingo 1.21.11
+                - name: ONLINE_MODE
+                  value: "FALSE"
+                - name: TYPE
+                  value: FABRIC
+                - name: VERSION
+                  value: 1.21.11
+                - name: FABRIC_PROXY_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      key: secret
+                      name: velocity-forwarding
+              image: ghcr.io/imdomestic/mc-server:vcnc4wg8cwz6
+              name: server
+              resources:
+                limits:
+                  memory: 4Gi
+                requests:
+                  memory: 4Gi
+              volumeMounts:
+                - mountPath: /data
+                  name: data
+          enableServiceLinks: false
+          initContainers:
+            - command:
+                - sh
+                - -c
+                - |
+                  for p in config/yet-another-minecraft-bingo ops.json whitelist.json banned-players.json banned-ips.json usercache.json; do
+                    if [ -e "/seed/$p" ]; then
+                      mkdir -p "/data/$(dirname "$p")"
+                      cp -a "/seed/$p" "/data/$(dirname "$p")/"
+                    fi
+                  done
+              image: busybox:1.37.0
+              name: seed
+              volumeMounts:
+                - mountPath: /data
+                  name: data
+                - mountPath: /seed
+                  name: seed
+                  readOnly: true
+          volumes:
+            - emptyDir: {}
+              name: data
+            - hostPath:
+                path: /data/srv/minecraft/bingo
+                type: Directory
+              name: seed

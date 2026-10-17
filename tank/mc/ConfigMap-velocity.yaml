@@ -17,7 +17,6 @@ data:
     enable-player-address-logging = true
 
     [servers]
-    bingo = "bingo:25565"
     try = []
 
     [forced-hosts]
