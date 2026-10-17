@@ -65,7 +65,7 @@ in {
         Autoreload = true;
         Sysfs_Power_Path = "/sys/class/power_supply/AC*/online";
       };
-      AC = powerLimits 35 45;
+      AC = powerLimits 45 55;
       BATTERY = powerLimits 25 35;
     };
   };
@@ -77,6 +77,8 @@ in {
       config.environment.etc."asusd/fan_curves.ron".source
     ];
   };
+  # 关机辅助进程需要在超时后退出，才能完成 asusd 配置重载。
+  systemd.services.asus-shutdown.serviceConfig.SendSIGKILL = true;
   systemd.services.throttled = {
     description = "CPU power and temperature limits";
     after = ["systemd-modules-load.service"];
