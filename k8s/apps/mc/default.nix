@@ -1,16 +1,15 @@
-# 运营网络：Velocity（带路由插件）+ 大厅 Fleet + bingo。
+# 运营网络：Velocity（带路由插件）+ 大厅 Fleet + bingo Fleet。
 #
-# 大厅是 Agones Fleet，由 minecraft/agones-paper 插件上报状态，Velocity 上的
-# minecraft/velocity-router 按 GameServer 动态注册后端。bingo 还是用旧存档的 StatefulSet，
-# 之后再换。旧服的定义见 nixos/modules/minecraft/wuxi.nix。
+# 后端都是 Agones Fleet，由 minecraft/agones-{paper,fabric} 上报状态，Velocity 上的
+# minecraft/velocity-router 按 GameServer 动态注册。旧服的定义见
+# nixos/modules/minecraft/wuxi.nix，存档在 tank 的 /data/srv/minecraft。
 {lib, ...}: let
   tag = import ../../../minecraft/image-tag.nix;
 
   images = {
     # CI（.github/workflows/k8s.yml）构建，tag 是 minecraft/ 的内容哈希。
-    lobby = "ghcr.io/imdomestic/mc-lobby:${tag}";
+    server = "ghcr.io/imdomestic/mc-server:${tag}";
     proxy = "ghcr.io/imdomestic/mc-proxy:${tag}";
-    server = "itzg/minecraft-server:2026.9.2-java21";
     seed = "busybox:1.37.0";
   };
 
@@ -31,15 +30,8 @@
     "https://github.com/ViaVersion/ViaRewind/releases/download/4.2.0/ViaRewind-4.2.0.jar"
   ];
 
-  bingoMods = [
-    "https://cdn.modrinth.com/data/P7dR8mSH/versions/DdVHbeR1/fabric-api-0.141.1%2B1.21.11.jar"
-    "https://cdn.modrinth.com/data/8dI2tmqs/versions/nR8AIdvx/FabricProxy-Lite-2.11.0.jar"
-    "https://cdn.modrinth.com/data/gvQqBUqZ/versions/gl30uZvp/lithium-fabric-0.21.2%2Bmc1.21.11.jar"
-    "https://cdn.modrinth.com/data/mHeNceaH/versions/Vb6yPYhc/bingo-2.9.7%2Bmc1.21.11.jar"
-  ];
-
   # 旧服是离线模式，存档里的玩家数据按离线 UUID 存。测试期间保持一致，只在 tailnet 和局域网内可达。
-  # 大厅不在这里：它是动态后端，由路由插件注册；try 留空，进服时由插件选大厅。
+  # 后端全是动态的，由路由插件注册；try 留空，进服时由插件选大厅。
   velocityToml = ''
     config-version = "2.7"
     bind = "0.0.0.0:25565"
@@ -57,7 +49,6 @@
     enable-player-address-logging = true
 
     [servers]
-    bingo = "bingo:25565"
     try = []
 
     [forced-hosts]
@@ -94,32 +85,35 @@
         secret: ''${CFG_FORWARDING_SECRET}
   '';
 
-  # 大厅存档里只拷世界和管理数据：服务端 jar、库和缓存由 itzg 每次启动时自己准备。
-  lobbySeedPaths = [
-    "world"
-    "world_nether"
-    "world_the_end"
-    "config"
-    "bukkit.yml"
-    "spigot.yml"
-    "ops.json"
-    "whitelist.json"
-    "banned-players.json"
-    "banned-ips.json"
-    "usercache.json"
-  ];
+  # 所有后端共用的环境变量。
+  commonEnv = {
+    EULA = "TRUE";
+    ONLINE_MODE = "FALSE";
+    ENFORCE_SECURE_PROFILE = "FALSE";
+    # 堆交给 JVM 按容器上限算，留出堆外内存。
+    MEMORY = "";
+    JVM_XX_OPTS = "-XX:MaxRAMPercentage=75";
+  };
 
-  lobbyFleet = {
+  # 一种后端对应一个 Fleet。数据放 emptyDir，每次启动从旧存档里拷 seedPaths 指定的内容，
+  # 原存档只读挂载，不会被改。
+  mkFleet = name: {
+    labels,
+    env,
+    secretEnv,
+    memory,
+    seedPaths,
+    # 从容器启动到插件开始 ping 的宽限期：要覆盖下载服务端和加载世界的时间。
+    healthDelay,
+    extraVolumes ? [],
+    extraMounts ? [],
+  }: {
     apiVersion = "agones.dev/v1";
     kind = "Fleet";
-    metadata.name = "lobby";
+    metadata.name = name;
     # replicas 交给 FleetAutoscaler，这里不写，否则 Argo CD 会和它来回改。
     spec.template = {
-      metadata.labels = {
-        "mc.imdomestic.com/kind" = "lobby";
-        # Paper 1.21.1。
-        "mc.imdomestic.com/protocol" = "767";
-      };
+      metadata.labels = {"mc.imdomestic.com/kind" = name;} // labels;
       spec = {
         container = "server";
         # 不占 hostPort，Velocity 在集群里直连 Pod IP。默认协议是 UDP，MC 要 TCP。
@@ -131,120 +125,104 @@
             protocol = "TCP";
           }
         ];
-        # 每次启动都要下载 Paper，插件启用之前没人 ping。之后插件每秒 ping 一次，
-        # 连续 60 秒没有才判 Unhealthy，扛得住 GC 和存盘的卡顿。
+        # 插件开始后每秒 ping 一次，连续 60 秒没有才判 Unhealthy，扛得住 GC 和存盘的卡顿。
         health = {
-          initialDelaySeconds = 180;
+          initialDelaySeconds = healthDelay;
           periodSeconds = 5;
           failureThreshold = 12;
         };
         lists.players.capacity = 100;
-        template.spec = noServiceLinks // {
-          initContainers = [
-            {
-              name = "seed";
-              image = images.seed;
-              command = [
-                "sh"
-                "-c"
-                ''
-                  for p in ${lib.concatStringsSep " " lobbySeedPaths}; do
-                    if [ -e "/seed/$p" ]; then cp -a "/seed/$p" /data/; fi
-                  done
-                ''
-              ];
-              volumeMounts = [
+        template.spec =
+          noServiceLinks
+          // {
+            initContainers = [
+              {
+                name = "seed";
+                image = images.seed;
+                command = [
+                  "sh"
+                  "-c"
+                  ''
+                    for p in ${lib.concatStringsSep " " seedPaths}; do
+                      if [ -e "/seed/$p" ]; then
+                        mkdir -p "/data/$(dirname "$p")"
+                        cp -a "/seed/$p" "/data/$(dirname "$p")/"
+                      fi
+                    done
+                  ''
+                ];
+                volumeMounts = [
+                  {
+                    name = "data";
+                    mountPath = "/data";
+                  }
+                  {
+                    name = "seed";
+                    mountPath = "/seed";
+                    readOnly = true;
+                  }
+                ];
+              }
+            ];
+            containers = [
+              {
+                name = "server";
+                image = images.server;
+                env =
+                  lib.mapAttrsToList (name: value: {inherit name value;}) (commonEnv // env)
+                  ++ [
+                    {
+                      name = secretEnv;
+                      valueFrom = forwardingSecret;
+                    }
+                  ];
+                resources = {
+                  requests.memory = memory;
+                  limits.memory = memory;
+                };
+                volumeMounts =
+                  [
+                    {
+                      name = "data";
+                      mountPath = "/data";
+                    }
+                  ]
+                  ++ extraMounts;
+              }
+            ];
+            volumes =
+              [
                 {
                   name = "data";
-                  mountPath = "/data";
+                  emptyDir = {};
                 }
                 {
                   name = "seed";
-                  mountPath = "/seed";
-                  readOnly = true;
+                  hostPath = {
+                    path = "/data/srv/minecraft/${name}";
+                    type = "Directory";
+                  };
                 }
-              ];
-            }
-          ];
-          containers = [
-            {
-              name = "server";
-              image = images.lobby;
-              env =
-                lib.mapAttrsToList (name: value: {inherit name value;}) {
-                  EULA = "TRUE";
-                  TYPE = "PAPER";
-                  VERSION = "1.21.1";
-                  PAPER_BUILD = "133";
-                  ONLINE_MODE = "FALSE";
-                  ENFORCE_SECURE_PROFILE = "FALSE";
-                  MOTD = "lobby";
-                  ALLOW_NETHER = "FALSE";
-                  SPAWN_PROTECTION = "999";
-                  MODE = "adventure";
-                  # 堆交给 JVM 按容器上限算，留出堆外内存。
-                  MEMORY = "";
-                  JVM_XX_OPTS = "-XX:MaxRAMPercentage=75";
-                  MC_AGONES_MODE = "lobby";
-                }
-                ++ [
-                  {
-                    name = "CFG_FORWARDING_SECRET";
-                    valueFrom = forwardingSecret;
-                  }
-                ];
-              resources = {
-                requests.memory = "3Gi";
-                limits.memory = "3Gi";
-              };
-              volumeMounts = [
-                {
-                  name = "data";
-                  mountPath = "/data";
-                }
-                {
-                  name = "config";
-                  mountPath = "/config";
-                }
-              ];
-            }
-          ];
-          # 大厅不保存玩家改动：每次启动都从旧存档重新拷一份。
-          volumes = [
-            {
-              name = "data";
-              emptyDir = {};
-            }
-            {
-              name = "config";
-              configMap.name = "lobby-config";
-            }
-            {
-              name = "seed";
-              hostPath = {
-                path = "/data/srv/minecraft/lobby";
-                type = "Directory";
-              };
-            }
-          ];
-        };
+              ]
+              ++ extraVolumes;
+          };
       };
     };
   };
 
-  # 永远留一台没人的大厅待命：插件让有人的大厅进入 Allocated，缩容只会删 Ready 的。
-  lobbyAutoscaler = {
+  # 始终留一台没人的待命：插件让有人的服进入 Allocated，缩容只会删 Ready 的。
+  mkAutoscaler = name: maxReplicas: {
     apiVersion = "autoscaling.agones.dev/v1";
     kind = "FleetAutoscaler";
-    metadata.name = "lobby";
+    metadata.name = name;
     spec = {
-      fleetName = "lobby";
+      fleetName = name;
       policy = {
         type = "Buffer";
         buffer = {
           bufferSize = 1;
           minReplicas = 1;
-          maxReplicas = 3;
+          inherit maxReplicas;
         };
       };
       sync = {
@@ -254,77 +232,67 @@
     };
   };
 
-  # 一台带 PVC 的后端：StatefulSet + 同名 Service。第一次启动时把旧存档拷进 PVC。
-  mkServer = name: {
-    env,
-    memoryLimit,
-  }: {
-    statefulSets.${name}.spec = {
-      serviceName = name;
-      replicas = 1;
-      selector.matchLabels.app = name;
-      template = {
-        metadata.labels.app = name;
-        spec = noServiceLinks // {
-          # 原存档只读挂载，拷一次后留下标记文件，之后的重启不会再覆盖。
-          initContainers.seed = {
-            image = images.seed;
-            command = ["sh" "-c" "[ -e /data/.seeded ] || { cp -a /seed/. /data/ && touch /data/.seeded; }"];
-            volumeMounts = {
-              "/data".name = "data";
-              "/seed" = {
-                name = "seed";
-                readOnly = true;
-              };
-            };
-          };
-          containers.server = {
-            image = images.server;
-            env =
-              {
-                EULA.value = "TRUE";
-                ONLINE_MODE.value = "FALSE";
-                ENFORCE_SECURE_PROFILE.value = "FALSE";
-                MEMORY.value = "";
-                JVM_XX_OPTS.value = "-XX:MaxRAMPercentage=75";
-              }
-              // env;
-            ports.minecraft.containerPort = 25565;
-            volumeMounts."/data".name = "data";
-            resources = {
-              requests.memory = memoryLimit;
-              limits.memory = memoryLimit;
-            };
-            readinessProbe = {
-              exec.command = ["mc-health"];
-              initialDelaySeconds = 30;
-              periodSeconds = 10;
-            };
-          };
-          volumes.seed.hostPath = {
-            path = "/data/srv/minecraft/${name}";
-            type = "Directory";
-          };
-        };
-      };
-      volumeClaimTemplates = [
-        {
-          metadata.name = "data";
-          spec = {
-            accessModes = ["ReadWriteOnce"];
-            resources.requests.storage = "10Gi";
-          };
-        }
-      ];
-    };
+  # 管理数据（OP、白名单、封禁）两种后端都拷。
+  adminFiles = ["ops.json" "whitelist.json" "banned-players.json" "banned-ips.json" "usercache.json"];
 
-    services.${name}.spec = {
-      selector.app = name;
-      ports.minecraft = {
-        port = 25565;
-        targetPort = 25565;
-      };
+  # 大厅是 LOBBY 模式：没人时回到 Ready 被复用。世界每次从旧存档重拷，玩家的改动不保存。
+  lobby = mkFleet "lobby" {
+    labels."mc.imdomestic.com/protocol" = "767"; # Paper 1.21.1
+    env = {
+      TYPE = "PAPER";
+      VERSION = "1.21.1";
+      PAPER_BUILD = "133";
+      MOTD = "lobby";
+      ALLOW_NETHER = "FALSE";
+      SPAWN_PROTECTION = "999";
+      MODE = "adventure";
+      MC_AGONES_MODE = "lobby";
     };
+    secretEnv = "CFG_FORWARDING_SECRET";
+    memory = "3Gi";
+    seedPaths = ["world" "world_nether" "world_the_end" "config" "bukkit.yml" "spigot.yml"] ++ adminFiles;
+    healthDelay = 180;
+    extraVolumes = [
+      {
+        name = "config";
+        configMap.name = "lobby-config";
+      }
+    ];
+    extraMounts = [
+      {
+        name = "config";
+        mountPath = "/config";
+      }
+    ];
+  };
+
+  # bingo 是 ROOM 模式：所有人离开 2 分钟后存盘、Shutdown，由 Fleet 换一台新的。
+  # 世界不从旧存档拷，每台都是新生成的；只拷 bingo 的配置。mod 只装在服务端，原版客户端能进。
+  bingo = mkFleet "bingo" {
+    labels = {
+      "mc.imdomestic.com/protocol" = "774"; # 1.21.11
+      "mc.imdomestic.com/soft-cap" = "16";
+    };
+    env = {
+      TYPE = "FABRIC";
+      VERSION = "1.21.11";
+      FABRIC_LOADER_VERSION = "0.19.5";
+      MOTD = "bingo 1.21.11";
+      MODS = lib.concatStringsSep "," [
+        "https://cdn.modrinth.com/data/P7dR8mSH/versions/DdVHbeR1/fabric-api-0.141.1%2B1.21.11.jar"
+        "https://cdn.modrinth.com/data/8dI2tmqs/versions/nR8AIdvx/FabricProxy-Lite-2.11.0.jar"
+        "https://cdn.modrinth.com/data/gvQqBUqZ/versions/gl30uZvp/lithium-fabric-0.21.2%2Bmc1.21.11.jar"
+        "https://cdn.modrinth.com/data/mHeNceaH/versions/Vb6yPYhc/bingo-2.9.7%2Bmc1.21.11.jar"
+      ];
+      MC_AGONES_MODE = "room";
+      MC_AGONES_IDLE_SECONDS = "120";
+    };
+    # FabricProxy-Lite 读这个环境变量；旧存档里的 FabricProxy-Lite.toml 带着旧密钥，所以不拷。
+    secretEnv = "FABRIC_PROXY_SECRET";
+    memory = "4Gi";
+    seedPaths = ["config/yet-another-minecraft-bingo"] ++ adminFiles;
+    # Fabric 要先装 loader、下载原版服务端和 mod，再生成新世界，比大厅慢得多。
+    healthDelay = 300;
   };
 in {
   applications.mc = {
@@ -333,55 +301,49 @@ in {
     createNamespace = false;
 
     # Fleet 和 FleetAutoscaler 没有 nixidy 的类型定义，原样放进去。
-    yamls = map builtins.toJSON [lobbyFleet lobbyAutoscaler];
+    yamls = map builtins.toJSON [
+      lobby
+      (mkAutoscaler "lobby" 3)
+      bingo
+      (mkAutoscaler "bingo" 4)
+    ];
 
-    resources = lib.mkMerge [
-      (mkServer "bingo" {
-        memoryLimit = "4Gi";
-        env = {
-          TYPE.value = "FABRIC";
-          VERSION.value = "1.21.11";
-          FABRIC_LOADER_VERSION.value = "0.19.5";
-          MOTD.value = "bingo 1.21.11";
-          MODS.value = lib.concatStringsSep "," bingoMods;
-          FABRIC_PROXY_SECRET.valueFrom = forwardingSecret;
+    resources = {
+      configMaps.lobby-config.data."paper-global.yml" = paperGlobal;
+      configMaps.velocity.data."velocity.toml" = velocityToml;
+
+      # 路由插件只读 GameServer。
+      serviceAccounts.velocity-router = {};
+      roles.velocity-router.rules = [
+        {
+          apiGroups = ["agones.dev"];
+          resources = ["gameservers"];
+          verbs = ["get" "list" "watch"];
+        }
+      ];
+      roleBindings.velocity-router = {
+        roleRef = {
+          apiGroup = "rbac.authorization.k8s.io";
+          kind = "Role";
+          name = "velocity-router";
         };
-      })
-
-      {
-        configMaps.lobby-config.data."paper-global.yml" = paperGlobal;
-        configMaps.velocity.data."velocity.toml" = velocityToml;
-
-        # 路由插件只读 GameServer。
-        serviceAccounts.velocity-router = {};
-        roles.velocity-router.rules = [
+        subjects = [
           {
-            apiGroups = ["agones.dev"];
-            resources = ["gameservers"];
-            verbs = ["get" "list" "watch"];
+            kind = "ServiceAccount";
+            name = "velocity-router";
+            namespace = "mc";
           }
         ];
-        roleBindings.velocity-router = {
-          roleRef = {
-            apiGroup = "rbac.authorization.k8s.io";
-            kind = "Role";
-            name = "velocity-router";
-          };
-          subjects = [
-            {
-              kind = "ServiceAccount";
-              name = "velocity-router";
-              namespace = "mc";
-            }
-          ];
-        };
+      };
 
-        deployments.proxy.spec = {
-          replicas = 1;
-          selector.matchLabels.app = "proxy";
-          template = {
-            metadata.labels.app = "proxy";
-            spec = noServiceLinks // {
+      deployments.proxy.spec = {
+        replicas = 1;
+        selector.matchLabels.app = "proxy";
+        template = {
+          metadata.labels.app = "proxy";
+          spec =
+            noServiceLinks
+            // {
               serviceAccountName = "velocity-router";
               containers.proxy = {
                 image = images.proxy;
@@ -403,19 +365,18 @@ in {
               };
               volumes.config.configMap.name = "velocity";
             };
-          };
         };
+      };
 
-        # k3s 自带的 servicelb 会在 tank 上占住 25565，tailnet 和局域网都能连。
-        services.proxy.spec = {
-          type = "LoadBalancer";
-          selector.app = "proxy";
-          ports.minecraft = {
-            port = 25565;
-            targetPort = 25565;
-          };
+      # k3s 自带的 servicelb 会在 tank 上占住 25565，tailnet 和局域网都能连。
+      services.proxy.spec = {
+        type = "LoadBalancer";
+        selector.app = "proxy";
+        ports.minecraft = {
+          port = 25565;
+          targetPort = 25565;
         };
-      }
-    ];
+      };
+    };
   };
 }

@@ -23,30 +23,32 @@ import org.slf4j.Logger;
  * <ul>
  *   <li>{@value #LABEL_KIND}：服务器类型，比如 lobby。没有这个标签的 GameServer 不路由。
  *   <li>{@value #LABEL_PROTOCOL}：后端的协议版本号，告诉 Velocity 上的 Via。
+ *   <li>{@value #LABEL_SOFT_CAP}：选服时的软上限，没有就用插件的默认值。
  * </ul>
  */
 final class Routes {
   static final String LABEL_KIND = "mc.imdomestic.com/kind";
   static final String LABEL_PROTOCOL = "mc.imdomestic.com/protocol";
+  static final String LABEL_SOFT_CAP = "mc.imdomestic.com/soft-cap";
   static final String KIND_LOBBY = "lobby";
 
   /** Reserved 也算：它只是暂时不让 GSA 分配，玩家照样能连。 */
   private static final Set<String> ROUTABLE_STATES = Set.of("Ready", "Allocated", "Reserved");
   private static final int DEFAULT_PORT = 25565;
 
-  record Route(String name, String kind, InetSocketAddress address, int protocol) {}
+  record Route(String name, String kind, InetSocketAddress address, int protocol, int softCap) {}
 
   private final ProxyServer proxy;
   private final Logger logger;
   private final Optional<ViaHook> via;
-  private final int lobbySoftCap;
+  private final int defaultSoftCap;
   private final Map<String, Route> routes = new HashMap<>();
 
-  Routes(ProxyServer proxy, Logger logger, Optional<ViaHook> via, int lobbySoftCap) {
+  Routes(ProxyServer proxy, Logger logger, Optional<ViaHook> via, int defaultSoftCap) {
     this.proxy = proxy;
     this.logger = logger;
     this.via = via;
-    this.lobbySoftCap = lobbySoftCap;
+    this.defaultSoftCap = defaultSoftCap;
   }
 
   synchronized void replaceAll(List<JsonObject> gameServers) {
@@ -86,23 +88,40 @@ final class Routes {
     }
   }
 
+  Optional<RegisteredServer> pickLobby(RegisteredServer exclude) {
+    return pick(KIND_LOBBY, exclude);
+  }
+
   /**
-   * 选一个大厅：优先人最多、但还没到软上限的那个，把人往少数几台上集中，空出来的大厅才能被
-   * Fleet 缩容回收；都满了就挑人最少的。
+   * 选一台指定类型的服：优先人最多、但还没到软上限的那台，把人往少数几台上集中，空出来的
+   * 才能被 Fleet 缩容回收；都满了就挑人最少的。
    */
-  synchronized Optional<RegisteredServer> pickLobby(RegisteredServer exclude) {
-    Comparator<RegisteredServer> byPlayers = Comparator.comparingInt(s -> s.getPlayersConnected().size());
-    List<RegisteredServer> lobbies = routes.values().stream()
-        .filter(r -> KIND_LOBBY.equals(r.kind()))
-        .map(r -> proxy.getServer(r.name()))
-        .flatMap(Optional::stream)
-        .filter(s -> exclude == null || !s.getServerInfo().equals(exclude.getServerInfo()))
-        .sorted(byPlayers.reversed().thenComparing(s -> s.getServerInfo().getName()))
+  synchronized Optional<RegisteredServer> pick(String kind, RegisteredServer exclude) {
+    record Candidate(RegisteredServer server, int players, int softCap) {}
+    List<Candidate> candidates = routes.values().stream()
+        .filter(r -> kind.equals(r.kind()))
+        .flatMap(r -> proxy.getServer(r.name()).stream()
+            .map(s -> new Candidate(s, s.getPlayersConnected().size(), r.softCap() > 0 ? r.softCap() : defaultSoftCap)))
+        .filter(c -> exclude == null || !c.server().getServerInfo().equals(exclude.getServerInfo()))
+        .sorted(Comparator.comparingInt(Candidate::players).reversed()
+            .thenComparing(c -> c.server().getServerInfo().getName()))
         .toList();
-    return lobbies.stream()
-        .filter(s -> s.getPlayersConnected().size() < lobbySoftCap)
+    return candidates.stream()
+        .filter(c -> c.players() < c.softCap())
         .findFirst()
-        .or(() -> lobbies.stream().min(byPlayers));
+        .or(() -> candidates.stream().min(Comparator.comparingInt(Candidate::players)))
+        .map(Candidate::server);
+  }
+
+  /** 现在有可用服务器的类型，给 /play 补全用。 */
+  synchronized Set<String> kinds() {
+    Set<String> kinds = new java.util.TreeSet<>();
+    for (Route r : routes.values()) {
+      if (r.kind() != null) {
+        kinds.add(r.kind());
+      }
+    }
+    return kinds;
   }
 
   private void register(Route route) {
@@ -144,8 +163,10 @@ final class Routes {
     JsonObject labels = metadata.getAsJsonObject("labels");
     String kind = labels == null ? null : string(labels, LABEL_KIND);
     String protocol = labels == null ? null : string(labels, LABEL_PROTOCOL);
+    String softCap = labels == null ? null : string(labels, LABEL_SOFT_CAP);
     return Optional.of(new Route(name(gs), kind, new InetSocketAddress(address, port(status)),
-        protocol == null ? -1 : Integer.parseInt(protocol)));
+        protocol == null ? -1 : Integer.parseInt(protocol),
+        softCap == null ? -1 : Integer.parseInt(softCap)));
   }
 
   /** PortPolicy None 下没有 hostPort，Velocity 在集群里直接连 Pod IP；status.address 是节点地址。 */

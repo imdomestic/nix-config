@@ -13,6 +13,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import java.util.List;
 import java.util.Optional;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -20,7 +21,7 @@ import org.slf4j.Logger;
 
 /**
  * 运营网络的路由：把 Agones GameServer 动态注册成 Velocity 后端，进服和被踢时选大厅，
- * 提供 /lobby。见 docs/minecraft-network-todo.md。
+ * 提供 /lobby 和 /play &lt;类型&gt;。见 docs/minecraft-network-todo.md。
  */
 @Plugin(
     id = "router",
@@ -42,7 +43,7 @@ public final class RouterPlugin {
 
   @Subscribe
   public void onInit(ProxyInitializeEvent event) throws Exception {
-    routes = new Routes(proxy, logger, ViaHook.create(proxy), envInt("ROUTER_LOBBY_SOFT_CAP", 40));
+    routes = new Routes(proxy, logger, ViaHook.create(proxy), envInt("ROUTER_DEFAULT_SOFT_CAP", 40));
 
     Optional<KubeClient> kube = KubeClient.inCluster();
     if (kube.isPresent()) {
@@ -66,6 +67,37 @@ public final class RouterPlugin {
           lobby -> player.createConnectionRequest(lobby).fireAndForget(),
           () -> player.sendMessage(Component.text("现在没有可用的大厅", NamedTextColor.RED)));
     });
+
+    // 没有匹配服务之前的入口：按类型把人往同一台房间里集中。
+    proxy.getCommandManager().register(
+        proxy.getCommandManager().metaBuilder("play").plugin(this).build(), new SimpleCommand() {
+          @Override
+          public void execute(Invocation invocation) {
+            if (!(invocation.source() instanceof Player player)) {
+              return;
+            }
+            String[] args = invocation.arguments();
+            if (args.length != 1 || Routes.KIND_LOBBY.equals(args[0])) {
+              player.sendMessage(Component.text("用法：/play <" + String.join("|", playableKinds()) + ">",
+                  NamedTextColor.YELLOW));
+              return;
+            }
+            RegisteredServer current = player.getCurrentServer().map(c -> c.getServer()).orElse(null);
+            routes.pick(args[0], current).ifPresentOrElse(
+                server -> player.createConnectionRequest(server).fireAndForget(),
+                () -> player.sendMessage(Component.text("现在没有可用的 " + args[0] + " 房间", NamedTextColor.RED)));
+          }
+
+          @Override
+          public List<String> suggest(Invocation invocation) {
+            String prefix = invocation.arguments().length == 0 ? "" : invocation.arguments()[0];
+            return playableKinds().stream().filter(k -> k.startsWith(prefix)).toList();
+          }
+        });
+  }
+
+  private List<String> playableKinds() {
+    return routes.kinds().stream().filter(k -> !Routes.KIND_LOBBY.equals(k)).toList();
   }
 
   @Subscribe
