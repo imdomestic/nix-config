@@ -1,0 +1,50 @@
+apiVersion: v1
+data:
+  velocity.toml: |
+    config-version = "2.7"
+    bind = "0.0.0.0:25565"
+    motd = "<#09add3>imdomestic · tank 测试"
+    show-max-players = 100
+    online-mode = false
+    force-key-authentication = false
+    prevent-client-proxy-connections = false
+    player-info-forwarding-mode = "modern"
+    # 实际的密钥来自环境变量 VELOCITY_FORWARDING_SECRET，Velocity 优先读它。
+    forwarding-secret-file = "forwarding.secret"
+    announce-forge = false
+    kick-existing-players = false
+    ping-passthrough = "DISABLED"
+    enable-player-address-logging = true
+
+    [servers]
+    lobby = "lobby:25565"
+    bingo = "bingo:25565"
+    try = ["lobby"]
+
+    [forced-hosts]
+
+    [advanced]
+    compression-threshold = 256
+    compression-level = -1
+    login-ratelimit = 3000
+    connection-timeout = 5000
+    read-timeout = 30000
+    haproxy-protocol = false
+    tcp-fast-open = false
+    bungee-plugin-message-channel = true
+    show-ping-requests = false
+    failover-on-unexpected-server-disconnect = true
+    announce-proxy-commands = true
+    log-command-executions = false
+    log-player-connections = true
+    accepts-transfers = false
+
+    [query]
+    enabled = false
+    port = 25565
+    map = "Velocity"
+    show-plugins = false
+kind: ConfigMap
+metadata:
+  name: velocity
+  namespace: mc

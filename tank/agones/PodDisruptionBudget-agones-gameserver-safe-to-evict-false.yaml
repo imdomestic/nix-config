@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: agones-gameserver-safe-to-evict-false
+  namespace: mc
+spec:
+  maxUnavailable: 0%
+  selector:
+    matchLabels:
+      agones.dev/safe-to-evict: "false"

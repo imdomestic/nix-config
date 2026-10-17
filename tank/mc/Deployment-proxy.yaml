@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: proxy
+  namespace: mc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: proxy
+  template:
+    metadata:
+      labels:
+        app: proxy
+    spec:
+      containers:
+        - env:
+            - name: MEMORY
+              value: 512m
+            - name: PLUGINS
+              value: https://github.com/ViaVersion/ViaVersion/releases/download/5.12.0/ViaVersion-5.12.0.jar,https://github.com/ViaVersion/ViaBackwards/releases/download/5.12.0/ViaBackwards-5.12.0.jar,https://github.com/ViaVersion/ViaRewind/releases/download/4.2.0/ViaRewind-4.2.0.jar
+            - name: SERVER_PORT
+              value: "25565"
+            - name: TYPE
+              value: VELOCITY
+            - name: VELOCITY_BUILD_ID
+              value: "30"
+            - name: VELOCITY_FORWARDING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  key: secret
+                  name: velocity-forwarding
+            - name: VELOCITY_VERSION
+              value: 4.2.0
+          image: itzg/mc-proxy:2026.10.0-java25
+          name: proxy
+          ports:
+            - containerPort: 25565
+              name: minecraft
+          resources:
+            limits:
+              memory: 768Mi
+            requests:
+              memory: 768Mi
+          volumeMounts:
+            - mountPath: /config
+              name: config
+      volumes:
+        - configMap:
+            name: velocity
+          name: config

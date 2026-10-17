@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: proxy
+  namespace: mc
+spec:
+  ports:
+    - name: minecraft
+      port: 25565
+      targetPort: 25565
+  selector:
+    app: proxy
+  type: LoadBalancer
