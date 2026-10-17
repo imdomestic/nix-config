@@ -1,34 +1,99 @@
 name: k8s-render
 
-# 运营集群（tank 上的 k3s）的配置：渲染 nixidy 环境，推到 k8s-rendered 分支的
-# tank/ 下，Argo CD 从那里拉。源码在 k8s/，根 Application 在
-# nixos/hosts/tank/k3s.nix。渲染分支是公开的，里面不能有任何密钥。
+# 运营集群（tank 上的 k3s）：
+#   images：构建 minecraft/ 下的插件，打成镜像推到 ghcr。tag 是 minecraft/ 的内容哈希，
+#           已经有这个 tag 就跳过。镜像里没有 Mojang 的服务端 jar，可以公开。
+#   render：渲染 nixidy 环境，推到 k8s-rendered 分支的 tank/ 下，Argo CD 从那里拉。
+#           排在 images 后面，Argo CD 才不会去拉一个还不存在的镜像。
+# 源码在 minecraft/ 和 k8s/，根 Application 在 nixos/hosts/tank/k3s.nix。
+# 渲染分支是公开的，里面不能有任何密钥。
 on:
   push:
     branches:
       - main
     paths:
       - "k8s/**"
+      - "minecraft/**"
       - "flake.nix"
       - "flake.lock"
       - ".github/workflows/k8s.yml"
   workflow_dispatch:
 
-permissions:
-  contents: write
-
-# 两次渲染同时推同一个分支会互相覆盖，排队执行，不取消。
+# 两次运行同时推同一个分支会互相覆盖，排队执行，不取消。
 concurrency:
   group: k8s-render
   cancel-in-progress: false
 
 jobs:
-  render:
+  images:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
 
-      # flake 里有私有 input。nixidyEnvs 用不到它们，但别赌 nix 一定惰性取。
+      # flake 里有私有 input。这里用不到它们，但别赌 nix 一定惰性取。
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+
+      - name: 登录 ghcr
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: 算 tag，已经推过就跳过
+        id: tag
+        run: |
+          tag=$(nix eval --raw .#mcImageTag)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          for img in lobby proxy; do
+            if ! docker manifest inspect "ghcr.io/imdomestic/mc-$img:$tag" >/dev/null 2>&1; then
+              echo "build=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+          echo "镜像 $tag 都已存在"
+
+      - uses: actions/setup-java@v4
+        if: steps.tag.outputs.build == 'true'
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: 构建插件
+        if: steps.tag.outputs.build == 'true'
+        working-directory: minecraft
+        run: ./gradlew build --no-daemon
+
+      - name: 构建并推送镜像
+        if: steps.tag.outputs.build == 'true'
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          cp minecraft/agones-paper/build/libs/agones-paper.jar minecraft/images/lobby/
+          cp minecraft/velocity-router/build/libs/velocity-router.jar minecraft/images/proxy/
+          for img in lobby proxy; do
+            ref="ghcr.io/imdomestic/mc-$img:$tag"
+            # source 标签把包关联到这个仓库。
+            docker build \
+              --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+              --label org.opencontainers.image.revision=${{ github.sha }} \
+              -t "$ref" "minecraft/images/$img"
+            docker push "$ref"
+          done
+
+  render:
+    needs: images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}

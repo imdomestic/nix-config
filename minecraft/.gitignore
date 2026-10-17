@@ -1,0 +1,5 @@
+.gradle/
+.kotlin/
+build/
+# CI 构建时把 jar 拷进镜像的构建上下文。
+images/*/*.jar

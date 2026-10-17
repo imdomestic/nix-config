@@ -1,0 +1,5 @@
+name: AgonesBridge
+version: '${version}'
+main: com.imdomestic.mc.agones.paper.AgonesPaperPlugin
+api-version: '1.21'
+description: 把服务器状态同步给 Agones：Ready、Health、Allocate 和 players 列表。
