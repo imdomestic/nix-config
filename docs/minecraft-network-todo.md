@@ -43,7 +43,12 @@
 
 ## 现状（2026-10-17 核对）
 
-- **现在没有面向玩家的服务器在跑。** 旧的 Velocity、bedrock-proxy、lobby、bingo、speedrun、GTL 全部被 `nixos/modules/chorus/legacy-minecraft.nix` 停用了。
+- **encore 上的旧服全部停用了。** 旧的 Velocity、bedrock-proxy、lobby、bingo、speedrun、GTL 都被 `nixos/modules/chorus/legacy-minecraft.nix` 停用。
+- **运营集群（2026-10-17 起）是 tank 上的单节点 k3s。**
+  - 节点配置在 `nixos/hosts/tank/k3s.nix`，集群内容在 `k8s/`，由 Argo CD 从 `k8s-rendered` 分支同步。
+  - 目前跑着一套用旧存档搭的测试网络：Velocity + 大厅（Paper 1.21.1）+ bingo（Fabric 1.21.11）。
+  - 测试网络是离线模式，在 tailnet 内连 `tank.inner.imdomestic.com:25565`。tank 的防火墙是关着的，局域网 192.168.20.0/24 也能连。
+  - kubectl 和 k9s 用 `tank` 这个 context，见 `home/modules/kube`。
 - **k3s 只有一个 server，就是 encore。**
   - encore 是一台笔记本（见 `docs/encore-cooling.md`），网络走 WiFi `wlo1`。
   - 数据存储用默认的 SQLite，没开 `clusterInit`。
@@ -62,10 +67,7 @@
 
 ## 1. 先和 linwhite 对齐
 
-- [ ] **现有 k3s 集群归谁。**
-  - 建议交给运营网络。
-  - chorusd 支持 Docker 后端之前，先留在这个集群里，占一个单独的命名空间。
-  - 物理机就这几台，两边各起一套控制面，etcd 和高可用就得做两遍。
+- [x] **集群归属（2026-10-17 定）**：运营网络在 tank 上单独起一个单节点 k3s，encore 上的 k3s 继续归 chorusd，两边互不影响。
 - [ ] **chorusd 所在命名空间默认拒绝网络访问。** 它的房间跑的是任意 mod，尤其不能碰运营侧的数据库。k3s 自带 NetworkPolicy 控制器，不用另装。
 - [ ] **定 chorusd 的许可证，并改个名字，和 chorus mod 区分开。** ruri-chorus 继承了 ruri 的 GPL-3.0。
 - [ ] **清理 encore 磁盘**：两个 home 目录各自清。
@@ -100,6 +102,8 @@
 
 ## 3. 运营网络：基础设施（nix-config）
 
+运营集群目前是 tank 上的单节点 k3s。下面关于 encore 有线网、etcd 三个成员和虚拟 IP 的几项，原本是针对 encore 上的集群写的；等运营集群需要高可用时，再按届时的机器重新规划。
+
 - [ ] **encore 改接有线网**，没有网口就用 USB 网卡，并同步修改 `k3s-server.nix` 里的 `--flannel-iface`。etcd 成员跑在 WiFi 上，网络一抖就会重新选主。
 - [ ] **k3s 从 SQLite 转成内嵌 etcd**：先备份，再设 `services.k3s.clusterInit = true`。
 - [ ] **凑齐 3 个 etcd 投票成员。**
@@ -111,17 +115,17 @@
   - 不要用 tank 或 tokyo：跨公网延迟 98ms，etcd 会频繁重新选主。
 - [ ] **入口用虚拟 IP**：kube-vip 或 MetalLB 的 L2 模式。tokyo 的转发改为指向这个 IP。
 - [ ] **公网入口**：定域名；tokyo 转发 TCP 25565 和 UDP 19132（后者给 Geyser）。
-- [ ] **集群里装的东西用 nixidy + Argo CD 管理。**
+- [x] **集群里装的东西用 nixidy + Argo CD 管理。**
   - nixidy 作为 flake 输入，集群配置写在顶层的 `k8s/` 目录。
   - Agones、CNPG 的 CRD 生成带类型的选项；它们的 Helm chart 由 Nix 按 hash 固定版本，再渲染成普通 YAML。
   - CI 在 main 上渲染，推到一个专门的分支，比如 `k8s-rendered`。Argo CD 跟踪这个分支，配置里删掉的资源也由它清理。
   - 本地加一个 `just k8s-diff`：渲染后跑 `kubectl diff`。
   - NixOS 只负责引导：用 `services.k3s.autoDeployCharts` 装上 Argo CD 和根 Application。其他集群内容不写进 `services.k3s.manifests`，因为删掉 manifest 文件不会删掉对应的资源。
   - Fleet 的配置里不写 `replicas`，或者在 Argo CD 里对 `/spec/replicas` 设 `ignoreDifferences`。否则 FleetAutoscaler 和 Argo CD 会来回改这个字段。
-- [ ] **密钥走 sops-nix。**
+- [x] **密钥走 sops-nix。**
   - 由 server 主机把 Secret manifest 写进 k3s 的 manifests 目录，复用现有的 sops 流程和 `just check-sops`。
   - 渲染出来的 YAML 里不能有任何密钥：仓库和渲染分支都是公开的。
-- [ ] 用 nixidy 装 Agones（Helm chart）。
+- [x] 用 nixidy 装 Agones（Helm chart）。证书的处理见 `k8s/apps/agones`。
 - [ ] **临时操作可以直接用 kubectl**（查看、drain、紧急扩缩），但事后要把改动写回配置。Argo CD 的自动修复会把手动改动改回去，紧急情况下先暂停自动同步。
 - [ ] **tank 上部署三样存储服务：**
   - 镜像仓库：`services.dockerRegistry`。只在需要私有镜像时才用得上，见第 5 节；
