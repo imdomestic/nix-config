@@ -24,7 +24,8 @@ import java.util.logging.Logger;
  *   <li>Ready：服务器加载完成后发一次，失败就在下一次 tick 重试。
  *   <li>有人时 Allocate：Fleet 缩容和滚动更新不会删 Allocated 的服。两种模式都这样。
  *   <li>LOBBY 模式：空了一段时间后 Ready，回到可回收的空闲池，这台服之后还会被复用。
- *   <li>ROOM 模式：空了一段时间后存盘并 Shutdown，由 Fleet 换一台新的。
+ *   <li>ROOM 模式：有人来过之后，空了一段时间就存盘并 Shutdown，由 Fleet 换一台新的。
+ *       从没被用过的房间不关：它是 Fleet 里待命的那台，关掉只会让 Fleet 不停地重建。
  * </ul>
  */
 public final class Lifecycle implements AutoCloseable {
@@ -142,7 +143,11 @@ public final class Lifecycle implements AutoCloseable {
             transition("ready", sdk.ready(), false);
           }
         }
-        case ROOM -> requestShutdown(now);
+        case ROOM -> {
+          if (allocated) {
+            requestShutdown(now);
+          }
+        }
       }
     }
   }
