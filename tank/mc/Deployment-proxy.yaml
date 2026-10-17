@@ -32,7 +32,7 @@ spec:
                   name: velocity-forwarding
             - name: VELOCITY_VERSION
               value: 4.2.0
-          image: ghcr.io/imdomestic/mc-proxy:87v7lg7s4f3w
+          image: ghcr.io/imdomestic/mc-proxy:wyz7ajq8ijx2
           name: proxy
           ports:
             - containerPort: 25565

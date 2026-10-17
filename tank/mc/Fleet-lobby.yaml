@@ -46,6 +46,8 @@ spec:
                   value: "FALSE"
                 - name: PAPER_BUILD
                   value: "133"
+                - name: PAUSE_WHEN_EMPTY_SECONDS
+                  value: "0"
                 - name: SPAWN_PROTECTION
                   value: "999"
                 - name: TYPE
@@ -57,7 +59,7 @@ spec:
                     secretKeyRef:
                       key: secret
                       name: velocity-forwarding
-              image: ghcr.io/imdomestic/mc-server:87v7lg7s4f3w
+              image: ghcr.io/imdomestic/mc-server:wyz7ajq8ijx2
               name: server
               resources:
                 limits:
