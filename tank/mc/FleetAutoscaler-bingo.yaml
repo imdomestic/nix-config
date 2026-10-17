@@ -1,0 +1,16 @@
+apiVersion: autoscaling.agones.dev/v1
+kind: FleetAutoscaler
+metadata:
+  name: bingo
+spec:
+  fleetName: bingo
+  policy:
+    buffer:
+      bufferSize: 1
+      maxReplicas: 4
+      minReplicas: 1
+    type: Buffer
+  sync:
+    fixedInterval:
+      seconds: 30
+    type: FixedInterval

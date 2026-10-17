@@ -57,7 +57,7 @@ spec:
                     secretKeyRef:
                       key: secret
                       name: velocity-forwarding
-              image: ghcr.io/imdomestic/mc-lobby:8n0m9l3k76iy
+              image: ghcr.io/imdomestic/mc-server:vcnc4wg8cwz6
               name: server
               resources:
                 limits:
@@ -76,7 +76,10 @@ spec:
                 - -c
                 - |
                   for p in world world_nether world_the_end config bukkit.yml spigot.yml ops.json whitelist.json banned-players.json banned-ips.json usercache.json; do
-                    if [ -e "/seed/$p" ]; then cp -a "/seed/$p" /data/; fi
+                    if [ -e "/seed/$p" ]; then
+                      mkdir -p "/data/$(dirname "$p")"
+                      cp -a "/seed/$p" "/data/$(dirname "$p")/"
+                    fi
                   done
               image: busybox:1.37.0
               name: seed
@@ -89,10 +92,10 @@ spec:
           volumes:
             - emptyDir: {}
               name: data
-            - configMap:
-                name: lobby-config
-              name: config
             - hostPath:
                 path: /data/srv/minecraft/lobby
                 type: Directory
               name: seed
+            - configMap:
+                name: lobby-config
+              name: config
