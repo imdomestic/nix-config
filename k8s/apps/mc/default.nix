@@ -93,6 +93,9 @@
     # 堆交给 JVM 按容器上限算，留出堆外内存。
     MEMORY = "";
     JVM_XX_OPTS = "-XX:MaxRAMPercentage=75";
+    # 1.21.2 起服务器空 60 秒会暂停 tick，插件在 tick 里 ping，暂停就会被判 Unhealthy。
+    # 见 docs/incidents.md#mc-pause-when-empty。老版本不认这个属性，会忽略。
+    PAUSE_WHEN_EMPTY_SECONDS = "0";
   };
 
   # 一种后端对应一个 Fleet。数据放 emptyDir，每次启动从旧存档里拷 seedPaths 指定的内容，
