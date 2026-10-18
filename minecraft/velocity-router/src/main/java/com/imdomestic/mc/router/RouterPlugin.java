@@ -15,8 +15,10 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -49,7 +51,14 @@ public final class RouterPlugin {
 
   @Subscribe
   public void onInit(ProxyInitializeEvent event) throws Exception {
-    routes = new Routes(proxy, logger, ViaHook.create(proxy), envInt("ROUTER_DEFAULT_SOFT_CAP", 40));
+    Optional<ViaHook> via = ViaHook.create(proxy);
+    routes = new Routes(proxy, logger, via, envInt("ROUTER_DEFAULT_SOFT_CAP", 40));
+    // velocity.toml 里静态后端的版本，格式 "lobby=767,foo=774"。不告诉的话 Via 要等启动后第一轮
+    // 探测才知道，在那之前按最低版本翻译，代理每次重启后的头一分钟谁都进不了大厅。
+    via.ifPresent(v -> staticProtocols().forEach((server, protocol) -> {
+      v.setProtocol(server, protocol);
+      logger.info("告诉 Via：{} 是协议 {}", server, protocol);
+    }));
 
     Optional<KubeClient> kube = KubeClient.inCluster();
     String namespace = Optional.ofNullable(System.getenv("ROUTER_NAMESPACE"))
@@ -152,6 +161,20 @@ public final class RouterPlugin {
     } catch (java.io.IOException e) {
       return "default";
     }
+  }
+
+  private static Map<String, Integer> staticProtocols() {
+    Map<String, Integer> protocols = new LinkedHashMap<>();
+    String value = System.getenv("ROUTER_STATIC_PROTOCOLS");
+    if (value != null) {
+      for (String entry : value.split(",")) {
+        String[] kv = entry.trim().split("=", 2);
+        if (kv.length == 2) {
+          protocols.put(kv[0].trim(), Integer.parseInt(kv[1].trim()));
+        }
+      }
+    }
+    return protocols;
   }
 
   private static int envInt(String name, int fallback) {

@@ -417,8 +417,16 @@ in {
                   SERVER_PORT.value = "25565";
                   PLUGINS.value = lib.concatStringsSep "," viaPlugins;
                   VELOCITY_FORWARDING_SECRET.valueFrom = forwardingSecret;
+                  # 静态后端的协议版本，和大厅的 VERSION（1.21.1）对应；动态后端靠 GameServer 标签。
+                  # 见 docs/incidents.md#mc-via-static-protocol。
+                  ROUTER_STATIC_PROTOCOLS.value = "lobby=767";
                 };
                 ports.minecraft.containerPort = 25565;
+                # Velocity 启动完才监听端口，滚动更新时等它能接人再停旧的。
+                readinessProbe = {
+                  tcpSocket.port = 25565;
+                  periodSeconds = 5;
+                };
                 # 路由插件的只读状态接口（GET /v1/status），给 QQ bot 查在线和房间。
                 ports.status.containerPort = 8080;
                 volumeMounts."/config".name = "config";
