@@ -11,6 +11,27 @@
 
 ---
 
+## 2026-10-18 · OpenCode 迁移到 V2，暂时停用 V1 插件 {#opencode-v2-migration}
+
+共享开发 profile 和 OpenCode Home Manager 模块改用锁定输入提供的
+`opencode2` 2.0.30，命令为 `opencode2`。模型、凭据文件引用、shell
+指令和两套主题继续通过原生 `programs.opencode` 选项管理；V2 支持这些
+V1 配置与主题格式，无需同时重写服务端配置。
+
+按用户选择，先迁移主程序，Supermemory 升级到已有 V2 入口的 2.0.17，
+通过原生 `plugins` 字段加载；停用尚未移植到 V2 插件 API 的 model-stats、
+notificator、DCP、Markdown 表格格式化、skillful 和 tmux-agent-sidebar 桥。
+模型进度 WebSocket 元数据、model-stats 的输入和
+补丁保留，供后续移植；停用期间没有 prefill/TPS 插件显示和 OpenCode
+侧边栏事件桥。shell-strategy 是指令文本，继续有效。
+
+当前锁定的 Home Manager 仅有 `programs.opencode.tui`，没有 V2 CLI
+选项，因此只用它生成不含插件的启动主题配置。V2 首次启动自动将全局
+`tui.json` 与已有运行时偏好迁移到可写的 `cli.json`；之后终端设置由
+V2 自行保存。旧版为可写 `tui.json` 设置的激活钩子和 skillful 空目录
+钩子移除。历史数据库和认证数据应在首次 V2 启动前备份，并通过副本
+验证升级，避免将 V1 再指向已升级的数据库。
+
 ## 2026-10-11 · 禁用 WSL 的全部推理服务 {#wsl-inference-disabled}
 
 按用户要求关闭 WSL 上的 Qwen/NInfer 84K、262K、vLLM 备用档，以及
