@@ -53,8 +53,15 @@ in {
 
   sops.secrets."cliproxy/api_key".sopsFile = ../../../secrets/clients/cliproxy.yaml;
 
-  # pi 没有 Home Manager 模块。settings.json 不归 nix 管：pi 运行时会往里写
-  # （默认模型、changelog 版本等）。
+  # pi 没有 Home Manager 模块；只合并声明的字段，保留运行时写入的设置。
+  home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    run ${pkgs.python3}/bin/python ${./merge-settings.py} \
+      ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/settings.json"} \
+      ${lib.escapeShellArg (builtins.toJSON {showHardwareCursor = true;})}
+  '';
+
+  home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
+
   home.file.".pi/agent/models.json".text = builtins.toJSON {
     providers = {
       ninfer = {
