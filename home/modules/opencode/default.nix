@@ -6,6 +6,7 @@
   ...
 }: let
   system = pkgs.stdenv.hostPlatform.system;
+  latexPlugin = pkgs.callPackage ../../../pkgs/opencode-latex {};
   cliproxy = import ../../../lib/cliproxy-models.nix;
   shellStrategy = pkgs.fetchFromGitHub {
     owner = "JRedeker";
@@ -154,7 +155,10 @@ in {
     settings = {
       model = "ninfer/qwen3.8-27b";
       # 只启用已有 V2 入口的插件，见 docs/decisions.md#opencode-v2-migration。
-      plugins = ["opencode-supermemory@2.0.17"];
+      plugins = [
+        "opencode-supermemory@2.0.17"
+        "${latexPlugin}"
+      ];
       instructions = ["${shellStrategy}/shell_strategy.md"];
       provider.cliproxy = {
         npm = "@ai-sdk/openai";

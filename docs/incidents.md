@@ -4,6 +4,22 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-18 · OpenCode LaTeX 插件的浮动 OpenTUI 依赖 {#opencode-latex-runtime}
+
+`opencode-latex@0.2.0` 的服务端能在 OpenCode 2.0.30 中加载，但 npm 自动
+安装的 OpenTUI peer dependency 已到 0.6.6，与主程序内置的 0.5.17 冲突。
+TUI 日志报 `OPENTUI_FORCE_UNICODE` 已用不同配置注册，渲染模式命令没有出现。
+
+**误导点：`models` 成功只证明服务端加载；终端里出现部分 Unicode 公式也
+不足以证明插件完整加载。** 需要同时检查 TUI 日志、插件菜单和图形输出。
+单纯跳过 peer dependencies 又会使插件找不到 `@opentui/core`，不能作为修复。
+
+`pkgs/opencode-latex` 保留上游插件源码，以 lockfile 固定 MathJax、光栅化
+依赖和 OpenTUI 0.5.17；`@opencode/plugin` 使用主程序提供的运行时。
+通过原生 `programs.opencode.settings.plugins` 加载这个 Nix 包。
+隔离终端验证了插件菜单、Unicode 回退，以及模拟 Kitty 终端时的图片协议输出。
+升级 OpenCode 后应重新核对它的 OpenTUI 版本与这里的 lockfile。
+
 ## 2026-10-18 · 代理重启后的头一分钟进不了大厅："Outdated client! Please use 1.21.1" {#mc-via-static-protocol}
 
 部署路由插件第二期后马上用测试客户端登录，两个账号都被断开：`Unable to connect to lobby: Outdated client! Please use 1.21.1`。一分钟后再试就好了。
