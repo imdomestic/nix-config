@@ -4,6 +4,16 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-18 · 代理重启后的头一分钟进不了大厅："Outdated client! Please use 1.21.1" {#mc-via-static-protocol}
+
+部署路由插件第二期后马上用测试客户端登录，两个账号都被断开：`Unable to connect to lobby: Outdated client! Please use 1.21.1`。一分钟后再试就好了。
+
+**误导点：测试客户端用的正是 1.21.1（协议 767），报错却让它"换成 1.21.1"。** 看起来像客户端或大厅的版本配错了。实际上，这句话是大厅收到一个更老的协议号时回的。
+
+**原因：** Velocity 上的 Via 要知道每个后端的版本才能翻译。动态房间由路由插件按 GameServer 标签告诉它，但 velocity.toml 里的静态大厅只能靠 Via 自己探测：启动后 60 秒（`velocity-ping-interval`）才探测第一轮。在那之前，它按 `velocity-servers.default: 393`（1.13）对待大厅，把玩家的握手翻译成 1.13 发过去。代理的数据目录不持久，所以每次重启都会重来一遍。第一期就有这个问题，只是之前测试都在重启一分钟之后才开始，没撞上。
+
+修法：路由插件启动时按 `ROUTER_STATIC_PROTOCOLS`（`lobby=767`，写在 `k8s/apps/mc`）直接告诉 Via。大厅换版本时这里要跟着改。同时给代理加了 TCP 就绪探针，滚动更新会等新代理能接人了再停旧的。
+
 ## 2026-10-18 · bingo 的 GameServer 空着一分钟就被判 Unhealthy：服务器自己停了 tick {#mc-pause-when-empty}
 
 bingo 改成 Fleet 之后，GameServer 能到 Ready，但只要没人在线，一两分钟后就被判 Unhealthy、换一台新的。大厅没有这个问题。
