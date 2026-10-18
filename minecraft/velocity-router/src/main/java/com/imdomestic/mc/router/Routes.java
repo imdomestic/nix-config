@@ -181,6 +181,16 @@ final class Routes {
     return server == null ? Optional.empty() : Optional.ofNullable(routes.get(server.getServerInfo().getName()));
   }
 
+  /** 给玩家看的位置：大厅、bingo 房间 4M5C，或者后端名。 */
+  synchronized String describe(RegisteredServer server) {
+    Optional<Route> route = routeOf(server);
+    if (route.isPresent() && route.get().isRoom()) {
+      return route.get().kind() + " 房间 " + route.get().room();
+    }
+    String kind = route.map(Route::kind).orElse(server.getServerInfo().getName());
+    return KIND_LOBBY.equals(kind) ? "大厅" : kind;
+  }
+
   synchronized List<Route> publicRooms(String kind) {
     return rooms().stream().filter(r -> r.isPublic() && (kind == null || kind.equals(r.kind()))).toList();
   }

@@ -196,7 +196,7 @@ final class Rooms {
     player.sendMessage(Component.text("你进入了房间 " + r.room() + "（" + r.kind() + "，" + (r.isPublic() ? "公开" : "私有")
             + "，房主 " + (r.ownerName() == null ? "-" : r.ownerName()) + "）。", NamedTextColor.AQUA)
         .append(Component.text(" /room invite <玩家> 邀请朋友，/lobby 回大厅", NamedTextColor.GRAY)));
-    pull(player, parties.followers(player), server, "房间 " + r.room());
+    pull(player, parties.followers(player), server);
   }
 
   /** /party warp：把队员都拉到队长现在所在的服，大厅也行。 */
@@ -209,7 +209,7 @@ final class Rooms {
     if (server == null) {
       return;
     }
-    List<Player> moved = pull(leader, parties.followers(leader), server, where(server));
+    List<Player> moved = pull(leader, parties.followers(leader), server);
     leader.sendMessage(Component.text(moved.isEmpty() ? "队员都已经在这里了" : "已召集 " + moved.size() + " 名队员",
         NamedTextColor.GREEN));
   }
@@ -218,24 +218,20 @@ final class Rooms {
   void joinLeader(Player member, Player leader) {
     RegisteredServer server = currentServer(leader);
     routes.routeOf(server).filter(Routes.Route::isRoom)
-        .ifPresent(r -> pull(leader, List.of(member), server, "房间 " + r.room()));
+        .ifPresent(r -> pull(leader, List.of(member), server));
   }
 
-  private List<Player> pull(Player leader, List<Player> members, RegisteredServer server, String where) {
+  private List<Player> pull(Player leader, List<Player> members, RegisteredServer server) {
     List<Player> moved = members.stream().filter(m -> !isOn(m, server)).toList();
+    String where = routes.describe(server);
     for (Player member : moved) {
       cancelPending(member);
-      member.sendMessage(Component.text("跟着队长 " + leader.getUsername() + " 去" + where, NamedTextColor.GRAY));
+      member.sendMessage(Component.text("跟着队长 " + leader.getUsername() + " → " + where, NamedTextColor.GRAY));
       member.createConnectionRequest(server).fireAndForget();
     }
     return moved;
   }
 
-  private String where(RegisteredServer server) {
-    return routes.routeOf(server)
-        .map(r -> r.isRoom() ? "房间 " + r.room() : r.kind())
-        .orElse(server.getServerInfo().getName());
-  }
 
   void cancelPending(Player player) {
     ScheduledTask task = pending.remove(player.getUniqueId());
