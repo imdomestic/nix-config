@@ -58,7 +58,7 @@ spec:
                     secretKeyRef:
                       key: secret
                       name: velocity-forwarding
-              image: ghcr.io/imdomestic/mc-server:z2gd9qdami0n
+              image: ghcr.io/imdomestic/mc-server:1lnpm6363pwl
               name: server
               resources:
                 limits:
