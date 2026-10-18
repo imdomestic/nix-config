@@ -11,6 +11,16 @@
 
 ---
 
+## 2026-10-18 · Pi 状态栏对齐 Claude Code {#pi-claude-statusline}
+
+Pi 的个人扩展以单行显示目录、Git 分支、模型、推理强度和会话费用，
+顺序、目录缩写、ANSI 配色和分隔符与 Claude Code 状态栏一致。
+其他扩展的状态文本继续显示在下一行，费用统计沿用 Pi 的完整会话记录。
+
+Claude 的状态栏输入提供 5h/7d 额度和重置时间，Pi 扩展上下文没有
+等价数据，因此这组字段不显示。费用使用 Pi 记录的模型计价；当前
+CLIProxy/NInfer 模型配置为零单价，显示 `$0.00`。模型定价由原配置管理。
+
 ## 2026-10-18 · OpenCode 迁移到 V2，暂时停用 V1 插件 {#opencode-v2-migration}
 
 共享开发 profile 和 OpenCode Home Manager 模块改用锁定输入提供的
