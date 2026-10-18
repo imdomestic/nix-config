@@ -7,48 +7,12 @@
 }: let
   system = pkgs.stdenv.hostPlatform.system;
   cliproxy = import ../../../lib/cliproxy-models.nix;
-  tuiPath = "${config.xdg.configHome}/opencode/tui.json";
-  modelStats = pkgs.applyPatches {
-    name = "opencode-model-stats-backend-timings";
-    src = inputs.opencode-model-stats;
-    patches = [
-      ./opencode-model-stats-backend-timings.patch
-      ./opencode-model-stats-authenticated-endpoints.patch
-    ];
-  };
-  modelStatsPlugin = [
-    "file://${modelStats}"
-    {
-      prefillWsUrl = "ws://taipan.inner.imdomestic.com:8000/prefill-ws";
-      prefillWsEndpoints = config.my.opencode.prefillEndpoints;
-    }
-  ];
-  notificator = pkgs.fetchFromGitHub {
-    owner = "panta82";
-    repo = "opencode-notificator";
-    rev = "7b252f4c0a06b63d27c02f5ae074a8e8f61c5a5b";
-    hash = "sha256-BzU4gtBcLw5RB5AL44+pTFQ+vl79FrzTpyV1cepLZ8U=";
-  };
   shellStrategy = pkgs.fetchFromGitHub {
     owner = "JRedeker";
     repo = "opencode-shell-strategy";
     rev = "1303f24df1649202834e052f1d66560ed186e413";
     hash = "sha256-zv5wUMo/8ihyqdzFgLD+dQNandRGA33+NOokFwzsB+Y=";
   };
-  # tmux-agent-sidebar 的 OpenCode 桥:一个 JS 插件,把 opencode 的事件经
-  # hook.sh 转发给侧边栏二进制。文件由包构建时从 src 拷进插件目录
-  # (pkgs/tmux-agent-sidebar),不在 store 里的话上游的软链装法无从谈起。
-  agentSidebar = pkgs.callPackage ../../../pkgs/tmux-agent-sidebar {};
-  sidebarBridge = "file://${agentSidebar}/share/tmux-plugins/tmux-agent-sidebar/.opencode/plugins/tmux-agent-sidebar.js";
-  runtimePlugins = [
-    modelStatsPlugin
-    "file://${notificator}/notificator.js"
-    "@tarquinen/opencode-dcp@3.1.15"
-    "opencode-supermemory@2.0.13"
-    "@franlol/opencode-md-table-formatter@0.0.6"
-    "@zenobius/opencode-skillful@1.2.5"
-    sidebarBridge
-  ];
   # 两套都只是暗色主题,dark / light 填同一个值。
   bothModes = lib.mapAttrs (_: color: {
     dark = color;
@@ -174,7 +138,7 @@ in {
           };
         });
         default = [];
-        description = "需要运行时 API key 的模型进度 WebSocket。";
+        description = "为后续 V2 插件迁移保留的模型进度 WebSocket。";
       };
     }
   ];
@@ -185,11 +149,12 @@ in {
 
   programs.opencode = {
     enable = true;
-    package = inputs.llm-agents.packages.${system}.opencode;
+    package = inputs.llm-agents.packages.${system}.opencode2;
 
     settings = {
       model = "ninfer/qwen3.8-27b";
-      plugin = runtimePlugins;
+      # 只启用已有 V2 入口的插件，见 docs/decisions.md#opencode-v2-migration。
+      plugins = ["opencode-supermemory@2.0.17"];
       instructions = ["${shellStrategy}/shell_strategy.md"];
       provider.cliproxy = {
         npm = "@ai-sdk/openai";
@@ -255,50 +220,14 @@ in {
       };
     };
 
-    # OpenCode 1.14+ 的 server 和 TUI 是两个进程，插件需要两边都加载。
+    # 当前 HM 只提供 tui；V2 首次启动将其与运行时偏好迁移到自管的 cli.json。
     tui = {
       theme = "evergarden-winter";
-      plugin = [
-        modelStatsPlugin
-        "@tarquinen/opencode-dcp@3.1.15"
-        sidebarBridge
-      ];
+      plugin = [];
     };
     themes = {
       "evergarden-winter".theme = evergardenWinter;
       "kanso-zen".theme = kansoZen;
     };
   };
-
-  # opencode-notificator invokes these programs directly on Linux.
-  home.packages = lib.optionals pkgs.stdenv.isLinux [
-    pkgs.ffmpeg
-    pkgs.libnotify
-  ];
-
-  # OpenCode may persist TUI changes at runtime. Keep the schema/settings native,
-  # then turn Home Manager's store symlink into a writable copy after activation.
-  xdg.configFile."opencode/tui.json".force = true;
-  home.activation.prepareMutableOpenCodeTui = lib.hm.dag.entryBefore ["linkGeneration"] ''
-    tui_path=${lib.escapeShellArg tuiPath}
-    if [[ -f "$tui_path" && ! -L "$tui_path" ]]; then
-      $DRY_RUN_CMD ${pkgs.coreutils}/bin/rm -f "$tui_path"
-    fi
-  '';
-  home.activation.materializeMutableOpenCodeTui = lib.hm.dag.entryAfter ["linkGeneration"] ''
-    tui_path=${lib.escapeShellArg tuiPath}
-    if [[ -L "$tui_path" ]]; then
-      tui_source="$(${pkgs.coreutils}/bin/readlink -f "$tui_path")"
-      $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -m 0644 "$tui_source" "$tui_path.hm-new"
-      $DRY_RUN_CMD ${pkgs.coreutils}/bin/mv -fT "$tui_path.hm-new" "$tui_path"
-    fi
-  '';
-  # opencode-skillful 启动时会扫描 skills 目录,一个都不存在就每次打印
-  # "No valid base paths found for skill discovery" 的 warn(见
-  # docs/incidents.md#opencode-skillful-startup-warning)。空目录即可消除;
-  # 以后要加 skill 内容就放进 home.file."opencode/skills/..."。
-  home.activation.createOpenCodeSkillsDir = lib.hm.dag.entryAfter ["writeFile"] ''
-    skills_dir=${lib.escapeShellArg "${config.xdg.configHome}/opencode/skills"}
-    $DRY_RUN_CMD ${pkgs.coreutils}/bin/install -d -m 0755 "$skills_dir"
-  '';
 }
