@@ -146,7 +146,7 @@
   };
 
   inputs = {
-    vex.url = "git+ssh://git@github.com/imdomestic/vex?ref=dev";
+    vex.url = "git+ssh://git@github.com/imdomestic/vex?ref=feat/vex-https";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     disko = {
       url = "github:nix-community/disko";

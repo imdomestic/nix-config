@@ -3057,16 +3057,16 @@
         "nixpkgs": "nixpkgs_14"
       },
       "locked": {
-        "lastModified": 1792318112,
-        "narHash": "sha256-brqMtG1z+sj7X0dJUm8V+RcbBhEuXcVCSGevTUS0yoU=",
-        "ref": "dev",
-        "rev": "4fd975ce48628411c5df31704ef5dac292b91a0d",
-        "revCount": 23,
+        "lastModified": 1792320423,
+        "narHash": "sha256-J6QZ4arq9aX+n/9XWMHjX1fwtXazZGOfz7wlACZoYx8=",
+        "ref": "feat/vex-https",
+        "rev": "431f6e5cffde54f1e5f8ecb0294185b77eb346ed",
+        "revCount": 25,
         "type": "git",
         "url": "ssh://git@github.com/imdomestic/vex"
       },
       "original": {
-        "ref": "dev",
+        "ref": "feat/vex-https",
         "type": "git",
         "url": "ssh://git@github.com/imdomestic/vex"
       }
