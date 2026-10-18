@@ -5,6 +5,7 @@
   ...
 }: let
   cliproxy = import ../../../lib/cliproxy-models.nix;
+  pricing = import ./pricing.nix;
   free = {
     input = 0;
     output = 0;
@@ -118,7 +119,7 @@ in {
             input = ["text" "image"];
             contextWindow = cliproxy.gpt.context;
             maxTokens = cliproxy.gpt.output;
-            cost = free;
+            cost = pricing.${id};
           })
           cliproxy.gpt.ids
           ++ lib.mapAttrsToList (id: model: {
@@ -129,7 +130,7 @@ in {
             input = ["text" "image"];
             contextWindow = cliproxy.gemini.context;
             maxTokens = model.output;
-            cost = free;
+            cost = pricing.${id};
           })
           cliproxy.gemini.models;
       };
