@@ -61,6 +61,7 @@ in {
   '';
 
   home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
+  home.file.".pi/agent/extensions/statusline.ts".source = ./statusline.ts;
 
   home.file.".pi/agent/models.json".text = builtins.toJSON {
     providers = {
