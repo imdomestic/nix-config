@@ -224,6 +224,7 @@
   - **对局阶段**：`agones-fabric` 用反射读 bingo 的 `BingoApi.getGame().getStatus()`（bingo 的 API 没发到 Maven 仓库），每秒对比一次，变了就通过 SDK 写标签 `agones.dev/sdk-phase`：`waiting`、`starting`、`playing`、`ended`。
     - `/play` 只进 `waiting` 的房间。已经开打的房间还能凭房间码进。
     - `/room list` 和 `/room info` 显示阶段。没有这个标签的服当作一直在等人。
+    - bingo 的 STARTING 包括预生成出生点区块、等所有人加载完地形，API 里都算 STARTING。测试客户端不会报告加载完成，所以会一直卡在这一步：`waiting` → `starting` 已实测，`playing` 和 `ended` 还要用真实客户端开一局确认。
   - **状态接口**：路由插件在 8080 端口提供只读的 `GET /v1/status`，servicelb 映射到 `tank.inner.imdomestic.com:25580`。返回：
     - `online`：在线人数；
     - `players[]`：`name`，`kind`（`lobby`、`bingo`……），在公开房间里时还有 `room`；

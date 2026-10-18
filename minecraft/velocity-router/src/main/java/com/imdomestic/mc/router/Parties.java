@@ -2,7 +2,6 @@ package com.imdomestic.mc.router;
 
 import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.ProxyServer;
-import com.velocitypowered.api.proxy.server.RegisteredServer;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -188,7 +187,8 @@ final class Parties {
     List<String> lines = new ArrayList<>();
     for (UUID id : party.members) {
       String name = proxy.getPlayer(id).map(Player::getUsername).orElse("?");
-      String where = proxy.getPlayer(id).flatMap(Player::getCurrentServer).map(c -> where(c.getServer())).orElse("-");
+      String where = proxy.getPlayer(id).flatMap(Player::getCurrentServer)
+          .map(c -> routes.describe(c.getServer())).orElse("-");
       lines.add((id.equals(party.leader()) ? "★" : "  ") + name + "（" + where + "）");
     }
     player.sendMessage(Component.text("队伍（" + party.members.size() + " 人，★ 是队长）：\n" + String.join("\n", lines),
@@ -275,12 +275,6 @@ final class Parties {
     for (UUID id : party.members) {
       proxy.getPlayer(id).ifPresent(p -> p.sendMessage(message));
     }
-  }
-
-  private String where(RegisteredServer server) {
-    return routes.routeOf(server)
-        .map(r -> r.isRoom() ? r.kind() + " 房间 " + r.room() : r.kind())
-        .orElse(server.getServerInfo().getName());
   }
 
   private static String key(String name) {
