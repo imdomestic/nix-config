@@ -5,27 +5,23 @@
 }: let
   fabric = {
     enabled = true;
-    gradle_task = "build";
-    artifact_glob = "build/libs/*.jar";
-    artifact_exclude = ["*-sources.jar" "*-dev*.jar" "*-javadoc.jar"];
-    loader_version_property = "fabric_loader_version";
     agent = "fabric-26-3";
-    deps = [
-      {
-        name = "fabric-api";
-        url = "https://maven.fabricmc.net/net/fabricmc/fabric-api/fabric-api/\${fabric_version}/fabric-api-\${fabric_version}.jar";
-        side = "both";
-      }
-    ];
   };
   project = {
     default_branch = "main";
     trust = "trusted";
-    minecraft = {
-      version = "26.3";
-      java = 25;
+    build.source = "ci";
+    ci = {
+      mode = "pull";
+      workflow = ".github/workflows/vex.yml";
+      artifact = "vex-build";
+      poll_interval = "60s";
+      pr_previews = true;
+      fork_previews = "approval";
+      preview_access = "members";
+      comment_language = "zh-CN";
+      pack_link_ttl = "168h";
     };
-    build.source = "host";
     members = {
       linwhite = "owner";
       hank = "viewer";
@@ -40,7 +36,7 @@
     };
   };
 in {
-  imports = [inputs.vex.nixosModules.vexd ./vex-https.nix];
+  imports = [inputs.vex.nixosModules.vexd ./vex-https.nix ./vex-github.nix];
   systemd.tmpfiles.rules = [
     "z /var/lib/vex/kubeconfig 0640 root vexd -"
     "z /var/lib/vex/secrets/signing.key 0640 root vexd -"
@@ -79,6 +75,7 @@ in {
         data_dir = "/srv/vex";
         zone = "vex.internal";
         router_address = "10.1.2.137:25565";
+        wake_listen = "10.1.2.137:25566";
       };
       minecraft.accept_eula = true;
       runtime = {
@@ -127,16 +124,17 @@ in {
         session_ttl = "2160h";
         invite_ttl = "24h";
         admin_socket = "/run/vex/admin.sock";
+        providers.github.type = "github";
       };
       users = {
         linwhite = {
           admin = true;
-          identities = ["static:linwhite"];
+          identities = ["static:linwhite" "github:149769708"];
           token_sha256 = "85b37fb278de246e1ace06b2e37344dc972dab721d3501e3f4cab2212043c9fa";
           minecraft = ["bba1056c-9564-4e86-b8e6-5fbdad19831d"];
         };
         hank = {
-          identities = ["static:hank"];
+          identities = ["static:hank" "github:78535316"];
           token_sha256 = "ed1e1046c453eb3ee657d7d06f2d21e5946da6b274699a96b0e8784bf3b6b0bb";
           minecraft = [];
         };
@@ -146,15 +144,15 @@ in {
           project
           // {
             remote = "https://github.com/imdomestic/chorus.git";
-            loaders.fabric =
-              fabric
-              // {
-                gradle_task = ":fabric:assemble";
-                artifact_glob = "fabric/build/libs/*.jar";
-              };
-            worlds.extra_root_entries = ["chorus-checkpoint.json"];
+            build.source = "host";
+            manifest_fallback = "${inputs.vex}/config/manifests/chorus.toml";
+            github.repository = "imdomestic/chorus";
           };
-        example = project // {remote = "https://github.com/imdomestic/vex-example-fabric.git";};
+        example = project // {
+          remote = "https://github.com/imdomestic/vex-example-fabric.git";
+          manifest_fallback = "${inputs.vex}/config/manifests/example.toml";
+          github.repository = "imdomestic/vex-example-fabric";
+        };
       };
       build = {
         max_concurrent = 1;
@@ -167,6 +165,7 @@ in {
           branch = "10m";
           commit = "10m";
           world = "10m";
+          pr = "10m";
         };
       };
       worlds.scanner_file = "/nix/var/nix/profiles/vex/bin/vex-world-scanner";
