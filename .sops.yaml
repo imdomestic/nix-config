@@ -36,6 +36,9 @@ keys:
   - &host_encore age1f6suumsw5f3e5sqf46j63kmympqk0anexjvuwsg7uh02wxnkwymqmkj32v
 
 creation_rules:
+  - path_regex: secrets/hosts/encore-vex-github-(private-key|client-secret)$
+    key_groups:
+      - age: [*hank_hackintosh, *hank_praxic, *hank_wsl, *hank1, *hank2, *hank3, *linwhite, *linwhite_encore, *fendada, *kenneth, *host_encore]
   - path_regex: secrets/hosts/encore-acme\.env$
     key_groups:
       - age: [*hank_hackintosh, *hank_praxic, *hank_wsl, *hank1, *hank2, *hank3, *linwhite, *linwhite_encore, *fendada, *kenneth, *host_encore]
