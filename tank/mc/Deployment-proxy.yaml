@@ -19,6 +19,8 @@ spec:
               value: 512m
             - name: PLUGINS
               value: https://github.com/ViaVersion/ViaVersion/releases/download/5.12.0/ViaVersion-5.12.0.jar,https://github.com/ViaVersion/ViaBackwards/releases/download/5.12.0/ViaBackwards-5.12.0.jar,https://github.com/ViaVersion/ViaRewind/releases/download/4.2.0/ViaRewind-4.2.0.jar
+            - name: ROUTER_STATIC_PROTOCOLS
+              value: lobby=767
             - name: SERVER_PORT
               value: "25565"
             - name: TYPE
@@ -32,13 +34,17 @@ spec:
                   name: velocity-forwarding
             - name: VELOCITY_VERSION
               value: 4.2.0
-          image: ghcr.io/imdomestic/mc-proxy:1lnpm6363pwl
+          image: ghcr.io/imdomestic/mc-proxy:iwagn3if5rsz
           name: proxy
           ports:
             - containerPort: 25565
               name: minecraft
             - containerPort: 8080
               name: status
+          readinessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 25565
           resources:
             limits:
               memory: 768Mi
