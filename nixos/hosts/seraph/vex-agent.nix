@@ -50,6 +50,20 @@
     iifname "enp11s0" ip saddr 10.1.2.0/24 udp dport 8472 accept
     iifname { "cni0", "flannel.1" } ip saddr 10.42.0.0/16 accept
   '';
+  # 保留内部 API 请求的 Pod 地址，供 vexd 核验 Kubernetes 身份。
+  networking.nftables.tables.vex-internal-api-source = {
+    family = "ip";
+    content = ''
+      chain postrouting {
+        type nat hook postrouting priority srcnat - 1; policy accept;
+        iifname "cni0" oifname "enp11s0" ip saddr 10.42.1.0/24 ip daddr 10.1.2.137 tcp dport 8790 counter snat to ip saddr
+      }
+    '';
+  };
+  # API 响应按 Pod 路由经 flannel 返回，连接的请求路径经过 LAN。
+  networking.firewall.extraReversePathFilterRules = ''
+    iifname "flannel.1" ip saddr 10.1.2.137 ip daddr 10.42.1.0/24 tcp sport 8790 ct state established accept
+  '';
   systemd.services.k3s = {
     environment.TMPDIR = "/var/cache/vex-k3s";
     serviceConfig = {

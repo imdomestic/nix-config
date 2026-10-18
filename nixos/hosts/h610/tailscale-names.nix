@@ -18,7 +18,8 @@
       tmp=$(mktemp ${recordsPath}.XXXXXX)
       trap 'rm -f "$tmp"' EXIT
       jq -n --arg address "$address" '[
-        {name:"kennethbot.inner.imdomestic.com", type:"A", value:$address}
+        {name:"kennethbot.inner.imdomestic.com", type:"A", value:$address},
+        {name:"vex.inner.imdomestic.com", type:"A", value:"100.64.0.43"}
       ]' > "$tmp"
       chmod 0644 "$tmp"
       if ! cmp -s "$tmp" ${recordsPath}; then

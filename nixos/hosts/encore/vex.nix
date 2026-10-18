@@ -40,7 +40,7 @@
     };
   };
 in {
-  imports = [inputs.vex.nixosModules.vexd];
+  imports = [inputs.vex.nixosModules.vexd ./vex-https.nix];
   systemd.tmpfiles.rules = [
     "z /var/lib/vex/kubeconfig 0640 root vexd -"
     "z /var/lib/vex/secrets/signing.key 0640 root vexd -"
@@ -59,8 +59,22 @@ in {
     settings = {
       server = {
         name = "encore";
-        listen = ["100.64.0.43:8790" "10.1.2.137:8790"];
-        public_base_url = "http://encore.inner.imdomestic.com:8790";
+        listen = [];
+        listeners = [
+          {
+            address = "100.64.0.43:8790";
+            tls = true;
+            scope = "public";
+          }
+          {
+            address = "10.1.2.137:8790";
+            tls = false;
+            scope = "internal";
+          }
+        ];
+        public_base_url = "https://vex.inner.imdomestic.com:8790";
+        tls_cert_file = "/var/lib/acme/vex.inner.imdomestic.com/fullchain.pem";
+        tls_key_file = "/var/lib/acme/vex.inner.imdomestic.com/key.pem";
         internal_base_url = "http://10.1.2.137:8790";
         data_dir = "/srv/vex";
         zone = "vex.internal";
