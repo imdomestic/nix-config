@@ -16,7 +16,6 @@
           set -g @resurrect-pane-contents-area 'full'
         '';
       }
-      vim-tmux-navigator
       yank
       catppuccin
       {
@@ -47,10 +46,14 @@
       bind % split-window -h
       bind '"' split-window -v
 
-      bind -n C-h select-pane -L
-      bind -n C-j select-pane -D
-      bind -n C-k select-pane -U
-      bind -n C-l select-pane -R
+      unbind -n C-h
+      unbind -n C-j
+      unbind -n C-k
+      unbind -n C-l
+      bind h select-pane -L
+      bind j select-pane -D
+      bind k select-pane -U
+      bind l select-pane -R
 
       bind r source-file ~/.tmux.conf \; display "Reloaded!"
 
