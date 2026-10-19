@@ -11,6 +11,26 @@
 
 ---
 
+## 2026-10-20 · Pi 正文与公式内联渲染 {#pi-inline-markdown}
+
+通过 Nix 固定 `@zigai/pi-response-renderer` 0.2.0 和 `Fadouse/pi-math`
+0.2.0（提交 `7e6aa628`）及运行时依赖，沿用 Pi 原生扩展目录发现机制。
+入口直接导入 store 中的源码路径，让依赖从同一包的 `node_modules` 解析。
+前者隐藏回复代码块的围栏、压缩段落空行；后者通过 MathJax 和 Resvg
+将 LaTeX 转成透明图片，Ghostty / Kitty 可直接放在文字行内。
+
+两个扩展只修改显示；历史与后续模型上下文保留 Markdown / LaTeX 原文。
+不支持图片的终端会显示公式源码。按用户要求声明 `terminal.images = "kitty"`，
+覆盖 Pi 在 tmux 下默认关闭图片的检测；递归合并设置，保留终端进度等运行时字段。
+Hank 的 tmux 已有 `allow-passthrough on`，但 Pi / pi-math 发出的图片序列没有
+tmux DCS 封装，tmux 3.6a 实测仍会吞掉图片；强制开启协议不等于支持 tmux 图片。
+`/math-render off` 可在 tmux 中恢复显示公式源码。
+`/math-render status` 检查渲染状态，
+`/math-render off` 临时关闭公式图片，`/math-render on` 恢复。
+现有 Claude Code 风格工具卡、个人输入框和状态栏继续使用。
+正文扩展的去斜体补丁保留 RGB / 256 色参数，避免破坏行内图片定位；
+见 [颜色参数兼容性](incidents.md#pi-inline-color-parameters)。
+
 ## 2026-10-19 · Pi 使用 Claude Code 风格渲染扩展 {#pi-cc-extensions}
 
 通过 Nix 固定 `minuque/pi-cc-extensions` 1.0.8 及其运行时依赖，使用 Pi
