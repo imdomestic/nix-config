@@ -7,23 +7,31 @@ import tempfile
 from pathlib import Path
 
 
+def merge_settings(document, settings):
+    merged = document.copy()
+    for key, value in settings.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = merge_settings(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
 def main():
     target = Path(sys.argv[1])
     settings = json.loads(sys.argv[2])
     document = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
     if not isinstance(document, dict):
         raise ValueError("Pi settings must be a JSON object")
-    if all(
-        key in document and document[key] == value for key, value in settings.items()
-    ):
+    merged = merge_settings(document, settings)
+    if merged == document:
         return
-    document.update(settings)
 
     target.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=".settings.json-", dir=target.parent)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            json.dump(document, stream, ensure_ascii=False, indent=2)
+            json.dump(merged, stream, ensure_ascii=False, indent=2)
             stream.write("\n")
         os.replace(temporary, target)
     finally:

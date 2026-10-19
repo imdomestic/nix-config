@@ -7,6 +7,8 @@
   cliproxy = import ../../../lib/cliproxy-models.nix;
   pricing = import ./pricing.nix;
   ccExtensions = pkgs.callPackage ../../../pkgs/pi-cc-extensions {};
+  mathExtension = pkgs.callPackage ../../../pkgs/pi-math {};
+  responseRenderer = pkgs.callPackage ../../../pkgs/pi-response-renderer {};
   free = {
     input = 0;
     output = 0;
@@ -59,7 +61,10 @@ in {
   home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
     run ${pkgs.python3}/bin/python ${./merge-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/settings.json"} \
-      ${lib.escapeShellArg (builtins.toJSON {showHardwareCursor = true;})}
+      ${lib.escapeShellArg (builtins.toJSON {
+      showHardwareCursor = true;
+      terminal.images = "kitty";
+    })}
     run ${pkgs.python3}/bin/python ${./merge-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/pi-cc-extensions.json"} \
       ${lib.escapeShellArg (builtins.toJSON {
@@ -70,6 +75,13 @@ in {
 
   # Keep the local editor/footer; see docs/decisions.md#pi-cc-extensions.
   home.file.".pi/agent/extensions/pi-cc-extensions".source = "${ccExtensions}/extensions";
+  # Absolute imports let Pi resolve dependencies beside each package in the store.
+  home.file.".pi/agent/extensions/pi-math.ts".text = ''
+    export { default } from "${mathExtension}/src/index.ts";
+  '';
+  home.file.".pi/agent/extensions/pi-response-renderer.ts".text = ''
+    export { default } from "${responseRenderer}/src/index.ts";
+  '';
   home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";
   home.file.".pi/agent/themes/cc-light.json".source = "${ccExtensions}/themes/cc-light.json";
   home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
