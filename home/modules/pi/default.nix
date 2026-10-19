@@ -8,7 +8,6 @@
   pricing = import ./pricing.nix;
   ccExtensions = pkgs.callPackage ../../../pkgs/pi-cc-extensions {};
   mathExtension = pkgs.callPackage ../../../pkgs/pi-math {};
-  responseRenderer = pkgs.callPackage ../../../pkgs/pi-response-renderer {};
   free = {
     input = 0;
     output = 0;
@@ -78,9 +77,6 @@ in {
   # Absolute imports let Pi resolve dependencies beside each package in the store.
   home.file.".pi/agent/extensions/pi-math.ts".text = ''
     export { default } from "${mathExtension}/src/index.ts";
-  '';
-  home.file.".pi/agent/extensions/pi-response-renderer.ts".text = ''
-    export { default } from "${responseRenderer}/src/index.ts";
   '';
   home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";
   home.file.".pi/agent/themes/cc-light.json".source = "${ccExtensions}/themes/cc-light.json";
