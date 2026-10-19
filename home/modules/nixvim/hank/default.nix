@@ -1527,11 +1527,10 @@ in {
           };
         }
 
-        # 下面两个原来是 plugins.lsp.keymaps.extra。那边的默认 mode 是 ""
-        # (normal + visual + operator-pending),这里原样保留,迁移不改行为。
         # hover 和诊断浮窗用内置的 K / <C-w>d,边框由 opts.winborder 统一。
         {
-          mode = "";
+          # 限定 Normal 模式,避免 g 前缀拦截 snippet 占位符的输入。
+          mode = "n";
           key = "gh";
           action = mkRaw ''
             function()
