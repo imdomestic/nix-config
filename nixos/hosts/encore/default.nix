@@ -15,6 +15,7 @@ in {
 
   modules = [
     ./system.nix
+    ../../modules/sudo-pwfeedback.nix
     ./cooling.nix
     ./keyboard.nix
     ./retained-services.nix

@@ -13,6 +13,7 @@ in {
 
   modules = [
     ./system.nix
+    ../../modules/sudo-pwfeedback.nix
   ];
 
   externalModules = [
