@@ -6,6 +6,7 @@
 }: let
   cliproxy = import ../../../lib/cliproxy-models.nix;
   pricing = import ./pricing.nix;
+  ccExtensions = pkgs.callPackage ../../../pkgs/pi-cc-extensions {};
   free = {
     input = 0;
     output = 0;
@@ -59,8 +60,18 @@ in {
     run ${pkgs.python3}/bin/python ${./merge-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/settings.json"} \
       ${lib.escapeShellArg (builtins.toJSON {showHardwareCursor = true;})}
+    run ${pkgs.python3}/bin/python ${./merge-settings.py} \
+      ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/pi-cc-extensions.json"} \
+      ${lib.escapeShellArg (builtins.toJSON {
+      enableEditorPrefix = false;
+      enableCustomFooter = false;
+    })}
   '';
 
+  # Keep the local editor/footer; see docs/decisions.md#pi-cc-extensions.
+  home.file.".pi/agent/extensions/pi-cc-extensions".source = "${ccExtensions}/extensions";
+  home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";
+  home.file.".pi/agent/themes/cc-light.json".source = "${ccExtensions}/themes/cc-light.json";
   home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
   home.file.".pi/agent/extensions/statusline.ts".source = ./statusline.ts;
 

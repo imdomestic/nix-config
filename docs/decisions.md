@@ -11,6 +11,17 @@
 
 ---
 
+## 2026-10-19 · Pi 使用 Claude Code 风格渲染扩展 {#pi-cc-extensions}
+
+通过 Nix 固定 `minuque/pi-cc-extensions` 1.0.8 及其运行时依赖，使用 Pi
+原生扩展目录发现机制加载。Pi 自身提供的三个 peer 包不打包第二份。
+CC Dark / CC Light 主题一同安装，当前选中的主题继续由 Pi 保存。
+
+扩展自己的 `enableEditorPrefix`、`enableCustomFooter` 设为 `false`，
+让已有个人扩展继续提供 `❯` 和 Claude Code 同款状态栏。仅合并这两个
+字段到可写配置，其余渲染偏好可在 `/ccstyle` 面板调整；`/ccstyle off`
+可临时切回 Pi 原生工具渲染，`/ccstyle on` 恢复。
+
 ## 2026-10-18 · Pi 状态栏对齐 Claude Code {#pi-claude-statusline}
 
 Pi 的个人扩展以单行显示目录、Git 分支、模型、推理强度和会话费用，
