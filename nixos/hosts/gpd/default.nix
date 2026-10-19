@@ -14,6 +14,7 @@ in {
 
   modules = [
     ./system.nix
+    ../../modules/sudo-pwfeedback.nix
     ./hardware-configuration.nix
   ];
 

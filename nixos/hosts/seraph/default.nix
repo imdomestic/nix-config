@@ -11,6 +11,7 @@ in {
   profiles = with nixosProfiles; [base];
   modules = [
     ./system.nix
+    ../../modules/sudo-pwfeedback.nix
     ./hardware-configuration.nix
     ./compute.nix
     ./vex-agent.nix
