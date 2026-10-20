@@ -42,6 +42,12 @@
     };
   };
 
+  # pkgs/kazumi 是上游 macOS dmg 的二进制包,只在 darwin 上有;Linux 上要用
+  # 的话 nixpkgs 自带从源码构建的 kazumi。
+  home.packages = lib.optionals pkgs.stdenv.isDarwin [
+    (pkgs.callPackage ../../../pkgs/kazumi {})
+  ];
+
   programs.zsh.enable = true;
 
   programs.neovim = {
