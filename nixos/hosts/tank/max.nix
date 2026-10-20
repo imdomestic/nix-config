@@ -163,6 +163,25 @@
           "timeout_seconds" = 300;
           "multimodal" = true;
         };
+        # Vertex AI via cliproxy's imported service account (GCP free-trial
+        # project, 2026-10-20). Paid per token, so only on groups switched to it
+        # with !model. The vertex/ prefix keeps the credential from serving
+        # unprefixed models; see routing.force-model-prefix in the cliproxy
+        # module. The key is cliproxy's own, shared with gemini-3.8-flash.
+        "gemini-4-argon" = {
+          "protocol" = "openai";
+          "api_key" = config.sops.placeholder."max/llm-profiles-gemini-3.8-flash-api-key";
+          "base_url" = "http://tank.inner.imdomestic.com:8317/v1";
+          "model" = "vertex/gemini-4-argon";
+          "effort" = "high";
+          "timeout_seconds" = 300;
+          "multimodal" = true;
+          # List price from 2026-12-01; through 2026-11-30 it is half (2/0.10/10).
+          "price_input" = 4;
+          "price_cached_input" = 0.2;
+          "price_output" = 20;
+          "price_currency" = "USD";
+        };
         "deepseek-v4-flash-vision-exp" = {
           "api_key" = config.sops.placeholder."max/llm-profiles-deepseek-v4-flash-vision-exp-api-key";
           "base_url" = "https://api.deepseek.com/v1";
