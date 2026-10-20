@@ -3173,11 +3173,11 @@
     "zsh-linwhite": {
       "flake": false,
       "locked": {
-        "lastModified": 1785374963,
-        "narHash": "sha256-9JqHyLM00VNZXOFFIb/f/k/0wtWgpneLjVuD9u9OQxs=",
+        "lastModified": 1792510608,
+        "narHash": "sha256-203Vw24C3KTHnYZY49ev2OG8A5690oweykG0pRXQ2P4=",
         "owner": "linwh1te",
         "repo": "zsh",
-        "rev": "a1762b644ef7edc418094b70c4818d43c6ba99d0",
+        "rev": "9ff905463e4d04b6008dbfed89c27394334a8e00",
         "type": "github"
       },
       "original": {
