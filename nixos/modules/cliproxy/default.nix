@@ -105,6 +105,12 @@ in {
           # 我们不用面板,关掉省一条外连和一个可写目录。
           disable-control-panel: true
 
+        routing:
+          # 带前缀的凭据(比如 -vertex-import-prefix vertex 导入的 Vertex 服务
+          # 账号)只服务 "vertex/..." 这种显式点名的请求。默认 false 时,不带前缀的
+          # gemini-3-flash 之类也会轮询到它头上,按 token 花 GCP 的钱。
+          force-model-prefix: true
+
         debug: false
       '';
     };
