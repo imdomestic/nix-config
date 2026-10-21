@@ -29,7 +29,9 @@
   改回独立完整的 Mac 配置后，两机再次求值通过，旧机闭包与运行中的路径相同。
 - Apple 迁移、新机独立 `/nix` 卷、新机系统与 Home Manager 激活待完成。
 - 传输准备：旧机 Home Manager 的 PostgreSQL 17 和 Max 开发目录下 5433 端口的
-  PostgreSQL 已正常停止；OrbStack 服务保持停止。旧机迁移助理停在欢迎页，
+  PostgreSQL 已正常停止；OrbStack 与 Tailscale 已停止。旧机账户登录 shell 临时设为
+  `/bin/zsh`，确保迁入新机后在 Nix 安装前也能打开终端和 SSH；新机激活 nix-darwin
+  后恢复受管的 Nix shell。旧机迁移助理停在欢迎页，
   点击继续会退出当前应用与会话。
 
 ## App 数据
@@ -80,8 +82,8 @@ APFS 容器空闲空间，不设置固定分区容量。由 Determinate Nix Inst
 Nix 安装状态；不要盲目重复创建卷。安装后检查加密和大小写敏感性，并重启确认自动挂载。
 保留 `use-case-hack = false`。
 
-旧机 `hank` 为 UID 501，登录 shell 为 `/run/current-system/sw/bin/zsh`；新机恢复
-Nix 前此路径可能不存在，可用系统 `/bin/zsh` 或临时管理员引导。实测新机
+旧机 `hank` 为 UID 501，原受管 shell 为 `/run/current-system/sw/bin/zsh`；迁移前
+已临时切到 `/bin/zsh`，避免新机尚无 Nix 时账户不能启动 shell。实测新机
 `id -u hank` 后更新 `nixos/hosts/praxic/default.nix`，不要直接更改账户 UID。
 
 每次激活前 fetch 并检查配置漂移。分别验证、激活系统与 standalone Home Manager：
