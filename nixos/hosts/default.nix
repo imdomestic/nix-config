@@ -10,6 +10,7 @@ in {
   rpi4 = callHost "rpi4";
   wsl = callHost "wsl";
   praxic = callHost "praxic";
+  m1elite = callHost "m1elite";
   aegis = callHost "aegis";
   alex = callHost "alex";
   hackintosh = callHost "hackintosh";

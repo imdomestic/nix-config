@@ -1033,7 +1033,7 @@ in {
       pkgs.radeontop
       pkgs.clapper
     ]
-    ++ lib.optionals (config.my.host.name == "praxic") [
+    ++ lib.optionals (lib.elem config.my.host.name ["praxic" "m1elite"]) [
       # 用来推别的机器,不是这台 Mac 自己要的。
       pkgs.nixos-rebuild
       pkgs.nixos-rebuild-ng
