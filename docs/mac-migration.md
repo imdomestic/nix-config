@@ -7,7 +7,7 @@
 
 ## 执行状态
 
-- 仓库同步至 `00c8eff`；原有 `flake.lock` 暂存和未暂存改动均保留。
+- 仓库同步至 `00c8eff`；用户要求将原有 `flake.lock` 暂存和未暂存改动一并提交、激活。
 - 已停止旧机 OrbStack 服务；数据已移动到 `/Users/Shared/mac-migration-excluded-hank/data`，
   同一文件系统内移动，没有额外复制。迁移时必须排除该 Shared 目录。
 - 已拆出两台 Mac 共用的 Darwin 模块并注册 `m1elite`；旧机系统求值通过，UID 501、
@@ -104,4 +104,4 @@ wg0。确认密钥、服务端 peer 以及旧机隧道已停后再启用；旧�
 - 项目包含未提交文件；SSH、Git 签名、SOPS 解密成功，敏感内容不输出到日志。
 - PostgreSQL 17 可连接，旧机的 `hank` 与 `postgres` 数据库正常。
 - Tailscale 两台为独立设备；Touch ID、Apple Pay、网络扩展重新授权，验证 FileVault 解锁。
-- 已激活的配置使用明确提交保存并推送；原有无关 `flake.lock` 改动不混入迁移提交。
+- 已激活的配置与用户要求一并部署的 `flake.lock` 改动均提交并推送。
