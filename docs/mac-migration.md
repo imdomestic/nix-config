@@ -10,12 +10,18 @@
 - 仓库同步至 `00c8eff`；用户要求将原有 `flake.lock` 暂存和未暂存改动一并提交、激活。
 - 已停止旧机 OrbStack 服务；数据已移动到 `/Users/Shared/mac-migration-excluded-hank/data`，
   同一文件系统内移动，没有额外复制。迁移时必须排除该 Shared 目录。
-- 已拆出两台 Mac 共用的 Darwin 模块并注册 `m1elite`；旧机系统求值通过，UID 501、
-  无 WireGuard 接口，激活待完成。
+- 两台 Mac 各自保留独立完整的 Darwin 配置；已注册 `m1elite`，旧机 UID 501、无 WireGuard
+  接口，系统与 Home Manager 已激活，包含用户要求部署的 `flake.lock` 更新。
+  系统闭包为 `/nix/store/lv14z5ywywwdz8jfp1246vrzxd1n62x0-darwin-system-26.05.c3e90c8`；
+  home generation 123 为 `/nix/store/48j5fipp4g5winixvykw0nb1qhd3ybf9-home-manager-generation`。
+- 旧机 HostName、LocalHostName、ComputerName 均为 `m1elite`；Tailscale / Headscale
+  节点 ID 1 已改名，`m1elite.inner.imdomestic.com` 解析到原地址 `100.64.0.1`。
 - 雷电桥连接活动；已通过 SSH 核对新机 `192.168.2.112`：M3 Max、36 GB、
   macOS 27.0.1（与旧机相同），`hank` 当前 UID 为 502，尚无 `/nix`。
   新机配置已设 UID 502，迁移后激活前仍须复查。
-- Apple 迁移、独立 `/nix` 卷及两台机器的激活待完成。
+- 已向新机 `/Users/Shared/mac-migration-tools` 放置安装器（与旧机 SHA256 一致）、
+  `install-nix-on-m3.sh` 及本交接文档；建卷脚本已通过两机 bash 语法检查，尚未运行。
+- Apple 迁移、新机独立 `/nix` 卷、新机系统与 Home Manager 激活待完成。
 
 ## App 数据
 
@@ -86,9 +92,9 @@ just hm praxic hank
 
 ## 网络身份 {#network-identity}
 
-旧机当前 Tailscale 节点 ID 为 1，DNS 为 `praxic.inner.imdomestic.com`、IPv4 为
-`100.64.0.1`。先将旧机的本地和 Headscale 名称改为 `m1elite`，再把新机以独立
-设备身份注册为 `praxic`；不要让两台同时使用迁移复制来的 Tailscale 设备状态。
+旧机 Tailscale 节点 ID 为 1，DNS 已改为 `m1elite.inner.imdomestic.com`，IPv4 仍为
+`100.64.0.1`。新机以独立设备身份注册为 `praxic`；不要让两台同时使用迁移复制来的
+Tailscale 设备状态。迁移后先检查新机 Tailscale 状态，再恢复 VPN。
 
 WireGuard 的 `10.0.0.65/24` 留给新 `praxic`，`m1elite` 不配置该接口。当前
 `/Users/hank/Documents/privatekey` 与 `presharedkey` 未找到，所以新机暂不自动启动
