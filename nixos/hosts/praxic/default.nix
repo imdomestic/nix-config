@@ -29,7 +29,7 @@ in {
       # description 显式写成现在的 RealName:模块里它默认取用户名,而 nix-darwin 会把
       # description 写进 RealName,不写的话"Hank Hogan"会被改成"hank"。
       nixos = {
-        uid = 502;
+        uid = 501;
         description = "Hank Hogan";
       };
       home = {
