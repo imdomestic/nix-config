@@ -1,4 +1,4 @@
-"""Merge declared Pi settings while keeping its runtime settings writable."""
+"""Merge declared JSON settings while keeping runtime settings writable."""
 
 import json
 import os
@@ -22,7 +22,7 @@ def main():
     settings = json.loads(sys.argv[2])
     document = json.loads(target.read_text(encoding="utf-8")) if target.exists() else {}
     if not isinstance(document, dict):
-        raise ValueError("Pi settings must be a JSON object")
+        raise ValueError("Settings must be a JSON object")
     merged = merge_settings(document, settings)
     if merged == document:
         return

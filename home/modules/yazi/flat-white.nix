@@ -59,7 +59,7 @@ in {
           bg = c.color3;
         };
         border_style.fg = c.color8;
-        syntect_theme = toString (import ./tmtheme.nix {inherit pkgs;});
+        syntect_theme = toString (import ../palettes/flat-white-tmtheme.nix {inherit pkgs;});
       };
       tabs = {
         active = {

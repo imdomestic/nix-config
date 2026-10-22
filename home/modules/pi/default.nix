@@ -58,13 +58,13 @@ in {
 
   # pi 没有 Home Manager 模块；只合并声明的字段，保留运行时写入的设置。
   home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
-    run ${pkgs.python3}/bin/python ${./merge-settings.py} \
+    run ${pkgs.python3}/bin/python ${../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/settings.json"} \
       ${lib.escapeShellArg (builtins.toJSON {
       showHardwareCursor = true;
       terminal.images = "kitty";
     })}
-    run ${pkgs.python3}/bin/python ${./merge-settings.py} \
+    run ${pkgs.python3}/bin/python ${../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/pi-cc-extensions.json"} \
       ${lib.escapeShellArg (builtins.toJSON {
       enableEditorPrefix = false;

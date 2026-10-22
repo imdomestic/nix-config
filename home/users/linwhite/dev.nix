@@ -10,10 +10,27 @@
     ../../profiles/dev.nix
     ../../modules/nixvim/linwhite
     ../../modules/opencode
+    ../../modules/opencode/flat-white.nix
     ../../modules/codex
+    ../../modules/codex/flat-white.nix
+    ../../modules/claude-code/linwhite.nix
+    ../../modules/pi/flat-white.nix
+    ../../modules/delta/flat-white.nix
+    ../../modules/lazygit/flat-white.nix
+    ../../modules/k9s/flat-white.nix
   ];
 
   my.nixvim.dev.enable = true;
+
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+  };
+  programs.lazygit = {
+    enable = true;
+    enableZshIntegration = false;
+  };
+  programs.k9s.enable = true;
 
   programs.claude-code = {
     enable = true;

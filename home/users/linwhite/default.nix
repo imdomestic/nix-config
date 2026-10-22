@@ -12,11 +12,16 @@
   '';
 in {
   imports = [
-    ../../modules/tmux
-    ../../modules/flat-white
+    ../../modules/tmux/linwhite.nix
+    ../../modules/zsh/linwhite.nix
+    ../../modules/starship/linwhite.nix
     ../../modules/ghostty/linwhite.nix
-    ./shell.nix
-    ./starship.nix
+    ../../modules/wezterm/linwhite.nix
+    ../../modules/fzf/flat-white.nix
+    ../../modules/bat/flat-white.nix
+    ../../modules/btop/flat-white.nix
+    ../../modules/yazi/flat-white.nix
+    ../../modules/vicinae/flat-white.nix
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
     ../../modules/nixvim/linwhite
     # MC 开发脚本（mc-client / mc-server-remote），模块内部只对 encore 生效
@@ -55,16 +60,12 @@ in {
     NSFixedPitchFont = "Recursive-Regular";
   };
 
-  programs.zsh.enable = true;
+  programs.bat.enable = true;
+  programs.btop.enable = true;
+  programs.wezterm.enable = config.programs.ghostty.enable;
 
   programs.neovim = {
     enable = true;
     defaultEditor = true;
-  };
-
-  programs.starship = {
-    enable = true;
-    enableTransience = true;
-    enableZshIntegration = true;
   };
 }

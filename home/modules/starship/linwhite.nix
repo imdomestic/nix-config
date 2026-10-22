@@ -1,4 +1,10 @@
 {...}: {
+  imports = [./flat-white.nix];
+  programs.starship = {
+    enable = true;
+    enableTransience = true;
+    enableZshIntegration = true;
+  };
   # 保留 linwhite 原 prompt 的布局、符号和时间设置，颜色由 flat-white 提供。
   programs.starship.settings = {
     right_format = "$time$battery";

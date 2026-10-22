@@ -4,11 +4,12 @@
   lib,
   ...
 }: {
-  home.sessionVariables.ZDOTDIR = config.home.homeDirectory;
+  imports = [./flat-white.nix];
   # HM 接管入口，保留外部仓库的行为片段；配色与 prompt 由本仓库管理。
   programs.zsh = {
-    # 沿用 HM 已管理的 ~/.zshrc，避免在旧 .config/zsh 整目录 store 链接里写文件。
-    dotDir = config.home.homeDirectory;
+    # 由原生模块生成 ZDOTDIR 入口；见 docs/incidents.md#linwhite-tmux-stale-zdotdir。
+    enable = true;
+    dotDir = "${config.xdg.configHome}/zsh";
     enableCompletion = false;
     history = {
       path = "${config.xdg.cacheHome}/zsh/.zhistory";
@@ -25,7 +26,7 @@
         source "${inputs.zsh-linwhite}/$_linwhite_part.zsh"
       done
       unset _linwhite_part
-      export STARSHIP_CONFIG="${config.xdg.configHome}/starship.toml"
+      export STARSHIP_CONFIG=${lib.escapeShellArg config.programs.starship.configPath}
       export starship_config="$STARSHIP_CONFIG"
     '';
   };

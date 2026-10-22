@@ -4,6 +4,32 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-22 · linwhite 的 tmux 保留了迁移前的 ZDOTDIR {#linwhite-tmux-stale-zdotdir}
+
+Flat White 配置把 linwhite 的 Zsh 入口从 `~/.config/zsh/.zshrc` 移到 HM 管理的
+`~/.zshrc`，激活时移除了旧的整个 `~/.config/zsh` store 链接。已经运行的 tmux
+server 却仍保存 `ZDOTDIR=/Users/linwhite/.config/zsh`，还保存了
+`__HM_SESS_VARS_SOURCED=1` 和 `__HM_ZSH_SESS_VARS_SOURCED=1`。新 pane 继承这些值，
+Zsh 到已不存在的目录找启动文件，自然不会初始化 Starship。
+
+**误导点：新开的 pane 看起来像新环境，而且 `STARSHIP_CONFIG` 已指向正确文件。**
+实际上 pane 继承的是长驻 tmux server 的旧环境；配置文件存在、home 激活成功和
+dry-run 通过都不能证明 shell 真正读到了它。只清除 HM 标记也不够：必须先修复
+Zsh 读取 `.zshenv` 之前就使用的 `ZDOTDIR`。
+
+修正遵循现有模块边界：Zsh 回到 `home/modules/zsh/linwhite.nix`，原生
+`programs.zsh.dotDir` 恢复为 `~/.config/zsh`，继续从固定的 `zsh-linwhite` input
+加载行为片段；Home Manager 生成该目录下的入口及 Starship 集成。tmux 配置归入
+`home/modules/tmux/linwhite.nix`，不负责管理 Zsh 的环境或 HM 加载标记。
+
+排查期间曾临时把运行中 tmux 的 `ZDOTDIR` 设为 home 目录；这只是旧部署的临时
+恢复，不是最终方案。原生 Zsh 模块还会生成 `~/.zshenv` 引导文件，将从 home
+启动的 shell 转入所配置的 `dotDir`，无需在 tmux 配置里再次维护启动路径。
+
+检查环境脚本时还发现 OpenCode 的 JSON 原来经 `home.sessionVariables` 直接放进
+shell 双引号，运行时会丢失 JSON 内部引号；改为 `home.sessionVariablesExtra`
+配合 `lib.escapeShellArg` 导出，并验证实际 shell 解析后的值。
+
 ## 2026-10-22 · 迁入用户 profile 未注册 GC 引用导致 shell 工具消失 {#mac-migration-profile-gc}
 
 新机已成功重启、挂载 `/nix`，系统和 Home Manager generation 都正常。随后清理
