@@ -34,6 +34,21 @@
   后恢复受管的 Nix shell。旧机迁移助理停在欢迎页，
   点击继续会退出当前应用与会话。
 
+### Apple 迁移后的接续
+
+用户已完成迁移，未选择 Max Fleet Operator 账户和“其他文件和文件夹”，其余项目
+选中。新机 Bonjour 名为 `user的MacBook Pro`，当前 Wi-Fi 地址为 `192.168.2.171`；
+迁移前的 `192.168.2.112` 已失效。雷电连接的 IPv6 为
+`fe80::495:e6e4:ae0:47e2%bridge0`。
+
+迁移后的 `hank` 实测 UID 为 501，配置已从迁移前的 502 改回 501，登录 shell 为
+`/bin/zsh`。新机 SSH 曾在认证前重置连接；本地 `sudo /usr/sbin/sshd -t` 报
+`/etc/ssh/sshd_config.d/099-host-keys.conf: No such file or directory`。
+已将失效的 SSH 配置链接移到
+`/Users/Shared/mac-migration-tools/sshd-config-disabled/`，连接已恢复；新机现有 `/nix`
+为空目录、`/etc/static` 不存在。新机 SSH host key 随迁移变为与旧机相同，已和旧机
+公钥核对后信任新地址。接下来核对 App 数据及安装独立 `/nix` 卷。
+
 ## App 数据
 
 完整迁移 `/Users/hank`，包括隐藏目录、Library、Containers、Group Containers 和
