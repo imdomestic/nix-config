@@ -250,11 +250,6 @@ in {
     # Ruby provider pulls a full clang/llvm toolchain (~800 MiB) and is unused.
     withRuby = false;
 
-    extraPlugins = [
-      pkgs.vimPlugins."evergarden-nvim"
-      # pkgs.vimPlugins.kanso-nvim
-    ];
-
     globals = {
       clipboard = {
         name = "OSC 52";
@@ -1562,23 +1557,6 @@ in {
       for _, key in ipairs({ "grn", "gra", "grr", "gri", "grt" }) do
         pcall(vim.keymap.del, "n", key)
       end
-
-      require("evergarden").setup({
-        theme = {
-          variant = "winter",
-          accent = "green",
-        },
-        editor = {
-          transparent_background = false,
-        },
-        style = {
-          types = {},
-          keyword = {},
-          search = { "reverse", "bold" },
-          incsearch = { "reverse", "bold" },
-        },
-      })
-      vim.cmd.colorscheme("evergarden")
     '';
   };
 }

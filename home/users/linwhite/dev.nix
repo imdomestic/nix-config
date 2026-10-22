@@ -10,14 +10,15 @@
     ../../profiles/dev.nix
     ../../modules/nixvim/linwhite
     ../../modules/opencode
+    ../../modules/codex
   ];
 
   my.nixvim.dev.enable = true;
 
-  programs.claude-code = lib.mkIf (config.my.host.name == "aegis") {
+  programs.claude-code = {
     enable = true;
     package = null;
-    settings = {
+    settings = lib.mkIf (config.my.host.name == "aegis") {
       env = {
         # macOS 上仅使用 system 时，当前运行时读取的 CA 无法验证 Anthropic 证书。
         CLAUDE_CODE_CERT_STORE = "bundled,system";
@@ -31,7 +32,6 @@
       };
       modelSettings.claude-opus-5-5.effortLevel = "xhigh";
       skipDangerousModePermissionPrompt = true;
-      theme = "auto";
       enabledPlugins."swift-lsp@claude-plugins-official" = true;
     };
   };
