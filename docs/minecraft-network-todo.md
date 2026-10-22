@@ -5,7 +5,6 @@
 相关文档和仓库：
 
 - 旧服布局：`docs/encore-minecraft.md`
-- chorus mod 的开发流程：`docs/chorus-development.md`
 - chorusd 源码：私有仓库 `imdomestic/chorus-testbed`
 
 ## 结论速记

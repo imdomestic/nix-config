@@ -25,13 +25,11 @@ ssh root@nixos-rescue.local
 `/iso/installer-network.env` 读取 Wi-Fi 凭据。凭据仅保存在受保护的
 本地工作目录和安装介质中。
 
-## 安装系统与用户环境
+## 安装系统
 
-主机定义位于 `nixos/hosts/encore/`，角色为带 GNOME 桌面的 GPU 服务器。Intel 核显负责桌面，RTX 3060 提供计算能力，Podman 可以使用 NVIDIA CDI。合盖和空闲均保持运行。局域网地址为 `encore.local`，服务器管理地址为 `encore.inner.imdomestic.com`。
+主机定义位于 `nixos/hosts/encore/`，作为 GPU 服务器运行。RTX 3060 提供计算能力，Podman 可以使用 NVIDIA CDI。合盖和空闲均保持运行。局域网地址为 `encore.local`，服务器管理地址为 `encore.inner.imdomestic.com`。
 
 Windows 的 Tailscale 节点名称为 `m16`，地址为 `100.64.0.28`；NixOS 使用独立的 `encore` 节点身份，地址为 `100.64.0.43`。NixOS 的节点状态保存在 `/var/lib/tailscale`。
-
-用户环境保持独立：`homeConfigurations."hank@encore"` 使用 taipan 的个人配置、开发工具和 GNOME 模块；`homeConfigurations."linwhite@encore"` 与 aegis 共用个人配置、开发工具和图形工具配置，软件按各自平台构建。
 
 ### 磁盘与启动
 
@@ -61,21 +59,19 @@ Windows 后方依次是 Linux 启动分区和根分区。扩容时从安装 U �
 | `nvme0n1p4` | 2 GiB | FAT32，`ENCOREBOOT` | Linux 启动分区，挂载到 `/boot` |
 | `nvme0n1p5` | 348 GiB | ext4，`ENCOREROOT` | NixOS 根分区 |
 
-### 系统和用户环境部署
+### 系统部署
 
 将安装介质的 `/iso/installer-network.env` 以 root 所有、权限 `0600` 写入目标系统 `/var/lib/NetworkManager/encore-wifi.env`。NetworkManager 使用该文件生成持久 Wi-Fi 连接。
 
 本地登录密码通过 `users.users.<name>.hashedPasswordFile` 管理，散列分别保存在 `/var/lib/user-passwords/linwhite` 和 `/var/lib/user-passwords/hank`，文件仅允许 root 读写。安装前创建这些文件，密码及散列均保留在仓库以外。
 
-两个账户各自生成独立的 Ed25519 密钥，保存在本机 `~/.ssh/id_ed25519`。对应的 age 公钥加入 `secrets/clients/cliproxy.yaml` 的接收者列表，供 Home Manager 的 sops-nix 服务解密 OpenCode 凭据。
+系统可以在 tank 构建，再通过 `nix copy` 写入安装机的 `/mnt` store。安装使用 `nixos-install --root /mnt --system <system-store-path> --no-root-passwd --no-channel-copy`。
 
-系统和两个 Home Manager 环境可以在 tank 构建，再通过 `nix copy` 写入安装机的 `/mnt` store。安装使用 `nixos-install --root /mnt --system <system-store-path> --no-root-passwd --no-channel-copy`，两个 Home Manager 环境分别以对应账户执行其 `activate` 程序。初次安装的三个环境合计约 17.6 GiB。
+后续更新执行系统部署。Tailscale 身份已在安装期间注册并写入目标系统，首次启动后由系统服务使用持久状态连接。
 
-后续更新分别执行系统部署及 `just hm encore hank`、`just hm encore linwhite`。Tailscale 身份已在安装期间注册并写入目标系统，首次启动后由系统服务使用持久状态连接。
+2026-10-03 已完成系统安装。根分区扩容后可用容量约 319.71 GiB。
 
-2026-10-03 已完成系统安装及两个独立 Home Manager 环境的激活。在目标系统中验证了两个账户的 GNOME PAM 密码认证、sops-nix 凭据解密、交互式 Zsh、Git、tmux 会话和 Neovim 启动。根分区扩容后可用容量约 319.71 GiB。
-
-扩容后已在 U 盘保持连接的情况下，验证通过 SSD 上的 GRUB 默认启动 NixOS，根分区为 `nvme0n1p5`。Wi-Fi、局域网 SSH、Tailscale SSH、GNOME 登录服务和 NVIDIA 驱动正常，系统及两个用户均没有失败的 systemd 服务。系统和两个 Home Manager 环境均保留扩容前的版本，凭据解密、Zsh、tmux 和 Neovim 启动检查通过。安装时已验证 hank 通过 Podman 的 NVIDIA CDI 在容器中调用 `nvidia-smi`，识别到 RTX 3060 Laptop GPU、6144 MiB 显存和 595.71.05 驱动。
+扩容后已在 U 盘保持连接的情况下，验证通过 SSD 上的 GRUB 默认启动 NixOS，根分区为 `nvme0n1p5`。Wi-Fi、局域网 SSH、Tailscale SSH 和 NVIDIA 驱动正常，系统没有失败的 systemd 服务。系统保留扩容前的版本。安装时已验证通过 Podman 的 NVIDIA CDI 在容器中调用 `nvidia-smi`，识别到 RTX 3060 Laptop GPU、6144 MiB 显存和 595.71.05 驱动。
 
 安装后已通过 GRUB 的 Windows 菜单项启动保留的 Windows 系统，并确认 Windows 节点在 Tailscale 上联网。扩容后再次检查 NTFS 一致性和 Windows EFI 启动程序的 SHA-256，检查通过。
 
@@ -85,8 +81,7 @@ ELECOM U盘保存通用 x86_64 救援系统，encore 启动时按住 Esc 可以�
 EFI 内容、启动项和扩容前的完整 Linux 分区备份保存在操作机受保护、
 被 Git 忽略的工作目录中。
 
-encore 的系统、两个用户环境、SSH 密钥注释、Wi-Fi 连接、磁盘卷标和
+encore 的系统、SSH 密钥注释、Wi-Fi 连接、磁盘卷标和
 管理域名均已同步。2026-10-04 实际重启后，SSD 启动、局域网与 Tailscale
-SSH、两个账户的凭据解密、GNOME、NVIDIA 和 Minecraft 服务检查通过。
-GNOME 休眠设置由系统锁定，两个 Home Manager 环境均可独立激活。
+SSH、NVIDIA 和 Minecraft 服务检查通过。系统禁止自动休眠，保证服务持续运行。
 启动维护服务同时清理固件生成的通用光驱、可移动设备和网络启动入口。

@@ -92,10 +92,10 @@ llama-swap 和 Tailnet 网关。保留模型、镜像和参数；OCI 档均不�
 
 ## 2026-10-06 · seraph 采用 SSH 计算节点配置 {#seraph-compute-node}
 
-用户通过 SSH 和终端使用 seraph，明确要求停用全部视频输出能力。
+seraph 作为通过 SSH 管理的计算节点运行，停用全部视频输出能力。
 主机入口仅导入基础系统配置，通过 `compute.nix` 声明 SSH 与 NVIDIA
-计算支持。两张显卡的显示模块在内核中禁用，GNOME/GDM 与用户桌面配置
-移除。终端诊断工具在主机用户模块中保留，CUDA、Bonsai 和开发工具继续提供服务。
+计算支持。两张显卡的显示模块在内核中禁用，GNOME/GDM 系统服务移除。
+CUDA 与 Bonsai 继续提供计算和推理服务。
 
 实机检查见 [计算节点记录](seraph-gpu.md)。
 
@@ -106,8 +106,8 @@ llama-swap 和 Tailnet 网关。保留模型、镜像和参数；OCI 档均不�
 Snacks 原有侧栏/终端/诊断入口和 Evergarden 原始配色；移除自写的
 hank-tabline / hank-panels、EOF 斜纹、分层背景、失焦变暗和新 Git 标记样式。
 
-保留随后加入的 Hank Java/JDTLS 配置、LSP 功能、VS Code 配置拆分，以及
-linwhite 输入法切换仅限 macOS 的修复。旧界面文档保留作历史记录。
+保留随后加入的 Hank Java/JDTLS 配置、LSP 功能和 VS Code 配置拆分。
+旧界面文档保留作历史记录。
 
 ## 2026-10-05 · seraph 使用 NInfer 承载 Bonsai 2 {#seraph-bonsai-ninfer}
 

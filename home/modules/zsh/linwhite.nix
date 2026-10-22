@@ -7,7 +7,7 @@
   imports = [./flat-white.nix];
   # HM 接管入口，保留外部仓库的行为片段；配色与 prompt 由本仓库管理。
   programs.zsh = {
-    # 由原生模块生成 ZDOTDIR 入口；见 docs/incidents.md#linwhite-tmux-stale-zdotdir。
+    # 由原生模块生成 ZDOTDIR 入口。
     enable = true;
     dotDir = "${config.xdg.configHome}/zsh";
     enableCompletion = false;

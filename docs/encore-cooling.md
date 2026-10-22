@@ -20,7 +20,7 @@ quiet、balanced、performance 三个档位使用相同曲线。
 | 90°C | 100% |
 
 asusd 随系统启动，在电源档位切换时应用对应曲线。曲线由硬件控制器执行。
-GNOME 的电源档位及 CPU EPP 由 power-profiles-daemon 管理。
+系统电源档位及 CPU EPP 由 power-profiles-daemon 管理。
 持续送风会增加低负载时的噪声。
 
 ## CPU 功耗和温度
@@ -59,7 +59,7 @@ CPU 风扇约 6400 RPM，GPU 风扇约 4800 RPM。20 个工作进程的测试没
 这些测试对 CPU 施加负载，GPU 温度反映共同散热条件下的采样结果。
 三个电源档位的风扇曲线、MSR/MMIO 功耗限制及 20 个逻辑处理器的温度目标
 均已逐项读取验证，服务重新启动后设置继续生效。
-Chorus、k3s 和键盘服务运行正常，系统及使用者会话没有失败的 systemd 服务。
+Chorus、k3s 运行正常，系统没有失败的 systemd 服务。
 同步远程仓库后，20 个 NixOS 主机和 4 个 nix-darwin 主机均通过配置求值，
 encore 的配置结果与当前运行系统一致。
 

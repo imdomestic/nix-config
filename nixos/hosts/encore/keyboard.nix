@@ -5,7 +5,7 @@
 }: let
   kernel = config.boot.kernelPackages.kernel;
 in {
-  # ASUS N-Key 初始化修复；适用内核及验证见 docs/encore-keyboard.md。
+  # 修复受影响内核上的 ASUS N-Key 初始化握手。
   boot.extraModulePackages =
     lib.optionals
     (lib.versionAtLeast kernel.version "6.18.49" && lib.versionOlder kernel.version "6.18.54")

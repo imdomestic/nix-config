@@ -2,7 +2,7 @@
 
 入口在 `home/modules/nixvim/hank/`：
 
-- `default.nix`：终端 Neovim；linwhite 和 kenneth 仍导入这份基线。
+- `default.nix`：终端 Neovim。
 - `editing.nix`：两边共享的 leader、搜索习惯、surround、Flash 和 Tree-sitter 文本对象。
 - `vscode.nix`：独立 nixvim 包，只加载共享编辑功能，并把 IDE 操作交给 VS Code。
 - `snippets/`：Rust `cp` / `cpi` 模板，两边复用。
