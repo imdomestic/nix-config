@@ -153,14 +153,12 @@ Wi-Fi 配置和维护工具检查均通过，救援系统没有失败的 systemd
 
 ## seraph 本地系统
 
-主机配置为 `nixosConfigurations.seraph`，用户环境为
-`homeConfigurations."linwhite@seraph"`。系统通过 SSH 使用终端，提供
+主机配置为 `nixosConfigurations.seraph`。系统通过 SSH 管理，提供
 RTX 5070 的 NVIDIA 开放内核驱动与 CUDA、AMD CPU 微码、有线 DHCP 和 Wi-Fi。
 两张显卡的 Linux 显示功能均停用，配置与检查见 [计算节点](seraph-gpu.md)。
 管理名称为 `seraph.inner.imdomestic.com`，局域网名称为
 `seraph.local`。Windows 远程名称为 `9950x.inner.imdomestic.com`，
-WSL 配置为 `nixosConfigurations.9950x`。本地登录密码使用 encore 上
-linwhite 账户的现有密码。
+WSL 配置为 `nixosConfigurations.9950x`。
 
 安装空间从 D 盘划分，总计 750 GiB。目标硬盘为 Samsung 970 EVO Plus
 2 TB，序列号 `S4J4NX0R400720Y`。分区布局如下：
@@ -191,10 +189,6 @@ GRUB 安装在新建 EFI 分区的 `EFI/BOOT/BOOTX64.EFI`，默认启动 NixOS�
 Manager 固件启动项，同时清理 MSI 自动生成的光驱、通用可移动设备和
 网络设备 BBS 入口。
 
-linwhite 使用本机独立生成的 Ed25519 密钥，Home Manager 的 sops-nix
-通过对应的 age 接收者解密 OpenCode 凭据。系统与用户环境分别构建和
-部署，后续用户环境更新执行 `just hm seraph linwhite`。
-
 2026-10-04 已完成安装，并在U盘保持连接时验证从本地 SSD 重启。
 固件只保留 `Boot0002`（`GRUB NixOS seraph`）与 `Boot0001`（救援U盘），
 `BootOrder` 为 `0002,0001`，`BootCurrent` 为 `0002`。
@@ -202,23 +196,22 @@ linwhite 使用本机独立生成的 Ed25519 密钥，Home Manager 的 sops-nix
 NVMe 设备编号在两次启动间发生变化，挂载和引导均通过 UUID 定位。
 
 有线地址为 `10.1.2.194`，Tailscale 地址为 `100.64.0.44`。已验证局域网
-SSH、经 gizmo 跳转的 SSH、Tailscale SSH、linwhite 的 sudo、DNS、
-Home Manager 激活、凭据解密和终端工具。GNOME 的 Wayland 登录会话
-正常，NVIDIA 驱动 `595.71.05` 识别 RTX 5070 与 12,227 MiB 显存，
-系统和用户均没有失败的 systemd 服务。Windows EFI 文件和 GRUB 菜单
+SSH、经 gizmo 跳转的 SSH、Tailscale SSH、sudo 和 DNS。
+NVIDIA 驱动 `595.71.05` 识别 RTX 5070 与 12,227 MiB 显存，
+系统没有失败的 systemd 服务。Windows EFI 文件和 GRUB 菜单
 通过检查；本次未实际启动 Windows。
 
-全部 20 个 NixOS 主机配置通过求值，新主机的系统和用户环境完成实际
+全部 20 个 NixOS 主机配置通过求值，新主机的系统完成实际
 构建，新增 Nix 文件通过 Alejandra 格式检查。分区、EFI 和验证记录位于
 Mac 仓库的 `.work/9950x-install/`，以及本机
 `/root/.work/9950x-install/`，目录均限制访问权限。
 
 本机配置仓库位于 `/home/linwhite/.config/nix-config`。已同步锁定源文件，
-并在本机求值系统和 linwhite 用户环境，两者的输出路径均与已安装版本
+并在本机求值系统，输出路径与已安装版本
 一致。安装结束后再次计算U盘救援数据的 SHA-256，与原有镜像一致。
 
 本机主机名、Tailscale 节点名称、网络连接、磁盘卷标、GRUB 固件入口和
 SSH 密钥注释均使用 `seraph`。实际重启后通过局域网及
-`seraph.inner.imdomestic.com` 登录，系统与用户服务检查通过；系统配置
+`seraph.inner.imdomestic.com` 登录，系统服务检查通过；系统配置
 与启动版本一致。Windows 节点保留 `9950x.inner.imdomestic.com` 和
 `100.64.0.17`，本机的 Tailscale 地址保持 `100.64.0.44`。

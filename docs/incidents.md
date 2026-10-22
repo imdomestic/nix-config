@@ -4,32 +4,6 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
-## 2026-10-22 · linwhite 的 tmux 保留了迁移前的 ZDOTDIR {#linwhite-tmux-stale-zdotdir}
-
-Flat White 配置把 linwhite 的 Zsh 入口从 `~/.config/zsh/.zshrc` 移到 HM 管理的
-`~/.zshrc`，激活时移除了旧的整个 `~/.config/zsh` store 链接。已经运行的 tmux
-server 却仍保存 `ZDOTDIR=/Users/linwhite/.config/zsh`，还保存了
-`__HM_SESS_VARS_SOURCED=1` 和 `__HM_ZSH_SESS_VARS_SOURCED=1`。新 pane 继承这些值，
-Zsh 到已不存在的目录找启动文件，自然不会初始化 Starship。
-
-**误导点：新开的 pane 看起来像新环境，而且 `STARSHIP_CONFIG` 已指向正确文件。**
-实际上 pane 继承的是长驻 tmux server 的旧环境；配置文件存在、home 激活成功和
-dry-run 通过都不能证明 shell 真正读到了它。只清除 HM 标记也不够：必须先修复
-Zsh 读取 `.zshenv` 之前就使用的 `ZDOTDIR`。
-
-修正遵循现有模块边界：Zsh 回到 `home/modules/zsh/linwhite.nix`，原生
-`programs.zsh.dotDir` 恢复为 `~/.config/zsh`，继续从固定的 `zsh-linwhite` input
-加载行为片段；Home Manager 生成该目录下的入口及 Starship 集成。tmux 配置归入
-`home/modules/tmux/linwhite.nix`，不负责管理 Zsh 的环境或 HM 加载标记。
-
-排查期间曾临时把运行中 tmux 的 `ZDOTDIR` 设为 home 目录；这只是旧部署的临时
-恢复，不是最终方案。原生 Zsh 模块还会生成 `~/.zshenv` 引导文件，将从 home
-启动的 shell 转入所配置的 `dotDir`，无需在 tmux 配置里再次维护启动路径。
-
-检查环境脚本时还发现 OpenCode 的 JSON 原来经 `home.sessionVariables` 直接放进
-shell 双引号，运行时会丢失 JSON 内部引号；改为 `home.sessionVariablesExtra`
-配合 `lib.escapeShellArg` 导出，并验证实际 shell 解析后的值。
-
 ## 2026-10-22 · 迁入用户 profile 未注册 GC 引用导致 shell 工具消失 {#mac-migration-profile-gc}
 
 新机已成功重启、挂载 `/nix`，系统和 Home Manager generation 都正常。随后清理
@@ -562,13 +536,13 @@ LLDB)同一套配置一次就通。
 ## 2026-10-06 · seraph 通过 SSH 使用计算服务 {#seraph-compute-node}
 
 系统使用 `multi-user.target`，停用两张显卡的显示驱动、固件显示缓冲区和
-全部桌面服务。Home Manager 提供终端及开发工具，独立完成构建和激活。
+全部桌面服务，保留 SSH、NVIDIA CUDA 与 Bonsai 推理服务。
 
-系统与用户环境切换后完成整机重启，SSH 伪终端实际取得 `/dev/pts/0`。
+系统切换后完成整机重启，SSH 伪终端实际取得 `/dev/pts/0`。
 系统没有 DRM 显示设备、framebuffer 设备或图形进程，NVIDIA 核心驱动
 与 UVM 正常加载。两个 Bonsai 模型的 10 次推理请求及真实主机名称
 工具调用通过。模型卸载后，显存 Used 为 0 MiB，Free 为 11752 MiB，
-Reserved 为 476 MiB；系统和用户均没有失败服务。
+Reserved 为 476 MiB；系统没有失败服务。
 
 配置、系统版本和检查证据见 [计算节点记录](seraph-gpu.md)。
 
@@ -588,28 +562,16 @@ NVIDIA 显示模块均未加载，5070 下没有 `simple-framebuffer` 设备。
 
 配置、测量与恢复方式见 [显卡分工](seraph-gpu.md)。
 
-## 2026-10-05 · Bonsai NInfer 在 OpenCode 显示 prefill 速度 {#bonsai-prefill-display}
+## 2026-10-05 · Bonsai NInfer 网关进度接口验证 {#bonsai-prefill-display}
 
-`opencode-model-stats` 同时订阅 Taipan 与 Bonsai 网关的 `/prefill-ws`。
-`my.opencode.prefillEndpoints` 为 Bonsai 声明网关地址和 SOPS 密钥文件路径，
-插件在启动时读取文件，通过 Bun WebSocket 的 `Authorization` 请求头完成认证。
-配置文件只保存密钥文件路径。进度按 OpenCode session ID 关联到对应会话。
+Bonsai 网关通过 `/prefill-ws` 提供预填充进度订阅，使用 WebSocket 的
+`Authorization` 请求头认证。推理请求与进度订阅均经过
+`seraph.inner.imdomestic.com:8080`；seraph 访问自身地址经由 `lo`。
+服务端监听地址、访问白名单和 API key 规则保持原配置。
 
-aegis 与 seraph 的 Bonsai provider 均使用注册表中的
-`seraph.inner.imdomestic.com:8080`，使推理请求与进度订阅经过同一网关。
-seraph 访问自身地址经由 `lo`。服务端监听地址、访问白名单和 API key 规则保持原配置。
-
-验证使用实际 NInfer 请求与 OpenCode 1.18.34 终端文本：
-
-- Hikari 输入 62,450 token，收到 61 次 prefill 更新；后端记录预填充
-  42.105 秒，平均 1,483.18 token/秒。未认证的进度请求返回 HTTP 401。
-- OpenCode 的 27,771 token 请求显示
-  `Prefill 6,144/27,771 (22%) | 1981 t/s (EMA 2034) | ~29s`，随后进入生成速度显示。
-- `just check`、aegis 的 `just hm-dry` 通过。真实接口检查命令为
-  `bun scripts/verify-bonsai-prefill.ts ~/.config/opencode/opencode.json bonsai-hikari result.json`。
-
-新启动的 OpenCode 在输入区右侧显示处理量、百分比、当前 prefill 速度、平滑速度和
-预计剩余时间。已运行的 OpenCode 需要重新启动以加载插件。
+真实 Hikari 请求输入 62,450 token，收到 61 次 prefill 更新；后端记录预填充
+42.105 秒，平均 1,483.18 token/秒。未认证的进度请求返回 HTTP 401，
+`just check` 通过。
 
 ## 2026-10-05 · tank 上 Max 浏览器把 reddit 判成保留地址 {#tank-browser-poisoned-dns}
 
@@ -728,13 +690,9 @@ low effort 及 upstream 入口覆盖请求均被固定为 medium。
 401，tank 的 100.64.0.4 请求超时，nftables 对应规则记录了丢弃的数据包。
 配置仅修改 Bonsai 实例，现有 taipan 服务保持原样。
 
-aegis 主仓库通过合并提交 `340d16e` 接入 NInfer，移除旧服务实现并保留其他配置。
-`just check`、`just hm-dry aegis linwhite`、`just hm aegis linwhite` 均通过，
-当前用户环境为 `/nix/store/4f2wqxxk7wqqi0ddabd492kgar40bk44-home-manager-generation`。
-本地模型列表包含两个 Bonsai 模型；主力完成真实 read、edit、bash 操作，
-三个问候函数测试通过且测试文件未被修改。aggressive 完成中文分析请求，
-服务日志确认 Hikari 为 medium、thinking 开启。激活前后的其他 provider、agent
-和 OpenCode 配置经过完整 JSON 比较，保持原样。
+合并提交 `340d16e` 接入 NInfer 并移除旧服务实现，`just check` 通过。
+主力模型完成真实工具调用，三个问候函数测试通过且测试文件未被修改。
+Hikari 完成中文分析请求，服务日志确认 medium 推理与 thinking 开启。
 
 用户确认清理旧版后，移除旧 Bonsai 分支、专用工作目录、旧 GGUF，以及第 6 至 12
 代系统记录，并刷新启动菜单。Nix 引用检查后回收 150 个失效 store 路径，约 1.3 GiB；

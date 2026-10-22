@@ -22,12 +22,11 @@ the new M3 Max `praxic`. Runtime migration is tracked in
 [the Mac migration runbook](mac-migration.md#network-identity); the table below
 records the earlier rename, rather than completion of the replacement.
 
-linwhite's Mac uses `aegis`, with `aegis.local` on the LAN and
+The `aegis` node uses `aegis.local` on the LAN and
 `aegis.inner.imdomestic.com` on Tailscale. Its existing node identity and
 `100.64.0.25` address are retained. nix-darwin manages ComputerName, HostName
 and LocalHostName; macOS synchronizes the SMB names with these settings.
-Use `just darwin aegis` for the system and `just hm aegis linwhite` for the
-standalone user environment.
+Use `just darwin aegis` for the system.
 
 | Device | Current name | Previous name |
 | --- | --- | --- |

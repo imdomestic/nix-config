@@ -2,7 +2,7 @@
 
 `nixos/hosts/seraph/compute.nix` 将系统设为通过 SSH 使用的计算节点，
 默认启动目标为 `multi-user.target`。GNOME、GDM、Xserver、音频、打印和
-蓝牙服务均停用，Home Manager 使用终端环境和开发工具。
+蓝牙服务均停用。
 
 AMD Granite Ridge 核显的 PCI 地址为 `0000:10:00.0`，RTX 5070 为
 `0000:01:00.0`。Linux 启动参数为：
@@ -26,19 +26,17 @@ Taipan 实机的全部 DP/HDMI 接口报告 `disconnected`，其 Mutter 规则�
 
 ## 2026-10-06 实机验证
 
-`just check`、`nixos-rebuild build`、`just hm-dry seraph linwhite`、系统切换和
-Home Manager 激活均通过，随后完成整机重启。
+`just check`、`nixos-rebuild build` 和系统切换均通过，随后完成整机重启。
 
 - boot ID：`f934bee3-505a-41ce-b014-16803f841c56`。
 - 系统：`/nix/store/r6h6c8fmglvfkn6d4wv94gy8n1raibxw-nixos-system-seraph-26.05.20260911.21a67dc`。
-- Home Manager：`/nix/store/mk277yl3hkq06j0gbr6wh47gpfdjygp7-home-manager-generation`。
-- SSH 分配并实际使用 `/dev/pts/0`；tmux、Zsh、Neovim 与 OpenCode 模型列表检查通过。
+- SSH 分配并实际使用 `/dev/pts/0`。
 - `amdgpu`、`radeon`、`nvidia_drm`、`nvidia_modeset` 均未加载。
   系统没有 DRM 显示或渲染设备，也没有 framebuffer 设备。
-- GNOME、GDM、Xorg、Xwayland、Vicinae 和音频服务进程均不存在。
+- GNOME、GDM、Xorg、Xwayland 和音频服务进程均不存在。
   `display-manager.service` 不存在，`graphical.target` 未启动。
 - SSH、Tailscale、NVIDIA 持久化服务、llama-swap 和 Bonsai 网关正常运行；
-  系统和用户均没有失败的 systemd 服务。
+  系统没有失败的 systemd 服务。
 - 主力与 Hikari 均通过英文补全、中文问答、代码分析和真实主机名称工具调用，
   共 10 次推理请求、4 组检查。测试后卸载模型，GPU 进程列表为空。
 
@@ -59,6 +57,6 @@ Home Manager 激活均通过，随后完成整机重启。
 
 改动前的主机配置备份位于 `.work/compute-node/backups/20261006-0355/`。
 需要恢复时，使用文件编辑工具根据备份恢复 `default.nix`、`graphics.nix` 和
-`system.nix`，移除本次新增的 `compute.nix` 与 `home.nix`，再执行
-`just check`、`nixos-rebuild build --flake .#seraph` 和
-`just hm-dry seraph linwhite`。检查通过后切换系统、激活 Home Manager 并重启。
+`system.nix`，移除本次新增的 `compute.nix`，再执行
+`just check` 和 `nixos-rebuild build --flake .#seraph`。
+检查通过后切换系统并重启。
