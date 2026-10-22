@@ -28,7 +28,9 @@
 - 含用户 `flake.lock` 更新的 25 个系统配置与两个 Mac home 共 27 项求值全部通过；
   改回独立完整的 Mac 配置后，两机再次求值通过，旧机闭包与运行中的路径相同。
 - Apple 迁移完成；新机独立、加密、大小写敏感的 `/nix` 已创建并安装 Determinate Nix，
-  daemon 与用户 trusted 状态已验证。新机系统和 Home Manager 已成功激活，重启验收待完成。
+  daemon 与用户 trusted 状态已验证。安装器初始 3.17.0 后已用官方
+  `determinate-nixd upgrade --version v3.23.1` 更新 daemon 与 CLI，和旧机一致。
+  新机系统和 Home Manager 已成功激活，重启验收待完成。
   系统为 `/nix/store/rk3ccm5b0r6p22gx3as8dyl05gjya0yd-darwin-system-26.05.c3e90c8`，
   home 为 `/nix/store/48j5fipp4g5winixvykw0nb1qhd3ybf9-home-manager-generation`。
 - 新机 Homebrew 已补装，OrbStack 接管迁入的 App，Equinox 从迁入的 5.0 更新为 7.0；
