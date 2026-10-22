@@ -7,6 +7,7 @@
   ...
 }: let
   isDarwin = pkgs.stdenv.isDarwin;
+  flatWhite = import ../../modules/palettes/flat-white.nix;
   # 仓库 fonts/ 里的 Recursive(静态、等宽)。放进 home.packages 后,Home Manager
   # 会把 share/fonts 复制到 ~/Library/Fonts/HomeManager。
   recursiveFonts = pkgs.runCommandLocal "recursive-fonts" {} ''
@@ -59,6 +60,15 @@ in {
   # tmux/zsh 的字体就是终端的字体。mkBefore 把 Recursive 排到共享模块那串
   # fallback 前面:缺的 Nerd Font 图标落到 RecMonoSmCasual,中文落到 PingFang SC。
   programs.ghostty.settings.font-family = lib.mkIf isDarwin (lib.mkBefore ["Recursive"]);
+
+  programs.ghostty.themes.flat-white = lib.mkIf (config.programs.ghostty.enable or false) {
+    inherit (flatWhite.colors) background foreground;
+    cursor-color = flatWhite.colors.cursor;
+    cursor-text = flatWhite.colors.cursor_text;
+    selection-background = flatWhite.colors.selection_bg;
+    selection-foreground = flatWhite.colors.selection_fg;
+    palette = lib.imap0 (i: color: "${toString i}=${color}") flatWhite.ansi;
+  };
 
   # macOS 不允许换界面字体(SF);能改的只有 AppKit 的用户字体和等宽字体,
   # 不自带字体设置的应用(TextEdit 新文档之类)会用它们。
