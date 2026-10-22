@@ -17,9 +17,9 @@
   home generation 123 为 `/nix/store/48j5fipp4g5winixvykw0nb1qhd3ybf9-home-manager-generation`。
 - 旧机 HostName、LocalHostName、ComputerName 均为 `m1elite`；Tailscale / Headscale
   节点 ID 1 已改名，`m1elite.inner.imdomestic.com` 解析到原地址 `100.64.0.1`。
-- 雷电桥连接活动；已通过 SSH 核对新机 `192.168.2.112`：M3 Max、36 GB、
-  macOS 27.0.1（与旧机相同），`hank` 当前 UID 为 502，尚无 `/nix`。
-  新机配置已设 UID 502，迁移后激活前仍须复查。
+- 迁移前已通过 SSH 核对新机 `192.168.2.112`：M3 Max、36 GB、macOS 27.0.1
+  （与旧机相同），`hank` 当时 UID 为 502。迁移后选择替换 `user`，实测 UID 为 501，
+  新机配置已按实测值更新。
 - 已向新机 `/Users/Shared/mac-migration-tools` 放置安装器（与旧机 SHA256 一致）、
   `install-nix-on-m3.sh` 及本交接文档；建卷脚本已通过两机 bash 语法检查，尚未运行。
 - 已通过 SSH 将现有 `~/.ssh/id_ed25519` 和公钥复制到新机相同路径，私钥文件
@@ -27,7 +27,8 @@
   Apple 替换账户迁移后仍需复查；密钥内容不写入仓库或日志。
 - 含用户 `flake.lock` 更新的 25 个系统配置与两个 Mac home 共 27 项求值全部通过；
   改回独立完整的 Mac 配置后，两机再次求值通过，旧机闭包与运行中的路径相同。
-- Apple 迁移、新机独立 `/nix` 卷、新机系统与 Home Manager 激活待完成。
+- Apple 迁移完成；新机独立、加密、大小写敏感的 `/nix` 已创建并安装 Determinate Nix，
+  daemon 与用户 trusted 状态已验证。新机系统和 Home Manager 激活、重启验收待完成。
 - 传输准备：旧机 Home Manager 的 PostgreSQL 17 和 Max 开发目录下 5433 端口的
   PostgreSQL 已正常停止；OrbStack 与 Tailscale 已停止。旧机账户登录 shell 临时设为
   `/bin/zsh`，确保迁入新机后在 Nix 安装前也能打开终端和 SSH；新机激活 nix-darwin

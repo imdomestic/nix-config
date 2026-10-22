@@ -4,6 +4,33 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-22 · Mac 迁移后的 SSH 断连与 Nix 卷重建 {#mac-migration-nix-bootstrap}
+
+M1 Pro 到 M3 Max 的 Apple 迁移未包含“其他文件和文件夹”和 Max Fleet Operator，
+但包含了系统与网络设置。新机没有旧 `/nix` 和 `/etc/static`，SSH 配置目录内却有
+指向旧 Nix 配置的链接。连接在认证前重置，本机 `sudo /usr/sbin/sshd -t` 报
+`099-host-keys.conf: No such file or directory`。将失效链接移出整个 Include 目录后，
+SSH 恢复；新机的 SSH host key 也随迁移变为与旧机一致，核对旧机公钥后再信任新地址。
+
+**误导点：最初看起来像 IP 改变、远程登录未打开或密码问题。** Bonjour 找到的新地址
+为 `192.168.2.171`，但错误发生在密码验证前；仅重开远程登录不能修复缺失的 Nix 文件。
+不能只改配置文件后缀来禁用，因为主配置 Include 的是目录内的 `*`。
+
+加密卷首次规划又发现钥匙串内有 `Nix Store`、`disk3 encryption password` 的旧记录，
+但新机没有该卷。3.17.0 安装器接受 `--volume-label`，实际挂载服务仍查找固定的
+`Nix Store`，所以改自定义卷名创建出的空卷无法完成安装。核对该卷 UUID、未挂载状态和
+仅 24 KB 的占用后移除，只清理匹配 Nix 卷账户、服务、标签和类型的失效钥匙串记录，
+按默认名称重建加密、大小写敏感的独立 APFS 卷，最终挂载在 `/nix`。
+
+安装器报告成功时，shell 自检曾报 PATH 缺少 nix 和 daemon socket 尚未出现；后续须
+直接检查卷的加密与大小写敏感属性、`nix store info` 以及真实用户的 trusted 状态，
+不能把安装器最后一行当作环境验收。两机实际 UID 也须重查：新机迁移前的 `hank` 是
+502，用户实际替换 `user` 后迁入账户为 501，配置随之修正。
+
+Codex 的两份迁入数据库以离线 immutable URI 完成 `quick_check`，状态库有 265 个
+线程；这证明已迁入的数据库快照可读，不代表 App 登录态和交互已经验收。
+执行状态及后续操作见 [Mac 迁移交接](mac-migration.md)。
+
 ## 2026-10-20 · Pi 去斜体处理误删图片定位颜色参数 {#pi-inline-color-parameters}
 
 组合 `pi-math` 0.2.0 与 `pi-response-renderer` 0.2.0 时，后者的
