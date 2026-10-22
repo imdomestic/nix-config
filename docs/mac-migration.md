@@ -21,10 +21,10 @@
   （与旧机相同），`hank` 当时 UID 为 502。迁移后选择替换 `user`，实测 UID 为 501，
   新机配置已按实测值更新。
 - 已向新机 `/Users/Shared/mac-migration-tools` 放置安装器（与旧机 SHA256 一致）、
-  `install-nix-on-m3.sh` 及本交接文档；建卷脚本已通过两机 bash 语法检查，尚未运行。
+  `install-nix-on-m3.sh` 及本交接文档；安装脚本已成功运行。
 - 已通过 SSH 将现有 `~/.ssh/id_ed25519` 和公钥复制到新机相同路径，私钥文件
   SHA256 比对、公钥指纹比对均一致；`.ssh` 为 700，私钥 600、公钥 644。
-  Apple 替换账户迁移后仍需复查；密钥内容不写入仓库或日志。
+  Apple 替换账户迁移后已再次核对私钥哈希与权限；密钥内容不写入仓库或日志。
 - 含用户 `flake.lock` 更新的 25 个系统配置与两个 Mac home 共 27 项求值全部通过；
   改回独立完整的 Mac 配置后，两机再次求值通过，旧机闭包与运行中的路径相同。
 - Apple 迁移完成；新机独立、加密、大小写敏感的 `/nix` 已创建并安装 Determinate Nix，
@@ -32,8 +32,7 @@
 - 传输准备：旧机 Home Manager 的 PostgreSQL 17 和 Max 开发目录下 5433 端口的
   PostgreSQL 已正常停止；OrbStack 与 Tailscale 已停止。旧机账户登录 shell 临时设为
   `/bin/zsh`，确保迁入新机后在 Nix 安装前也能打开终端和 SSH；新机激活 nix-darwin
-  后恢复受管的 Nix shell。旧机迁移助理停在欢迎页，
-  点击继续会退出当前应用与会话。
+  后恢复受管的 Nix shell。
 
 ### Apple 迁移后的接续
 
@@ -46,9 +45,10 @@
 `/bin/zsh`。新机 SSH 曾在认证前重置连接；本地 `sudo /usr/sbin/sshd -t` 报
 `/etc/ssh/sshd_config.d/099-host-keys.conf: No such file or directory`。
 已将失效的 SSH 配置链接移到
-`/Users/Shared/mac-migration-tools/sshd-config-disabled/`，连接已恢复；新机现有 `/nix`
-为空目录、`/etc/static` 不存在。新机 SSH host key 随迁移变为与旧机相同，已和旧机
-公钥核对后信任新地址。接下来核对 App 数据及安装独立 `/nix` 卷。
+`/Users/Shared/mac-migration-tools/sshd-config-disabled/`，连接已恢复。新机 SSH host key 随迁移变为与旧机相同，已和旧机
+公钥核对后信任新地址；此后已完成独立 `/nix` 卷安装。雷电桥地址为 `169.254.55.153`，
+已通过雷电传入所需系统、home、用户工具闭包。SSH 与建卷问题见
+[迁移事故记录](incidents.md#mac-migration-nix-bootstrap)。
 
 ## App 数据
 
@@ -83,7 +83,7 @@ OrbStack 原来的 `~/Library/Group Containers/HUAQ24HBR6.dev.orbstack/data` 已
 3. 核对安全码和雷电传输方式。选择应用程序和完整 `hank`；不选“其他文件和文件夹”，
    以排除 Shared 内暂存的 OrbStack 数据。系统和网络设置交由 Nix 重新配置，
    旧 `/nix` 独立卷也不参与迁移。
-4. 同名账户选择用旧机 `hank` 替换新机 `hank`。用户已确认新账户没有需保留的数据。
+4. 实际选择旧机 `hank` 替换新机 `user`；迁后 `hank` 实测 UID 为 501。
 5. 迁移后登录 `hank`，按系统提示重新验证 Apple ID / 钥匙串；暂不启动 VPN。
 
 官方步骤：https://support.apple.com/en-au/102613
