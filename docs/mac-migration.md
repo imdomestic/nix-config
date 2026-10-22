@@ -28,7 +28,15 @@
 - 含用户 `flake.lock` 更新的 25 个系统配置与两个 Mac home 共 27 项求值全部通过；
   改回独立完整的 Mac 配置后，两机再次求值通过，旧机闭包与运行中的路径相同。
 - Apple 迁移完成；新机独立、加密、大小写敏感的 `/nix` 已创建并安装 Determinate Nix，
-  daemon 与用户 trusted 状态已验证。新机系统和 Home Manager 激活、重启验收待完成。
+  daemon 与用户 trusted 状态已验证。新机系统和 Home Manager 已成功激活，重启验收待完成。
+  系统为 `/nix/store/rk3ccm5b0r6p22gx3as8dyl05gjya0yd-darwin-system-26.05.c3e90c8`，
+  home 为 `/nix/store/48j5fipp4g5winixvykw0nb1qhd3ybf9-home-manager-generation`。
+- 新机 Homebrew 已补装，OrbStack 接管迁入的 App，Equinox 从迁入的 5.0 更新为 7.0；
+  praxic 移除 Homebrew 7 已不接受的 `no_quarantine` 参数，最终 `brew bundle` 成功。
+- 新机 SSH 私钥的 GitHub 认证与 SOPS 解密通过。PostgreSQL 17 已恢复监听 localhost，
+  可连接并列出 `hank`、`postgres` 数据库；Max 开发库目录存在，未主动启动。
+- 新机 Tailscale 已注册为独立节点 ID 52、`praxic.inner.imdomestic.com`、`100.64.0.9`；
+  旧机 ID 1、`m1elite` 已停止，新机未使用旧节点。
 - 传输准备：旧机 Home Manager 的 PostgreSQL 17 和 Max 开发目录下 5433 端口的
   PostgreSQL 已正常停止；OrbStack 与 Tailscale 已停止。旧机账户登录 shell 临时设为
   `/bin/zsh`，确保迁入新机后在 Nix 安装前也能打开终端和 SSH；新机激活 nix-darwin
@@ -120,8 +128,14 @@ just hm praxic hank
 ## 网络身份 {#network-identity}
 
 旧机 Tailscale 节点 ID 为 1，DNS 已改为 `m1elite.inner.imdomestic.com`，IPv4 仍为
-`100.64.0.1`。新机以独立设备身份注册为 `praxic`；不要让两台同时使用迁移复制来的
-Tailscale 设备状态。迁移后先检查新机 Tailscale 状态，再恢复 VPN。
+`100.64.0.1`，当前已停止。新机独立节点 ID 为 52，DNS 为
+`praxic.inner.imdomestic.com`、IPv4 为 `100.64.0.9`。
+
+迁入的 Tailscale 机器密钥在登出、重新认证后仍会复用旧节点；须结束新机的网络扩展
+进程，再仅清理新机 System Keychain 中的 Tailscale 设备记录，随后用一次性、短时
+Headscale 注册密钥认证。SIGTERM 未结束该扩展，最终以 SIGKILL 结束核对过路径的进程。
+已通过新机 CLI 与 Headscale 列表核对新旧节点独立；个人 SSH 密钥和其他钥匙串项目不变。
+官方清理参考：https://tailscale.com/docs/features/client/uninstall
 
 WireGuard 的 `10.0.0.65/24` 留给新 `praxic`，`m1elite` 不配置该接口。当前
 `/Users/hank/Documents/privatekey` 与 `presharedkey` 未找到，所以新机暂不自动启动

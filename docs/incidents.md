@@ -29,6 +29,17 @@ SSH 恢复；新机的 SSH host key 也随迁移变为与旧机一致，核对�
 
 Codex 的两份迁入数据库以离线 immutable URI 完成 `quick_check`，状态库有 265 个
 线程；这证明已迁入的数据库快照可读，不代表 App 登录态和交互已经验收。
+
+激活还遇到新装 Homebrew 7 已删除 `--no_quarantine`，故只在 praxic 移除该参数。
+OrbStack 可直接接管迁入的 App；Equinox 迁入版为 5.0、当前 cask 为 7.0，普通接管
+会因版本不同失败，单独更新 App 后再次系统激活，最终 bundle 与系统激活均成功。
+
+Tailscale 的 `logout` 和新 authkey 也不足以生成新设备身份：机器密钥随 System
+Keychain 迁入，仍取得旧节点 ID 1。**误导点：客户端 HostName 已显示 praxic，不能据此
+认定是独立节点。** 必须比较节点 ID、IP 与 DNSName。SIGTERM 未实际结束网络扩展，
+最终核对进程路径后以 SIGKILL 结束，仅清理 Tailscale 设备钥匙串记录，再认证取得
+独立节点 ID 52、`praxic.inner.imdomestic.com`、`100.64.0.9`，旧机保持停止。
+
 执行状态及后续操作见 [Mac 迁移交接](mac-migration.md)。
 
 ## 2026-10-20 · Pi 去斜体处理误删图片定位颜色参数 {#pi-inline-color-parameters}
