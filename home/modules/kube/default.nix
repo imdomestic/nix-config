@@ -42,6 +42,8 @@
     current-context = "tank";
   };
 in {
+  imports = [../sops];
+
   sops.secrets."kube/tank_token".sopsFile = ../../../secrets/clients/kube-tank.yaml;
   sops.templates."kube-tank.yaml".content = lib.generators.toYAML {} tankKubeconfig;
 

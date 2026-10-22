@@ -8,6 +8,8 @@
     ../../modules/nixvim/hank/java.nix
     ../../modules/nixvim/hank/dap.nix
     ../../modules/claude-code
+    # kubectl/k9s 在 profiles/dev.nix 里,kubeconfig 跟着走,不往路由器上解密集群 token。
+    ../../modules/kube
     ../../modules/lazygit
     ../../modules/codex
     ../../modules/opencode
