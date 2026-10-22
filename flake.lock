@@ -204,6 +204,26 @@
         "type": "github"
       }
     },
+    "defaulx": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1792668309,
+        "narHash": "sha256-Di3TMg/XhiXCLK2F7rwfG/umZwcA48DxsfNUp2WrUSE=",
+        "owner": "HCHogan",
+        "repo": "defaulx",
+        "rev": "262027e4e0ded7bbecf1542b6ab7b0ea45e5bb3b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "HCHogan",
+        "repo": "defaulx",
+        "type": "github"
+      }
+    },
     "deploy-rs": {
       "inputs": {
         "flake-compat": "flake-compat",
@@ -2330,6 +2350,7 @@
     "root": {
       "inputs": {
         "NixVirt": "NixVirt",
+        "defaulx": "defaulx",
         "deploy-rs": "deploy-rs",
         "determinate": "determinate",
         "devenv": "devenv",

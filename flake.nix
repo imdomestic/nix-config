@@ -231,6 +231,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    defaulx = {
+      url = "github:HCHogan/defaulx";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     max.url = "github:HCHogan/max";
 
     qq-bot = {

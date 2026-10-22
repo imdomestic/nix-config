@@ -252,6 +252,8 @@ in {
     extraPlugins = [
       pkgs.vimPlugins."evergarden-nvim"
       # pkgs.vimPlugins.kanso-nvim
+      # 只装不启用,手动 :colorscheme defaulx 试用。
+      inputs.defaulx.packages.${pkgs.stdenv.hostPlatform.system}.default
     ];
 
     globals = {
