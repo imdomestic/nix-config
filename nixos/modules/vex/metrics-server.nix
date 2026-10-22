@@ -17,8 +17,8 @@
 in {
   assertions = [
     {
-      assertion = config.services.k3s.package.version == "1.35.7+k3s1";
-      message = "Vex metrics-server manifests require k3s 1.35.7+k3s1";
+      assertion = config.services.k3s.package.version == "1.35.8+k3s1";
+      message = "Vex metrics-server manifests require k3s 1.35.8+k3s1";
     }
   ];
 
