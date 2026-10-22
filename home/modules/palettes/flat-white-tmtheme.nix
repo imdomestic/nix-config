@@ -1,5 +1,5 @@
 {pkgs}: let
-  c = (import ../palettes/flat-white.nix).colors;
+  c = (import ./flat-white.nix).colors;
   rule = scope: foreground: {
     inherit scope;
     settings = {inherit foreground;};

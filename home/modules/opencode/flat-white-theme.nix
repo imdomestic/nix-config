@@ -1,3 +1,4 @@
+# 主题数据，由 flat-white.nix 通过原生 programs.opencode.themes 注册。
 {lib}: let
   c = (import ../palettes/flat-white.nix).colors;
   scale = bright: normal:

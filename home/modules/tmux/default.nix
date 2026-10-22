@@ -1,6 +1,4 @@
-{pkgs, ...}: let
-  c = (import ../palettes/flat-white.nix).colors;
-in {
+{pkgs, ...}: {
   programs.tmux = {
     enable = true;
     terminal = "tmux-256color";
@@ -19,13 +17,14 @@ in {
         '';
       }
       yank
+      catppuccin
       {
         plugin = continuum;
         extraConfig = ''
           set -g @continuum-restore 'on'
           set -g @continuum-save-interval '15'
           # continuum 加载时会向 status-right 添加自动保存命令。
-          set -g status-right "#[fg=${c.color4}] #{pane_current_path} #[fg=${c.color8}]|#[fg=${c.color3}] %Y-%m-%d %H:%M:%S "
+          set -g status-right "#[fg=#9aa5ce] #{pane_current_path} #[fg=#565f89]|#[fg=#bb9af7] %Y-%m-%d %H:%M:%S "
         '';
       }
     ];
@@ -35,11 +34,6 @@ in {
       set-option -ga terminal-overrides ",*256col*:Tc"
       set -ga terminal-overrides ',*:Ss=\E[%p1%d q:Se=\E[6 q'
       set -g set-clipboard on
-      set -ga terminal-overrides ',*:Ms=\E]52;%p1%s;%p2%s\007'
-      set -g allow-passthrough on
-      set -s extended-keys on
-      set -s extended-keys-format csi-u
-      set -as terminal-features 'xterm*:extkeys'
       set -sg escape-time 0
       set -g history-limit 100000
 
@@ -61,34 +55,26 @@ in {
       bind k select-pane -U
       bind l select-pane -R
 
-      bind r source-file ~/.config/tmux/tmux.conf \; display "Reloaded!"
+      bind r source-file ~/.tmux.conf \; display "Reloaded!"
 
       set -g status-position top
       set -g status-interval 1
-      set -g status-style bg=${c.background},fg=${c.foreground}
+      set -g status-style bg=#1a1b26,fg=#c0caf5
 
-      setw -g window-status-style fg=${c.color8},bg=${c.background}
-      setw -g window-status-current-style fg=${c.background},bg=${c.color4},bold
-      setw -g window-status-format " #[fg=${c.color8}]#I:#W "
-      setw -g window-status-current-format " #[fg=${c.background},bg=${c.color4},bold]#I:#W "
-      setw -g window-status-activity-style fg=${c.color3}
-      setw -g window-status-bell-style fg=${c.color1}
+      setw -g window-status-style fg=#565f89,bg=#1a1b26
+      setw -g window-status-current-style fg=#1a1b26,bg=#7aa2f7,bold
+      setw -g window-status-format " #[fg=#565f89]#I:#W "
+      setw -g window-status-current-format " #[fg=#1a1b26,bg=#7aa2f7,bold]#I:#W "
 
       set -g status-left-length 60
-      set -g status-left "#[fg=${c.color4},bold] #S #[fg=${c.color8}]|#[fg=${c.color6}] #(whoami)@#H "
+      set -g status-left "#[fg=#7aa2f7,bold] #S #[fg=#565f89]|#[fg=#89b4fa] #(whoami)@#H "
 
       set -g status-right-length 120
 
-      set -g pane-border-style fg=${c.selection_bg}
-      set -g pane-active-border-style fg=${c.color3}
-      set -g window-style bg=${c.background}
-      set -g window-active-style bg=${c.background}
-      set -g message-style bg=${c.color0},fg=${c.foreground}
-      set -g message-command-style bg=${c.color0},fg=${c.color3}
-      setw -g mode-style bg=${c.selection_bg},fg=${c.selection_fg}
-      setw -g clock-mode-colour ${c.color4}
-      set -g display-panes-colour ${c.color8}
-      set -g display-panes-active-colour ${c.color3}
+      set -g pane-border-style fg=#2f3549
+      set -g pane-active-border-style fg=#ff9e64
+      set -g window-style bg=#0f1117
+      set -g window-active-style bg=#1a1b26
     '';
   };
 }

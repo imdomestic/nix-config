@@ -70,7 +70,7 @@ in {
     (lib.mkOrder 450 (lib.concatStringsSep "\n" (lib.imap0 (i: color: "color${toString i}=${lib.escapeShellArg color}") palette.ansi)))
     (lib.mkAfter ''
       # 外部 env.zsh 的色值必须在其加载后覆盖，prompt 继续使用 HM 生成的配置。
-      export STARSHIP_CONFIG="${config.xdg.configHome}/starship.toml"
+      export STARSHIP_CONFIG=${lib.escapeShellArg config.programs.starship.configPath}
       export starship_config="$STARSHIP_CONFIG"
       ${lib.optionalString config.programs.fzf.enable ''
         export FZF_DEFAULT_OPTS=${lib.escapeShellArg (lib.concatStringsSep " " config.programs.fzf.defaultOptions + " --color=" + fzfColors)}
