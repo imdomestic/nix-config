@@ -33,13 +33,15 @@
   新机系统和 Home Manager 已成功激活；12:13 重启后已验证 `/nix` 自动挂载、
   daemon 与 PostgreSQL 恢复正常。用户已确认应用历史、登录态基本正常。
   系统为 `/nix/store/rk3ccm5b0r6p22gx3as8dyl05gjya0yd-darwin-system-26.05.c3e90c8`，
-  home 为 `/nix/store/48j5fipp4g5winixvykw0nb1qhd3ybf9-home-manager-generation`。
+  home 最终为 `/nix/store/a34qw6m2zslbf02qc59wn0bb4q0b3c10-home-manager-generation`。
 - 新机 Homebrew 已补装，OrbStack 接管迁入的 App，Equinox 从迁入的 5.0 更新为 7.0；
   praxic 移除 Homebrew 7 已不接受的 `no_quarantine` 参数，最终 `brew bundle` 成功。
 - 新机 SSH 私钥的 GitHub 认证与 SOPS 解密通过。PostgreSQL 17 已恢复监听 localhost，
   可连接并列出 `hank`、`postgres` 数据库；Max 开发库目录存在，未主动启动。
 - 新机 Tailscale 已注册为独立节点 ID 52、`praxic.inner.imdomestic.com`、`100.64.0.9`；
-  旧机 ID 1、`m1elite` 已停止，新机未使用旧节点。
+  旧机 ID 1、`m1elite` 已停止，新机未使用旧节点。重启后原登录仍有效，执行 up
+  恢复连接；已通过 standalone Home Manager 添加登录时的连接 agent，首次加载
+  已执行成功（exit 0），联网超时会重试，连接成功后退出。
 - 传输准备：旧机 Home Manager 的 PostgreSQL 17 和 Max 开发目录下 5433 端口的
   PostgreSQL 已正常停止；OrbStack 与 Tailscale 已停止。旧机账户登录 shell 临时设为
   `/bin/zsh`，确保迁入新机后在 Nix 安装前也能打开终端和 SSH；新机激活 nix-darwin
@@ -171,3 +173,7 @@ wg0。确认密钥、服务端 peer 以及旧机隧道已停后再启用；旧�
 这组清理实测增加 65.69 GiB 可用空间，另 Nix GC 回收 7.6 GiB，Homebrew 清理约
 491 MB，当前可用约 470 GiB。GC 中遗漏的用户 profile 已完整恢复并补注册，用户已
 确认终端恢复。照片库、iCloud 文件、Codex/Claude 历史、QQ/微信数据与浏览器资料保留。
+
+最终交互 zsh 检查通过，用户已确认新开终端提示符、补全和工具均恢复。新机 Tailscale
+为 Running、ID 52，至 h610 的 DERP ping 有响应；系统、home 与用户 package profile
+三个现用 GC root 均已核对。当前约 470 GiB 可用；未再执行全局 GC。
