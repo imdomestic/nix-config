@@ -144,7 +144,6 @@ in {
           project
           // {
             remote = "https://github.com/imdomestic/chorus.git";
-            build.source = "host";
             manifest_fallback = "${inputs.vex}/config/manifests/chorus.toml";
             github.repository = "imdomestic/chorus";
           };
