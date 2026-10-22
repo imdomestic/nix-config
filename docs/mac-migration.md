@@ -30,7 +30,8 @@
 - Apple 迁移完成；新机独立、加密、大小写敏感的 `/nix` 已创建并安装 Determinate Nix，
   daemon 与用户 trusted 状态已验证。安装器初始 3.17.0 后已用官方
   `determinate-nixd upgrade --version v3.23.1` 更新 daemon 与 CLI，和旧机一致。
-  新机系统和 Home Manager 已成功激活，重启验收待完成。
+  新机系统和 Home Manager 已成功激活；12:13 重启后已验证 `/nix` 自动挂载、
+  daemon 与 PostgreSQL 恢复正常。用户已确认应用历史、登录态基本正常。
   系统为 `/nix/store/rk3ccm5b0r6p22gx3as8dyl05gjya0yd-darwin-system-26.05.c3e90c8`，
   home 为 `/nix/store/48j5fipp4g5winixvykw0nb1qhd3ybf9-home-manager-generation`。
 - 新机 Homebrew 已补装，OrbStack 接管迁入的 App，Equinox 从迁入的 5.0 更新为 7.0；
@@ -47,12 +48,13 @@
 ### Apple 迁移后的接续
 
 用户已完成迁移，未选择 Max Fleet Operator 账户和“其他文件和文件夹”，其余项目
-选中。新机 Bonjour 名为 `user的MacBook Pro`，当前 Wi-Fi 地址为 `192.168.2.171`；
+选中。新机 Bonjour 初始名为 `user的MacBook Pro`，现已由 Nix 改为 `praxic`。
+Wi-Fi 地址为 `192.168.2.171`；
 迁移前的 `192.168.2.112` 已失效。雷电连接的 IPv6 为
 `fe80::495:e6e4:ae0:47e2%bridge0`。
 
-迁移后的 `hank` 实测 UID 为 501，配置已从迁移前的 502 改回 501，登录 shell 为
-`/bin/zsh`。新机 SSH 曾在认证前重置连接；本地 `sudo /usr/sbin/sshd -t` 报
+迁移后的 `hank` 实测 UID 为 501，配置已从迁移前的 502 改回 501，登录 shell 最初为
+`/bin/zsh`，系统激活后已恢复 `/run/current-system/sw/bin/zsh`。新机 SSH 曾在认证前重置连接；本地 `sudo /usr/sbin/sshd -t` 报
 `/etc/ssh/sshd_config.d/099-host-keys.conf: No such file or directory`。
 已将失效的 SSH 配置链接移到
 `/Users/Shared/mac-migration-tools/sshd-config-disabled/`，连接已恢复。新机 SSH host key 随迁移变为与旧机相同，已和旧机
@@ -127,6 +129,12 @@ just hm praxic hank
 旧机清空或 GC 之前保留必要的系统 / home 闭包，必要时使用 `nix copy` 传到新机，
 不复制整套 `/nix` 数据库和所有历史 generation。
 
+复制进来的用户 package profile 不一定已经在新 store 注册 GC root。首次 GC 前，
+必须检查 `nix-store --gc --print-roots` 中同时有系统、`current-home` 和用户 package
+profile，并确认 `--print-dead` 不含它们的实际 store 路径。本次为迁入的
+`~/.local/state/nix/profiles/profile-91-link` 补了 indirect GC root；见
+[profile 回收事故](incidents.md#mac-migration-profile-gc)。
+
 ## 网络身份 {#network-identity}
 
 旧机 Tailscale 节点 ID 为 1，DNS 已改为 `m1elite.inner.imdomestic.com`，IPv4 仍为
@@ -154,3 +162,12 @@ wg0。确认密钥、服务端 peer 以及旧机隧道已停后再启用；旧�
 - PostgreSQL 17 可连接，旧机的 `hank` 与 `postgres` 数据库正常。
 - Tailscale 两台为独立设备；Touch ID、Apple Pay、网络扩展重新授权，验证 FileVault 解锁。
 - 已激活的配置与用户要求一并部署的 `flake.lock` 改动均提交并推送。
+
+## 新机磁盘清理
+
+用户确认保留最新 `N12Turbo` 4.0.0.32 刷机包，删除 .31、两份 .26 压缩包及 .26
+解压目录。另删除已核对无运行引用、被 Git 忽略的 `Development/maxops/target` 编译
+产物，以及没有运行中 Gradle daemon 使用的历史 `.out.log`；源码与未跟踪文件保留。
+这组清理实测增加 65.69 GiB 可用空间，另 Nix GC 回收 7.6 GiB，Homebrew 清理约
+491 MB，当前可用约 470 GiB。GC 中遗漏的用户 profile 已完整恢复并补注册，用户已
+确认终端恢复。照片库、iCloud 文件、Codex/Claude 历史、QQ/微信数据与浏览器资料保留。

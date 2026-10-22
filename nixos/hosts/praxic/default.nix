@@ -43,6 +43,7 @@ in {
           userModules.hank.module
           userModules.hank.dev
           ../../../home/modules/postgresql
+          ../../../home/modules/tailscale
           {my.vscode.enable = true;}
         ];
       };

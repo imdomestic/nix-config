@@ -4,6 +4,27 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-22 · 迁入用户 profile 未注册 GC 引用导致 shell 工具消失 {#mac-migration-profile-gc}
+
+新机已成功重启、挂载 `/nix`，系统和 Home Manager generation 都正常。随后清理
+闲置 Nix 路径时，遗漏了迁入的 `~/.local/state/nix/profiles/profile-91-link` 的
+GC 注册；`~/.nix-profile` 经它指向 `8lgx…-user-environment`。虽然磁盘上的 profile
+链接存在，fresh store 中却没有对应 GC root。GC 回收了用户环境和其 manifest 两条
+路径，新终端因此找不到 git、starship、nvim 等工具。软件包本身仍被 home 闭包保留。
+
+**误导点：问题紧随重启出现，看起来像 `/nix` 未自动挂载或 shell 配置未恢复。**
+实际挂载、daemon、系统闭包和 home 闭包均正常；首次 Home Manager 激活发现包集合
+没变，没有重新创建旧用户 profile 的 GC 注册，所以“激活成功”并不足以证明可安全 GC。
+
+从旧机 `nix copy` 恢复这两条路径后，使用 `nix-store --realise <user-environment>
+--add-root /Users/hank/.local/state/nix/profiles/profile-91-link --indirect` 注册原 generation
+链接。再次核对 `--print-roots` 包含用户 profile 和 `current-home`，`--print-dead`
+不包含现用用户环境，交互 zsh、git、just、starship、nvim、elan 均恢复；用户新开
+终端标签页后确认正常。配置、会话与应用数据未删除。
+
+以后恢复 profile 后、首次 GC 前，必须分别检查系统、Home Manager 与用户 package
+profile 的 GC root，不能只检查当前 home generation 的 store 路径还存在。
+
 ## 2026-10-22 · Mac 迁移后的 SSH 断连与 Nix 卷重建 {#mac-migration-nix-bootstrap}
 
 M1 Pro 到 M3 Max 的 Apple 迁移未包含“其他文件和文件夹”和 Max Fleet Operator，
