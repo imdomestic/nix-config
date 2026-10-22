@@ -228,6 +228,7 @@ in {
     tui = {
       theme = "evergarden-winter";
       plugin = [];
+      keybinds.editor_open = "ctrl+g";
     };
     themes = {
       "evergarden-winter".theme = evergardenWinter;
