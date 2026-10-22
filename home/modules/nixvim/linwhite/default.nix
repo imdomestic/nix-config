@@ -10,7 +10,7 @@
   javaDebugServer = "${pkgs.vscode-extensions.vscjava.vscode-java-debug}/share/vscode/extensions/vscjava.vscode-java-debug/server";
   javaTestServer = "${pkgs.vscode-extensions.vscjava.vscode-java-test}/share/vscode/extensions/vscjava.vscode-java-test/server";
 in {
-  imports = [./base.nix];
+  imports = [./base.nix ./theme.nix];
 
   programs.nixvim = {
     extraPlugins = lib.optionals pkgs.stdenv.isDarwin [
