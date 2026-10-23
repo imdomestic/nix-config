@@ -23,14 +23,11 @@
 {
   config,
   lib,
-  inputs,
   ...
 }: let
   cfg = config.my.monitoring;
 
-  inventory =
-    (import ../../../lib/mkInventory.nix {inherit inputs;})
-    {hosts = import ../../hosts {inherit inputs;};};
+  inventory = config.my.fleet.inventory;
 
   # 后端就是那几份监控,同样从 registry 派生 —— 和 ./default.nix 读的是同一个
   # roles 字段,所以加一份监控不需要回来改这里。

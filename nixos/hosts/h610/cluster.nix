@@ -1,13 +1,10 @@
 {
   config,
-  inputs,
   lib,
   ...
 }: let
   host = config.my.host;
-  inventory = (import ../../../lib/mkInventory.nix {inherit inputs;}) {
-    hosts = import ../. {inherit inputs;};
-  };
+  inventory = config.my.fleet.inventory;
   managed = lib.filter (entry: entry.clusterControl.enable or false) inventory;
   gaojiManagementHosts = ["h310" "h610" "tank"];
   gaojiManaged = lib.filter (entry: builtins.elem entry.name gaojiManagementHosts) managed;

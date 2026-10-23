@@ -22,14 +22,11 @@
   config,
   lib,
   pkgs,
-  inputs,
   ...
 }: let
   cfg = config.my.telemetry;
 
-  inventory =
-    (import ../../../lib/mkInventory.nix {inherit inputs;})
-    {hosts = import ../../hosts {inherit inputs;};};
+  inventory = config.my.fleet.inventory;
 
   # Resolve the inventory names at collection time to label remote build sessions.
   dnsToName = lib.concatMapStrings (h: "${h.tsName} ${h.name}\n") inventory;

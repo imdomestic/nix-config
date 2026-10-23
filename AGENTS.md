@@ -7,75 +7,143 @@ the traps all live here.
 ## Architecture
 
 One flake, four evaluators: NixOS, nix-darwin, standalone Home Manager, and
-system-manager. Every machine is a single entry in a shared host registry; the
-builders in `lib/` turn that entry into whichever configuration kinds it asks
-for.
+system-manager. The flake itself is a flake-parts evaluation: `flake.nix` only
+lists inputs and hands import-tree three sets of files — everything under
+`flake/`, every `nixos/hosts/<name>/host.nix`, every `home/users/<dir>/user.nix`.
+Those are top-level (flake-parts) modules. Everything else stays a plain NixOS /
+nix-darwin / Home Manager / system-manager module.
+
+Three top-level tables, each typed, so a misspelled field fails evaluation:
+
+| Table | Entries | Schema |
+| --- | --- | --- |
+| `hosts.<name>` | `nixos/hosts/<name>/host.nix` | `flake/schema/hosts.nix` |
+| `users.<account>` | `home/users/<dir>/user.nix` | `flake/schema/users.nix` |
+| `placements.<service>` | next to the service's module | `flake/schema/placements.nix` |
+
+`flake/builders/` turns them into configurations. Start reading at
+`flake/schema/hosts.nix`. Why it is shaped this way:
+`docs/decisions.md#flake-parts-tables`.
 
 ### Host registry
 
-`nixos/hosts/default.nix` maps a name to `nixos/hosts/<name>/default.nix`, which
-returns **metadata, not a module**:
-
 ```nix
-{inputs}: {
-  system = "x86_64-linux";
-  kind = "nixos";                 # nixos | darwin | home
-  roles = ["desktop" "gui"];
-  tsName = "example.inner.imdomestic.com"; # deployment and telemetry opt-in
-  ip = "10.0.0.68";               # optional separate WireGuard address
-  sshUser = "root";
+# nixos/hosts/example/host.nix
+{config, inputs, ...}: let
+  m = config.flake.modules;
+in {
+  hosts.example = {
+    system = "x86_64-linux";
+    kind = "nixos";                 # nixos | darwin | home
+    roles = ["desktop" "gui"];
+    tsName = "example.inner.imdomestic.com"; # deployment and telemetry opt-in
+    ip = "10.0.0.68";               # optional separate WireGuard address
+    sshUser = "root";
+    maxTier = "interactive";        # caps every account's home tier here
 
-  profiles = [...];               # from {nixos,darwin,home}/profiles/default.nix
-  modules = [./system.nix ./hardware-configuration.nix];
-  hardwareModules = [...];        # nixos-hardware modules
-  externalModules = [...];        # third-party modules out of flake inputs
+    profiles = with m.nixos; [base desktop];
+    modules = [./system.nix ./hardware-configuration.nix m.nixos.vex];
+    hardwareModules = [...];        # nixos-hardware modules
+    externalModules = [...];        # third-party modules out of flake inputs
 
-  systemManager = {               # optional, Linux only
-    enable = true;
-    modules = [...];
-    overlays = [...];             # overlays go here, NOT nixpkgs.overlays
-  };
+    systemManager = {               # optional, Linux only
+      enable = true;
+      modules = [m.systemManager.nix-settings ./system-manager.nix];
+      overlays = [...];             # overlays go here, NOT nixpkgs.overlays
+    };
 
-  users.hank.home = {
-    profiles = [...];
-    modules = [...];
+    users = {
+      hank = {};                    # has an account here; its home comes from users.hank
+      linwhite = {
+        tier = "interactive";       # lower than its default, on this host
+        gui.profile = m.homeManager.gui-common; # replaces its GUI layers here
+        modules = [./home.nix];     # extra home modules, loaded last
+        extraGroups = ["wheel"];    # replaces the default groups
+        nixos.uid = 501;            # merged into users.users.linwhite
+      };
+    };
   };
 }
 ```
 
-`lib/my-host.nix` forwards the metadata to every evaluator as `config.my.host`
-(schema in `modules/shared/host-options.nix`): `name`, `system`, `roles`,
-`tsName`, `lanRoutes`, `gpuMonitoring`, `clusterControl`, `users`, `usernames`,
-`homeOverlays`, plus `useChinaMirror` (defaults on; hosts opt out in
-`system.nix`). Read it instead of re-deriving host facts.
+A new machine is a new directory with a `host.nix`; nothing else registers it,
+but it has to be `git add`ed. The fact fields (`name`, `system`, `roles`,
+`tsName`, `lanRoutes`, `gpuMonitoring`, `clusterControl`, `homeOverlays`) are
+declared once, in `modules/shared/host-facts.nix`, and reach every evaluator as
+`config.my.host` together with `users` and `usernames`, plus `useChinaMirror`
+(defaults on; hosts opt out in `system.nix`). Read it instead of re-deriving
+host facts.
+
+Modules that need to see past their own host read `config.my.fleet`:
+`hosts` (every entry's facts), `inventory` (the managed hosts,
+`flake/schema/inventory.nix`) and `placements` (resolved to a tsName). Never
+`import` the registry from a module. Evaluation fails if two hosts advertise
+the same `lanRoutes` or a `kind` does not match its `system`.
+
+Modules a `host.nix` or `user.nix` picks by name are registered as
+`flake.modules.<class>.<name>` (`flake/modules/<class>.nix`; classes `nixos`,
+`darwin`, `homeManager`, `systemManager`). The values are plain paths, not
+flake-parts' class-tagged wrappers; see `flake/flake-parts.nix` for why. Modules
+only other modules import stay relative imports.
+
+### Accounts and home tiers
+
+```nix
+# home/users/hank/user.nix
+{config, ...}: let
+  hm = config.flake.modules.homeManager;
+in {
+  flake.modules.homeManager = {hank = ./default.nix; hank-dev = ./dev.nix; …};
+  users.hank = {
+    tier = "dev";                   # default on every host
+    module = hm.hank;               # loaded on every host
+    dev = hm.hank-dev;              # at the dev tier, in place of home/profiles/dev.nix
+    gui.linux.modules = [hm.hank-gnome hm.ibus];
+    gui.darwin.profile = hm.gui-darwin;
+  };
+}
+```
+
+The table is keyed by account name. An account that is called something else on
+one machine gets its own entry reusing the module (`users.a123456` in
+`home/users/fendada/user.nix`).
+
+Tiers are `minimal < shell < interactive < dev` (`flake/_lib/tiers.nix`). An
+account's tier on a host is its host-level `tier` (else its default), capped by
+the host's `maxTier`. `flake/builders/homes.nix` composes a home in this order:
+core → shell → interactive → gui profile → the account's module → its dev
+module → its gui modules → the host's extra modules. GUI layers load only on
+hosts with the `gui` role, from the shell tier up.
 
 ### Outputs
 
 | Attribute | Built by |
 | --- | --- |
-| `nixosConfigurations.<host>`, `darwinConfigurations.<host>` | `lib/mkConfigurations.nix` |
-| `homeConfigurations."hosts/<host>/<user>"`, also `"<user>@<host>"` | `lib/mkHomeConfigurations.nix` |
-| `systemConfigs.<host>` (also `.hosts.<host>`, `.<system>.<host>`) | `lib/mkSystemManagerConfigurations.nix` |
-| `deploy.nodes.<host>` — `profiles.system` + one `profiles.home-<user>` per account | `lib/mkDeployNodes.nix` — hosts with a `tsName` and a `nixosConfigurations` entry |
-| `deployChecks` | deploy-rs checks, one per node; deliberately not `checks` (see `flake.nix`) |
+| `nixosConfigurations.<host>`, `darwinConfigurations.<host>` | `flake/builders/systems.nix` |
+| `homeConfigurations."hosts/<host>/<user>"`, also `"<user>@<host>"` | `flake/builders/homes.nix` |
+| `systemConfigs.<host>` (also `.hosts.<host>`, `.<system>.<host>`) | `flake/builders/system-manager.nix` |
+| `deploy.nodes.<host>` — `profiles.system` + one `profiles.home-<user>` per account | `flake/builders/deploy.nix` — NixOS hosts with a `tsName` |
+| `deployChecks` | deploy-rs checks, one per node; deliberately not `checks` (see `flake/builders/deploy.nix`) |
 | `ciMatrix` | the CI host list, derived by rule from the registry |
 | `packages` | the few local builds pushed to `imdomestic.cachix.org` |
-| `hosts` | the raw registry |
+| `hosts` | the evaluated registry |
+| `modules` | `flake.modules`, the named modules |
 
 ### Layout
 
 ```text
-flake.nix
+flake.nix                       # inputs, and the import-tree roots
+flake/                          # top-level modules: schema/, builders/, modules/, outputs/; _lib/ is plain helpers
 Justfile                        # every rebuild/deploy command
-lib/                            # builders, my-host.nix, nixpkgs-registry.nix pins
-modules/shared/host-options.nix # config.my.host schema
-nixos/hosts/<name>/             # default.nix (metadata) + system.nix + hardware-configuration.nix
+lib/                            # helpers modules import: nixpkgs-registry.nix pins, wg*, model tables
+modules/shared/                 # host-facts.nix + host-options.nix: the config.my.host / my.fleet schema
+nixos/hosts/<name>/             # host.nix (registry entry) + system.nix + hardware-configuration.nix
 nixos/profiles/                 # base, desktop, server, netdiag, virtualisation
 nixos/modules/                  # system modules: nix*, users, mihomo, monitoring, vfio, …
 darwin/profiles/                # macOS base (pulls in nixos/modules/nix.nix, users, home-manager-cli)
-home/profiles/                  # core, base, interactive, gui/{linux,darwin}; dev.nix is imported per user
+home/profiles/                  # tiers core, shell, interactive, dev; gui/{common,linux,darwin}
 home/modules/                   # one directory per app: nixvim, ghostty, tmux, vicinae, …
-home/users/<name>/              # default.nix (+ dev.nix where the user has one)
+home/users/<name>/              # user.nix (account table entry) + default.nix (+ dev.nix, …)
 pkgs/                           # local packages (tmux-agent-sidebar, …)
 scripts/                        # check-* scripts behind the just recipes, plus model/bench tooling
 secrets/                        # sops-nix: secrets.yaml + hosts/<host>.yaml
@@ -122,14 +190,16 @@ entry files explicitly.
 ## Layout conventions
 
 - `home/modules/<app>/` — one directory per app, Home Manager modules.
-- `home/profiles/` — bundles of modules (`core`, `base`, `interactive`, `gui`).
-  `dev.nix` is not a registry profile: each user's `home/users/<user>/dev.nix`
-  imports it.
+- `home/profiles/` — the tier bundles (`core`, `shell`, `interactive`, `dev`)
+  and the shared GUI bundles (`gui/`). Hosts never list them; the tier and the
+  `gui` role pick them.
 - `nixos/{hosts,modules,profiles}/`, `darwin/profiles/`, `modules/shared/` —
   system-level equivalents.
-- New machines are added as metadata in `nixos/hosts/<name>/default.nix` and
-  registered in `nixos/hosts/default.nix`. Read host facts from
-  `config.my.host` instead of re-deriving them.
+- New machines are a `nixos/hosts/<name>/host.nix`, new accounts a
+  `home/users/<dir>/user.nix`. Read host facts from `config.my.host` and fleet
+  facts from `config.my.fleet` instead of re-deriving them.
+- An account's differences go in its own directory or in its entry on that
+  host, never in an `if config.home.username == …` inside a shared module.
 - Overlays for system-manager hosts go in `systemManager.overlays`, not
   `nixpkgs.overlays` (see "Things that will bite you" below).
 
@@ -167,14 +237,14 @@ misled you** — the wrong first guess is usually more valuable than the fix.
 Home Manager is **never** a NixOS or nix-darwin module here, not even on hosts
 this repo also owns the OS of. Every user is a standalone
 `homeConfigurations."hosts/<host>/<user>"` (aliased `"<user>@<host>"`), built by
-`lib/mkHomeConfigurations.nix`. `lib/mkConfigurations.nix` builds the system and
+`flake/builders/homes.nix`. `flake/builders/systems.nix` builds the system and
 adds no home-manager module at all.
 
 - Do not add `inputs.home-manager.{nixos,darwin}Modules.home-manager` to a system
   evaluation, and do not put `home-manager.users.*` in a system module. The whole
   point is that a home change costs no system rebuild and no root.
 - **`osConfig` is unavailable** in home modules — it only exists for submodule
-  Home Manager. Route host facts through `config.my.host`
+  Home Manager. Route host facts through `config.my.host` / `config.my.fleet`
   (`modules/shared/host-options.nix`), which all four evaluators share. There is
   currently no `osConfig` reference anywhere in the repo; keep it that way.
 - A home change is verified with `just hm-dry <host> <user>`, **not** with
@@ -187,11 +257,12 @@ adds no home-manager module at all.
   `nixos/modules/home-manager-cli.nix` (which ships the `home-manager` binary so
   a fresh machine can bootstrap its first activation).
 - **Where a package goes.** Default to `home.packages` in the asking user's
-  `home/users/<user>/`. `environment.systemPackages` is only for things the
+  `home/users/<user>/`; if every account at some tier should have it, the tier
+  bundle in `home/profiles/`. `environment.systemPackages` is only for things the
   machine itself needs, or that every account must have regardless of who logs
   in — it costs a system rebuild and root to change.
 - On deployable hosts, homes ride along as `deploy.nodes.<host>.profiles.home-<user>`
-  (`lib/mkDeployNodes.nix`), because server accounts have no one to run
+  (`flake/builders/deploy.nix`), because server accounts have no one to run
   `home-manager` interactively.
 
 ## Build & verify
@@ -358,7 +429,21 @@ it to `imdomestic.cachix.org`.
 ## Things that will bite you
 
 - **New files are invisible to Nix until `git add`ed.** The flake reads the git
-  tree, so an untracked module silently does not exist.
+  tree, so an untracked module silently does not exist — and an untracked
+  `host.nix` or `user.nix` is a host or account that silently does not exist.
+- **import-tree loads every `.nix` under `flake/`** as a flake-parts module.
+  Plain helper functions go under `flake/_lib/` (import-tree skips any path
+  containing `/_`). Under `nixos/hosts/` and `home/users/` only files named
+  `host.nix` / `user.nix` load.
+- **Two `config`s.** In `flake/`, `host.nix` and `user.nix`, `config` is the
+  flake-level one (`config.hosts`, `config.flake.modules`); inside a module
+  value it is that evaluation's. Plain modules reach fleet data through
+  `config.my.fleet`, never by importing the registry.
+- **Don't wrap modules you put in a host's lists.** The module system orders
+  definitions by import depth, so an extra `imports` layer reorders
+  `environment.systemPackages` / `home.packages` — and buildEnv's
+  `ignoreCollisions` lets order decide which package wins a colliding file. This
+  is why `flake.modules` holds plain paths (`flake/flake-parts.nix`).
 - **Determinate hosts** (`praxic`, `aegis`, `alex`) set `nix.enable = false`,
   which drops nix-darwin's entire nix module — `nix.settings` and `nix.registry`
   evaluate to nothing, with no error. `nixos/modules/nix-settings.nix` and

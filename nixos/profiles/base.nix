@@ -24,7 +24,7 @@
     ];
 
   # Host metadata comes from config.my.host (see modules/shared/host-options.nix);
-  # legacy module args are bridged centrally in lib/mkConfigurations.nix.
+  # the specialArgs that remain are set in flake/builders/systems.nix.
   nixpkgs.hostPlatform = lib.mkDefault system;
   networking.hostName = lib.mkDefault config.my.host.name;
 

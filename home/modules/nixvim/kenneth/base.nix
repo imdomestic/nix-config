@@ -230,7 +230,7 @@ in {
     ../options.nix
   ];
 
-  # nixvim replaces the plain neovim enabled by home/profiles/base.nix
+  # nixvim replaces the plain neovim enabled by home/profiles/shell.nix
   programs.neovim.enable = lib.mkForce false;
 
   programs.nixvim = {
