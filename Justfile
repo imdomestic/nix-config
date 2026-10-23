@@ -94,32 +94,58 @@ upp input:
 #
 # **构建发生在发起方**:节点没设 remoteBuild(0645dfa 注释掉了),deploy-rs
 # 默认 false。从 mac 部署 linux 主机要加 `--remote-build`,否则会尝试本地构建
-# 然后失败。小内存机器两种都不行,走 AGENTS.md 里指定的构建机。
-# 来龙去脉见 docs/incidents.md#deploy-remote-build。
+# 然后失败。来龙去脉见 docs/incidents.md#deploy-remote-build。
+#
+# 小内存机器两种都不行:registry 里设了 `buildOn` 的 host 只在指定的构建机上编
+# (docs/incidents.md#arm-boxes-oom-on-local-build)。`deploy` 只推它们的 home,
+# `deploy-host` / `deploy-system` 拒绝它们,系统走 `deploy-built`。
 #
 # Each node carries a `system` profile plus one `home-<user>` profile per account
 # (flake/builders/deploy.nix) — the users on servers do not run home-manager
 # themselves, so a plain `just deploy` still has to push their homes.
 
-# Build + activate every configured node, system and homes
-deploy:
-  deploy .
+# Extra args go to deploy-rs, e.g. just deploy --remote-build.
+# Build + activate every node; `buildOn` hosts get only their homes
+deploy *args:
+  deploy --targets $(just _deploy-targets) {{args}}
 
 # Deploy a single node, e.g. just deploy-host tank
-deploy-host host:
-  deploy .#"{{host}}"
+deploy-host host *args: (_built-here host)
+  deploy .#"{{host}}" {{args}}
 
 # Only the system closure of a node — skips every home-<user> profile
-deploy-system host:
-  deploy .#"{{host}}".system
+deploy-system host *args: (_built-here host)
+  deploy .#"{{host}}".system {{args}}
 
 # Only one user's home on a node, e.g. just deploy-home tank hank
-deploy-home host user:
-  deploy .#"{{host}}"."home-{{user}}"
+deploy-home host user *args:
+  deploy .#"{{host}}"."home-{{user}}" {{args}}
 
 # Deploy everything but skip the flake checks (faster)
 deploy-fast:
-  deploy . --skip-checks
+  just deploy --skip-checks
+
+# The builder's checkout must end up at exactly this HEAD, so push first.
+# System of a `buildOn` host: built on its builder, pushed for the next boot (just deploy-built r2s)
+deploy-built host:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  rev=$(git rev-parse HEAD)
+  git fetch -q
+  if [ -n "$(git log --oneline origin/main..HEAD)" ]; then echo "本地有没推的提交,先 push" >&2; exit 1; fi
+  read -r builder target < <(nix eval --raw .#hosts --apply 'hs: let h = hs."{{host}}"; in if h.buildOn == null then throw "{{host}} 没有 buildOn,用 just deploy-host" else "${hs.${h.buildOn}.tsName} ${h.tsName}"')
+  ssh "hank@$builder" "set -e; cd ~/.config/nix-config && git pull -q --ff-only && test \"\$(git rev-parse HEAD)\" = $rev && nixos-rebuild boot --flake .#{{host}} --target-host root@$target"
+
+# deploy-rs targets for `deploy`: whole nodes, but only the home profiles of
+# hosts that are built elsewhere.
+_deploy-targets:
+  @nix eval --raw .#hosts --apply 'hs: toString (builtins.concatMap (n: let h = hs.${n}; in if h.tsName == null || h.kind != "nixos" then [] else if h.buildOn == null then [".#${n}"] else map (u: ".#${n}.home-${u}") (builtins.attrNames h.users)) (builtins.attrNames hs))'
+
+_built-here host:
+  #!/usr/bin/env bash
+  set -euo pipefail
+  b=$(nix eval --raw .#hosts."{{host}}".buildOn --apply 'b: if b == null then "" else b')
+  if [ -n "$b" ]; then echo "{{host}} 的系统只在 $b 上编(registry buildOn),用 just deploy-built {{host}}" >&2; exit 1; fi
 
 # Update all inputs, then deploy everything
 update-deploy: up deploy

@@ -13,6 +13,7 @@ in {
       manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "xray.service" "nginx.service" "ddns-go.service" "systemd-resolved.service"];
     };
     maxTier = "interactive";
+    buildOn = "r6s";
 
     profiles = with m.nixos; [
       base

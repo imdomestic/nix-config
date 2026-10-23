@@ -40,6 +40,7 @@ in {
     ip = "10.0.0.68";               # optional separate WireGuard address
     sshUser = "root";
     maxTier = "interactive";        # caps every account's home tier here
+    buildOn = "r6s";                # too small to build itself; see 小内存机器 below
 
     profiles = with m.nixos; [base desktop];
     modules = [./system.nix ./hardware-configuration.nix m.nixos.vex];
@@ -278,6 +279,7 @@ just hm <host> <user>     # home-manager switch, resolves hosts/<host>/<user>
 just hm-dry <host> <user> # home-manager dry run
 just up / just upp <input>            # flake update, all inputs or one
 just deploy / just deploy-host <host> # deploy-rs, see "Deploys" below
+just deploy-built <host>  # a `buildOn` host's system, via its builder
 just deploy-system <host> / just deploy-home <host> <user>
 just check-sops / check-xray / check-singbox [host...]; just check-tunnels
 ```
@@ -300,6 +302,11 @@ Do not run `switch` on the user's behalf unless asked.
 |---|---|---|---|
 | `r2s` `r5s` `gizmo` `rpi4` | 1–4 GB | `r6s`（8 核 / 7.6 GB / aarch64） | `hank@r6s` |
 | `tokyo` | 2 GB | `tank`（20 核 / 64 GB / x86_64） | `hank@tank` |
+
+对应关系以 registry 的 `buildOn` 为准（表里是它的抄本加上内存数字），求值时会
+校验构建机存在、同架构、有 tsName。`just deploy` 只推这几台的 home，
+`just deploy-host` / `deploy-system` 拒绝它们；系统用 `just deploy-built <host>`，
+它就是下面这条命令，外加先确认构建机的 checkout 快进到和本地完全相同的 HEAD：
 
 ```sh
 ssh hank@<构建机> \

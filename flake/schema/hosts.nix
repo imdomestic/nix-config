@@ -66,6 +66,17 @@
           default = "dev";
           description = "Highest home tier any account gets on this host, for machines too small for the dev toolchain.";
         };
+        buildOn = mkOption {
+          type = types.nullOr types.str;
+          default = null;
+          description = ''
+            Registry name of the machine that builds this host's system, for
+            hosts too small to build it themselves
+            (docs/incidents.md#arm-boxes-oom-on-local-build). `just deploy`
+            skips them and `just deploy-host` refuses them; `just deploy-built`
+            builds on this machine and pushes.
+          '';
+        };
 
         profiles = modulesOption "System profiles, from `config.flake.modules.<class>`.";
         modules = modulesOption "This host's own system modules.";
@@ -109,10 +120,17 @@
     kindMismatch = lib.attrNames (lib.filterAttrs (_: h:
       h.kind != "home" && (h.kind == "darwin") != lib.hasSuffix "darwin" h.system)
     hosts);
+    # A builder must exist, share the system, be reachable and build for itself.
+    badBuilders = lib.attrNames (lib.filterAttrs (_: h: let
+      b = hosts.${h.buildOn} or null;
+    in
+      h.buildOn != null && (b == null || b.system != h.system || b.tsName == null || b.buildOn != null))
+    hosts);
   in
     lib.throwIf (dupRoutes != []) "hosts: lanRoutes advertised by more than one host: ${toString dupRoutes}"
     (lib.throwIf (kindMismatch != []) "hosts: kind does not match system for ${toString kindMismatch}"
-      hosts);
+      (lib.throwIf (badBuilders != []) "hosts: buildOn must name a host of the same system with a tsName that builds for itself: ${toString badBuilders}"
+        hosts));
 in {
   options.hosts = mkOption {
     type = types.attrsOf hostType;
