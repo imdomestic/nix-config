@@ -24,6 +24,15 @@ in {
           default = null;
           description = "Loaded at the dev tier in place of home/profiles/dev.nix, which it is expected to import.";
         };
+        sshKeys = mkOption {
+          type = types.listOf types.str;
+          default = [];
+          description = ''
+            Public keys that may log in as this account, on every host it has
+            an account on. Keys in nixos/modules/ssh/keys.nix work for every
+            account instead, root included.
+          '';
+        };
         ageKeys = mkOption {
           type = types.attrsOf (types.strMatching "age1[0-9a-z]{58}");
           default = {};
