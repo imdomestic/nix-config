@@ -19,47 +19,54 @@
     };
   };
 in
-  buildNpmPackage {
-    pname = package.name;
-    inherit (package) version;
+  buildNpmPackage ({
+      pname = package.name;
+      inherit (package) version;
 
-    src = fetchurl {
-      url = "https://registry.npmjs.org/opencode-latex/-/opencode-latex-${package.version}.tgz";
-      hash = "sha512-OVKCZWv4HCG8wyDgUn2gzJXDwEsIpahAvsAiH2ngLgCoCbgquBYznbmsPbS2k8Kp++0W4DJ7uuTiAAyWk3Pa2Q==";
-    };
+      src = fetchurl {
+        url = "https://registry.npmjs.org/opencode-latex/-/opencode-latex-${package.version}.tgz";
+        hash = "sha512-OVKCZWv4HCG8wyDgUn2gzJXDwEsIpahAvsAiH2ngLgCoCbgquBYznbmsPbS2k8Kp++0W4DJ7uuTiAAyWk3Pa2Q==";
+      };
 
-    postPatch = ''
-      cp ${writeText "package.json" (builtins.toJSON package)} package.json
-      cp ${./package-lock.json} package-lock.json
-    '';
+      postPatch = ''
+        cp ${writeText "package.json" (builtins.toJSON package)} package.json
+        cp ${./package-lock.json} package-lock.json
+      '';
 
-    npmDeps = importNpmLock {
-      inherit package;
-      packageLock = lib.importJSON ./package-lock.json;
-    };
-    npmConfigHook = importNpmLock.npmConfigHook;
-    npmFlags = ["--legacy-peer-deps" "--ignore-scripts"];
-    # Patch the installed math dependency as well as the plugin's transport.
-    preInstall = ''
-      patch --batch -p1 < ${./opentui-0.6.patch}
-    '';
-    dontNpmBuild = true;
-    nativeBuildInputs = lib.optionals stdenv.hostPlatform.isLinux [autoPatchelfHook];
-    buildInputs = lib.optionals stdenv.hostPlatform.isLinux [stdenv.cc.cc.lib];
+      npmDeps = importNpmLock {
+        inherit package;
+        packageLock = lib.importJSON ./package-lock.json;
+      };
+      npmConfigHook = importNpmLock.npmConfigHook;
+      npmFlags = ["--legacy-peer-deps" "--ignore-scripts"];
+      # Patch the installed math dependency as well as the plugin's transport.
+      preInstall = ''
+        patch --batch -p1 < ${./opentui-0.6.patch}
+      '';
+      dontNpmBuild = true;
+      nativeBuildInputs = lib.optionals stdenv.hostPlatform.isLinux [autoPatchelfHook];
+      buildInputs = lib.optionals stdenv.hostPlatform.isLinux [stdenv.cc.cc.lib];
 
-    installPhase = ''
-      runHook preInstall
-      mkdir -p "$out"
-      cp -r src node_modules package.json LICENSE "$out/"
-      echo 'export { default } from "./src/index.ts"' > "$out/index.ts"
-      echo 'export { default } from "./src/tui.ts"' > "$out/tui.ts"
-      runHook postInstall
-    '';
+      installPhase = ''
+        runHook preInstall
+        mkdir -p "$out"
+        cp -r src node_modules package.json LICENSE "$out/"
+        echo 'export { default } from "./src/index.ts"' > "$out/index.ts"
+        echo 'export { default } from "./src/tui.ts"' > "$out/tui.ts"
+        runHook postInstall
+      '';
 
-    meta = {
-      description = "OpenCode 2 LaTeX renderer with compatible OpenTUI dependencies";
-      homepage = "https://github.com/kriss-spy/opencode-latex";
-      license = lib.licenses.mit;
-      platforms = ["aarch64-darwin" "x86_64-linux" "aarch64-linux"];
-    };
-  }
+      meta = {
+        description = "OpenCode 2 LaTeX renderer with compatible OpenTUI dependencies";
+        homepage = "https://github.com/kriss-spy/opencode-latex";
+        license = lib.licenses.mit;
+        platforms = ["aarch64-darwin" "x86_64-linux" "aarch64-linux"];
+      };
+    }
+    # The lock also carries the musl builds of the native modules; on glibc they
+    # can neither run nor be patched, and autoPatchelf fails on them.
+    // lib.optionalAttrs stdenv.hostPlatform.isLinux {
+      postInstall = ''
+        find "$out/node_modules" -maxdepth 2 -type d -name '*-musl' -prune -exec rm -rf {} +
+      '';
+    })
