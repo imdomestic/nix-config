@@ -19,6 +19,7 @@ in {
     ip = "10.0.0.6";
     sshUser = "root";
     maxTier = "interactive";
+    buildOn = "r6s";
 
     profiles = with m.nixos; [
       base

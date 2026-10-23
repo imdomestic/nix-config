@@ -8,6 +8,7 @@ in {
     tsName = "r2s.inner.imdomestic.com";
     lanRoutes = ["192.168.4.0/24"];
     maxTier = "interactive";
+    buildOn = "r6s";
 
     profiles = with m.nixos; [
       base

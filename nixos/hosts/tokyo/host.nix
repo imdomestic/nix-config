@@ -20,6 +20,7 @@ in {
     ip = "10.0.0.1";
     sshUser = "root";
     maxTier = "interactive";
+    buildOn = "tank";
 
     profiles = with m.nixos; [
       base
