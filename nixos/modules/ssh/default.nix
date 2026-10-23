@@ -1,19 +1,8 @@
-{lib, ...}: let
-  keys = import ./keys.nix;
-in {
-  environment.etc."ssh/authorized_keys.d/master" = {
-    text = lib.concatStringsSep "\n" keys;
-    mode = "0444";
-  };
+# sshd on. How it authenticates is ./policy.nix, which every NixOS host gets.
+{
+  imports = [./policy.nix];
 
-  services.openssh = {
-    enable = true;
-    settings = {
-      AuthorizedKeysFile = "%h/.ssh/authorized_keys /etc/ssh/authorized_keys.d/master";
-      PasswordAuthentication = true;
-      PermitRootLogin = "yes";
-    };
-  };
+  services.openssh.enable = true;
 
   # programs.ssh = {
   #   extraConfig = ''

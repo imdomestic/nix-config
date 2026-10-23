@@ -35,4 +35,12 @@
   # 光有 users.nix 里的 `shell = pkgs.zsh` 在 macOS 上是不生效的:nix-darwin 只对
   # users.knownUsers 里的账户改 shell,而 hank 是 macOS 自己建的既有账户。
   environment.shells = [pkgs.zsh];
+
+  # 远程登录开不开仍由 macOS 设置决定(services.openssh.enable 留 null),
+  # 开着的话只认 key,和 NixOS 那边的 nixos/modules/ssh/policy.nix 一致。
+  services.openssh.extraConfig = ''
+    PasswordAuthentication no
+    KbdInteractiveAuthentication no
+    PermitRootLogin prohibit-password
+  '';
 }
