@@ -67,6 +67,11 @@ policy、gaoji、qq-bot)只能自己 `import ../../hosts` 再读一遍。主机�
   system 和 home 两侧的功能几乎没有(重名的只有 tailscale,而两边还不是一回事),
   按功能聚合换不来什么,现在的 `nixos/` vs `home/` 还能直接看出改的是哪个闭包。
 
+- **没有"每个 system 只求值一份 pkgs"。** 本想统一注入 `nixpkgs.pkgs`,让
+  `packages` 输出和各 host 天然同一个 drv、顺带省求值时间。但 host 的
+  `nixpkgs.config` 本来就不一样(x470 `cudaSupport`、gpd `rocmSupport`),它们
+  必须是不同的实例;所以 `flake/outputs/packages.nix` 继续从具体 host 的 pkgs 里取。
+
 **验证方式。** 每一步纯重构都要求全车队输出不变:所有 nixos / darwin toplevel、
 所有 home 的 activationPackage、systemConfigs、packages、每个 deploy 节点、
 ciMatrix 的 drvPath / 值逐项相同。`deployChecks` 不纳入 —— 一项就吃 18 GB、二十多
