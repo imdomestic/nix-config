@@ -1,6 +1,6 @@
-# Where each fleet service runs. A service's server side enables itself on the
-# placed host, and its clients derive the address from here, so moving a
-# service is one line. Entries live next to the service's module.
+# Where each fleet service runs; the entries are in ../placements.nix. Clients
+# derive the address from `config.my.fleet.placements.<service>`, so moving a
+# service is one line there plus moving its server module.
 {
   config,
   lib,

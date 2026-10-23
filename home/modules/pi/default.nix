@@ -4,7 +4,7 @@
   pkgs,
   ...
 }: let
-  cliproxy = import ../../../lib/cliproxy-models.nix;
+  cliproxy = import ../../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
   pricing = import ./pricing.nix;
   ccExtensions = pkgs.callPackage ../../../pkgs/pi-cc-extensions {};
   mathExtension = pkgs.callPackage ../../../pkgs/pi-math {};

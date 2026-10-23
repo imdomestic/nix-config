@@ -5,7 +5,7 @@
 }: let
   bonsai = import ../../../lib/bonsai-models.nix;
   # API 与进度订阅经过同一网关，见 docs/incidents.md#bonsai-prefill-display。
-  serverHost = config.my.fleet.hosts.seraph.tsName;
+  serverHost = config.my.fleet.placements.bonsai-ninfer.tsName;
 in {
   sops.secrets."bonsai/api_key".sopsFile = ../../../secrets/clients/bonsai.yaml;
   my.opencode.prefillEndpoints = [

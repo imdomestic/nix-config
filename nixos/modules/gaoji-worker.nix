@@ -4,7 +4,6 @@
   ...
 }: let
   host = config.my.host;
-  hosts = config.my.fleet.hosts;
   resources = (import ../../lib/gaoji-workers.nix).${host.name};
   tokenName = "gaoji/worker_token";
 in {
@@ -25,7 +24,9 @@ in {
     // {
       enable = true;
       workerId = "${host.name}-worker";
-      controlUrl = "http://${hosts.h610.tsName}:8091";
+      controlUrl = let
+        p = config.my.fleet.placements.gaoji-control;
+      in "http://${p.tsName}:${toString p.port}";
       tokenFile = config.sops.secrets.${tokenName}.path;
       listenAddress = host.tsName;
       publicBaseUrl = "http://${host.tsName}:8092";
