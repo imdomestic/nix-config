@@ -191,68 +191,14 @@ in {
   # 同 r6s:这台也是 firewall.enable = false,原来那份 openFirewall = true
   # 是空操作,exporter 实际绑在 0.0.0.0。新模块绑 my.host.tsName(100.64.0.7)。
 
-  # ddns-go cloudflare token + web password rendered from sops.
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
-  sops.secrets."ddns/cloudflare_token" = {};
-  sops.secrets."ddns/web_password" = {};
-  sops.templates."ddns-go-config.yaml" = {
-    restartUnits = ["ddns-go.service"];
-    content = ''
-      dnsconf:
-          - name: ""
-            ipv4:
-              enable: false
-              gettype: url
-              url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-              netinterface: wan0
-              cmd: ""
-              domains:
-                  - ""
-            ipv6:
-              enable: true
-              gettype: netInterface
-              url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-              netinterface: ppp0
-              cmd: ""
-              ipv6reg: ""
-              domains:
-                  - rpi4:imdomestic.com
-            dns:
-              name: cloudflare
-              id: ""
-              secret: ${config.sops.placeholder."ddns/cloudflare_token"}
-            ttl: ""
-      user:
-          username: hank
-          password: ${config.sops.placeholder."ddns/web_password"}
-      webhook:
-          webhookurl: ""
-          webhookrequestbody: ""
-          webhookheaders: ""
-      notallowwanaccess: false
-      lang: zh
-    '';
-  };
-
   # 搬到悉尼之后关掉:这台现在蹲在公寓 hotspot 的 NAT 后面,WAN 拿到的是
-  # 172.24/16,也没有全局 IPv6 —— 上面那份 config 盯的 ppp0 根本不存在了,
-  # 就算改成盯 enp1s0u2,把一个私有地址推到 rpi4.imdomestic.com 也没有意义。
-  # 配置整份留着,搬回去把这两行翻回来即可。见 docs/decisions.md#rpi4-drop-pppoe。
-  systemd.services.ddns-go = {
-    enable = false;
-    description = "ddns";
+  # 172.24/16,也没有全局 IPv6 —— 默认盯的 ppp0 根本不存在了,就算改成盯
+  # enp1s0u2,把一个私有地址推到 rpi4.imdomestic.com 也没有意义。搬回去把这里
+  # 翻回 true 即可。见 docs/decisions.md#rpi4-drop-pppoe。
+  my.ddns.enable = false;
 
-    wantedBy = [];
-    wants = ["network-online.target"];
-    after = ["network-online.target"];
-
-    serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
-      Restart = "always";
-      RestartSec = 5;
-    };
-  };
   # Xray 的凭据全部走 sops。内联到 `settings` 会把每个 portal 的 UUID 写进这个
   # 公开仓库和 world-readable 的 nix store,所以整份 config 改由 sops.templates
   # 渲染,再用 settingsFile 交给 xray。
@@ -403,7 +349,7 @@ in {
   security.sudo.wheelNeedsPassword = false;
 
   # 见 profiles/netdiag.nix。iproute2 是冗余声明,删了。
-  # ddns-go 删了:上面那个单元写的是 ${pkgs.ddns-go.outPath}/bin/ddns-go,
+  # ddns-go 删了:nixos/modules/ddns-go 的单元写的是 ${pkgs.ddns-go.outPath}/bin/ddns-go,
   # 走绝对 store 路径,不吃 PATH。
 
   programs.zsh.enable = true;

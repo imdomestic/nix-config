@@ -10,6 +10,8 @@
     ../modules/nix.nix
     ../modules/users.nix
     ../modules/home-manager-cli.nix
+    # 默认关;路由器和有公网地址的机器用 my.ddns 打开。
+    ../modules/ddns-go
     inputs.sops-nix.nixosModules.sops
     # tailscale + Tailscale SSH。模块自己按 my.host.tsName 决定开不开,所以无条件
     # import。

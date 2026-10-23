@@ -536,68 +536,21 @@ in {
     extraDomainNames = ["kennethbot.inner.imdomestic.com"];
   };
 
-  # ddns-go cloudflare token + web password rendered from sops.
-  sops.secrets."ddns/cloudflare_token" = {};
-  sops.secrets."ddns/web_password" = {};
-  sops.templates."ddns-go-config.yaml" = {
-    restartUnits = ["ddns-go.service"];
-    content = ''
-      dnsconf:
-          - name: "h610"
-            ipv4:
-              enable: true
-              gettype: netInterface
-              url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-              netinterface: ppp0
-              cmd: ""
-              domains:
-                  - h610:imdomestic.com
-                  - tailscale:imdomestic.com
-                  - matrix:imdomestic.com
-                  - rtc:imdomestic.com
-                  - max:imdomestic.com
-            ipv6:
-              enable: true
-              gettype: netInterface
-              url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-              netinterface: ppp0
-              cmd: ""
-              ipv6reg: ""
-              domains:
-                  - h610:imdomestic.com
-                  - matrix:imdomestic.com
-                  - rtc:imdomestic.com
-            dns:
-              name: cloudflare
-              id: ""
-              secret: ${config.sops.placeholder."ddns/cloudflare_token"}
-            ttl: ""
-      user:
-          username: hank
-          password: ${config.sops.placeholder."ddns/web_password"}
-      webhook:
-          webhookurl: ""
-          webhookrequestbody: ""
-          webhookheaders: ""
-      notallowwanaccess: false
-      lang: zh
-    '';
-  };
-
-  systemd.services.ddns-go = {
+  my.ddns = {
     enable = true;
-    description = "ddns-go";
-
-    wantedBy = ["multi-user.target"];
-    wants = ["network-online.target"];
-    after = ["network-online.target"];
-
-    serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
-      Restart = "always";
-      RestartSec = 5;
-    };
+    zones = [
+      {
+        name = "h610";
+        ipv4 = {
+          enable = true;
+          interface = "ppp0";
+          domains = ["h610:imdomestic.com" "tailscale:imdomestic.com" "matrix:imdomestic.com" "rtc:imdomestic.com" "max:imdomestic.com"];
+        };
+        ipv6.domains = ["h610:imdomestic.com" "matrix:imdomestic.com" "rtc:imdomestic.com"];
+      }
+    ];
   };
+
 
   # Xray 的凭据全部走 sops。内联到 `settings` 会把 UUID 和 Reality 私钥同时写进
   # 这个公开仓库和 world-readable 的 nix store,所以整份 config 改由
