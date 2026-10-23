@@ -4,6 +4,28 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-23 · OpenCode 升级后 LaTeX 渲染退回源码 {#opencode-latex-opentui-06}
+
+OpenCode 2.1.2 使用 OpenTUI 0.6.6。插件依赖升到同版本后，加载阶段的
+`OPENTUI_FORCE_UNICODE` 冲突消失，但 `opentui-math` 0.1.0 仍调用已移除的
+`this.yogaNode.setMeasureFunc`；插件捕获构造异常后调用普通代码块渲染器，
+因此合法的 `latex` 围栏也只显示源码。文字模式和强制 Kitty 模式均可复现。
+
+**误导点：用户在 tmux 中运行，容易把问题归因于图片透传。** 实际
+`allow-passthrough` 已开启、nvim 图片正常；MathJax 单独生成 PNG 也成功。
+这次故障发生在发出图片之前。仅对齐依赖版本、确认插件菜单或 PNG 生成，
+都不足以证明公式能画出来。此前目录中的临时兼容副本也未被当前 Nix 配置加载。
+
+Nix 包同时适配依赖和插件：布局改用 `setMeasureProvider` 与
+`invalidateIntrinsicSize`；图片改用新版 `NativeImage`，在异步光栅化完成后
+通过宿主 `ResourceContext` 创建，由原生绘制流程处理 Kitty/SIXEL 与资源释放。
+旧的手工图片句柄和直接读取帧缓冲的 SIXEL 合成逻辑不再适用于新版录制式绘制。
+
+`scripts/check-opencode-latex.ts` 经 OpenTUI 的运行时模块桥加载实际 TUI 回调，
+检查分式、积分、多行推导、矩阵的文字回退、强制 Kitty、SIXEL、tmux 自动模式，
+以及内容更新、缩放和清理。原版在构造阶段失败，修复版通过绘制检查。
+测试中的终端能力和像素尺寸为模拟值；真实 tmux 中的最终视觉效果须在激活后验收。
+
 ## 2026-10-22 · 迁入用户 profile 未注册 GC 引用导致 shell 工具消失 {#mac-migration-profile-gc}
 
 新机已成功重启、挂载 `/nix`，系统和 Home Manager generation 都正常。随后清理
