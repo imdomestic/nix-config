@@ -1,12 +1,23 @@
-# hank 的 AeroSpace。按用户分文件、由 host 显式 import(praxic / hackintosh),
-# 不在模块里按 config.my.host.usernames 猜:aerospace 的配置是整机一份
-# (/etc/aerospace.toml),两个人的键位互不兼容,谁的机器谁自己写死。
-# linwhite 的那份在 ./linwhite.nix。
+# hank 的 AeroSpace,由 users.hank.gui.darwin 加载(./user.nix),所以 hank 的
+# 每台 Mac 桌面都有。Home Manager 管:配置写进 ~/.config/aerospace,launchd
+# agent 跟着账户走,两个人的键位各用各的。
 _: {
-  services.aerospace = {
+  programs.aerospace = {
     enable = true;
+    launchd.enable = true;
 
     settings = {
+      # nix-darwin 的 services.aerospace 原来会替我们写进这几项默认值。搬到
+      # Home Manager 后照写,生成的 aerospace.toml 和原来逐字一致;其中
+      # on-focused-monitor-changed 和 AeroSpace 自己的默认(空)不同。
+      "accordion-padding" = 30;
+      "after-startup-command" = [];
+      "exec-on-workspace-change" = [];
+      "on-focus-changed" = [];
+      "on-focused-monitor-changed" = ["move-mouse monitor-lazy-center"];
+      key-mapping.preset = "qwerty";
+      workspace-to-monitor-force-assignment = {};
+
       enable-normalization-flatten-containers = true;
       enable-normalization-opposite-orientation-for-nested-containers = true;
       default-root-container-layout = "tiles";
