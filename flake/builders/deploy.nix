@@ -62,9 +62,13 @@
         # activation script resolves every path relative to $HOME, so without
         # -H it would write the user's home into /root.
         sudo = "sudo -H -u";
+        # deploy-rs' own activate.home-manager, plus what `just hm` gets from
+        # `-b backup`: a file Home Manager takes over for the first time is
+        # moved to <name>.backup instead of failing the whole activation.
         path =
-          deployLibs.${host.system}.activate.home-manager
-          homeConfigurations."hosts/${name}/${userName}";
+          deployLibs.${host.system}.activate.custom
+          homeConfigurations."hosts/${name}/${userName}".activationPackage
+          "HOME_MANAGER_BACKUP_EXT=backup $PROFILE/activate";
       };
     })
     host.users;
