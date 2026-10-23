@@ -443,6 +443,11 @@ Pulling the private flake inputs needs the `SSH_PRIVATE_KEY` repo secret (a key
 with read access to the private `imdomestic/*` and `HCHogan/*` repos).
 `.github/workflows/cachix.yml` builds the flake's `packages` output and pushes
 it to `imdomestic.cachix.org`.
+`.github/workflows/update-llm-agents.yml` bumps the `llm-agents` input every
+hour, builds the packages homes use from it on x86_64-linux and aarch64-darwin,
+evaluates a few dev homes, and commits straight to main as
+`github-actions[bot]` (pushes made with `GITHUB_TOKEN` do not trigger ci.yml).
+Pull before touching `flake.lock`.
 
 ## Things that will bite you
 
