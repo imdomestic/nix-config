@@ -28,7 +28,8 @@
   );
 
   # `users.<name>` is the registry's account entry (flake/schema/hosts.nix):
-  # `extraGroups` replaces the default groups, `nixos` is merged in last.
+  # `extraGroups` replaces the default groups, `sshKeys` (from the account
+  # table) become its authorized keys, `nixos` is merged in last.
   mkUser = name: let
     account = users.${name} or {};
     defaultAttrs =
@@ -46,6 +47,9 @@
       }
       // lib.optionalAttrs isDarwin {
         home = "/Users/${name}";
+      }
+      // lib.optionalAttrs (account ? sshKeys) {
+        openssh.authorizedKeys.keys = account.sshKeys;
       };
   in
     lib.recursiveUpdate defaultAttrs (account.nixos or {});
