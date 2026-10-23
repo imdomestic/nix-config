@@ -103,9 +103,15 @@ in {
       };
     };
     firewall = {
-      enable = false;
-      trustedInterfaces = ["br-lan" "end0"];
+      enable = true;
+      # LAN 整段信任:mihomo 的 auto-redirect 把局域网设备的连接 DNAT 到本机,
+      # 目标端口不固定(end0 / enP4p65s0 是 br-lan 的成员口)。公网走 ppp0。
+      trustedInterfaces = ["br-lan"];
+      # xray portal 的两个入站。
+      allowedTCPPorts = [2444 54322];
       interfaces."ppp0".allowedUDPPorts = [546];
+      # mihomo 面板(controllerAddress 是 0.0.0.0:9090)只给 tailnet。
+      interfaces.tailscale0.allowedTCPPorts = [9090];
       checkReversePath = false;
     };
   };

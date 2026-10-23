@@ -343,14 +343,38 @@ in {
     # `attribute 'firewall' already defined` 直接失败。本地绿、CI 红,而且本地
     # 怎么试都复现不出来(tank 上刚踩过,见 docs/incidents.md#nix-dup-attr-ci)。
     firewall = {
-      enable = false;
-      trustedInterfaces = ["br-lan"];
+      enable = true;
+      # br-lan 是这台当网关的局域网(dae 透明代理,理由同 r2s);docker 的网桥
+      # 也在 dae 的 lanInterfaces 里。
+      trustedInterfaces = ["br-lan" "docker0"];
       interfaces."ppp0".allowedUDPPorts = [546];
-      # nginx 的 80、headplane 的 3001 和本地模型 API,只对 tailscale 放行。
-      # (enable = false,这条现在不生效;写着是为了哪天把 firewall 打开时
-      # 这些端口不用重新考古。)
-      interfaces.tailscale0.allowedTCPPorts = [80 3001 11434 11435];
+      # nginx(*.inner 的 vhost)、headplane、本地模型 API,只给 tailnet。
+      interfaces.tailscale0.allowedTCPPorts = [80 443 3001 11434 11435];
+      # 公网:headscale / h610.imdomestic.com / max webhook(8443)、matrix 和
+      # livekit 的反代(8448)、livekit RTC(7881)、coturn、xray 入站。
+      allowedTCPPorts = [8443 8448 7881 3478 3480 5349 5351 1444 1445 54322 54323 54324];
+      # coturn,以及 headscale 内置 DERP 的 STUN(3479)。
+      allowedUDPPorts = [3478 3479 3480 5349 5351];
+      allowedUDPPortRanges = [
+        # coturn 的 relay
+        {
+          from = 49152;
+          to = 49999;
+        }
+        # livekit 的 RTC
+        {
+          from = 50000;
+          to = 51000;
+        }
+      ];
       checkReversePath = false;
+      # docker compose 的网桥(br-<id>)、nspawn 容器、max 的沙箱和 operations 口。
+      extraInputRules = ''
+        iifname "br-*" accept
+        iifname "ve-*" accept
+        iifname "max-sb-*" accept
+        iifname "max-ops-host" accept
+      '';
     };
   };
 

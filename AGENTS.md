@@ -467,6 +467,19 @@ it to `imdomestic.cachix.org`.
   `hosts.<name>.users.<account>.ageKey`, `users.<account>.ageKeys`). After
   changing either, run `just sops-config`, then `sops updatekeys` on each file
   whose readers changed. CI fails when the committed file drifts.
+- **Every NixOS host runs the firewall** (nftables backend), except marble,
+  whose network namespace is Android's (`docs/decisions.md#marble-no-firewall`).
+  Whatever listens declares its own ports, tailnet-only ones on
+  `networking.firewall.interfaces.tailscale0`; `openFirewall` is left to each
+  module. Routers trust `br-lan` (dae / mihomo hand LAN connections to arbitrary
+  ports to INPUT); hosts whose LAN NIC carries a public IPv6 (tank, x470,
+  gizmo) trust only container and VM bridges and allow ports per interface.
+  `checkReversePath = false` wherever policy routing or transparent proxying
+  runs. Forwarding is not filtered, so a router's firewall does not shield the
+  LAN behind it.
+- **sshd takes keys only** (`nixos/modules/ssh/policy.nix`, in the base
+  profile). `nixos/modules/ssh/keys.nix` works for every account, root
+  included; a key for one account goes in that account's `sshKeys`.
 - **Determinate hosts** (`praxic`, `aegis`, `alex`) set `nix.enable = false`,
   which drops nix-darwin's entire nix module — `nix.settings` and `nix.registry`
   evaluate to nothing, with no error. `nixos/modules/nix-settings.nix` and

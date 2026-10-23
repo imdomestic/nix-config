@@ -139,7 +139,13 @@
   i18n.defaultLocale = "en_US.UTF-8";
 
   networking = {
-    firewall.enable = false;
+    firewall = {
+      enable = true;
+      # 这台不是网关,br-lan 是上行口(带公网 IPv6),不信任任何网卡;要放的
+      # 端口由各模块自己声明(vlmcsd、ddns-go、telemetry)。
+      # tailscale 子网路由和 xray 桥接走策略路由,rpfilter 会误杀。
+      checkReversePath = false;
+    };
     networkmanager.enable = false;
     useNetworkd = true;
     nftables = {
