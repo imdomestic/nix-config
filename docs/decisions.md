@@ -11,6 +11,16 @@
 
 ---
 
+## 2026-10-23 · marble 不开防火墙 {#marble-no-firewall}
+
+其余 NixOS 主机这天全部打开了防火墙(之前 marble、tokyo、gizmo、r2s、r5s、
+x470、tank、h610、rpi4、r6s 都是关的)。marble 例外:它是跑在 Droidspaces 里的
+容器,和 Android 共用网络命名空间,NixOS 的 `networking.firewall` 改写的就是这台
+手机自己的 netfilter 规则,会和 Android 的 eBPF / iptables 防火墙打架。那里的
+防火墙归 Android 管,这台的 sshd 也因此 `openFirewall = false`。
+
+---
+
 ## 2026-10-23 · AeroSpace 不在 nix-darwin 里 {#aerospace-in-home}
 
 原来是 nix-darwin 的 `services.aerospace`,配置是整机一份,所以 hank 和 linwhite

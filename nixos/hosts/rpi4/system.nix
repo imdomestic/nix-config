@@ -60,7 +60,10 @@ in {
       };
     };
     firewall = {
-      enable = false;
+      enable = true;
+      # LAN 整段信任:dae 透明代理把局域网设备访问任意端口的连接送进本机 INPUT,
+      # 目标端口保持原样,没法按端口列。上行在 enp1s0u2,不受影响。
+      trustedInterfaces = ["br-lan"];
       checkReversePath = false;
     };
   };

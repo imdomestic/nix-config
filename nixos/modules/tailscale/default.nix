@@ -95,6 +95,8 @@ in {
 
     services.tailscale = {
       enable = true;
+      # UDP 41641:没有它也能经 DERP 中继连上,但打不通直连。
+      openFirewall = true;
 
       # 用 extraSetFlags 不用 extraUpFlags:后者在 nixpkgs 的模块里**只有设了
       # authKeyFile 才会被应用**,这些机器都没设,写 extraUpFlags 会被静默忽略。

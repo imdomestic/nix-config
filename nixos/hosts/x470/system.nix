@@ -34,8 +34,9 @@ in {
     useNetworkd = true;
     nftables.enable = true;
     firewall = {
-      enable = false;
-      trustedInterfaces = ["enp34s0" "enp40s0" " enp40s0d1" "br-lan"];
+      enable = true;
+      # br-lan 是上行(DHCP、公网 IPv6),不信任;端口由各服务的 openFirewall
+      # 放(sshd、steam、iperf3)。
       checkReversePath = false;
     };
   };
@@ -152,7 +153,10 @@ in {
     steamcmd
   ];
 
-  services.iperf3.enable = true;
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
+  };
   services.openssh.enable = true;
   # 没有 tsName(不是部署目标),所以要显式开。见 nixos/modules/tailscale。
   my.tailscale.enable = true;

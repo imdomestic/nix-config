@@ -126,7 +126,18 @@ in {
   i18n.defaultLocale = "en_US.UTF-8";
 
   networking = {
-    firewall.enable = false;
+    firewall = {
+      enable = true;
+      # LAN 整段信任:dae 透明代理把局域网设备访问任意端口的连接送进本机 INPUT,
+      # 目标端口保持原样,没法按端口列。公网流量走 ppp0,不受影响。
+      trustedInterfaces = ["br-lan"];
+      # 策略路由加透明代理,rpfilter 会误杀。
+      checkReversePath = false;
+      # xray portal 的两个入站。
+      allowedTCPPorts = [2444 54322];
+      # DHCPv6-PD 的回包。
+      interfaces.ppp0.allowedUDPPorts = [546];
+    };
     networkmanager.enable = false;
     useNetworkd = true;
     nftables = {

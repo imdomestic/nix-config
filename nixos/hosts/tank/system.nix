@@ -344,11 +344,31 @@ in {
     # `attribute 'firewall' already defined` 直接失败。本地绿、CI 红,而且
     # 本地怎么试都复现不出来。
     firewall = {
-      enable = false;
-      trustedInterfaces = ["enp5s0" "ens6" "br-lan"];
+      enable = true;
+      # 只信任本机的容器 / 虚拟机网卡:k3s(cni0、flannel.1)、libvirt(virbr0)、
+      # max 的沙箱网桥和 operations 口。br-lan 上有公网 IPv6,按端口放。
+      trustedInterfaces = ["cni0" "flannel.1" "virbr0" "max-sb-native" "max-ops-host"];
       checkReversePath = false;
-      # NFS 和 cliproxy。只对 tailscale 放行(exports 里给的也是 tailnet 地址)。
-      interfaces.tailscale0.allowedTCPPorts = [2049 8317];
+      interfaces = {
+        # 局域网文件目录(nginx 的 tank.local)。
+        br-lan.allowedTCPPorts = [80];
+        # tank.local、NFS(exports 给的是 tailnet 地址)、k3s API、max 管理面板、
+        # matrix(h610 的 nginx 经 tailnet 反代)、cliproxy、ollama、
+        # gaoji bot(h610 的 nginx / napcat 来连)。
+        tailscale0.allowedTCPPorts = [80 2049 6443 7700 8008 8317 11434 18080];
+        # k3s 的 node-ip 在 wg0 上;luckperms 的 postgres(pg_hba 放了
+        # 10.0.0.0/24);tokyo DNAT 过来的 cs2。
+        wg0 = {
+          allowedTCPPorts = [5432 6443 10250 27015];
+          allowedUDPPorts = [8472 27015];
+        };
+      };
+      # nspawn 容器(ve-gaoji-web、vb-debian-guest)和每个 max 沙箱自己的 veth。
+      extraInputRules = ''
+        iifname "ve-*" accept
+        iifname "vb-*" accept
+        iifname "max-sb-*" accept
+      '';
     };
   };
 
@@ -582,6 +602,7 @@ in {
     password = "$MURMURD_PASSWORD";
     environmentFile = config.sops.templates."murmur.env".path;
     port = 64738;
+    openFirewall = true;
     bandwidth = 128000;
   };
 
@@ -698,7 +719,10 @@ in {
 
   services.openssh.enable = true;
 
-  services.iperf3.enable = true;
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
+  };
 
   sops.secrets."matrix/registration_shared_secret" = {};
   sops.secrets."murmur/password" = {};

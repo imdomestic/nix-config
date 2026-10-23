@@ -143,6 +143,9 @@ in {
         '';
     };
 
+    # web 界面(9876)监听所有地址;只给 tailnet。路由器上 LAN 本来就是信任网卡。
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts = [9876];
+
     systemd.services.ddns-go = {
       enable = true;
       description = "ddns-go";

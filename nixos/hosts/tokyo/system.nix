@@ -80,7 +80,15 @@ in {
   };
 
   networking = {
-    firewall.enable = false;
+    firewall = {
+      enable = true;
+      # 转发给 tank 的 DNAT 和 wg 中转走策略路由,rpfilter 会误杀。
+      checkReversePath = false;
+      # xray 入站(3444/3445/54322/54324)和 derper 的 HTTPS(8443)。
+      allowedTCPPorts = [3444 3445 54322 54324 8443];
+      # derper 的 STUN(3478)和 wireguard 中心节点(50722)。
+      allowedUDPPorts = [3478 50722];
+    };
     networkmanager.enable = false;
     useNetworkd = true;
     usePredictableInterfaceNames = false;
@@ -259,7 +267,10 @@ in {
   };
   services.qemuGuest.enable = true;
 
-  services.iperf3.enable = true;
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
+  };
   services.openssh = {
     enable = true;
   };

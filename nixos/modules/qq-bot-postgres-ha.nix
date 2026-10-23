@@ -1247,6 +1247,11 @@ in {
   };
 
   config = mkIf cfg.enable {
+    # monitor 和各 keeper 之间走 tailnet 互连(hostname 都是 tsName)。
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts =
+      lib.optional cfg.monitor.enable cfg.monitor.port
+      ++ lib.optional cfg.node.enable cfg.node.port;
+
     assertions = [
       {
         assertion = cfg.monitor.enable || cfg.node.enable;
