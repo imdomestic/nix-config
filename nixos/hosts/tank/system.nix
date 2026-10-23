@@ -7,64 +7,6 @@
   ...
 }: let
   # Rendered via sops.templates (cloudflare tokens + web password from sops).
-  ddnsConfig = ''
-    dnsconf:
-        - name: "sanuki"
-          ipv4:
-            enable: false
-            gettype: url
-            url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-            netinterface: br0
-            cmd: ""
-            domains:
-                - ""
-          ipv6:
-            enable: true
-            gettype: netInterface
-            url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-            netinterface: br-lan
-            cmd: ""
-            ipv6reg: '@2'
-            domains:
-                - tank.sanuki.cn
-          dns:
-            name: cloudflare
-            id: ""
-            secret: ${config.sops.placeholder."ddns/cloudflare_token_sanuki"}
-          ttl: ""
-        - name: "imdomestic"
-          ipv4:
-            enable: false
-            gettype: url
-            url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-            netinterface: wan0
-            cmd: ""
-            domains:
-                - ""
-          ipv6:
-            enable: true
-            gettype: netInterface
-            url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-            netinterface: br-lan
-            cmd: ""
-            ipv6reg: ""
-            domains:
-                - tank:imdomestic.com
-          dns:
-            name: cloudflare
-            id: ""
-            secret: ${config.sops.placeholder."ddns/cloudflare_token_imdomestic"}
-          ttl: ""
-    user:
-        username: genisys
-        password: ${config.sops.placeholder."ddns/web_password_bcrypt"}
-    webhook:
-        webhookurl: ""
-        webhookrequestbody: ""
-        webhookheaders: ""
-    notallowwanaccess: false
-    lang: zh
-  '';
 
   wg = import ../../../lib/wgClient.nix {inherit pkgs;} {
     privateKeyFile = config.sops.secrets."wireguard/private_key".path;
@@ -758,16 +700,31 @@ in {
 
   services.iperf3.enable = true;
 
-  sops.secrets."ddns/cloudflare_token_sanuki" = {};
-  sops.secrets."ddns/cloudflare_token_imdomestic" = {};
-  sops.secrets."ddns/web_password_bcrypt" = {};
   sops.secrets."matrix/registration_shared_secret" = {};
   sops.secrets."murmur/password" = {};
   sops.secrets."matrix/turn_yaml".owner = "matrix-synapse";
 
-  sops.templates."ddns-go-config.yaml" = {
-    content = ddnsConfig;
-    restartUnits = ["ddns-go.service"];
+  my.ddns = {
+    enable = true;
+    user = "genisys";
+    passwordSecret = "ddns/web_password_bcrypt";
+    zones = [
+      {
+        name = "sanuki";
+        tokenSecret = "ddns/cloudflare_token_sanuki";
+        ipv4.interface = "br0";
+        ipv6 = {
+          interface = "br-lan";
+          regex = "@2";
+          domains = ["tank.sanuki.cn"];
+        };
+      }
+      {
+        name = "imdomestic";
+        tokenSecret = "ddns/cloudflare_token_imdomestic";
+        ipv6.interface = "br-lan";
+      }
+    ];
   };
   sops.templates."matrix-registration.yaml" = {
     content = ''registration_shared_secret: "${config.sops.placeholder."matrix/registration_shared_secret"}"'';
@@ -779,20 +736,6 @@ in {
     restartUnits = ["murmur.service"];
   };
 
-  systemd.services.ddns-go = {
-    enable = true;
-    description = "ddns";
-
-    wantedBy = ["multi-user.target"];
-    wants = ["network-online.target"];
-    after = ["network-online.target"];
-
-    serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
-      Restart = "always";
-      RestartSec = 5;
-    };
-  };
 
   systemd.services.systemd-vconsole-setup = {
     overrideStrategy = "asDropin";

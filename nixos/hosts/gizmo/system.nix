@@ -367,62 +367,16 @@
       };
   };
 
-  # ddns-go cloudflare token + web password rendered from sops.
-  sops.secrets."ddns/cloudflare_token" = {};
-  sops.secrets."ddns/web_password" = {};
-  sops.templates."ddns-go-config.yaml" = {
-    restartUnits = ["ddns-go.service"];
-    content = ''
-      dnsconf:
-          - name: ""
-            ipv4:
-              enable: false
-              gettype: url
-              url: https://myip.ipip.net, https://ddns.oray.com/checkip, https://ip.3322.net, https://4.ipw.cn, https://v4.yinghualuo.cn/bejson
-              netinterface: br-lan
-              cmd: ""
-              domains:
-                  - ""
-            ipv6:
-              enable: true
-              gettype: netInterface
-              url: https://speed.neu6.edu.cn/getIP.php, https://v6.ident.me, https://6.ipw.cn, https://v6.yinghualuo.cn/bejson
-              netinterface: br-lan
-              cmd: ""
-              ipv6reg: ""
-              domains:
-                   - gizmo:imdomestic.com
-            dns:
-              name: cloudflare
-              id: ""
-              secret: ${config.sops.placeholder."ddns/cloudflare_token"}
-            ttl: ""
-      user:
-          username: hank
-          password: ${config.sops.placeholder."ddns/web_password"}
-      webhook:
-          webhookurl: ""
-          webhookrequestbody: ""
-          webhookheaders: ""
-      notallowwanaccess: false
-      lang: zh
-    '';
-  };
-
-  systemd.services.ddns-go = {
+  my.ddns = {
     enable = true;
-    description = "ddns";
-
-    wantedBy = ["multi-user.target"];
-    wants = ["network-online.target"];
-    after = ["network-online.target"];
-
-    serviceConfig = {
-      ExecStart = "${pkgs.ddns-go.outPath}/bin/ddns-go -f 300 -c ${config.sops.templates."ddns-go-config.yaml".path}";
-      Restart = "always";
-      RestartSec = 5;
-    };
+    zones = [
+      {
+        ipv4.interface = "br-lan";
+        ipv6.interface = "br-lan";
+      }
+    ];
   };
+
 
   programs.zsh.enable = true;
 
