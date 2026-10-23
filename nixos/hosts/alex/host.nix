@@ -10,8 +10,6 @@ in {
     kind = "darwin";
     roles = ["desktop" "gui"];
 
-    profiles = [m.darwin.base];
-
     modules = [
       ./system.nix
     ];

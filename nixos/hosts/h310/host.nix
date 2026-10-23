@@ -17,11 +17,6 @@ in {
     };
     maxTier = "interactive";
 
-    profiles = with m.nixos; [
-      base
-      server
-    ];
-
     modules = [
       ./system.nix
       ./hardware-configuration.nix

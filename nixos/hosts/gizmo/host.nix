@@ -1,10 +1,8 @@
-{config, ...}: let
-  m = config.flake.modules;
-in {
+{
   hosts.gizmo = {
     system = "aarch64-linux";
     kind = "nixos";
-    roles = ["server"];
+    roles = ["server" "router"];
     tsName = "gizmo.inner.imdomestic.com";
     ageKey = "age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq";
     # 这台不是该段的网关,只是段里的 DHCP 客户端;回程靠 tailscale 默认的 SNAT。
@@ -15,12 +13,6 @@ in {
     };
     maxTier = "interactive";
     buildOn = "r6s";
-
-    profiles = with m.nixos; [
-      base
-      server
-      netdiag
-    ];
 
     modules = [
       ./system.nix

@@ -1,10 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.taipan = {
     system = "x86_64-linux";
     kind = "nixos";
@@ -29,11 +23,6 @@ in {
         "nvidia-persistenced.service"
       ];
     };
-
-    profiles = with m.nixos; [
-      base
-      server
-    ];
 
     modules = [
       ./system.nix

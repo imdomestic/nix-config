@@ -1,10 +1,8 @@
-{config, ...}: let
-  m = config.flake.modules;
-in {
+{
   hosts.r5s = {
     system = "aarch64-linux";
     kind = "nixos";
-    roles = ["server"];
+    roles = ["server" "router"];
     tsName = "r5s.inner.imdomestic.com";
     ageKey = "age1weu2ymkv0pa79n3f5rcxj90dya57lktk42q2kwl5ytug646dgfdqpgrzw5";
     # tank 那一段;tank 的救援 initrd 也在这段上(192.168.20.50)。
@@ -17,12 +15,6 @@ in {
     sshUser = "root";
     maxTier = "interactive";
     buildOn = "r6s";
-
-    profiles = with m.nixos; [
-      base
-      server
-      netdiag
-    ];
 
     modules = [
       ./system.nix

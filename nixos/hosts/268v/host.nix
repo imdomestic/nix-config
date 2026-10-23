@@ -11,7 +11,6 @@ in {
     roles = ["desktop" "gui"];
     # tsName = "268v.inner.imdomestic.com";
 
-    profiles = [m.nixos.base];
     modules = [
       ./system.nix
       ./hardware-configuration.nix

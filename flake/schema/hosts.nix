@@ -98,7 +98,6 @@
           '';
         };
 
-        profiles = modulesOption "System profiles, from `config.flake.modules.<class>`.";
         modules = modulesOption "This host's own system modules.";
         hardwareModules = modulesOption "nixos-hardware modules.";
         externalModules = modulesOption "Third-party modules out of flake inputs.";

@@ -15,9 +15,9 @@
   };
 
   roles = lib.mkOption {
-    type = lib.types.listOf lib.types.str;
+    type = lib.types.listOf (lib.types.enum (builtins.attrNames (import ./roles.nix)));
     default = [];
-    description = "Roles this host fulfils, e.g. [\"desktop\" \"gui\"].";
+    description = "What this host is; the vocabulary and what each role does are in modules/shared/roles.nix.";
   };
 
   lanRoutes = lib.mkOption {

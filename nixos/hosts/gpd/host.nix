@@ -6,11 +6,6 @@ in {
     kind = "nixos";
     roles = ["desktop" "gui"];
 
-    profiles = with m.nixos; [
-      base
-      desktop
-    ];
-
     modules = [
       ./system.nix
       m.nixos.sudo-pwfeedback

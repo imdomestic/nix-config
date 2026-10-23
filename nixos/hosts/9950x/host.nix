@@ -8,9 +8,7 @@ in {
   hosts."9950x" = {
     system = "x86_64-linux";
     kind = "nixos";
-    roles = ["cli" "gui"];
-
-    profiles = [m.nixos.base];
+    roles = ["gui"];
 
     modules = [
       ./system.nix
