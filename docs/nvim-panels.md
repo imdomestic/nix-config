@@ -63,7 +63,7 @@ quickfix 没有空心版，两种状态同形，只靠颜色区分。粗体对 N
 
 ## 加一个面板
 
-面板定义在 `home/modules/nixvim/hank/default.nix` 的 `panels.setup` 里。
+面板定义在 `home/users/hank/nixvim/default.nix` 的 `panels.setup` 里。
 `hank-panels.adapters` 提供四种现成的适配器：
 
 - `window({ ft, open })`：插件自己开一个固定 filetype 的 split（aerial、dbui、

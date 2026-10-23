@@ -12,18 +12,18 @@
   '';
 in {
   imports = [
-    ../../modules/tmux/linwhite.nix
-    ../../modules/zsh/linwhite.nix
-    ../../modules/starship/linwhite.nix
-    ../../modules/ghostty/linwhite.nix
-    ../../modules/wezterm/linwhite.nix
-    ../../modules/fzf/flat-white.nix
-    ../../modules/bat/flat-white.nix
-    ../../modules/btop/flat-white.nix
-    ../../modules/yazi/flat-white.nix
-    ../../modules/vicinae/flat-white.nix
+    ./tmux.nix
+    ./zsh.nix
+    ./starship.nix
+    ./ghostty.nix
+    ./wezterm.nix
+    ./flat-white/fzf.nix
+    ./flat-white/bat.nix
+    ./flat-white/btop.nix
+    ./flat-white/yazi.nix
+    ./flat-white/vicinae.nix
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
-    ../../modules/nixvim/linwhite
+    ./nixvim
     # MC 开发脚本（mc-client / mc-server-remote），模块内部只对 encore 生效
     ../../modules/chorus
   ];
