@@ -28,5 +28,4 @@ in {
   "9950x" = callHost "9950x";
   seraph = callHost "seraph";
   marble = callHost "marble";
-  cse = callHost "cse";
 }
