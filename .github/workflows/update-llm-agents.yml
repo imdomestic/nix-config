@@ -1,0 +1,133 @@
+# llm-agents(claude-code、codex、opencode、pi ...)跟上游走,检查过就直接提交进
+# main,不开 PR。这几样是刚需最新的,坏了回滚一个 flake.lock 提交就行。
+#
+#   update   只动 llm-agents 这一个 input;没有新版本就到此为止
+#   check    用新的 flake.lock 在 x86_64-linux 和 aarch64-darwin 上真的把 home 里
+#            用到的那几个包构建出来,再求值几台 dev 档的 home(属性名被上游改掉
+#            时在这里炸)
+#   commit   rebase 到最新的 main 再推;别人同时动了 flake.lock 就放弃,等下一轮
+#
+# 用 GITHUB_TOKEN 推的提交不会再触发 ci.yml,上面的 check 就是这条路径上唯一的门。
+name: update llm-agents
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-llm-agents
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.bump.outputs.changed }}
+      old: ${{ steps.bump.outputs.old }}
+      new: ${{ steps.bump.outputs.new }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - id: bump
+        run: |
+          rev() { jq -r '.nodes[.nodes.root.inputs["llm-agents"]].locked.rev' flake.lock; }
+          old=$(rev)
+          nix flake update llm-agents
+          new=$(rev)
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          if [ "$old" = "$new" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "llm-agents 已是最新($old)"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "llm-agents $old -> $new"
+          fi
+      - if: steps.bump.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake-lock
+          path: flake.lock
+
+  check:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            homes: hosts/taipan/hank
+          - os: macos-latest
+            homes: hosts/praxic/hank hosts/aegis/linwhite
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: flake-lock
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - uses: cachix/install-nix-action@v27
+        with:
+          # llm-agents 自己的缓存(它 flake 里的 nixConfig),否则 codex 这类要从源码编。
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            extra-substituters = https://cache.numtide.com
+            extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+      - name: 构建 home 里用到的 llm-agents 包
+        run: |
+          # 从 nix 文件里取包名(跳过注释掉的),dev.nix 加减包不用回来改这里。
+          want=$(grep -rhoE '^[^#]*inputs\.llm-agents\.packages\.\$\{[^}]+\}\.[A-Za-z0-9_-]+' home nixos darwin \
+            | sed -E 's/.*\.//' | sort -u)
+          # 只构建上游给这个平台提供了的(cli-proxy-api 只有 tank 用)。真正用到却
+          # 被上游下架的,下一步求值 home 时会报出来。
+          sys=$(nix eval --impure --raw --expr builtins.currentSystem)
+          avail=$(nix eval --json --inputs-from . "llm-agents#packages.$sys" --apply builtins.attrNames)
+          build=()
+          for p in $want; do
+            if jq -e --arg p "$p" 'index($p) != null' <<<"$avail" >/dev/null; then
+              build+=("llm-agents#$p")
+            else
+              echo "skip $p (not provided for $sys)"
+            fi
+          done
+          echo "building on $sys: ${build[*]}"
+          nix build --no-link --print-build-logs --inputs-from . "${build[@]}"
+      - name: dev 档的 home 仍能求值
+        run: |
+          for h in ${{ matrix.homes }}; do
+            nix eval --raw ".#homeConfigurations.\"$h\".activationPackage.drvPath" >/dev/null
+            echo "ok $h"
+          done
+
+  commit:
+    needs: [update, check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: flake-lock
+      - name: 提交并推到 main
+        env:
+          OLD: ${{ needs.update.outputs.old }}
+          NEW: ${{ needs.update.outputs.new }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "flake: update llm-agents" -m "numtide/llm-agents.nix ${OLD:0:7} -> ${NEW:0:7}, built on x86_64-linux and aarch64-darwin." -- flake.lock
+          for _ in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            git rebase --abort 2>/dev/null || true
+            sleep 10
+          done
+          echo "::error::推不上去(多半是别人同时改了 flake.lock),等下一轮"
+          exit 1
