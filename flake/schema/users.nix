@@ -24,6 +24,15 @@ in {
           default = null;
           description = "Loaded at the dev tier in place of home/profiles/dev.nix, which it is expected to import.";
         };
+        ageKeys = mkOption {
+          type = types.attrsOf (types.strMatching "age1[0-9a-z]{58}");
+          default = {};
+          description = ''
+            sops keys of this person that belong to no registry machine, by label.
+            Keys tied to a machine go on that host's account entry instead
+            (`hosts.<name>.users.<account>.ageKey`).
+          '';
+        };
         gui = {
           linux = mkOption {
             type = guiType;

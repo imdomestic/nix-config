@@ -6,6 +6,7 @@ in {
     kind = "nixos";
     roles = ["server"];
     tsName = "r5s.inner.imdomestic.com";
+    ageKey = "age1weu2ymkv0pa79n3f5rcxj90dya57lktk42q2kwl5ytug646dgfdqpgrzw5";
     # tank 那一段;tank 的救援 initrd 也在这段上(192.168.20.50)。
     lanRoutes = ["192.168.20.0/24"];
     clusterControl = {

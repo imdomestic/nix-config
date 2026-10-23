@@ -12,6 +12,7 @@ in {
     tier = "dev";
     module = hm.linwhite;
     dev = hm.linwhite-dev;
+    ageKeys.personal = "age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7"; # linwhite@linwhite.top
     gui = {
       linux.profile = hm.gui-linux;
       darwin.profile = hm.gui-darwin;

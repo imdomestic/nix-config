@@ -180,6 +180,16 @@ jobs:
           fi
           echo "没有新的求值警告"
 
+      # .sops.yaml 是 flake/secrets.nix 生成的。手改它、或者改了 registry 里的
+      # ageKey 却没重新生成,都会让"谁能解密"和代码说的不一样。
+      - name: .sops.yaml 与 flake/secrets.nix 一致
+        run: |
+          nix eval --raw .#sopsConfig > /tmp/sops.yaml
+          if ! diff -u .sops.yaml /tmp/sops.yaml; then
+            echo "::error::.sops.yaml 和 flake/secrets.nix 生成的不一致,跑 just sops-config"
+            exit 1
+          fi
+
       # host registry 的概览。纯求值,不碰构建 —— 想知道"现在到底管着哪些机器、
       # 谁被部署、谁被监控",看这张表比翻 nixos/hosts/ 快。
       #

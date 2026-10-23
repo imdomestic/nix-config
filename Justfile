@@ -53,6 +53,11 @@ check-trace:
 check-sops *hosts:
   ./scripts/check-sops.sh {{hosts}}
 
+# Regenerate .sops.yaml from flake/secrets.nix and the registry's ageKey fields;
+# run `sops updatekeys <file>` for any file whose readers changed
+sops-config:
+  nix eval --raw .#sopsConfig > .sops.yaml
+
 # Cross-check the xray reverse-proxy domains: gizmo is the bridge side, the
 # portals are everyone else, and the reverse-*.hank.internal names have to match
 # exactly. A mismatch is silent — both ends start fine, ports listen, Reality

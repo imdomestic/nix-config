@@ -10,6 +10,7 @@ in {
     kind = "nixos";
     roles = ["server"];
     tsName = "seraph.inner.imdomestic.com";
+    ageKey = "age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f";
 
     profiles = [m.nixos.base];
     modules = [
@@ -29,6 +30,7 @@ in {
     ];
     externalModules = [inputs.nix-index-database.nixosModules.default];
 
+    users.linwhite.ageKey = "age1svatkwy2klm39twkpv7rxfteampuzkyu3ccxtjzpmuz2kq3d6sus8l3hg4";
     users.linwhite.modules = [
       ./home.nix
       m.homeManager.opencode-local-bonsai

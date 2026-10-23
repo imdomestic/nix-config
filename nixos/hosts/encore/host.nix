@@ -10,6 +10,7 @@ in {
     kind = "nixos";
     roles = ["server" "gpu-compute" "desktop" "gui"];
     tsName = "encore.inner.imdomestic.com";
+    ageKey = "age1f6suumsw5f3e5sqf46j63kmympqk0anexjvuwsg7uh02wxnkwymqmkj32v";
 
     profiles = with m.nixos; [
       base
@@ -34,8 +35,11 @@ in {
     ];
 
     users = {
-      hank = {};
-      linwhite.gui.profile = m.homeManager.gui-common;
+      hank.ageKey = "age1wh7zpq8aaqx5anad9nxk9cr40q0rq2qcnsrpujmrmsf8z59aycsqhlpmth";
+      linwhite = {
+        gui.profile = m.homeManager.gui-common;
+        ageKey = "age1kmgn6snvphehfluadsztazkvlj5q8u6rydzm3at0y3muu45ny43szct0qr";
+      };
     };
   };
 }

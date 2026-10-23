@@ -13,6 +13,7 @@ in {
     # 故障域就没有意义了。见 nixos/modules/monitoring/gateway.nix。
     roles = ["server" "monitor-gateway"];
     tsName = "tokyo.inner.imdomestic.com";
+    ageKey = "age1cddsqmvytfs97c898mnlncam62v0znxyn8am4zln5xv68gn4z3mqs878u9";
     clusterControl = {
       enable = true;
       manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "xray.service" "derper.service"];

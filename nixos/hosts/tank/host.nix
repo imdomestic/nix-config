@@ -13,6 +13,7 @@ in {
     # 的 gossip 名单、以及"另一份挂了"那条告警的预期成员数。
     roles = ["server" "monitor"];
     tsName = "tank.inner.imdomestic.com";
+    ageKey = "age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs";
     clusterControl = {
       enable = true;
       manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service" "gaoji-cluster-worker.service" "max.service" "max-napcat.service"];

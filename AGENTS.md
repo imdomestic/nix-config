@@ -147,7 +147,7 @@ home/modules/                   # one directory per app: nixvim, ghostty, tmux, 
 home/users/<name>/              # user.nix (account table entry) + default.nix (+ dev.nix, …)
 pkgs/                           # local packages (tmux-agent-sidebar, …)
 scripts/                        # check-* scripts behind the just recipes, plus model/bench tooling
-secrets/                        # sops-nix: secrets.yaml + hosts/<host>.yaml
+secrets/                        # sops-nix: secrets.yaml + hosts/<host>.yaml; readers in flake/secrets.nix
 docs/                           # incidents.md, decisions.md, topic docs, runbooks/
 ```
 
@@ -282,6 +282,7 @@ just deploy / just deploy-host <host> # deploy-rs, see "Deploys" below
 just deploy-built <host>  # a `buildOn` host's system, via its builder
 just deploy-system <host> / just deploy-home <host> <user>
 just check-sops / check-xray / check-singbox [host...]; just check-tunnels
+just sops-config          # regenerate .sops.yaml from flake/secrets.nix
 ```
 
 system-manager has no recipe: `sudo system-manager switch --flake .#<host>`.
@@ -451,6 +452,11 @@ it to `imdomestic.cachix.org`.
   `environment.systemPackages` / `home.packages` — and buildEnv's
   `ignoreCollisions` lets order decide which package wins a colliding file. This
   is why `flake.modules` holds plain paths (`flake/flake-parts.nix`).
+- **`.sops.yaml` is generated.** Who reads which secret is decided in
+  `flake/secrets.nix`; keys live in the registry (`hosts.<name>.ageKey`,
+  `hosts.<name>.users.<account>.ageKey`, `users.<account>.ageKeys`). After
+  changing either, run `just sops-config`, then `sops updatekeys` on each file
+  whose readers changed. CI fails when the committed file drifts.
 - **Determinate hosts** (`praxic`, `aegis`, `alex`) set `nix.enable = false`,
   which drops nix-darwin's entire nix module — `nix.settings` and `nix.registry`
   evaluate to nothing, with no error. `nixos/modules/nix-settings.nix` and
