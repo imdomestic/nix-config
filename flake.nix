@@ -1,153 +1,26 @@
 {
   description = "Hank's nix configuration for both NixOS & macOS";
 
-  outputs = inputs @ {self, ...}: let
-    hosts = import ./nixos/hosts {inherit inputs;};
-    systems = (import ./lib/mkConfigurations.nix {inherit inputs;}) {inherit hosts;};
-    homes = (import ./lib/mkHomeConfigurations.nix {inherit inputs;}) {inherit hosts;};
-    systemManagers = (import ./lib/mkSystemManagerConfigurations.nix {inherit inputs;}) {inherit hosts;};
-    deployNodes = (import ./lib/mkDeployNodes.nix {inherit inputs;}) {
-      inherit hosts;
-      inherit (systems) nixosConfigurations;
-      homeConfigurations = homes;
-    };
-  in {
-    inherit (systems) darwinConfigurations;
-    nixosConfigurations = systems.nixosConfigurations // {
-      x86_64-rescue = inputs.nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [./nixos/installers/x86_64-rescue.nix];
-      };
-    };
-    homeConfigurations = homes;
-    systemConfigs = systemManagers;
-    hosts = hosts;
-    deploy.nodes = deployNodes;
-
-    # GitHub Actions 构建 + 推 imdomestic.cachix.org 的目标清单。
-    #
-    # 只放 cache.nixos.org 一定没有的东西 —— 免费额度就 5G,把 Hydra 已经有的
-    # 路径推上去纯属浪费。判据是"本地非编不可":自己打的包,以及被 nixos-hardware
-    # 改过的内核。
-    #
-    # deploy-rs 不在这里:它已经改成用 nixpkgs 里 Hydra 构建好的那个二进制了,
-    # 见 lib/mkDeployNodes.nix,不需要我们自己编更不需要缓存。
-    #
-    # 全部从 **host 自己的 pkgs / config** 里取,而不是 nixpkgs.legacyPackages:
-    # 这些 host 是带 overlay 的(mkConfigurations 叠了 nur,modules/nix.nix 还有
-    # 一层),换个 pkgs 实例 callPackage 出来的 drv hash 可能对不上 —— 那样推上去
-    # 的缓存一条都命不中,CI 白跑。
-    packages = let
-      nixos = systems.nixosConfigurations;
-      darwin = systems.darwinConfigurations;
-      font = cfg: cfg.pkgs.callPackage ./pkgs/recursive-mono-cascadia-italic {};
-      agentSidebar = cfg: cfg.pkgs.callPackage ./pkgs/tmux-agent-sidebar {};
-      templarDroidspacesKernel = cfg: cfg.pkgs.callPackage ./pkgs/templar-droidspaces-kernel {};
-    in {
-      aarch64-linux = {
-        # rpi4 引了 nixos-hardware 的 raspberry-pi-4 模块,内核被改过,drv 是
-        # Hydra 从没见过的,每次都得从源码整编 —— 整个缓存里最值钱的一项。
-        rpi4-kernel = nixos.rpi4.config.boot.kernelPackages.kernel;
-        # smart 分支目前只有 r6s 开着(别的机器用的还是上游 mihomo)。直接取 config
-        # 里那个值,保证和 r6s 真正要的是同一个 drv;哪天别的机器也开 smart,
-        # 按同样写法往对应 system 下加一条。
-        mihomo-smart = nixos.r6s.config.services.mihomo.package;
-        # 原生 ARM64 构建入口；只产出 Android Image，不是 NixOS kernelPackages。
-        templar-droidspaces-kernel = templarDroidspacesKernel nixos.rpi4;
-        # hank 的 home 在每台机器上都一样,所以这个 Rust TUI 会跟到 r2s / rpi4
-        # 这种小 ARM 盒子上去 —— 而 home 是 deploy 时在**目标机**上编的
-        # (deploy 走 --remote-build)。不缓存的话那几台要现编一遍。
-        tmux-agent-sidebar = agentSidebar nixos.rpi4;
-      };
-      x86_64-linux = {
-        bonsai-convert-env = nixos.seraph.pkgs.callPackage ./pkgs/bonsai-convert-env {};
-        vfio-igd-rom = nixos."268v".config.my.windowsVM.igdROM;
-        # 在 taipan 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。
-        templar-droidspaces-kernel = templarDroidspacesKernel nixos.taipan;
-        # taipan / x470 两台解析出来是同一个 drv,取哪台都一样。
-        recursive-mono-cascadia-italic = font nixos.taipan;
-        tmux-agent-sidebar = agentSidebar nixos.taipan;
-      };
-      aarch64-darwin = {
-        recursive-mono-cascadia-italic = font darwin.praxic;
-        tmux-agent-sidebar = agentSidebar darwin.praxic;
-      };
-      # x86_64-darwin(hackintosh)没进来:macos-13 runner 正在退役,而且 26.05
-      # 是 nixpkgs 最后一个支持 x86_64-darwin 的版本,不值得为它单开一条流水线。
-    };
-
-    # 运营集群（tank 上的 k3s）的 k8s 配置。.github/workflows/k8s.yml 渲染后推到
-    # k8s-rendered 分支，Argo CD 从那里拉。本地看渲染结果：
-    #   nix run github:arnarg/nixidy -- build .#tank
-    nixidyEnvs = inputs.nixpkgs.lib.genAttrs ["x86_64-linux" "aarch64-darwin"] (system:
-      inputs.nixidy.lib.mkEnvs {
-        pkgs = inputs.nixpkgs.legacyPackages.${system};
-        envs.tank.modules = [./k8s/tank.nix];
-      });
-
-    # 运营网络镜像的 tag（minecraft/ 的内容哈希），CI 推镜像时用，见 minecraft/image-tag.nix。
-    mcImageTag = import ./minecraft/image-tag.nix;
-
-    # **CI 矩阵的唯一真源。** ci.yml 原来手抄一份 17 条的 include 列表,而它已经
-    # 漂了:h310(2026-08-14 加的)、marble、alex 三台从来没进过矩阵 —— 其中 h310
-    # 正是把 `nix flake check` 撑爆的那台(docs/incidents.md#deploy-schema-timeout),
-    # 加机器的人改了 hosts 却没人记得改 workflow。
-    #
-    # 所以这里给的是**规则**而不是名单:
-    #   kind == "home"   跳过 —— 那几台只有 home 配置,没有 system 可以 build
-    #   x86_64-darwin    跳过 —— 没有可用 runner(macos-13 正在退役,而且 26.05 是
-    #                    nixpkgs 最后一个支持 x86_64-darwin 的版本)。hackintosh
-    #                    走的就是这条,而不是被人忘在名单外。
-    #
-    # 新加一台机器只要它有 system 配置,下一次 CI 就自动带上它。
-    ciMatrix = let
-      inherit (inputs.nixpkgs) lib;
-      # system -> GitHub runner。aarch64-linux 用原生 arm64 runner(公开仓库免费),
-      # 不要退回 ubuntu-latest + QEMU —— 理由见 cachix.yml 里那段。
-      runners = {
-        "x86_64-linux" = "ubuntu-latest";
-        "aarch64-linux" = "ubuntu-24.04-arm";
-        "aarch64-darwin" = "macos-latest";
-      };
-    in
-      lib.pipe hosts [
-        (lib.filterAttrs (_: h: h.kind != "home" && runners ? ${h.system}))
-        (lib.mapAttrsToList (host: h: {
-          inherit host;
-          inherit (h) kind system;
-          os = runners.${h.system};
-          # 表格里显示用。darwin 保留全称,免得和 aarch64-linux 混淆。
-          arch =
-            if lib.hasSuffix "-darwin" h.system
-            then h.system
-            else lib.head (lib.splitString "-" h.system);
-        }))
+  # Every file under flake/ is a flake-parts module (import-tree), plus each
+  # host's registry entry (nixos/hosts/<name>/host.nix) and each account's
+  # table entry (home/users/<dir>/user.nix). Start at flake/schema/hosts.nix.
+  outputs = inputs:
+    inputs.flake-parts.lib.mkFlake {inherit inputs;} {
+      imports = [
+        (inputs.import-tree ./flake)
+        (inputs.import-tree.match ".*/host\\.nix" ./nixos/hosts)
+        (inputs.import-tree.match ".*/user\\.nix" ./home/users)
       ];
-
-    # **每台一个 deploy check,而且放在 `deployChecks` 而不是 `checks`。**
-    # 放 `checks` 里 `nix flake check` 会把它们全求值一遍,那会撑爆 CI runner
-    # (见 docs/incidents.md#deploy-schema-timeout)。放在非标准输出上,nix 只会
-    # 说一句 "unknown flake output" —— 已经在 ci.yml 的警告白名单里。
-    #
-    # 真正的验证在矩阵 job 里:那边每台本来就求值过自己的 toplevel,顺手验自己
-    # 这一个节点几乎是白捡的,而且哪台坏了一眼看得出来。
-    deployChecks = let
-      inherit (inputs.nixpkgs) lib;
-    in
-      builtins.mapAttrs
-      (_system: deployLib:
-        lib.concatMapAttrs
-        (host: node:
-          lib.mapAttrs'
-          (name: check: lib.nameValuePair "${name}-${host}" check)
-          (deployLib.deployChecks {nodes.${host} = node;}))
-        deployNodes)
-      inputs.deploy-rs.lib;
-  };
+    };
 
   inputs = {
     vex.url = "git+ssh://git@github.com/imdomestic/vex?ref=feat/vex-p2";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    flake-parts = {
+      url = "github:hercules-ci/flake-parts";
+      inputs.nixpkgs-lib.follows = "nixpkgs";
+    };
+    import-tree.url = "github:vic/import-tree";
     disko = {
       url = "github:nix-community/disko";
       inputs.nixpkgs.follows = "nixpkgs";

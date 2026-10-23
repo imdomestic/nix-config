@@ -27,7 +27,7 @@ in {
       defaultText = lib.literalExpression "config.my.host.tsName != null";
       description = ''
         默认跟着 `my.host.tsName` 走 —— 和监控(modules/telemetry)、部署
-        (lib/mkDeployNodes.nix)同一个判据,registry 里填一行 tsName,三样一起生效。
+        (flake/builders/deploy.nix)同一个判据,registry 里填一行 tsName,三样一起生效。
 
         桌面机和 WSL 那几台在 tailnet 里但没有 tsName(它们的 tailnet 节点往往
         是 Windows 那一份,或者压根不是部署目标),需要显式设 true。

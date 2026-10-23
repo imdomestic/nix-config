@@ -183,8 +183,8 @@ jobs:
       # host registry 的概览。纯求值,不碰构建 —— 想知道"现在到底管着哪些机器、
       # 谁被部署、谁被监控",看这张表比翻 nixos/hosts/ 快。
       #
-      # 判据和运行时用的是同一个来源:tsIp 决定是否可部署 + 是否被抓
-      # (lib/mkInventory.nix、lib/mkDeployNodes.nix),roles 决定跑不跑监控
+      # 判据和运行时用的是同一个来源:tsName 决定是否可部署 + 是否被抓
+      # (flake/schema/inventory.nix、flake/builders/deploy.nix),roles 决定跑不跑监控
       # (nixos/modules/monitoring)。
       - name: Inventory 概览
         run: |
@@ -196,7 +196,7 @@ jobs:
               name = n;
               system = h.system or "-";
               kind = h.kind or "nixos";
-              tsIp = h.tsIp or "";
+              tsName = h.tsName or "";
               roles = h.roles or [];
               users = lib.attrNames (h.users or {});
             }) f.hosts
@@ -206,14 +206,14 @@ jobs:
           import json
           hosts = sorted(json.load(open("/tmp/inventory.json")), key=lambda h: (h["kind"], h["name"]))
           print("## Inventory\n")
-          print(f"共 {len(hosts)} 台。**可部署 / 被监控** = 有 tsIp（`lib/mkInventory.nix` 的唯一判据）。\n")
-          print("| host | system | kind | tsIp | roles | users |")
+          print(f"共 {len(hosts)} 台。**可部署 / 被监控** = 有 tsName（`flake/schema/inventory.nix` 的唯一判据）。\n")
+          print("| host | system | kind | tsName | roles | users |")
           print("| --- | --- | --- | --- | --- | --- |")
           for h in hosts:
-              ts = f"`{h['tsIp']}`" if h["tsIp"] else "—"
+              ts = f"`{h['tsName']}`" if h["tsName"] else "—"
               users = ", ".join(h["users"]) or "—"
               print(f"| **{h['name']}** | {h['system']} | {h['kind']} | {ts} | {', '.join(h['roles']) or '—'} | {users} |")
-          deployable = [h for h in hosts if h["tsIp"] and h["kind"] == "nixos"]
+          deployable = [h for h in hosts if h["tsName"] and h["kind"] == "nixos"]
           monitors = [h for h in hosts if "monitor" in h["roles"]]
           gw = [h for h in hosts if "monitor-gateway" in h["roles"]]
           print(f"\n- 可部署（`deploy.nodes`）：**{len(deployable)}** 台 — {', '.join(h['name'] for h in deployable)}")
@@ -364,9 +364,9 @@ jobs:
       # 输出在 flake 的 `deployChecks` 而不是 `checks`,正是为了让
       # `nix flake check` 不去碰它。
       #
-      # 矩阵覆盖的机器比 deploy 节点多(笔记本、WSL、没有 tsIp 的那些),不是
+      # 矩阵覆盖的机器比 deploy 节点多(笔记本、WSL、没有 tsName 的那些),不是
       # deploy 节点的直接跳过 —— 用 `nix eval` 探一下有没有这个 attr,而不是在
-      # 这里再维护一份主机名单(那种名单一定会和 mkDeployNodes 的判据漂移)。
+      # 这里再维护一份主机名单(那种名单一定会和 flake/builders/deploy.nix 的判据漂移)。
       - name: Deploy schema (this host)
         run: |
           set -euo pipefail
@@ -393,7 +393,7 @@ jobs:
             nix build "$attr" --dry-run
             echo "OK"
           else
-            echo "${{ matrix.host }} 不是 deploy 节点(没有 tsIp),跳过。"
+            echo "${{ matrix.host }} 不是 deploy 节点(没有 tsName),跳过。"
           fi
 
       # 每台先各自落一个 artifact,由下面的 summary job 拼成一张表。

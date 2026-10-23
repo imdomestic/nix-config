@@ -2,12 +2,11 @@
   config,
   lib,
   pkgs,
-  inputs,
   ...
 }: let
   inherit (lib) mkEnableOption mkIf mkOption types;
   cfg = config.services.qq-bot-postgres-ha;
-  hosts = import ../hosts {inherit inputs;};
+  hosts = config.my.fleet.hosts;
 
   pgAutoFailover = pkgs.postgresql17Packages.pg_auto_failover.overrideAttrs (old: {
     patches =

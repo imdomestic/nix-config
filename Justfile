@@ -88,7 +88,7 @@ upp input:
   nix flake update {{input}}
 
 # -------- deploy-rs (push servers/routers over tailscale) --------
-# 目标是每台设了 `tsName` 的 NixOS 机器(lib/mkDeployNodes.nix),名单以
+# 目标是每台设了 `tsName` 的 NixOS 机器(flake/builders/deploy.nix),名单以
 # `nix eval .#deploy.nodes --apply builtins.attrNames` 为准。走 MagicDNS 名,
 # 所以从哪台机器发起都行。
 #
@@ -98,7 +98,7 @@ upp input:
 # 来龙去脉见 docs/incidents.md#deploy-remote-build。
 #
 # Each node carries a `system` profile plus one `home-<user>` profile per account
-# (lib/mkDeployNodes.nix) — the users on servers do not run home-manager
+# (flake/builders/deploy.nix) — the users on servers do not run home-manager
 # themselves, so a plain `just deploy` still has to push their homes.
 
 # Build + activate every configured node, system and homes

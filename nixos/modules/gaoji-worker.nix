@@ -4,7 +4,7 @@
   ...
 }: let
   host = config.my.host;
-  hosts = import ../hosts {inherit inputs;};
+  hosts = config.my.fleet.hosts;
   resources = (import ../../lib/gaoji-workers.nix).${host.name};
   tokenName = "gaoji/worker_token";
 in {

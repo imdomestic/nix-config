@@ -17,14 +17,11 @@
   config,
   lib,
   pkgs,
-  inputs,
   ...
 }: let
   cfg = config.my.telemetry;
 
-  inventory =
-    (import ../../../lib/mkInventory.nix {inherit inputs;})
-    {hosts = import ../../hosts {inherit inputs;};};
+  inventory = config.my.fleet.inventory;
 
   # 除自己以外的纳管机器。
   peers = lib.filter (h: h.name != config.my.host.name) inventory;

@@ -27,44 +27,28 @@
     ++ builtins.attrNames users
   );
 
+  # `users.<name>` is the registry's account entry (flake/schema/hosts.nix):
+  # `extraGroups` replaces the default groups, `nixos` is merged in last.
   mkUser = name: let
-    overrides = users.${name} or {};
-    explicitGroups =
-      if overrides ? extraGroups
-      then overrides.extraGroups
-      else defaultGroups;
-    linuxHome = "/home/${name}";
-    darwinHome = "/Users/${name}";
+    account = users.${name} or {};
     defaultAttrs =
       {
-        description =
-          if overrides ? description
-          then overrides.description
-          else name;
-        shell =
-          if overrides ? shell
-          then overrides.shell
-          else pkgs.zsh;
+        description = name;
+        shell = pkgs.zsh;
       }
       // lib.optionalAttrs (!isDarwin) {
-        isNormalUser =
-          if overrides ? isNormalUser
-          then overrides.isNormalUser
-          else true;
-        extraGroups = explicitGroups;
-        home =
-          if overrides ? home && lib.isString overrides.home
-          then overrides.home
-          else linuxHome;
+        isNormalUser = true;
+        extraGroups =
+          if (account.extraGroups or null) != null
+          then account.extraGroups
+          else defaultGroups;
+        home = "/home/${name}";
       }
       // lib.optionalAttrs isDarwin {
-        home =
-          if overrides ? home && lib.isString overrides.home
-          then overrides.home
-          else darwinHome;
+        home = "/Users/${name}";
       };
   in
-    lib.recursiveUpdate defaultAttrs (overrides.nixos or {});
+    lib.recursiveUpdate defaultAttrs (account.nixos or {});
 
   # macOS 上光写 users.users.<name>.shell 是不生效的:nix-darwin 只对
   # users.knownUsers 里的账户动 dscl,其余的声明了也只是躺在配置里。所以这台 mac 的

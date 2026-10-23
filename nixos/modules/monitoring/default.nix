@@ -15,14 +15,13 @@
 # 全程在线),而故障域不同才是"两份"的全部意义 —— 同一个屋子里放两份等于
 # 还是一份。
 #
-# 抓取目标不手维护 —— 从 host registry 经 lib/mkInventory.nix 生成,和各台机器
+# 抓取目标不手维护 —— 从 host registry 生成(config.my.fleet.inventory),和各台机器
 # 上 node_exporter 的开关读同一个字段(my.host.tsName)。
 # **谁跑监控同样从 registry 派生:roles 里有 "monitor" 就是一份。**
 {
   config,
   lib,
   pkgs,
-  inputs,
   ...
 }: let
   cfg = config.my.monitoring;
@@ -41,9 +40,7 @@
   # 无口令的 Prometheus datasource,作废了也没有任何损失)。
   grafanaSecretKeyFile = "${config.services.grafana.dataDir}/secret_key";
 
-  inventory =
-    (import ../../../lib/mkInventory.nix {inherit inputs;})
-    {hosts = import ../../hosts {inherit inputs;};};
+  inventory = config.my.fleet.inventory;
   gpuHosts = lib.filter (entry: entry.gpuMonitoring.enable) inventory;
 
   # 自己这台的地址。Prometheus 和 Grafana 都只绑它。

@@ -1,6 +1,6 @@
 # Home Manager is deliberately *not* a module of this system evaluation. Every
 # user's home is its own closure (`homeConfigurations."hosts/<host>/<user>"`,
-# built by lib/mkHomeConfigurations.nix) so that changing a home does not mean
+# built by flake/builders/homes.nix) so that changing a home does not mean
 # rebuilding and activating the whole machine.
 #
 # What the system still owes those users is the CLI. `programs.home-manager.enable`

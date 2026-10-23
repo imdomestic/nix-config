@@ -11,6 +11,59 @@
 
 ---
 
+## 2026-10-23 · flake-parts + 三张表,但不是纯 dendritic {#flake-parts-tables}
+
+**改之前的问题。** registry 是 `flake.nix` 里 `let` 出来的一个普通值,靠函数参数
+传给 `lib/mk*.nix`;要看全车队的模块(monitoring、telemetry、h610 的 headscale
+policy、gaoji、qq-bot)只能自己 `import ../../hosts` 再读一遍。主机字段在
+`host-options.nix`、`lib/my-host.nix`、`lib/mkInventory.nix` 三处各抄一遍,条目本身
+没有类型,`tsName` 拼错不会报错。home 的组合是每台 host 手写 profile 列表,于是
+漂了:x86_64-headless(role 是 server)引着 gui.linux,`home/modules/gui` 里 taipan
+那段包从来没生效过。
+
+**现在。** flake-parts + import-tree,顶层三张带类型的表:`hosts`
+(`nixos/hosts/<name>/host.nix`)、`users`(`home/users/*/user.nix`,按账户名)、
+`placements`。home 按档位 `minimal < shell < interactive < dev` 组合,host 只写
+`maxTier` 和例外。模块读全车队走 `config.my.fleet`。
+
+**故意没做成纯 dendritic 的三处:**
+
+- **下层模块还是普通模块文件。** 纯 dendritic 要求每个文件都是 flake-parts 模块,
+  NixOS 模块写成 `flake.modules.nixos.x = …` 的值,靠闭包读顶层 config。这里两百
+  多个模块文件、几十个非模块的 `.nix`(palettes、lib 里的表、pkgs),全包一层的
+  收益只是"模块之间也能按名字引用",代价是整仓库 churn、git blame 断掉、还得给
+  非模块文件改 `_` 前缀让 import-tree 跳过。所以顶层模块只有 `flake/`、`host.nix`、
+  `user.nix`;下层要的车队数据由 builder 转发成 `config.my.fleet`,和原来
+  `config.my.host` 是同一个模式。
+- **`flake.modules` 不用 flake-parts 自带的那个。** 自带的(`flakeModules.modules`)
+  给每个模块套 `_class` 包装,多出几层 `imports`。模块系统用 `genericClosure` 按
+  导入深度展开,深度一变,同一个 list 选项里各定义的先后就变 —— 实测 praxic 的
+  `system-path` 里 home-manager CLI 从 nix-darwin 自带工具后面跑到了前面。这不只是
+  drvPath 变:`system-path` / `home-path` 的 buildEnv 开着 `ignoreCollisions`,两个包
+  提供同一个文件时谁在前面谁赢。所以 `flake.modules` 自己声明,值是原样的路径,
+  代价是丢了 class 检查(NixOS 模块塞进 darwin host 不会在这一层报错)。
+- **目录没按功能重排**成 `modules/<feature>/{nixos,darwin,home}.nix`。同时有
+  system 和 home 两侧的功能几乎没有(重名的只有 tailscale,而两边还不是一回事),
+  按功能聚合换不来什么,现在的 `nixos/` vs `home/` 还能直接看出改的是哪个闭包。
+
+**验证方式。** 每一步纯重构都要求全车队输出不变:所有 nixos / darwin toplevel、
+所有 home 的 activationPackage、systemConfigs、packages、每个 deploy 节点、
+ciMatrix 的 drvPath / 值逐项相同。`deployChecks` 不纳入 —— 一项就吃 18 GB、二十多
+分钟,而它的内容已经被逐个 deploy 节点覆盖。tank 和 nixidy 的 x86_64-linux 求值
+有 IFD(helm 渲染、cabal2nix),mac 上要借一台 x86_64-linux 构建再拷回来。
+
+**误导过我的:**
+
+- 起初以为 `gui.linux` 是"wlroots 那套桌面",想给 host 加一个 `desktop` 字段。
+  其实 x470、gpd 跑的都是 GNOME(`nixos/profiles/desktop.nix` 默认开),9950x 是
+  WSLg —— `gui.linux` 只是一组 Linux GUI 软件。用哪套是账户的偏好(hank 在 GNOME
+  机器上用自己的 gnome.nix + ibus),所以没有 `desktop` 字段,只有 host 的 `gui`
+  role 加账户的 `gui.<platform>`。
+- 第一次对比时全车队"都变了",其实是快照脚本取了报错的最后一行当值,而那行
+  (`Use lib.mkForce value …`)不含 "error"。判断求值成败要看退出码。
+
+---
+
 ## 2026-10-20 · Pi 正文与公式内联渲染 {#pi-inline-markdown}
 
 通过 Nix 固定 `Fadouse/pi-math` 0.2.0（提交 `7e6aa628`）及运行时依赖，

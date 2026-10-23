@@ -1,7 +1,6 @@
 {
   pkgs,
   pkgs-unstable,
-  inputs,
   config,
   lib,
   ...
@@ -10,7 +9,7 @@
   # 不能手抄的清单** —— 广播那一端在 nixos/modules/tailscale 里也读同一个
   # lanRoutes,两边同源。加一台路由只改 registry,ACL 和 autoApprovers 自动
   # 跟上,不会重演 ci.yml 那种"名单漂了三台没人发现"。
-  lanRoutes = lib.unique (lib.concatMap (h: h.lanRoutes or []) (lib.attrValues (import ../../hosts {inherit inputs;})));
+  lanRoutes = lib.unique (lib.concatMap (h: h.lanRoutes) (lib.attrValues config.my.fleet.hosts));
   matrixUpstream = "http://matrix-tailnet";
   gaojiBotHost = if config.services.gaoji.runBot then "172.17.0.1" else "100.64.0.4";
   mkCliProxyProfile = model: aliases: {
