@@ -12,9 +12,9 @@
     version = "0.2.0";
     private = true;
     type = "module";
-    # Match OpenCode 2.0.30's native runtime; see docs/incidents.md#opencode-latex-runtime.
+    # Match OpenCode 2.1.x's native runtime; see docs/incidents.md#opencode-latex-opentui-06.
     dependencies = {
-      "@opentui/core" = "0.5.17";
+      "@opentui/core" = "0.6.6";
       "opentui-math" = "0.1.0";
     };
   };
@@ -39,6 +39,10 @@ in
     };
     npmConfigHook = importNpmLock.npmConfigHook;
     npmFlags = ["--legacy-peer-deps" "--ignore-scripts"];
+    # Patch the installed math dependency as well as the plugin's transport.
+    preInstall = ''
+      patch --batch -p1 < ${./opentui-0.6.patch}
+    '';
     dontNpmBuild = true;
     nativeBuildInputs = lib.optionals stdenv.hostPlatform.isLinux [autoPatchelfHook];
     buildInputs = lib.optionals stdenv.hostPlatform.isLinux [stdenv.cc.cc.lib];
