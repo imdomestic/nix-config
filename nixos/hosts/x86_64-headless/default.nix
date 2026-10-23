@@ -19,7 +19,6 @@ in {
       home = {
         profiles = with homeProfiles; [
           core
-          gui.linux
         ];
         modules = [
           userModules.hank.module
