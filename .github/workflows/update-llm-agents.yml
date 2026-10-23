@@ -60,6 +60,8 @@ jobs:
     needs: update
     if: needs.update.outputs.changed == 'true'
     strategy:
+      # 一个平台挂了另一个照样跑完,出问题时两边的结果都看得到。
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
@@ -75,10 +77,22 @@ jobs:
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-      - uses: cachix/install-nix-action@v27
+      # llm-agents 自己的缓存(它 flake 里的 nixConfig),否则 codex 这类要从源码编。
+      - name: Install Nix (Linux)
+        if: runner.os == 'Linux'
+        uses: cachix/install-nix-action@v27
         with:
-          # llm-agents 自己的缓存(它 flake 里的 nixConfig),否则 codex 这类要从源码编。
           extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            extra-substituters = https://cache.numtide.com
+            extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
+      # macOS runner 自带 _nixbld 用户,经典安装器会 eDSRecordAlreadyExists 退出;
+      # 和 ci.yml 一样用 Determinate 的。
+      - name: Install Nix (macOS)
+        if: runner.os == 'macOS'
+        uses: DeterminateSystems/nix-installer-action@main
+        with:
+          extra-conf: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
             extra-substituters = https://cache.numtide.com
             extra-trusted-public-keys = niks3.numtide.com-1:DTx8wZduET09hRmMtKdQDxNNthLQETkc/yaX7M4qK0g=
