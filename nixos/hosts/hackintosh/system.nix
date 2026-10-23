@@ -8,7 +8,6 @@
   # $ darwin-rebuild changelog
   imports = [
     ../../modules/nerdfonts
-    ../../modules/aerospace/hank.nix
   ];
   system.stateVersion = 5;
 

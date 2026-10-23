@@ -8,8 +8,6 @@
   # $ darwin-rebuild changelog
   imports = [
     ../../modules/nerdfonts
-    ../../modules/aerospace/linwhite.nix
-    ./aerospace-dummy.nix
     ../../../darwin/modules/linwhite-smb.nix
     ../../../darwin/modules/lidguard
   ];

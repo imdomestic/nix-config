@@ -21,6 +21,9 @@ in {
       inputs.determinate.darwinModules.default
     ];
 
-    users.linwhite.modules = [m.homeManager.opencode-local-bonsai];
+    users.linwhite.modules = [
+      m.homeManager.opencode-local-bonsai
+      ./aerospace-dummy.nix
+    ];
   };
 }

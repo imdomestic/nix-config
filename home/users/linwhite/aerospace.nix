@@ -1,13 +1,16 @@
-# linwhite 的 AeroSpace。按用户分文件、由 host 显式 import(aegis),不在模块里
-# 按 config.my.host.usernames 猜:aerospace 的配置是整机一份(/etc/aerospace.toml),
-# 两个人的键位互不兼容,谁的机器谁自己写死。hank 的那份在 ./hank.nix。
+# linwhite 的 AeroSpace,由 users.linwhite.gui.darwin 加载(./user.nix)。
+# Home Manager 管:配置写进 ~/.config/aerospace,launchd agent 跟着账户走,
+# 两个人的键位各用各的。aegis 专属的那部分在 nixos/hosts/aegis/aerospace-dummy.nix。
 _: {
-  services.aerospace = {
+  programs.aerospace = {
     enable = true;
+    launchd.enable = true;
 
     settings = {
       # "config-version" = 2;
       "after-startup-command" = [];
+      # nix-darwin 的 services.aerospace 原来替我们写的默认值,照写。
+      "on-focus-changed" = [];
       "enable-normalization-flatten-containers" = true;
       "enable-normalization-opposite-orientation-for-nested-containers" = true;
       "accordion-padding" = 30;

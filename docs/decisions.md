@@ -11,6 +11,27 @@
 
 ---
 
+## 2026-10-23 · AeroSpace 不在 nix-darwin 里 {#aerospace-in-home}
+
+原来是 nix-darwin 的 `services.aerospace`,配置是整机一份,所以 hank 和 linwhite
+各写一个系统模块(`nixos/modules/aerospace/{hank,linwhite}.nix`)、由 host 选一个。
+键位是个人偏好,放在系统闭包里意味着改一个键要 root 加整机重建,而一台 Mac 上
+两个人的键位也没法共存。Home Manager 26.05 有 `programs.aerospace`(配置写进
+`~/.config/aerospace`,launchd agent 跟着账户),所以搬进各自的
+`home/users/<account>/aerospace.nix`,经 users 表的 `gui.darwin.modules` 加载;
+aegis 的诱骗器处理成了 linwhite 在 aegis 上的额外 home 模块。
+
+nix-darwin 的 settings 是带默认值的类型,会把几项默认值写进 toml,其中
+`on-focused-monitor-changed` 和 AeroSpace 自己的默认不同;这几项现在显式写出,
+praxic / m1elite / aegis 生成的 toml 和原来逐字一致。
+
+**切换顺序:先 `darwin-rebuild switch`,再 `home-manager switch`。** 两个 agent
+的 label 不同(`org.nixos.aerospace` / `org.nix-community.home.aerospace`),反过来
+做会有一段时间两个 AeroSpace 同时在管窗口。HM 的 agent 第一次启用时 macOS 会
+弹"允许后台项目"。
+
+---
+
 ## 2026-10-23 · flake-parts + 三张表,但不是纯 dendritic {#flake-parts-tables}
 
 **改之前的问题。** registry 是 `flake.nix` 里 `let` 出来的一个普通值,靠函数参数
