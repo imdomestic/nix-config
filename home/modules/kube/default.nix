@@ -17,7 +17,9 @@
       {
         name = "tank";
         cluster = {
-          server = "https://tank.inner.imdomestic.com:6443";
+          server = let
+            p = config.my.fleet.placements.k3s-api;
+          in "https://${p.tsName}:${toString p.port}";
           # k3s 第一次启动时生成的 CA，有效期到 2036。集群重装后要换这个文件。
           certificate-authority = "${./tank-ca.crt}";
         };

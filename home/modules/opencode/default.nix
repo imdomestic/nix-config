@@ -7,7 +7,7 @@
 }: let
   system = pkgs.stdenv.hostPlatform.system;
   latexPlugin = pkgs.callPackage ../../../pkgs/opencode-latex {};
-  cliproxy = import ../../../lib/cliproxy-models.nix;
+  cliproxy = import ../../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
   shellStrategy = pkgs.fetchFromGitHub {
     owner = "JRedeker";
     repo = "opencode-shell-strategy";

@@ -1,7 +1,10 @@
-# tank 上 CLIProxy 的对话模型，opencode 与 pi 共用这一份。
+# CLIProxy 的对话模型，opencode 与 pi 共用这一份。
 # 两边都走 Responses API，保留推理与工具调用。
-{
-  baseUrl = "http://tank.inner.imdomestic.com:8317/v1";
+# 地址由 placements.cliproxy(flake/placements.nix)算出，max 和 h610 的
+# gaoji profile 也从这里取。
+{placement}: rec {
+  origin = "http://${placement.tsName}:${toString placement.port}";
+  baseUrl = "${origin}/v1";
   gpt = {
     context = 1050000;
     input = 922000;

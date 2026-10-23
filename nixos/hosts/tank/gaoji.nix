@@ -20,7 +20,9 @@ in {
     cluster = {
       enable = true;
       localControlService = false;
-      controlUrl = "http://h610.inner.imdomestic.com:8091";
+      controlUrl = let
+        p = config.my.fleet.placements.gaoji-control;
+      in "http://${p.tsName}:${toString p.port}";
       tokenFile = "${runtimeDir}/fleet-token";
       allowedGroups = [611798505 650536599];
     };

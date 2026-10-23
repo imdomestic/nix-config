@@ -19,7 +19,7 @@ Three top-level tables, each typed, so a misspelled field fails evaluation:
 | --- | --- | --- |
 | `hosts.<name>` | `nixos/hosts/<name>/host.nix` | `flake/schema/hosts.nix` |
 | `users.<account>` | `home/users/<dir>/user.nix` | `flake/schema/users.nix` |
-| `placements.<service>` | next to the service's module | `flake/schema/placements.nix` |
+| `placements.<service>` | `flake/placements.nix` | `flake/schema/placements.nix` |
 
 `flake/builders/` turns them into configurations. Start reading at
 `flake/schema/hosts.nix`. Why it is shaped this way:

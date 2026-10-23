@@ -15,7 +15,7 @@
   mkCliProxyProfile = model: aliases: {
     provider = "cliproxy";
     protocol = "openai-chat";
-    base_url = "http://tank.inner.imdomestic.com:8317/v1";
+    base_url = (import ../../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;}).baseUrl;
     api_key_env = "CLIPROXY_API_KEY";
     inherit model aliases;
     timeout_seconds = 180;
