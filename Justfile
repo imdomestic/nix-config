@@ -133,7 +133,8 @@ deploy-built host:
   rev=$(git rev-parse HEAD)
   git fetch -q
   if [ -n "$(git log --oneline origin/main..HEAD)" ]; then echo "本地有没推的提交,先 push" >&2; exit 1; fi
-  read -r builder target < <(nix eval --raw .#hosts --apply 'hs: let h = hs."{{host}}"; in if h.buildOn == null then throw "{{host}} 没有 buildOn,用 just deploy-host" else "${hs.${h.buildOn}.tsName} ${h.tsName}"')
+  pair=$(nix eval --raw .#hosts --apply 'hs: let h = hs."{{host}}"; in if h.buildOn == null then throw "{{host}} 没有 buildOn,用 just deploy-host" else "${hs.${h.buildOn}.tsName} ${h.tsName}"')
+  builder=${pair% *} target=${pair#* }
   ssh "hank@$builder" "set -e; cd ~/.config/nix-config && git pull -q --ff-only && test \"\$(git rev-parse HEAD)\" = $rev && nixos-rebuild boot --flake .#{{host}} --target-host root@$target"
 
 # deploy-rs targets for `deploy`: whole nodes, but only the home profiles of
