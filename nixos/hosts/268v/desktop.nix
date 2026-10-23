@@ -9,6 +9,7 @@
     ../../modules/nerdfonts
   ];
 
+  my.inputMethod = "ibus";
   i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
   programs.wsf = {
     enable = true;
@@ -40,4 +41,8 @@
     power-profiles-daemon.enable = true;
   };
   security.rtkit.enable = true;
+
+  # desktop profile 带的 modules/ssh 是密码 + root 登录、开防火墙。这台笔记本
+  # 到处连公共网络,原来就没开 sshd,保持关闭。
+  services.openssh.enable = lib.mkForce false;
 }

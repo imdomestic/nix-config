@@ -87,6 +87,7 @@ in {
   my.host.useChinaMirror = false;
   virtualisation.podman.enable = true;
 
+  my.inputMethod = "ibus";
   i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
   services = {
     tailscale.extraSetFlags = ["--hostname=${config.networking.hostName}"];

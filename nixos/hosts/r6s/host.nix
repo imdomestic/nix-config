@@ -1,10 +1,8 @@
-{config, ...}: let
-  m = config.flake.modules;
-in {
+{
   hosts.r6s = {
     system = "aarch64-linux";
     kind = "nixos";
-    roles = ["server"];
+    roles = ["server" "router"];
     tsName = "r6s.inner.imdomestic.com";
     ageKey = "age1spxgjvmk89lxzu56nrssy3hsgkzkc79w9pkncesxdjmugk2t9vus56esfj";
     lanRoutes = ["192.168.22.0/24"];
@@ -15,13 +13,6 @@ in {
     ip = "10.0.0.4";
     sshUser = "root";
     maxTier = "interactive";
-
-    profiles = with m.nixos; [
-      base
-      server
-      netdiag
-      # desktop
-    ];
 
     modules = [
       ./system.nix

@@ -10,6 +10,21 @@
   ...
 }: let
   hostModules = import ../_lib/host-modules.nix {inherit config lib;};
+  roles = import ../../modules/shared/roles.nix;
+
+  # Profiles come in this order whatever order a host lists its roles in.
+  # Module order is definition order for list options (systemPackages…), so it
+  # is fixed here rather than taken from attrNames, which sorts.
+  profileOrder = ["server" "desktop" "router" "vm-host"];
+  profilesOf = host: let
+    class = host.kind;
+    m = config.flake.modules.${class};
+  in
+    lib.throwIfNot (lib.all (r: roles.${r} ? profiles -> lib.elem r profileOrder) (lib.attrNames roles))
+    "modules/shared/roles.nix: every role with profiles must be in profileOrder (flake/builders/systems.nix)"
+    ([m.base]
+      ++ lib.concatMap (r: map (p: m.${p}) (roles.${r}.profiles.${class} or []))
+      (lib.filter (r: lib.elem r host.roles) profileOrder));
 
   mkSystem = hostName: host: let
     builder =
@@ -21,7 +36,7 @@
       inherit (host) system;
       modules =
         hostModules hostName
-        ++ lib.unique (host.profiles ++ host.modules ++ host.hardwareModules ++ host.externalModules);
+        ++ lib.unique (profilesOf host ++ host.modules ++ host.hardwareModules ++ host.externalModules);
       # `system` and `inputs` stay specialArgs because base profiles use them
       # in `imports`, which cannot depend on config. Everything else lives in
       # `config.my.host`.

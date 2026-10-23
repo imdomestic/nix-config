@@ -4,6 +4,7 @@
     ../../modules/nerdfonts
   ];
 
+  my.inputMethod = "ibus";
   i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
 
   services = {

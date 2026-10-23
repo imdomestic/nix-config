@@ -1,4 +1,12 @@
-{lib, ...}: {
+{
+  config,
+  lib,
+  ...
+}: let
+  # 服务器兼桌面(encore、taipan、x470)上图形相关的默认值让 desktop profile 说了算,
+  # 两边都用 mkDefault,同时生效会冲突。
+  headless = !(lib.elem "desktop" config.my.host.roles);
+in {
   imports = [
     ../modules/ssh
     # 采集端。模块自己按 my.host.tsName 决定开不开,所以这里无条件 import ——
@@ -7,8 +15,8 @@
   ];
 
   services = {
-    xserver.enable = lib.mkDefault false;
-    printing.enable = lib.mkDefault false;
+    xserver.enable = lib.mkIf headless (lib.mkDefault false);
+    printing.enable = lib.mkIf headless (lib.mkDefault false);
   };
 
   # 服务器上没人开浏览器看 NixOS 手册。实测 r6s 的闭包里 nixos-manual-html
@@ -28,8 +36,8 @@
   # 完整理由和实测见 docs/decisions.md#drop-cockpit。
 
   # hardware.pulseaudio.enable = lib.mkDefault false;
-  services.pipewire.enable = lib.mkDefault false;
+  services.pipewire.enable = lib.mkIf headless (lib.mkDefault false);
 
   # Servers often rely on predictable networking
-  networking.networkmanager.enable = lib.mkDefault false;
+  networking.networkmanager.enable = lib.mkIf headless (lib.mkDefault false);
 }

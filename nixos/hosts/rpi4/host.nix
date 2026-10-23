@@ -1,14 +1,8 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.rpi4 = {
     system = "aarch64-linux";
     kind = "nixos";
-    roles = ["server"];
+    roles = ["server" "router"];
     tsName = "rpi4.inner.imdomestic.com";
     ageKey = "age1lghdzjwhlwssu44ptp5853e48fy0pcxrxlpf4r7ruphplxna4vzqq6e2kh";
     # 悉尼公寓。原来是 192.168.20.0/24,和 r5s 撞车,2026-09-13 改到 2 段。
@@ -21,13 +15,6 @@ in {
     sshUser = "root";
     maxTier = "interactive";
     buildOn = "r6s";
-
-    profiles = with m.nixos; [
-      base
-      server
-      netdiag
-      # desktop
-    ];
 
     modules = [
       ./system.nix

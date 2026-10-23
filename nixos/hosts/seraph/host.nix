@@ -12,7 +12,6 @@ in {
     tsName = "seraph.inner.imdomestic.com";
     ageKey = "age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f";
 
-    profiles = [m.nixos.base];
     modules = [
       ./system.nix
       m.nixos.sudo-pwfeedback

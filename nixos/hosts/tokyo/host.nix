@@ -1,10 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.tokyo = {
     system = "x86_64-linux";
     kind = "nixos";
@@ -22,12 +16,6 @@ in {
     sshUser = "root";
     maxTier = "interactive";
     buildOn = "tank";
-
-    profiles = with m.nixos; [
-      base
-      server
-      # desktop
-    ];
 
     modules = [
       ./system.nix

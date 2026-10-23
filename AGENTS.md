@@ -35,14 +35,13 @@ in {
   hosts.example = {
     system = "x86_64-linux";
     kind = "nixos";                 # nixos | darwin | home
-    roles = ["desktop" "gui"];
+    roles = ["server" "desktop" "gui"]; # the one knob: picks profiles, see below
     tsName = "example.inner.imdomestic.com"; # deployment and telemetry opt-in
     ip = "10.0.0.68";               # optional separate WireGuard address
     sshUser = "root";
     maxTier = "interactive";        # caps every account's home tier here
     buildOn = "r6s";                # too small to build itself; see 小内存机器 below
 
-    profiles = with m.nixos; [base desktop];
     modules = [./system.nix ./hardware-configuration.nix m.nixos.vex];
     hardwareModules = [...];        # nixos-hardware modules
     externalModules = [...];        # third-party modules out of flake inputs
@@ -74,6 +73,15 @@ declared once, in `modules/shared/host-facts.nix`, and reach every evaluator as
 `config.my.host` together with `users` and `usernames`, plus `useChinaMirror`
 (defaults on; hosts opt out in `system.nix`). Read it instead of re-deriving
 host facts.
+
+`roles` is an enum (`modules/shared/roles.nix`) and the only thing that picks
+system profiles: every host gets `base`, then `server`, `desktop`, `router`
+(netdiag) and `vm-host` (virtualisation) add theirs, in that order. `gui` gives
+accounts their GUI layers, `monitor` / `monitor-gateway` turn on monitoring.
+`server` + `desktop` compose: the server profile leaves graphics, printing,
+pipewire and NetworkManager to the desktop one. The desktop profile's input
+method is `my.inputMethod` (fcitx5 by default; the GNOME/ibus hosts set
+`"ibus"`).
 
 Modules that need to see past their own host read `config.my.fleet`:
 `hosts` (every entry's facts), `inventory` (the managed hosts,
@@ -139,7 +147,7 @@ Justfile                        # every rebuild/deploy command
 lib/                            # helpers modules import: nixpkgs-registry.nix pins, wg*, model tables
 modules/shared/                 # host-facts.nix + host-options.nix: the config.my.host / my.fleet schema
 nixos/hosts/<name>/             # host.nix (registry entry) + system.nix + hardware-configuration.nix
-nixos/profiles/                 # base, desktop, server, netdiag, virtualisation
+nixos/profiles/                 # base, desktop, server, netdiag, virtualisation — picked by roles
 nixos/modules/                  # system modules: nix*, users, mihomo, monitoring, vfio, …
 darwin/profiles/                # macOS base (pulls in nixos/modules/nix.nix, users, home-manager-cli)
 home/profiles/                  # tiers core, shell, interactive, dev; gui/{common,linux,darwin}

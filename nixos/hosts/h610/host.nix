@@ -1,10 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.h610 = {
     system = "x86_64-linux";
     kind = "nixos";
@@ -31,11 +25,6 @@ in {
     };
     ip = "10.0.0.5";
     sshUser = "root";
-
-    profiles = with m.nixos; [
-      base
-      server
-    ];
 
     modules = [
       ./system.nix

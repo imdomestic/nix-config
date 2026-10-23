@@ -12,11 +12,6 @@ in {
     tsName = "encore.inner.imdomestic.com";
     ageKey = "age1f6suumsw5f3e5sqf46j63kmympqk0anexjvuwsg7uh02wxnkwymqmkj32v";
 
-    profiles = with m.nixos; [
-      base
-      server
-    ];
-
     modules = [
       ./system.nix
       m.nixos.sudo-pwfeedback

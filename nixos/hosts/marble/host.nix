@@ -1,17 +1,10 @@
-{config, ...}: let
-  m = config.flake.modules;
-in {
+{
   hosts.marble = {
     system = "aarch64-linux";
     kind = "nixos";
     roles = ["server"];
     sshUser = "hank";
     # tsName = "marble.inner.imdomestic.com";
-
-    profiles = with m.nixos; [
-      base
-      server
-    ];
 
     modules = [
       ./system.nix

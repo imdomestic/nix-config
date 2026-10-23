@@ -11,7 +11,7 @@ in {
     # "monitor" = 在这台上跑一份完整监控(Prometheus + Alertmanager + Grafana)。
     # 见 nixos/modules/monitoring —— 这个角色同时决定本机的开关、对端 Alertmanager
     # 的 gossip 名单、以及"另一份挂了"那条告警的预期成员数。
-    roles = ["server" "monitor"];
+    roles = ["server" "monitor" "vm-host"];
     tsName = "tank.inner.imdomestic.com";
     ageKey = "age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs";
     clusterControl = {
@@ -20,13 +20,6 @@ in {
     };
     ip = "10.0.0.66";
     sshUser = "root";
-
-    profiles = with m.nixos; [
-      base
-      server
-      # desktop
-      virtualisation
-    ];
 
     modules = [
       ./system.nix

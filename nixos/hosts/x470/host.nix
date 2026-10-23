@@ -12,11 +12,6 @@ in {
     ip = "10.0.0.77";
     sshUser = "root";
 
-    profiles = with m.nixos; [
-      base
-      desktop
-    ];
-
     modules = [
       ./system.nix
       ./hardware-configuration.nix
