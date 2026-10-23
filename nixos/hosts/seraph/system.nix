@@ -101,11 +101,6 @@ in {
         workstation = true;
       };
     };
-    openssh.settings = {
-      PasswordAuthentication = lib.mkForce false;
-      KbdInteractiveAuthentication = false;
-      PermitRootLogin = lib.mkForce "prohibit-password";
-    };
   };
   systemd.sleep.settings.Sleep = {
     AllowSuspend = false;

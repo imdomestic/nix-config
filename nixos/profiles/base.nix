@@ -10,6 +10,8 @@
     ../modules/nix.nix
     ../modules/users.nix
     ../modules/home-manager-cli.nix
+    # sshd 只认 key,不管哪台、谁打开的 sshd。
+    ../modules/ssh/policy.nix
     # 默认关;路由器和有公网地址的机器用 my.ddns 打开。
     ../modules/ddns-go
     inputs.sops-nix.nixosModules.sops

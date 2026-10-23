@@ -60,11 +60,6 @@
   services.openssh = {
     ports = [22];
     openFirewall = false;
-    settings = {
-      PasswordAuthentication = lib.mkForce false;
-      KbdInteractiveAuthentication = false;
-      PermitRootLogin = lib.mkForce "prohibit-password";
-    };
   };
 
   system.stateVersion = "26.05";

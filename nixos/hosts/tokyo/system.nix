@@ -264,10 +264,6 @@ in {
     enable = true;
   };
   services.openssh.openFirewall = true;
-  services.openssh.settings = {
-    PasswordAuthentication = true;
-    PermitRootLogin = "yes";
-  };
 
   services.k3s = {
     enable = false;

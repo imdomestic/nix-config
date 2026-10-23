@@ -291,11 +291,6 @@ in {
   services.irqbalance.enable = false;
 
   services.openssh.enable = true;
-  services.openssh.settings = {
-    PasswordAuthentication = true;
-    KbdInteractiveAuthentication = true;
-    PermitRootLogin = "yes";
-  };
   my.ddns.enable = true;
 
 
