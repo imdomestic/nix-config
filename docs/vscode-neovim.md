@@ -1,13 +1,13 @@
 # Hank 的 VS Code / Neovim 配置
 
-入口在 `home/modules/nixvim/hank/`：
+入口在 `home/users/hank/nixvim/`：
 
 - `default.nix`：终端 Neovim。
 - `editing.nix`：两边共享的 leader、搜索习惯、surround、Flash 和 Tree-sitter 文本对象。
 - `vscode.nix`：独立 nixvim 包，只加载共享编辑功能，并把 IDE 操作交给 VS Code。
 - `snippets/`：Rust `cp` / `cpi` 模板，两边复用。
 
-Home Manager 接线在 `home/modules/vscode/`，目前只在 praxic 的 hank home
+Home Manager 接线在 `home/users/hank/vscode/`，目前只在 praxic 的 hank home
 启用 `my.vscode.enable`。macOS 使用已有的 `/Applications/Visual Studio Code.app`，
 只增加 `code` 命令包装器，不额外安装第二份应用。这个包装器也让 Home Manager
 在扩展集合变化时调用原生 CLI 刷新扩展索引；`package = null` 会跳过这一步，

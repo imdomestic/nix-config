@@ -152,7 +152,7 @@ nixos/modules/                  # system modules: nix*, users, mihomo, monitorin
 darwin/profiles/                # macOS base (pulls in nixos/modules/nix.nix, users, home-manager-cli)
 home/profiles/                  # tiers core, shell, interactive, dev; gui/{common,linux,darwin}
 home/modules/                   # one directory per app: nixvim, ghostty, tmux, vicinae, …
-home/users/<name>/              # user.nix (account table entry) + default.nix (+ dev.nix, …)
+home/users/<name>/              # user.nix (account table entry), default.nix, dev.nix, nixvim/ and the account's own app modules
 pkgs/                           # local packages (tmux-agent-sidebar, …)
 scripts/                        # check-* scripts behind the just recipes, plus model/bench tooling
 secrets/                        # sops-nix: secrets.yaml + hosts/<host>.yaml; readers in flake/secrets.nix
@@ -179,14 +179,14 @@ Home Manager module options** (`programs.*`, `services.*`, etc.).
 ## Neovim: nixvim only
 
 Neovim is configured with **nixvim** (flake input, pinned to the
-`nixos-26.05` branch). The module lives in `home/modules/nixvim/`. There is no
-`default.nix` at that root — Hank's terminal baseline is `hank/default.nix`,
-with `hank/vscode.nix` for VS Code and `hank/editing.nix` shared by both.
-`kenneth/` and `linwhite/` are independent copies (forked from hank's on
-2026-10-06): each has its own `base.nix`, `editing.nix` and `snippets/`, plus
-`default.nix` with that user's overrides. A change under `hank/` does not reach
-them, and theirs do not reach hank; only `options.nix` is shared. Import these
-entry files explicitly.
+`nixos-26.05` branch). Each account's nixvim lives in its own directory:
+`home/users/hank/nixvim/` is Hank's terminal baseline (`default.nix`), with
+`vscode.nix` for VS Code and `editing.nix` shared by both.
+`home/users/{kenneth,linwhite}/nixvim/` are independent copies (forked from
+hank's on 2026-10-06): each has its own `base.nix`, `editing.nix` and
+`snippets/`, plus `default.nix` with that account's overrides. A change in one
+does not reach the others; only `home/modules/nixvim/options.nix` is shared.
+Import these entry files explicitly.
 
 - **Never copy `.lua` files or a whole `nvim/` directory into the repo.**
 - Declare plugins via `plugins.*`, options via `opts`/`globals`, keymaps via
@@ -194,11 +194,13 @@ entry files explicitly.
 - Inline Lua is acceptable only for small glue that nixvim cannot express,
   via `extraConfigLua` or `plugins.<name>.settings.*.__raw`; keep it minimal.
 - Per-user variations go in that user's own directory (see
-  `home/modules/nixvim/options.nix` and `linwhite/default.nix`).
+  `home/modules/nixvim/options.nix` and `home/users/linwhite/nixvim/default.nix`).
 
 ## Layout conventions
 
-- `home/modules/<app>/` — one directory per app, Home Manager modules.
+- `home/modules/<app>/` — one directory per app, Home Manager modules shared by
+  accounts. A file that only one account uses (its theme, its variant of an
+  app) lives in `home/users/<account>/` instead.
 - `home/profiles/` — the tier bundles (`core`, `shell`, `interactive`, `dev`)
   and the shared GUI bundles (`gui/`). Hosts never list them; the tier and the
   `gui` role pick them.

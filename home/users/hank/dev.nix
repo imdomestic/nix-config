@@ -4,9 +4,9 @@
   # 没有 dev 的机器由 hank/default.nix 提供精简版 nixvim(保留 nix 支持)。
   imports = [
     ../../profiles/dev.nix
-    ../../modules/nixvim/hank/default.nix
-    ../../modules/nixvim/hank/java.nix
-    ../../modules/nixvim/hank/dap.nix
+    ./nixvim/default.nix
+    ./nixvim/java.nix
+    ./nixvim/dap.nix
     ../../modules/claude-code
     # kubectl/k9s 在 profiles/dev.nix 里,kubeconfig 跟着走,不往路由器上解密集群 token。
     ../../modules/kube
