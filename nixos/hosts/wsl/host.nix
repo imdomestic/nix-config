@@ -21,6 +21,6 @@ in {
       inputs.nix-index-database.nixosModules.default
     ];
 
-    users.hank = {};
+    users.hank.ageKey = "age1zrnfrlp7ps4e9c5hpefz4g7fycsqf6ntswftmcj6dzlpyx6e9essx2vrj5";
   };
 }

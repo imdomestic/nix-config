@@ -6,6 +6,7 @@ in {
     kind = "nixos";
     roles = ["server"];
     tsName = "gizmo.inner.imdomestic.com";
+    ageKey = "age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq";
     # 这台不是该段的网关,只是段里的 DHCP 客户端;回程靠 tailscale 默认的 SNAT。
     lanRoutes = ["10.1.2.0/24"];
     clusterControl = {

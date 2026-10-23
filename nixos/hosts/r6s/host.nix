@@ -6,6 +6,7 @@ in {
     kind = "nixos";
     roles = ["server"];
     tsName = "r6s.inner.imdomestic.com";
+    ageKey = "age1spxgjvmk89lxzu56nrssy3hsgkzkc79w9pkncesxdjmugk2t9vus56esfj";
     lanRoutes = ["192.168.22.0/24"];
     clusterControl = {
       enable = true;

@@ -32,6 +32,7 @@ in {
         uid = 501;
         description = "Hank Hogan";
       };
+      ageKey = "age1uumwl2zvv6sk2yysjtd29yfffjj8xfus6z95eu0ftxt40mnyh9aq3g5f2c";
       modules = with m.homeManager; [
         postgresql
         tailscale

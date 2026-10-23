@@ -27,6 +27,9 @@ in {
     ];
 
     # 和别处的 GNOME 一样,外加 flatpak。
-    users.hank.gui.modules = with m.homeManager; [hank-gnome hank-flatpak ibus];
+    users.hank = {
+      gui.modules = with m.homeManager; [hank-gnome hank-flatpak ibus];
+      ageKey = "age199f3re3sturx83zkmedc5qkz7aqra656w6cz9zttkcxg0slndudqlf8sca";
+    };
   };
 }

@@ -5,6 +5,7 @@
 {lib, ...}: let
   inherit (lib) mkOption types;
   tiers = import ../_lib/tiers.nix {inherit lib;};
+  ageKeyType = types.strMatching "age1[0-9a-z]{58}";
   guiType = import ../_lib/gui-type.nix {inherit lib;};
   modulesOption = description:
     mkOption {
@@ -36,6 +37,16 @@
         default = {};
         description = "Merged into `users.users.<name>` by nixos/modules/users.nix (NixOS and nix-darwin).";
       };
+      ageKey = mkOption {
+        type = types.nullOr ageKeyType;
+        default = null;
+        description = ''
+          This account's sops key on this machine: its ~/.ssh/id_ed25519 through
+          ssh-to-age, with the private half in ~/.config/sops/age/keys.txt
+          (`ssh-to-age -private-key -i ~/.ssh/id_ed25519`). Recipients are
+          chosen in flake/secrets.nix.
+        '';
+      };
     };
   };
 
@@ -60,6 +71,15 @@
           type = types.str;
           default = "root";
           description = "Account deploy-rs connects as.";
+        };
+        ageKey = mkOption {
+          type = types.nullOr ageKeyType;
+          default = null;
+          description = ''
+            The host's sops key, its /etc/ssh/ssh_host_ed25519_key through
+            ssh-to-age (`ssh-keyscan -t ed25519 <host> | ssh-to-age`). A host
+            with a key can read secrets/hosts/<name>.yaml (flake/secrets.nix).
+          '';
         };
         maxTier = mkOption {
           type = tiers.type;

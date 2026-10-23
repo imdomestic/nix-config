@@ -12,6 +12,7 @@ in {
     # 停电一整天,h610 全程在线。放同一个屋子里等于还是一份。
     roles = ["server" "monitor"];
     tsName = "h610.inner.imdomestic.com";
+    ageKey = "age1m70ml5ff2cxswwqy8vz8al9ptjd4sfqmmk7mufem9gejgk5t34tqp7v7zr";
     clusterControl = {
       enable = true;
       manageableUnits = [
