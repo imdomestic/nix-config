@@ -14,9 +14,6 @@ in {
       ];
     };
 
-    users.hank = {
-      tier = "minimal";
-      modules = [m.homeManager.hank-dev];
-    };
+    users.hank = {};
   };
 }
