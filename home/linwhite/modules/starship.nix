@@ -1,8 +1,11 @@
 {
+  config,
   inputs,
   lib,
   ...
 }: {
+  home.sessionVariables.starship_config = config.programs.starship.configPath;
+
   programs.starship = {
     enable = true;
     enableTransience = true;
