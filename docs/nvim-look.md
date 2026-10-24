@@ -4,7 +4,7 @@
 > 回退范围与保留功能见 [决策记录](decisions.md#nixvim-visual-rollback-20261005)。
 
 Neovim 界面的外观规则：窗口之间靠底色区分，焦点用强调色标记。配置在
-`home/users/hank/nixvim/default.nix`，颜色全部从 Evergarden 当前调色板取
+`home/users/hank/modules/nixvim/default.nix`，颜色全部从 Evergarden 当前调色板取
 （`evergarden.setup` 的 `editor` 开关加 `overrides` 函数），换色板不用改规则。
 
 浮层（补全、文档、签名、which-key、noice 命令行、Snacks 浮动 picker、诊断浮窗）

@@ -37,7 +37,7 @@
   xdg.configFile = {
     zsh.source = inputs.zsh-hank.outPath;
     fastfetch = {
-      source = ../../modules/fastfetch;
+      source = ./modules/fastfetch;
       recursive = true;
     };
   };

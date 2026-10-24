@@ -4,7 +4,7 @@
   ...
 }: let
   isDarwin = pkgs.stdenv.isDarwin;
-  dotfiles = ./dotfiles;
+  dotfiles = ./modules/dotfiles;
 in
   lib.mkMerge [
     {

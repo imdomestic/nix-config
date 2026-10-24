@@ -6,13 +6,14 @@ in {
     # 共享工具链 + 打开 nixvim 的 dev 插件;没有 dev 的机器由 default.nix 提供
     # 精简版 nixvim(保留 nix 支持)。
     linwhite-dev = ./dev.nix;
-    linwhite-aerospace = ./aerospace.nix;
-    linwhite-rex = ./rex.nix;
+    linwhite-aerospace = ./modules/aerospace.nix;
+    linwhite-opencode-local-bonsai = ./modules/opencode/local-bonsai.nix;
+    linwhite-rex = ./modules/rex/default.nix;
     # 只在某一台上加载的部分,由那台 host.nix 的 users.linwhite.modules 引用。
-    linwhite-aegis = ./hosts/aegis.nix;
-    linwhite-encore = ./hosts/encore.nix;
-    linwhite-gpd = ./hosts/gpd.nix;
-    linwhite-seraph = ./hosts/seraph.nix;
+    linwhite-aegis = ./aegis.nix;
+    linwhite-encore = ./encore.nix;
+    linwhite-gpd = ./gpd.nix;
+    linwhite-seraph = ./seraph.nix;
   };
 
   users.linwhite = {

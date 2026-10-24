@@ -6,17 +6,20 @@ in {
     # 共享工具链 + 打开 nixvim 的 dev 插件;没有 dev 的机器由 default.nix 提供
     # 精简版 nixvim(保留 nix 支持)。
     hank-dev = ./dev.nix;
-    hank-gnome = ./gnome.nix;
-    hank-flatpak = ./flatpak.nix;
-    hank-aerospace = ./aerospace.nix;
-    hank-rex = ./rex.nix;
+    hank-gnome = ./modules/gnome.nix;
+    hank-flatpak = ./modules/flatpak.nix;
+    hank-aerospace = ./modules/aerospace.nix;
+    hank-rex = ./modules/rex/default.nix;
+    hank-ibus = ./modules/ibus;
+    hank-postgresql = ./modules/postgresql;
+    hank-tailscale = ./modules/tailscale;
     # 只在某一台上加载的部分,由那台 host.nix 的 users.hank.modules 引用。
-    hank-aarch64-wsl = ./hosts/aarch64-wsl.nix;
-    hank-encore = ./hosts/encore.nix;
-    hank-gizmo = ./hosts/gizmo.nix;
-    hank-m1elite = ./hosts/m1elite.nix;
-    hank-praxic = ./hosts/praxic.nix;
-    hank-tank = ./hosts/tank.nix;
+    hank-aarch64-wsl = ./aarch64-wsl.nix;
+    hank-encore = ./encore.nix;
+    hank-gizmo = ./gizmo.nix;
+    hank-m1elite = ./m1elite.nix;
+    hank-praxic = ./praxic.nix;
+    hank-tank = ./tank.nix;
   };
 
   users.hank = {
@@ -30,7 +33,7 @@ in {
       "3" = "age1f0ch7vfsqs3u5c4mzqs4m228wge5vulz0s0yj30gkapk7nlk3g2s43x42l";
     };
     gui = {
-      linux.modules = [hm.hank-gnome hm.hank-flatpak hm.ibus];
+      linux.modules = [hm.hank-gnome hm.hank-flatpak hm.hank-ibus];
       darwin = {
         profile = hm.gui-darwin;
         modules = [hm.hank-aerospace hm.hank-rex];

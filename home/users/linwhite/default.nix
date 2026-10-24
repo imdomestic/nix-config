@@ -7,18 +7,18 @@
   isDarwin = pkgs.stdenv.isDarwin;
 in {
   imports = [
-    ./tmux.nix
-    ./zsh.nix
-    ./starship.nix
-    ./ghostty.nix
-    ./wezterm.nix
-    ./flat-white/fzf.nix
-    ./flat-white/bat.nix
-    ./flat-white/btop.nix
-    ./flat-white/yazi.nix
-    ./flat-white/vicinae.nix
+    ./modules/tmux.nix
+    ./modules/zsh.nix
+    ./modules/starship.nix
+    ./modules/ghostty.nix
+    ./modules/wezterm.nix
+    ./modules/flat-white/fzf.nix
+    ./modules/flat-white/bat.nix
+    ./modules/flat-white/btop.nix
+    ./modules/flat-white/yazi.nix
+    ./modules/flat-white/vicinae.nix
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
-    ./nixvim
+    ./modules/nixvim
   ];
 
   # 与 shell 导出的 XDG_CONFIG_HOME 一致，尤其是 macOS 上的 lazygit。

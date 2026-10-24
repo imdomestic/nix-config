@@ -58,7 +58,7 @@ in {
       };
     };
     settings = {
-      # mkDefault: 换配色的模块(home/modules/token-theme)直接盖掉就行,
+      # mkDefault: 换配色的模块(hank 的 home/users/hank/modules/token-theme)直接盖掉就行,
       # 不用 mkForce。
       theme = lib.mkDefault "kanso";
       font-size =

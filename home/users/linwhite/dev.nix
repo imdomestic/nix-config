@@ -4,16 +4,16 @@
   # 没有 dev 的机器由 linwhite/default.nix 提供精简版 nixvim(保留 nix 支持)。
   imports = [
     ../../profiles/dev.nix
-    ./nixvim
-    ../../modules/opencode
-    ./flat-white/opencode.nix
-    ../../modules/codex
-    ./flat-white/codex.nix
-    ./claude-code.nix
-    ./flat-white/pi.nix
-    ./flat-white/delta.nix
-    ./flat-white/lazygit.nix
-    ./flat-white/k9s.nix
+    ./modules/nixvim
+    ./modules/opencode
+    ./modules/flat-white/opencode.nix
+    ./modules/codex
+    ./modules/flat-white/codex.nix
+    ./modules/claude-code.nix
+    ./modules/flat-white/pi.nix
+    ./modules/flat-white/delta.nix
+    ./modules/flat-white/lazygit.nix
+    ./modules/flat-white/k9s.nix
   ];
 
   my.nixvim.dev.enable = true;

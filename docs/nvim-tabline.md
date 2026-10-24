@@ -4,7 +4,7 @@
 > 回退范围与保留功能见 [决策记录](decisions.md#nixvim-visual-rollback-20261005)。
 
 自写插件源码在 `pkgs/hank-tabline/`，通过 `vimUtils.buildVimPlugin` 打包，
-由 `home/users/hank/nixvim/default.nix` 的 `extraPlugins` 安装；不再加载
+由 `home/users/hank/modules/nixvim/default.nix` 的 `extraPlugins` 安装；不再加载
 `mini.tabline`。这是一份插件实现，不是复制进仓库的个人 Lua 配置。
 VS Code 的嵌入 Neovim 不加载此插件。
 

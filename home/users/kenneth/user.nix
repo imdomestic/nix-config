@@ -4,7 +4,7 @@ in {
   flake.modules.homeManager = {
     kenneth = ./default.nix;
     # Alex 上原来那台 Mac 的 Homebrew 软件和 shell 钩子。
-    kenneth-alex = ./hosts/alex.nix;
+    kenneth-alex = ./alex.nix;
   };
 
   users.kenneth = {
