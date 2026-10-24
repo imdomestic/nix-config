@@ -506,8 +506,9 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   `ignoreCollisions` lets order decide which package wins a colliding file. This
   is why `flake.modules` holds plain paths.
 - **An attribute defined twice in one attrset** (`networking = { firewall = …; }`
-  plus `networking.firewall.x = …`) merges on a current Nix and fails on CI's
-  older one (`docs/incidents.md#nix-dup-attr-ci`). Keep each path in one place.
+  plus `networking.firewall.x = …`) merges on a current Nix but is an error on
+  older ones (`docs/incidents.md#nix-dup-attr-ci`, from when CI ran 2.22).
+  Nothing here runs those any more; keep each path in one place anyway.
 - **`.sops.yaml` is generated.** Who reads which secret is decided in
   `flake/secrets.nix`; keys live in the registry (`hosts.<name>.ageKey`,
   `hosts.<name>.users.<account>.ageKey`, `users.<account>.ageKeys`). After

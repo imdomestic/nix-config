@@ -31,7 +31,7 @@ jobs:
       new: ${{ steps.bump.outputs.new }}
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v27
+      - uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
@@ -80,7 +80,7 @@ jobs:
       # llm-agents 自己的缓存(它 flake 里的 nixConfig),否则 codex 这类要从源码编。
       - name: Install Nix (Linux)
         if: runner.os == 'Linux'
-        uses: cachix/install-nix-action@v27
+        uses: cachix/install-nix-action@v31
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
