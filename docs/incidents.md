@@ -53,6 +53,13 @@ h610 → tank,encore 上 linwhite 开着会话没动)。每台 28–91 秒回来
   上面,新 IP 的 DDNS 生效、缓存过期之前,h610 在 tailnet 上不可达;经 h610 中继的
   路径(mac → tank)也断了,直连的(r6s → tank)不受影响。用 `ssh -J root@r6s` 跳过去,
   h610 本身直接连它的新公网 IP 上 sshd。
+- **h610 换 IP 后 20 分钟才重启的 r2s,tailscaled 还是拿到了 headscale 的旧 IP。**
+  开机早期它走了 tailscale.com DERP 的 bootstrap DNS,拿到 58.219.82.34,之后一直
+  `fetch control key … connection timed out`、停在 `NoState`,在 tailnet 上就是
+  "offline";系统解析早已返回新 IP。机器本身好好的 —— Cloudflare 上它的 AAAA 已被
+  ddns-go 更新,这就是它活着的证据。经 r6s 跳到那个公网 IPv6 上 sshd,
+  `systemctl restart tailscaled` 就好了。只靠 tailscale 轮询等机器回来,分不清
+  "没起来"和"控制面连不上"。
 
 误导过我的:把 gizmo 当成"不要紧"的试验机 —— 它就是原来的 r5sjp,日本出口;tank
 突然连不上,以为是它出事了,其实是中继在正在重启的 h610 上。
