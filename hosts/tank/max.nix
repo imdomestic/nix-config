@@ -331,7 +331,7 @@
       "homeserver" = "https://matrix.imdomestic.com:8448";
       "user_id" = "@max:imdomestic.com";
       "room_id" = "!TGJOXkFLlfLlOYrtPr:imdomestic.com";
-      "mirror_qq_group" = 650536599;
+      # mirror_qq_group comes from sops as MAX_MATRIX_MIRROR_QQ_GROUP (max.env).
       "sync_timeout_ms" = 30000;
       "access_token" = config.sops.placeholder."max/matrix-access-token";
     };
@@ -347,7 +347,7 @@
     };
     "log_color" = "always";
   };
-  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-gemini-3.8-flash-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token" "cliproxy-management-key" "bungie-api-key" "bungie-client-id" "bungie-client-secret" "qq-groups"];
+  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-gemini-3.8-flash-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token" "cliproxy-management-key" "bungie-api-key" "bungie-client-id" "bungie-client-secret" "qq-groups" "matrix-mirror-qq-group"];
 in {
   sops.secrets =
     lib.genAttrs (map (name: "max/${name}") secretNames) (name: {
@@ -362,6 +362,13 @@ in {
         mode = "0400";
         restartUnits = ["max-ops-tailscaled.service"];
       };
+      # The broker reads it once at start.
+      "max/operations-allowed-groups" = {
+        sopsFile = ../../secrets/hosts/tank-max.yaml;
+        key = "operations-allowed-groups";
+        mode = "0400";
+        restartUnits = ["max-runtime.service"];
+      };
     };
   sops.templates."max-config.json" = {
     content = builtins.toJSON settings;
@@ -371,9 +378,13 @@ in {
   };
   # Max serves only these QQ groups (plus private chats and the Matrix mirror
   # group); everything else is dropped unread. Group numbers stay out of git
-  # and the store: comma-separated in sops, handed over as MAX_QQ_GROUPS.
+  # and the store: comma-separated in sops, handed over as MAX_QQ_GROUPS. The
+  # Matrix mirror group travels the same way; env outranks the config file.
   sops.templates."max.env" = {
-    content = "MAX_QQ_GROUPS=${config.sops.placeholder."max/qq-groups"}\n";
+    content = ''
+      MAX_QQ_GROUPS=${config.sops.placeholder."max/qq-groups"}
+      MAX_MATRIX_MIRROR_QQ_GROUP=${config.sops.placeholder."max/matrix-mirror-qq-group"}
+    '';
     mode = "0400";
     restartUnits = ["max.service"];
   };
@@ -381,7 +392,7 @@ in {
     enable = true;
     operations = {
       enable = true;
-      allowedGroups = [611798505 650536599];
+      allowedGroupsFile = config.sops.secrets."max/operations-allowed-groups".path;
       loginServer = "https://tailscale.imdomestic.com:8443";
       authKeyFile = config.sops.secrets."max/ops-preauthkey".path;
     };
