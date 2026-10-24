@@ -15,6 +15,8 @@ in {
   programs.ghostty.settings = lib.mkIf gui ({
       font-size = lib.mkForce 14;
       background-opacity = lib.mkForce 0.7;
+      # 让 tmux 等程序绘制的背景使用窗口透明度。
+      background-opacity-cells = true;
       window-width = 150;
       window-height = 50;
       window-padding-x = 2;
