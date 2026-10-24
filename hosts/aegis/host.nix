@@ -1,18 +1,11 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.aegis = {
     system = "aarch64-darwin";
     kind = "darwin";
     roles = ["desktop" "gui"];
 
     modules = [
-      ./system.nix
-      m.darwin.sudo-pwfeedback
+      ../../system/modules/sudo-pwfeedback.nix
     ];
 
     externalModules = [

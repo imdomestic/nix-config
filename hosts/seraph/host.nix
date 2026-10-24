@@ -1,10 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.seraph = {
     system = "x86_64-linux";
     kind = "nixos";
@@ -13,15 +7,13 @@ in {
     ageKey = "age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f";
 
     modules = [
-      ./system.nix
-      m.nixos.sudo-pwfeedback
-      ./hardware-configuration.nix
+      ../../system/modules/sudo-pwfeedback.nix
       ./compute.nix
       ./vex-agent.nix
-      m.nixos.linwhite-smb
-      m.nixos.bonsai-conversion
-      m.nixos.bonsai-ninfer
-      m.nixos.bonsai-tailnet
+      ../../system/modules/linwhite-smb/nixos.nix
+      ../../system/modules/bonsai-conversion.nix
+      ../../system/modules/bonsai-ninfer.nix
+      ../../system/modules/bonsai-tailnet.nix
       {
         services.bonsaiNinfer.enable = true;
         services.bonsaiNinfer.tailnet.enable = true;

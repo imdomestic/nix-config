@@ -1,10 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.encore = {
     system = "x86_64-linux";
     kind = "nixos";
@@ -13,14 +7,12 @@ in {
     ageKey = "age1f6suumsw5f3e5sqf46j63kmympqk0anexjvuwsg7uh02wxnkwymqmkj32v";
 
     modules = [
-      ./system.nix
-      m.nixos.sudo-pwfeedback
+      ../../system/modules/sudo-pwfeedback.nix
       ./cooling.nix
       ./keyboard.nix
       ./retained-services.nix
-      ./hardware-configuration.nix
-      m.nixos.linwhite-smb
-      m.nixos.vex
+      ../../system/modules/linwhite-smb/nixos.nix
+      ../../system/modules/vex
       ./vex.nix
     ];
 

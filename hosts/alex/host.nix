@@ -5,10 +5,6 @@
     inChina = true;
     roles = ["desktop" "gui"];
 
-    modules = [
-      ./system.nix
-    ];
-
     externalModules = [
       inputs.nix-index-database.darwinModules.nix-index
       inputs.determinate.darwinModules.default

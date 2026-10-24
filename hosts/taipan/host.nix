@@ -26,8 +26,6 @@
     };
 
     modules = [
-      ./system.nix
-      ./hardware-configuration.nix
       ./desktop.nix
     ];
 

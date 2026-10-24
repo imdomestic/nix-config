@@ -1,6 +1,4 @@
-{config, ...}: let
-  m = config.flake.modules;
-in {
+{
   hosts.h310 = {
     system = "x86_64-linux";
     kind = "nixos";
@@ -19,9 +17,7 @@ in {
     maxTier = "interactive";
 
     modules = [
-      ./system.nix
-      ./hardware-configuration.nix
-      m.nixos.gaoji-worker
+      ../../system/modules/gaoji-worker.nix
     ];
 
     users = {

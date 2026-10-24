@@ -1,10 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.tank = {
     system = "x86_64-linux";
     kind = "nixos";
@@ -23,14 +17,12 @@ in {
     sshUser = "root";
 
     modules = [
-      ./system.nix
       ./k3s.nix
       ./vex-archive.nix
       ./gaoji.nix
       ./gaoji-web.nix
       ./max.nix
-      ./hardware-configuration.nix
-      m.nixos.gaoji-worker
+      ../../system/modules/gaoji-worker.nix
     ];
 
     externalModules = [

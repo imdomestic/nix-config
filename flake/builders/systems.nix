@@ -16,15 +16,22 @@
   # Module order is definition order for list options (systemPackages…), so it
   # is fixed here rather than taken from attrNames, which sorts.
   profileOrder = ["server" "desktop" "router" "vm-host"];
-  profilesOf = host: let
-    class = host.kind;
-    m = config.flake.modules.${class};
-  in
+  base = {
+    nixos = ../../system/profiles/base.nix;
+    darwin = ../../system/profiles/darwin.nix;
+  };
+  profilesOf = host:
     lib.throwIfNot (lib.all (r: roles.${r} ? profiles -> lib.elem r profileOrder) (lib.attrNames roles))
     "flake/_lib/roles.nix: every role with profiles must be in profileOrder (flake/builders/systems.nix)"
-    ([m.base]
-      ++ lib.concatMap (r: map (p: m.${p}) (roles.${r}.profiles.${class} or []))
+    ([base.${host.kind}]
+      ++ lib.concatMap (r: roles.${r}.profiles.${host.kind} or [])
       (lib.filter (r: lib.elem r host.roles) profileOrder));
+
+  # The host's own files that load by name, ahead of whatever host.nix lists.
+  byName = host: n: let
+    f = host.dir + "/${n}.nix";
+  in
+    lib.optional (builtins.pathExists f) f;
 
   mkSystem = hostName: host: let
     builder =
@@ -36,7 +43,12 @@
       inherit (host) system;
       modules =
         hostModules hostName
-        ++ lib.unique (profilesOf host ++ host.modules ++ host.hardwareModules ++ host.externalModules);
+        ++ lib.unique (profilesOf host
+          ++ byName host "system"
+          ++ byName host "hardware-configuration"
+          ++ host.modules
+          ++ host.hardwareModules
+          ++ host.externalModules);
       # `system` and `inputs` stay specialArgs because base profiles use them
       # in `imports`, which cannot depend on config. Everything else lives in
       # `config.my.host`.

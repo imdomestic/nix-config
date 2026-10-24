@@ -18,8 +18,6 @@
     buildOn = "tank";
 
     modules = [
-      ./system.nix
-      ./hardware-configuration.nix
       ./disk-config.nix
     ];
 

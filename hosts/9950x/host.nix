@@ -1,18 +1,11 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts."9950x" = {
     system = "x86_64-linux";
     kind = "nixos";
     roles = ["gui"];
 
     modules = [
-      ./system.nix
-      m.nixos.sudo-pwfeedback
+      ../../system/modules/sudo-pwfeedback.nix
     ];
 
     externalModules = [

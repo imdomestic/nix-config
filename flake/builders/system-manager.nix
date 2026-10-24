@@ -19,7 +19,12 @@
         ++ [
           {nixpkgs.hostPlatform = lib.mkDefault host.system;}
         ]
-        ++ sysman.modules;
+        ++ sysman.modules
+        # hosts/<name>/system-manager.nix loads by name, after the listed modules.
+        ++ (let
+          f = host.dir + "/system-manager.nix";
+        in
+          lib.optional (builtins.pathExists f) f);
       inherit (sysman) overlays;
       extraSpecialArgs = {
         inherit inputs;
