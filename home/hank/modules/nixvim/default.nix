@@ -947,6 +947,9 @@ in {
                 end
 
                 return MiniStatusline.combine_groups({
+                  -- 块字符靠字色涂满格子,格子背景仍是 Normal,Rex 的 padding 不会跟着变色;
+                  -- 带字的色块(背景色或 reverse)都会被拉高。
+                  "%#" .. mode_hl .. "#▌",
                   { hl = mode_hl, strings = { mode } },
                   { hl = "MiniStatuslineDevinfo", strings = { git } },
                   "%<",
