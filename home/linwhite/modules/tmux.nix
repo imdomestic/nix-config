@@ -1,4 +1,8 @@
-{pkgs, ...}: let
+{
+  config,
+  pkgs,
+  ...
+}: let
   c = (import ./flat-white/palette.nix).colors;
 in {
   programs.tmux = {
@@ -33,6 +37,10 @@ in {
     ];
 
     extraConfig = ''
+      set-environment -g STARSHIP_CONFIG "${config.programs.starship.configPath}"
+      set-environment -g starship_config "${config.programs.starship.configPath}"
+      set -ga update-environment ' STARSHIP_CONFIG starship_config'
+
       # Keep terminal features and low-latency key handling.
       set-option -ga terminal-overrides ",*256col*:Tc"
       set -ga terminal-overrides ',*:Ss=\E[%p1%d q:Se=\E[6 q'
@@ -86,9 +94,9 @@ in {
       set -g message-style bg=${c.color0},fg=${c.foreground}
       set -g message-command-style bg=${c.color0},fg=${c.color3}
       setw -g mode-style bg=${c.selection_bg},fg=${c.selection_fg}
-      setw -g clock-mode-colour ${c.color4}
-      set -g display-panes-colour ${c.color8}
-      set -g display-panes-active-colour ${c.color3}
+      setw -g clock-mode-colour "${c.color4}"
+      set -g display-panes-colour "${c.color8}"
+      set -g display-panes-active-colour "${c.color3}"
     '';
   };
 }
