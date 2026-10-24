@@ -16,7 +16,7 @@ in
   hostName: let
     h = config.hosts.${hostName};
   in [
-    ../../modules/shared/host-options.nix
+    ./host-options.nix
     {
       my.host = {
         inherit (h) name system roles tsName lanRoutes gpuMonitoring clusterControl homeOverlays usernames;
