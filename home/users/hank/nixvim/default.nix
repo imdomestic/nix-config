@@ -236,7 +236,8 @@ in {
     imports = [./editing.nix];
 
     enable = true;
-    enableMan = true;
+    # man nixvim 要生成全部选项的 options.json,一项就占 home 求值的近三成。
+    enableMan = false;
     defaultEditor = true;
     # viAlias = true;
     # vimAlias = true;

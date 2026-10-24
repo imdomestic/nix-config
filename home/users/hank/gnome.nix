@@ -20,12 +20,7 @@ in {
     ../../modules/forge
     ../../modules/ghostty
     ../../modules/vicinae
-    ../../modules/zen-browser
   ];
-
-  programs.zen-browser.env = lib.mkIf (config.my.host.name == "taipan") {
-    MOZ_DRM_DEVICE = "/dev/dri/by-path/pci-0000:14:00.0-render";
-  };
 
   fonts.fontconfig = {
     enable = true;
