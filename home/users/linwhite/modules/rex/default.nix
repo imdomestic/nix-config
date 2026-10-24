@@ -57,13 +57,17 @@ in {
         };
         "ctrl+a>ctrl+${direction}" = {
           action = "pane.resize";
-          args = {inherit direction; amount = 5;};
+          args = {
+            inherit direction;
+            amount = 5;
+          };
         };
         "ctrl+shift+${key}" = {
           action = "pane.focus";
           args = {inherit direction;};
         };
-      }) directions
+      })
+      directions
       // builtins.listToAttrs (map (index: {
         name = "ctrl+a>${toString index}";
         value = {
@@ -77,12 +81,30 @@ in {
         "ctrl+a>p" = bind "client.tab.previous";
         "ctrl+a>," = bind "client.tab.rename";
         "ctrl+a>[Comma]" = bind "client.tab.rename";
-        "ctrl+a>shift+\\" = {action = "pane.split"; args.direction = "right";};
-        "ctrl+a>shift+[Backslash]" = {action = "pane.split"; args.direction = "right";};
-        "ctrl+a>shift+5" = {action = "pane.split"; args.direction = "right";};
-        "ctrl+a>-" = {action = "pane.split"; args.direction = "down";};
-        "ctrl+a>shift+'" = {action = "pane.split"; args.direction = "down";};
-        "ctrl+a>shift+[Quote]" = {action = "pane.split"; args.direction = "down";};
+        "ctrl+a>shift+\\" = {
+          action = "pane.split";
+          args.direction = "right";
+        };
+        "ctrl+a>shift+[Backslash]" = {
+          action = "pane.split";
+          args.direction = "right";
+        };
+        "ctrl+a>shift+5" = {
+          action = "pane.split";
+          args.direction = "right";
+        };
+        "ctrl+a>-" = {
+          action = "pane.split";
+          args.direction = "down";
+        };
+        "ctrl+a>shift+'" = {
+          action = "pane.split";
+          args.direction = "down";
+        };
+        "ctrl+a>shift+[Quote]" = {
+          action = "pane.split";
+          args.direction = "down";
+        };
         "ctrl+a>[" = bind "copy_mode";
         "ctrl+a>[BracketLeft]" = bind "copy_mode";
         "ctrl+a>z" = bind "pane.zoom";
@@ -94,8 +116,14 @@ in {
         "ctrl+a>shift+[Semicolon]" = bind "client.palette.toggle";
         "ctrl+a>d" = bind "client.window.close";
         "ctrl+a>r" = bind "client.config.reload";
-        "ctrl+a>ctrl+a" = {action = "pane.send_key"; args.key = "ctrl+a";};
-        "ctrl+a>a" = {action = "pane.send_key"; args.key = "ctrl+a";};
+        "ctrl+a>ctrl+a" = {
+          action = "pane.send_key";
+          args.key = "ctrl+a";
+        };
+        "ctrl+a>a" = {
+          action = "pane.send_key";
+          args.key = "ctrl+a";
+        };
       };
     extraConfig = ''
       local function rect_of(node, block_id)

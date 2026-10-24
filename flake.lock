@@ -2903,11 +2903,11 @@
     "zsh-linwhite": {
       "flake": false,
       "locked": {
-        "lastModified": 1792639009,
-        "narHash": "sha256-4DrOcxfr5C5rLwBp8q8WdXXfb2eL4ODkgxyYyphZebw=",
+        "lastModified": 1792658531,
+        "narHash": "sha256-FcaCTJV7tZShEF//kMkYNs0rp4RBi68pQRQx/7PNc6c=",
         "owner": "linwh1te",
         "repo": "zsh",
-        "rev": "55ee0d88348e23db1632a0781885fb0ce3752e13",
+        "rev": "b193dc03d3e83646300da948b5d0370c48c7ee36",
         "type": "github"
       },
       "original": {

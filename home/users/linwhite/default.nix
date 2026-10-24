@@ -12,6 +12,7 @@ in {
     ./modules/starship.nix
     ./modules/ghostty/settings.nix
     ./modules/wezterm.nix
+    ./modules/fastfetch.nix
     ./modules/yazi
     ./modules/fzf.nix
     ./modules/flat-white/fzf.nix
