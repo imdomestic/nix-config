@@ -5,9 +5,7 @@
   config,
   system,
   ...
-}: let
-  devenv = inputs.devenv.packages.${pkgs.stdenv.hostPlatform.system}.default;
-in {
+}: {
   # 用户无关的共享 dev 工具链(LSP / CLI / direnv)。
   # 编辑器(nixvim)是按用户的,放在各自的 home/users/<user>/dev.nix 里,
   # 由那里 import 本文件复用这套工具链。
@@ -25,7 +23,6 @@ in {
       iperf3
 
       # neovim dependencies
-      devenv
       codesnap
       lua51Packages.lua
       lua51Packages.luarocks

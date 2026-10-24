@@ -309,14 +309,18 @@ in {
     # 之后 vim-sleuth 再按文件内容调整,项目里有 .editorconfig 时以它为准。
     # rust/python/zig/yaml 不列:runtime 的 ftplugin 已经设好同样的值。
     # go 不列:gofmt 用 tab,runtime 本来就设的 noexpandtab。
-    files = let
+    # 写成 extraFiles 的纯文本而不是 `files`:`files` 每一项都是一整份 nixvim
+    # 求值,13 项让 home 求值慢近 4 倍(docs/decisions.md#nixvim-no-files)。
+    extraFiles = let
       indent = width: {
-        localOpts = {
-          expandtab = true;
-          tabstop = width;
-          softtabstop = width;
-          shiftwidth = width;
-        };
+        text =
+          lib.concatMapAttrsStringSep "\n" (o: v: "vim.opt_local.${o} = ${toLua v}") {
+            expandtab = true;
+            tabstop = width;
+            softtabstop = width;
+            shiftwidth = width;
+          }
+          + "\n";
       };
       byWidth = width: fts: map (ft: lib.nameValuePair "after/ftplugin/${ft}.lua" (indent width)) fts;
     in
