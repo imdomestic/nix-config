@@ -2,6 +2,7 @@
   hosts.wsl = {
     system = "x86_64-linux";
     kind = "nixos";
+    inChina = true;
     roles = [];
 
     modules = [

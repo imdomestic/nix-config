@@ -20,6 +20,12 @@
     description = "What this host is; the vocabulary and what each role does are in flake/_lib/roles.nix.";
   };
 
+  inChina = lib.mkOption {
+    type = lib.types.bool;
+    default = false;
+    description = "The machine is in mainland China: Nix (and Homebrew on macOS) go through the SJTU mirror first.";
+  };
+
   lanRoutes = lib.mkOption {
     type = lib.types.listOf lib.types.str;
     default = [];

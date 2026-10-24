@@ -84,7 +84,6 @@ in {
     nvidia-container-toolkit.enable = true;
   };
   nixpkgs.config.allowUnfree = true;
-  my.host.useChinaMirror = false;
   virtualisation.podman.enable = true;
 
   my.inputMethod = "ibus";

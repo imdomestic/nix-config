@@ -2,6 +2,7 @@
   hosts.r6s = {
     system = "aarch64-linux";
     kind = "nixos";
+    inChina = true;
     roles = ["server" "router"];
     tsName = "r6s.inner.imdomestic.com";
     ageKey = "age1spxgjvmk89lxzu56nrssy3hsgkzkc79w9pkncesxdjmugk2t9vus56esfj";

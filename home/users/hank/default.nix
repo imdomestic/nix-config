@@ -849,7 +849,7 @@ in {
         ''
           source ~/.orbstack/shell/init.zsh 2>/dev/null || :
           alias matlabcli="/Applications/MATLAB_R2025a.app/bin/matlab -nodesktop -nosplash"
-          export HOMEBREW_BOTTLE_DOMAIN=https://mirror.sjtu.edu.cn/homebrew-bottles
+          ${lib.optionalString config.my.host.inChina "export HOMEBREW_BOTTLE_DOMAIN=https://mirror.sjtu.edu.cn/homebrew-bottles"}
 
           # 这里原来是 eval "$(brew shellenv)" —— 每次开 shell fork 一个 bash 脚本,
           # 它自己再 fork 一次 /usr/libexec/path_helper,实测 ~55ms,而输出是常量。

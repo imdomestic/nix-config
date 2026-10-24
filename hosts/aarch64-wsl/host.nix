@@ -2,6 +2,7 @@
   hosts.aarch64-wsl = {
     system = "aarch64-linux";
     kind = "nixos";
+    inChina = true;
     roles = ["server"];
 
     modules = [

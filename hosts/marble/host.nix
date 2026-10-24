@@ -2,6 +2,7 @@
   hosts.marble = {
     system = "aarch64-linux";
     kind = "nixos";
+    inChina = true;
     roles = ["server"];
     sshUser = "hank";
     # tsName = "marble.inner.imdomestic.com";

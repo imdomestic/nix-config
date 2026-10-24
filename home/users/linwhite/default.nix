@@ -29,9 +29,7 @@ in {
   # 普通 substituters 覆盖系统列表，仅影响当前用户（包括共用机器）。
   nix = {
     package = pkgs.nix;
-    settings.substituters = import ../../../lib/nix-substituters.nix {
-      useChinaMirror = false;
-    };
+    settings.substituters = import ../../../lib/nix-substituters.nix {};
   };
 
   programs.git = {

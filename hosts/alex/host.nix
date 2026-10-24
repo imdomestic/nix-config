@@ -8,6 +8,7 @@ in {
   hosts.alex = {
     system = "aarch64-darwin";
     kind = "darwin";
+    inChina = true;
     roles = ["desktop" "gui"];
 
     modules = [

@@ -1,6 +1,6 @@
-{useChinaMirror ? true}:
+{inChina ? false}:
 (
-  if useChinaMirror
+  if inChina
   then ["https://mirror.sjtu.edu.cn/nix-channels/store?priority=10"]
   else []
 )

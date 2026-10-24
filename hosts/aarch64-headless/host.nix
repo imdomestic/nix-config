@@ -4,6 +4,7 @@ in {
   hosts.aarch64-headless = {
     system = "aarch64-linux";
     kind = "home";
+    inChina = true;
     roles = ["server"];
 
     systemManager = {

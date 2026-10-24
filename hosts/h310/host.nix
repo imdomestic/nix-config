@@ -4,6 +4,7 @@ in {
   hosts.h310 = {
     system = "x86_64-linux";
     kind = "nixos";
+    inChina = true;
     roles = ["server"];
     tsName = "h310.inner.imdomestic.com";
     # h310 只有 tsName,没有 wireguard 地址,keyscan 走 tailnet。它的 22 端口是

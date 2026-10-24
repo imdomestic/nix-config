@@ -2,6 +2,7 @@
   hosts.hackintosh = {
     system = "x86_64-darwin";
     kind = "darwin";
+    inChina = true;
     roles = ["desktop" "gui"];
 
     modules = [

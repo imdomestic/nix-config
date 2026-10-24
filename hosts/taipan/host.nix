@@ -2,6 +2,7 @@
   hosts.taipan = {
     system = "x86_64-linux";
     kind = "nixos";
+    inChina = true;
     roles = ["server" "gpu-compute" "desktop" "gui"];
     tsName = "taipan.inner.imdomestic.com";
     ageKey = "age1qpgrpyp6swk2a2hystwaryaulrvyrtjecmzzjlnjawsn50ckg3fqj8rsaf";

@@ -52,8 +52,6 @@ in {
       })
       wgPeers);
 
-  my.host.useChinaMirror = false;
-
   time.timeZone = "Asia/Tokyo";
 
   boot.loader.grub.enable = true;

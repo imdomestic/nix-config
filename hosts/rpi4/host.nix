@@ -2,6 +2,7 @@
   hosts.rpi4 = {
     system = "aarch64-linux";
     kind = "nixos";
+    inChina = true;
     roles = ["server" "router"];
     tsName = "rpi4.inner.imdomestic.com";
     ageKey = "age1lghdzjwhlwssu44ptp5853e48fy0pcxrxlpf4r7ruphplxna4vzqq6e2kh";
