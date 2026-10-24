@@ -2,7 +2,7 @@
 
 ## 启用和扩展
 
-在 `nixos/hosts/<host>/default.nix` 登记，采集端和所有 monitor 的抓取目标共用此信息：
+在 `hosts/<host>/default.nix` 登记，采集端和所有 monitor 的抓取目标共用此信息：
 
 ```nix
 tsName = "taipan.inner.imdomestic.com";

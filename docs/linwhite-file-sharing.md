@@ -1,6 +1,6 @@
 # seraph / encore Tailscale SMB 服务
 
-seraph 与 encore 使用 `nixos/modules/linwhite-smb.nix` 提供 `/home/linwhite`
+seraph 与 encore 使用 `system/modules/linwhite-smb/nixos.nix` 提供 `/home/linwhite`
 的可读写 SMB 共享，服务仅通过 Tailscale 网络开放。
 
 | 服务器 | 共享名称 | 导出目录 |

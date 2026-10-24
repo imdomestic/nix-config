@@ -1,7 +1,7 @@
 # 运营集群 tank 的 nixidy 环境。
 #
 # 渲染结果由 .github/workflows/k8s.yml 推到 k8s-rendered 分支的 tank/ 下；
-# Argo CD 的根 Application、密钥和命名空间在 nixos/hosts/tank/k3s.nix 里。
+# Argo CD 的根 Application、密钥和命名空间在 hosts/tank/k3s.nix 里。
 {
   imports = [
     ./apps/access

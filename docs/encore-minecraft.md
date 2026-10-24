@@ -1,6 +1,6 @@
 # encore Minecraft 服务
 
-本文记录的是旧布局，这些服务目前已被 `nixos/modules/chorus/legacy-minecraft.nix` 停用。新方案见 `docs/minecraft-network-todo.md`。
+本文记录的是旧布局，这些服务目前已被 `system/modules/chorus/legacy-minecraft.nix` 停用。新方案见 `docs/minecraft-network-todo.md`。
 
 encore 承载 Minecraft 服务，tokyo 的 Gate 通过 Tailscale 将玩家连接转发到 encore。
 
@@ -106,8 +106,8 @@ PostgreSQL 和 MariaDB 自动恢复，局域网与 Tailscale SSH 均可连接，
 ## 公网入口维护
 
 Gate 由 tokyo 的 `podman-gate.service` 管理，并启用开机启动。
-`nixos/modules/minecraft/gate.nix` 声明后端域名、PROXY protocol 和 TCP `25565`
-防火墙端口；`nixos/hosts/encore/minecraft.nix` 声明代理接收 PROXY protocol。
+`system/modules/minecraft/gate.nix` 声明后端域名、PROXY protocol 和 TCP `25565`
+防火墙端口；`hosts/encore/minecraft.nix` 声明代理接收 PROXY protocol。
 
 2026-10-04 已从公网查询服务状态，并通过实际协议客户端登录 encore 大厅、
 确认出生位置。encore 的代理和大厅日志确认了同一条登录连接及玩家真实公网地址。

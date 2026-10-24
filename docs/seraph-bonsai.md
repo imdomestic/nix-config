@@ -1,7 +1,7 @@
 # seraph 本地 Bonsai 服务
 
-系统配置使用 `nixos/modules/bonsai-ninfer.nix`，远程访问使用
-`nixos/modules/bonsai-tailnet.nix`。模型参数位于 `lib/bonsai-models.nix`。
+系统配置使用 `system/modules/bonsai-ninfer.nix`，远程访问使用
+`system/modules/bonsai-tailnet.nix`。模型参数位于 `lib/bonsai-models.nix`。
 
 两个模型均使用 NInfer、NVFP4 KV、174080 上下文和 MTP K=3。
 

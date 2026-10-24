@@ -1,7 +1,7 @@
 {lib, ...}: {
   applications.agones = {
     namespace = "agones-system";
-    # 命名空间和 webhook 证书一起由 nixos/hosts/tank/k3s.nix 建。
+    # 命名空间和 webhook 证书一起由 hosts/tank/k3s.nix 建。
     createNamespace = false;
     # CRD 里嵌着整份 PodTemplateSpec，client-side apply 会超出 annotation 的长度上限。
     syncPolicy.syncOptions.serverSideApply = true;

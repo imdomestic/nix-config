@@ -58,7 +58,7 @@ in {
     // {
       x86_64-rescue = inputs.nixpkgs.lib.nixosSystem {
         system = "x86_64-linux";
-        modules = [../../nixos/installers/x86_64-rescue.nix];
+        modules = [../../system/installers/x86_64-rescue.nix];
       };
     };
   flake.darwinConfigurations = ofKind "darwin";

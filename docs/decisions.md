@@ -11,6 +11,19 @@
 
 ---
 
+## 2026-10-24 · 没有 darwin/,主机在顶层 hosts/ {#system-dir}
+
+registry 早就不分平台了,目录还停在 NixOS 时代:Mac 和只有 home 的机器住在
+`nixos/hosts/` 下,NixOS 和 nix-darwin 共用的模块(nix、users、home-manager-cli、
+sudo-pwfeedback)在 `nixos/modules/`,而 darwin 专属的只有一个 profile 加两个模块,
+单独占着一个顶层 `darwin/`。现在主机统一在 `hosts/`,`nixos/` 改名 `system/`,
+darwin 的东西并进去(`system/profiles/darwin.nix`,linwhite-smb 两个版本成了
+`system/modules/linwhite-smb/{nixos,darwin}.nix`)。顶层于是正好对应两个闭包:
+`system/` 和 `home/`。一个模块属于哪个 class,看它在 `flake/modules/<class>.nix`
+里的注册或谁 import 它,不再看目录名。
+
+---
+
 ## 2026-10-23 · marble 不开防火墙 {#marble-no-firewall}
 
 其余 NixOS 主机这天全部打开了防火墙(之前 marble、tokyo、gizmo、r2s、r5s、

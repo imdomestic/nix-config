@@ -17,7 +17,7 @@ in
       lib.concatMapStringsSep "\n" (program: ''
         rm "$out/bin/${program}"
         makeWrapper ${pkgs.python3}/bin/python3 "$out/bin/${program}" \
-          --add-flags ${lib.escapeShellArg "${../nixos/modules/tailscale/resolve-bind.py} ${kind} ${package}/bin/${program}"} \
+          --add-flags ${lib.escapeShellArg "${../system/modules/tailscale/resolve-bind.py} ${kind} ${package}/bin/${program}"} \
           --set TAILSCALE_BIND_IP ${pkgs.iproute2}/bin/ip \
           --set TAILSCALE_BIND_NAME ${lib.escapeShellArg tsName}
       '')

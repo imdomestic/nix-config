@@ -1,6 +1,6 @@
 # Alex：把 macOS 账户从 `ztymac` 改为 `kenneth`
 
-本手册对应 `nixos/hosts/alex/`。目标短用户名按前文确定为
+本手册对应 `hosts/alex/`。目标短用户名按前文确定为
 `kenneth`；如果最后确实想用 `keneeth`，不要照此执行，先把仓库里的
 用户名统一改掉。
 
@@ -89,7 +89,7 @@ git log --oneline HEAD..origin/main
 ```
 
 新文件在加入 Git 前不会被 flake 看见。先检查本次 diff，再至少把
-`nixos/hosts/alex/`、`home/users/kenneth/alex.nix` 以及本次修改的注册文件
+`hosts/alex/`、`home/users/kenneth/alex.nix` 以及本次修改的注册文件
 加入一次提交，然后才使用下面的 `.#alex` 配置。
 
 如果远端有新提交，先决定 pull/rebase；不要直接 rebuild。首次启用

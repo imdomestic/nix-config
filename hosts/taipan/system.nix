@@ -1,0 +1,86 @@
+{
+  config,
+  pkgs,
+  pkgs-unstable,
+  ...
+}: {
+  imports = [
+    ../../system/modules/qwen38-ninfer.nix
+    ../../system/modules/clef-ollama.nix
+  ];
+
+  boot = {
+    loader = {
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 5;
+        xbootldrMountPoint = "/boot";
+      };
+      efi = {
+        # WSL cannot write firmware variables; the disk-local fallback loader
+        # also keeps this installation independent from Windows Boot Manager.
+        canTouchEfiVariables = false;
+        efiSysMountPoint = "/efi";
+      };
+    };
+    kernelPackages = pkgs.linuxPackages_latest;
+  };
+
+  networking = {
+    networkmanager.enable = false;
+    useDHCP = false;
+    useNetworkd = true;
+    nftables.enable = true;
+  };
+  systemd.network = {
+    enable = true;
+    networks."10-wired" = {
+      matchConfig.Type = "ether";
+      networkConfig = {
+        DHCP = "yes";
+        IPv6AcceptRA = true;
+      };
+      linkConfig.RequiredForOnline = "routable";
+    };
+  };
+
+  hardware = {
+    graphics.enable = true;
+    nvidia = {
+      modesetting.enable = true;
+      powerManagement.enable = false;
+      open = true;
+      nvidiaSettings = false;
+      nvidiaPersistenced = true;
+      package = (pkgs-unstable.linuxPackagesFor config.boot.kernelPackages.kernel).nvidiaPackages.production;
+    };
+    nvidia-container-toolkit.enable = true;
+  };
+  services.xserver.videoDrivers = ["nvidia"];
+  nixpkgs.config.allowUnfree = true;
+
+  services.qwen38Ninfer = {
+    enable = true;
+  };
+
+  # The native node receives its own Tailscale identity on first boot. The
+  # inference gateway discovers that address at runtime and binds only to it.
+  my.tailscale.enable = true;
+  services.tailscale.extraSetFlags = ["--hostname=${config.networking.hostName}"];
+
+  services.openssh.enable = true;
+  security.sudo.wheelNeedsPassword = false;
+  programs = {
+    zsh.enable = true;
+    nix-index-database.comma.enable = true;
+  };
+
+  environment.systemPackages = with pkgs; [
+    pciutils
+    nvtopPackages.nvidia
+    btop-cuda
+  ];
+
+  time.timeZone = "Asia/Hong_Kong";
+  system.stateVersion = "26.05";
+}

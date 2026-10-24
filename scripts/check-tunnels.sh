@@ -46,7 +46,7 @@ bridges = {
 
 # 隧道短名不一定等于主机目录名，所以按 portal tag 反查
 portals = {}
-for host in sorted(p.name for p in __import__("pathlib").Path("nixos/hosts").iterdir()):
+for host in sorted(p.name for p in __import__("pathlib").Path("hosts").iterdir()):
     if host == BRIDGE_HOST:
         continue
     cfg = xray_config(host)

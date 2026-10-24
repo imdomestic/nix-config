@@ -1,0 +1,174 @@
+# Edit this configuration file to define what should be installed on
+# your system. Help is available in the configuration.nix(5) man page, on
+# https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
+{
+  inputs,
+  pkgs,
+  config,
+  ...
+}: let
+  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
+    conf = "${inputs.wg-config.outPath}/client_00076.conf";
+    address = "10.0.0.77/24";
+  };
+in {
+  imports = [
+    ./hardware-configuration.nix
+    ../../system/modules/dae
+    ../../system/modules/keyd
+    ../../system/modules/tuigreet
+  ];
+
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+
+  boot.supportedFilesystems = ["bcachefs"];
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.binfmt.emulatedSystems = ["aarch64-linux"];
+
+  zramSwap.enable = true;
+
+  networking = {
+    networkmanager.enable = false;
+    useDHCP = false;
+    useNetworkd = true;
+    nftables.enable = true;
+    firewall = {
+      enable = true;
+      # br-lan 是上行(DHCP、公网 IPv6),不信任;端口由各服务的 openFirewall
+      # 放(sshd、steam、iperf3)。
+      checkReversePath = false;
+    };
+  };
+
+  systemd.network = {
+    enable = true;
+    netdevs."10-br-lan" = {
+      netdevConfig = {
+        Kind = "bridge";
+        Name = "br-lan";
+      };
+    };
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
+
+    networks."20-lan1-uplink" = {
+      matchConfig.Name = "enp40s0";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    networks."20-lan2-uplink" = {
+      matchConfig.Name = "enp34s0";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    networks."30-br-lan" = {
+      matchConfig.Name = "br-lan";
+      networkConfig = {
+        DHCP = "yes";
+        IPv6AcceptRA = true;
+      };
+      linkConfig = {
+        RequiredForOnline = "routable";
+      };
+    };
+  };
+
+  # Set your time zone.
+  time.timeZone = "Asia/Hong_Kong";
+  services.xserver.enable = true;
+  services.xserver.videoDrivers = ["nvidia"];
+  hardware.nvidia = {
+    modesetting.enable = true;
+    powerManagement.enable = true;
+    open = false;
+    nvidiaSettings = true;
+    package = config.boot.kernelPackages.nvidiaPackages.production;
+  };
+  hardware.nvidia-container-toolkit.enable = true;
+  environment.sessionVariables = {
+    LIBVA_DRIVER_NAME = "nvidia";
+    GBM_BACKEND = "nvidia-drm";
+    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+  };
+
+  # Enable the GNOME Desktop Environment.
+  services.displayManager.gdm.enable = false;
+  services.desktopManager.gnome.enable = true;
+  users.users.hank = {
+    isNormalUser = true;
+    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
+    packages = with pkgs; [
+      tree
+    ];
+  };
+  programs = {
+    zsh.enable = true;
+    chromium.enable = true;
+    firefox.enable = true;
+    gamescope = {
+      enable = true;
+      capSysNice = true;
+    };
+    steam = {
+      enable = true;
+      gamescopeSession.enable = true;
+      remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
+      dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
+      localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
+    };
+  };
+
+  hardware = {
+    graphics = {
+      enable = true;
+      enable32Bit = true;
+    };
+    xone.enable = true;
+  };
+
+  nixpkgs.config = {
+    allowUnfree = true;
+    cudaSupport = true;
+    # cudaCapabilities = ["6.1"];
+  };
+
+  environment.systemPackages = with pkgs; [
+    rdma-core
+
+    cachix
+    virt-manager
+    virt-viewer
+    spice
+    spice-gtk
+    spice-protocol
+    virtio-win
+    win-spice
+    ddns-go
+    btop-cuda
+
+    steam-run
+    steamcmd
+  ];
+
+  services.iperf3 = {
+    enable = true;
+    openFirewall = true;
+  };
+  services.openssh.enable = true;
+  # 没有 tsName(不是部署目标),所以要显式开。见 system/modules/tailscale。
+  my.tailscale.enable = true;
+
+  # services.ollama = {
+  #   enable = true;
+  #   host = "0.0.0.0";
+  #   package = pkgs.ollama-vulkan;
+  # };
+
+  systemd.settings.Manager.RebootWatchdogSec = 60;
+  systemd.settings.Manager.RuntimeWatchdogSec = 60;
+
+  system.stateVersion = "26.05";
+}

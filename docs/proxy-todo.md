@@ -70,14 +70,14 @@ recipient，否则目标机无法解密新文件。
 
 ## 4. 死代码里的旧凭据（已解决）
 
-`nixos/modules/singbox/default.nix` 里原先还留着那个泄露的 UUID 和公钥（连同
+`system/modules/singbox/default.nix` 里原先还留着那个泄露的 UUID 和公钥（连同
 已下线的 54321 端口和 `www.microsoft.com` 这个 sni）。2026-07-31 重写该模块时
 一并清掉了，现在全部凭据从 `secrets/clients/imdomestic.yaml` 经 sops 读入。
 
 ## 5. sing-box 迁移（已回滚，两个问题都没解决）
 
 2026-07-31 凌晨在 r6s 上试了一次 dae -> sing-box，**两种 `auto_redirect` 取值
-各自坏在不同的地方**，最后回滚到 dae。`nixos/modules/singbox` 已经重写好并且
+各自坏在不同的地方**，最后回滚到 dae。`system/modules/singbox` 已经重写好并且
 凭据进了 sops（`secrets/clients/imdomestic.yaml`，加密给全部 admin + 全部
 host），r6s 的 import 已改回 dae。重新试之前必须先解决下面两条。
 
@@ -322,7 +322,7 @@ EOF 只发生在 `POST /backend-api/codex/responses` 这个长请求上，普通
 构造等价的长 POST 反复打，在 dae 和 mihomo 之间做真正的 A/B（每次测之前重启
 cliproxy 清冷却，或者直接绕开 cliproxy 用 curl）。
 
-`nixos/hosts/h610/system.nix` 里 `my.mihomo.*` 那几行是注释掉的现成配置，
+`hosts/h610/system.nix` 里 `my.mihomo.*` 那几行是注释掉的现成配置，
 重新试的时候连同 import 一起放开即可。
 
 ---

@@ -1,0 +1,1743 @@
+{
+  pkgs,
+  pkgs-unstable,
+  config,
+  lib,
+  ...
+}: let
+  # 全 tailnet 的子网路由,直接从 registry 取。**这是 policy 里唯一一处
+  # 不能手抄的清单** —— 广播那一端在 system/modules/tailscale 里也读同一个
+  # lanRoutes,两边同源。加一台路由只改 registry,ACL 和 autoApprovers 自动
+  # 跟上,不会重演 ci.yml 那种"名单漂了三台没人发现"。
+  lanRoutes = lib.unique (lib.concatMap (h: h.lanRoutes) (lib.attrValues config.my.fleet.hosts));
+  matrixUpstream = "http://matrix-tailnet";
+  gaojiBotHost = if config.services.gaoji.runBot then "172.17.0.1" else "100.64.0.4";
+  mkCliProxyProfile = model: aliases: {
+    provider = "cliproxy";
+    protocol = "openai-chat";
+    base_url = (import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;}).baseUrl;
+    api_key_env = "CLIPROXY_API_KEY";
+    inherit model aliases;
+    timeout_seconds = 180;
+    thinking = "auto";
+    capabilities = {
+      tools = true;
+      streaming = true;
+      json_mode = true;
+      vision = true;
+    };
+  };
+  qqBotModelProfiles = builtins.toJSON {
+    default = "deepseek";
+    profiles = {
+      deepseek = {
+        provider = "deepseek";
+        protocol = "openai-chat";
+        base_url = "https://api.deepseek.com";
+        api_key_env = "DEEPSEEK_API_KEY";
+        model = "deepseek-v4-flash";
+        thinking = "disabled";
+        aliases = ["default" "ds" "flash"];
+      };
+      "deepseek-pro" = {
+        provider = "deepseek";
+        protocol = "openai-chat";
+        base_url = "https://api.deepseek.com";
+        api_key_env = "DEEPSEEK_API_KEY";
+        model = "deepseek-v4-pro";
+        thinking = "disabled";
+        aliases = ["pro"];
+      };
+      "qwen-local" = {
+        provider = "qwen";
+        protocol = "openai-chat";
+        base_url = "http://taipan.inner.imdomestic.com:8000/v1";
+        api_key_required = false;
+        model = "qwen3.8-27b";
+        timeout_seconds = 300;
+        thinking = "enabled";
+        circuit_breaker_enabled = false;
+        aliases = ["qwen" "qwen27b"];
+        fallback_profiles = [
+          "deepseek"
+          "gpt-5.6-luna"
+          "gpt-5.6-terra"
+          "gpt-5.6-sol"
+        ];
+        capabilities = {
+          tools = true;
+          forced_tool_choice = false;
+          streaming = true;
+          json_mode = true;
+          model_listing = true;
+          vision = false;
+        };
+      };
+      "gpt-5.3-codex-spark" = mkCliProxyProfile "gpt-5.3-codex-spark" ["spark"];
+      "gpt-5.4" = mkCliProxyProfile "gpt-5.4" ["gpt" "gpt54"];
+      "gpt-5.4-mini" = mkCliProxyProfile "gpt-5.4-mini" ["mini" "gpt54mini"];
+      "gpt-5.5" = mkCliProxyProfile "gpt-5.5" ["gpt55"];
+      "gpt-5.6-terra" = mkCliProxyProfile "gpt-5.6-terra" ["terra"];
+      "gpt-5.6-luna" = mkCliProxyProfile "gpt-5.6-luna" ["luna"];
+      "gpt-5.6-sol" = mkCliProxyProfile "gpt-5.6-sol" ["sol"];
+      "codex-auto-review" = mkCliProxyProfile "codex-auto-review" ["review"];
+    };
+  };
+  # Headscale decodes regions as map[int]*DERPRegion. Nix attrset keys are
+  # strings, and pkgs.formats.yaml therefore quotes 611, which yaml.v3 rejects.
+  headscaleDerpMap = pkgs.writeText "headscale-derp-map.yaml" ''
+    regions:
+      611:
+        regionid: 611
+        regioncode: tokyo
+        regionname: Tokyo
+        nodes:
+          - name: 611a
+            regionid: 611
+            hostname: sh.imdomestic.com
+            ipv4: 43.130.229.141
+            ipv6: none
+            derpport: 8443
+            stunport: 3478
+  '';
+  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
+    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
+    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
+    address = "10.0.0.5/24";
+  };
+in {
+  imports = [
+    ../../system/modules/airport
+    ../../system/modules/imsub
+    # 2026-07-31 试过 mihomo,因为 cliproxy 一直 EOF 而回滚,见
+    # docs/proxy-todo.md 第 9 节。r6s 上同一份配置是好的,所以问题多半出在
+    # 这台的链路质量(五条里最差)上,而不是配置本身。下面 my.mihomo.* 那几行
+    # 留着,重新试的时候把这两行换回来即可。
+    ../../system/modules/dae
+    # ../../system/modules/mihomo
+    ../../system/modules/keyd
+    ../../system/modules/qq-bot-postgres-ha.nix
+    # 监控的第二份(tank 是第一份)。开关读 ./default.nix 的 roles,不在这里写。
+    #   Prometheus    http://h610.inner.imdomestic.com:9009
+    #   Alertmanager  http://h610.inner.imdomestic.com:9093
+    #   Grafana       http://h610.inner.imdomestic.com:3000
+    ../../system/modules/monitoring
+    # ../../system/modules/minecraft/wuxi.nix
+  ];
+
+  # Docker 的默认 bridge 和 Compose bridge 是转发流量的入口(Max 和它的
+  # sandbox 2026-09-27 迁到了 tank)。dae 1.0.0 的 lan_interface 支持 path.Match 模式并会
+  # 自动绑定后续新建的网卡;12 个 ? 只匹配 Docker 生成的 br-<id>,
+  # 不会与现有 br-lan 重复挂载 eBPF。
+  my.dae.lanInterfaces = ["br-lan" "docker0" "br-????????????"];
+  # See docs/incidents.md#max-native-runtime-dns.
+  my.dae.foreignDnsOverTcp = true;
+  # Headscale must start even when proxy exits are unavailable.
+  my.dae.bootstrapDomains = ["controlplane.tailscale.com" "api.cloudflare.com"];
+  # 崩溃恢复(disable_waiting_network + Restart=on-failure)已经是 dae 模块的默认,
+  # 不再每台单写。见 docs/incidents.md#h610-dae-crash-recovery。
+
+  sops.secrets."wireguard/private_key".owner = "systemd-network";
+  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
+
+  # cliproxy 2026-10-14 搬到了 tank(见 tank/system.nix)。这里只剩一个 TCP 转发,
+  # 让手机、别人的机器这类不归本仓库管、还写着 h610:8317 的客户端照旧能用。
+  # 本仓库里的客户端都已直连 tank;等 tank 上 cliproxy 的日志里不再有
+  # 100.64.0.3 的来源,这段就可以删。
+  #
+  # 写死 100.64.0.3 加 FreeBind:socket 开机就要 bind,那时 tailscale 地址可能
+  # 还不存在。不监听通配地址,公网上不该有这个端口(理由同 modules/cliproxy 的
+  # bindAddress)。
+  systemd.sockets.cliproxy-forward = {
+    wantedBy = ["sockets.target"];
+    listenStreams = ["100.64.0.3:8317"];
+    socketConfig.FreeBind = true;
+  };
+  systemd.services.cliproxy-forward = {
+    description = "Forward the old h610 cliproxy port to tank";
+    serviceConfig = {
+      # tank 的 tailnet 地址。cliproxy 只听 IPv4,写名字的话解析出 IPv6 就连不上。
+      ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 100.64.0.4:8317";
+      DynamicUser = true;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
+    };
+  };
+  # gaoji 的环境文件(qq-deepseek-bot-postgres.env)还要这把调用密钥,原先由
+  # cliproxy 模块声明。
+  sops.secrets."cliproxy/api_key".sopsFile = ../../secrets/clients/cliproxy.yaml;
+
+  # 重新启用 modules/mihomo 时这几行就位,现在 import 注释掉了所以是死设置
+  # (选项由该模块定义,模块不 import 时这些赋值会导致求值失败,所以一并注释)。
+  #   my.mihomo.router = true;            # 这台是网关(br-lan 10.0.1.1/24)
+  #   my.mihomo.smart = true;
+  #   my.mihomo.controllerAddress = "100.64.0.3:9090";   # 面板,只绑 tailscale
+
+  # Service secrets (were hand-placed under /var/lib/secrets).
+  # acme (root, via systemd EnvironmentFile) and livekit/lk-jwt (LoadCredential)
+  # read as root, so root-owned is enough. coturn is different: its
+  # static-auth-secret-file is consumed by a `replace-secret` ExecStartPre that
+  # runs as the turnserver user, so that secret must be owned by turnserver.
+  sops.secrets."acme/cloudflare_env" = {};
+  sops.secrets."coturn/static_auth_secret".owner = "turnserver";
+  sops.secrets."livekit/keys_yaml" = {};
+  sops.secrets."qq_bot/postgres_password" = {
+    sopsFile = ../../secrets/secrets.yaml;
+    owner = "postgres";
+    group = "postgres";
+    mode = "0400";
+    restartUnits = ["qq-bot-postgres-bootstrap.service"];
+  };
+  sops.secrets."qq_bot/ha_password" = {
+    sopsFile = ../../secrets/secrets.yaml;
+    owner = "postgres";
+    group = "postgres";
+    mode = "0400";
+    restartUnits = [
+      "qq-bot-postgres-monitor.service"
+      "qq-bot-postgres-node.service"
+      "qq-bot-postgres-bootstrap.service"
+    ];
+  };
+
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  # **故意不开 binfmt。** ARM 构建交给 tank(见 modules/nix.nix 的
+  # buildMachines)。开着 binfmt 的坏处不是"抢在 tank 前面"而是**溢出** ——
+  # 它把 aarch64-linux 加进 extra-platforms,于是 tank 满载时 nix 会 decline
+  # 而不是 postpone,溢出的 ARM 构建落到这台上用 QEMU 跑。
+  # 详见 docs/incidents.md#h610-drop-binfmt。
+  # boot.binfmt.emulatedSystems = ["aarch64-linux"];
+  # boot.kernelParams = [
+  #   "pcie_aspm=off"
+  #   "i915.force_probe=!56a5"
+  #   "xe.force_probe=56a5"
+  #   "enable_guc=3"
+  # ];
+  boot.kernel.sysctl = {
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
+    "net.core.default_qdisc" = "fq";
+    "net.ipv4.tcp_congestion_control" = "bbr";
+
+    # --- 内存压力 (见下面 zramSwap / systemd.oomd) ---
+    #
+    # zram 的 swap 是内存里的压缩块,不是磁盘,读写快两三个数量级。默认的
+    # swappiness=60 是按"换出去很贵"调的,对 zram 太保守 —— 结果是内核宁可
+    # 反复丢弃并重读页缓存(可执行页、库)也不肯换出匿名页,那正是机器看起来
+    # 卡死的样子。150 让它优先压缩匿名页。
+    "vm.swappiness" = 150;
+
+    # 换入时的预读页数,2^N。磁盘上顺序预读是赚的,zram 上不是:解压本身
+    # 就是成本,预读进来用不上的页纯浪费 CPU。0 = 一次只换入一页。
+    "vm.page-cluster" = 0;
+
+    # 让内核更早开始后台回收,而不是等到水位线才同步回收。125 是 zram
+    # 场景的常见值,代价是平时多一点点回收开销。
+    "vm.watermark_scale_factor" = 125;
+  };
+
+  # 这台是 15 GiB 内存 + **没有任何 swap**。没有 swap 时内核没地方腾挪匿名页,
+  # 内存吃紧就只能反复回收页缓存,机器进入长时间无响应但也没被 OOM 杀掉的
+  # 状态 —— `nix flake check` 这种一次求值 23 台配置的活很容易触发。
+  #
+  # zram 给内核一个去处,而且是压缩后放在内存里(典型 2-3:1),所以 8 GiB 的
+  # zram 大致能吃下 16-24 GiB 匿名页。它把"硬卡死"变成"变慢"。
+  #
+  # 不用磁盘 swap:这台是 SSD,写放大不划算,而且真换到磁盘上照样卡。
+  zramSwap = {
+    enable = true;
+    # 15.4 GiB 的一半。再高会挤占本来能放页缓存的物理内存,反而更差。
+    memoryPercent = 50;
+    algorithm = "zstd";
+  };
+
+  # oomd 本来就是开的(NixOS 默认 systemd.oomd.enable = true),但三个 slice
+  # 开关默认全是 false,所以它跑着却一个 cgroup 都没在看 —— `oomctl` 里
+  # "Swap Monitored CGroups" 和 "Memory Pressure Monitored CGroups" 都是空的。
+  # 这就是上次内存打满时它什么也没做的原因。
+  systemd.oomd = {
+    # 交互式的活(登录会话、终端里跑的 nix eval/build)都在 user slice 里,
+    # 上次卡死的就是这一类。开它。
+    enableUserSlices = true;
+
+    # **故意不开 enableSystemSlice。** 这台的 system.slice 里是 headscale、
+    # max、napcat、cliproxy、nginx、docker —— 让 oomd 在整个 system.slice 上
+    # 按压力挑一个杀,挑中的很可能是 matrix 转发或者 bot,那是拿服务中断换
+    # 内存。nix 构建的内存单独在下面用 MemoryHigh 限,比无差别杀精确得多。
+    #
+    # 同理不开 enableRootSlice(它是 system.slice 的父级,范围只会更大)。
+
+    settings.OOM = {
+      # 默认 60%/30s。压到 80%/20s:这台跑着 fleet 的关键服务,宁可让
+      # 内存压力持续久一点也别误杀;但真到 80% 持续 20 秒,那就是回不来了,
+      # 早杀早解脱。
+      DefaultMemoryPressureLimit = "80%";
+      DefaultMemoryPressureDurationSec = "20s";
+    };
+  };
+
+  # nixpkgs 的 oomd 模块把上面那几行写进 /etc/systemd/oomd.conf,但**没有**把它
+  # 挂进 systemd-oomd 的重启触发链。NixOS 的 switch 只重启"unit 定义变了"的
+  # 服务,而 oomd.conf 是 /etc 里的普通文件不算 unit 定义 —— 结果是配置换了、
+  # 文件也写对了,进程却还跑着旧的那份。
+  #
+  # 实测就踩了:switch 之后 `oomctl` 顶部仍然显示 60%/30s(systemd 内建默认),
+  # 而不是这里写的 80%/20s。每个 cgroup 自己那条 80% 是生效的(它来自 slice
+  # unit,那个确实会触发重启),只有全局默认是陈的,很容易看漏。
+  systemd.services.systemd-oomd.restartTriggers = [
+    config.environment.etc."systemd/oomd.conf".source
+  ];
+
+  # nix 构建跑在 nix-daemon 里(system.slice),上面刻意没让 oomd 管那一片,
+  # 所以在这里单独限制并行度和内存。h610 还承载数据库、Bot、反代和监控,
+  # 不能把 12 个硬构建同时塞满整机。
+  nix.settings = {
+    max-jobs = 4;
+    cores = 2;
+  };
+
+  # MemoryHigh 负责提前施加回收压力,MemoryMax 是最后保险。宁可某个异常大的
+  # 构建明确失败,也不能再让 SSH、数据库和所有 Bot 一起进入回收风暴。
+  #
+  # 这台用的是 Determinate 的 nix,nix-daemon.service 本体是软链到 nix 包里
+  # 那份 unit 的。不用自己写 drop-in —— nixpkgs 对这种包提供的 unit 已经
+  # 设了 overrideStrategy = "asDropinIfExists",下面这行会自动落到
+  # nix-daemon.service.d/overrides.conf 里。
+  # (别改成 systemd.units + asDropin,那会和 nixpkgs 的 asDropinIfExists 打架。)
+  systemd.services.nix-daemon.serviceConfig = {
+    MemoryHigh = "8G";
+    MemoryMax = "11G";
+  };
+
+  time.timeZone = "Asia/Hong_Kong";
+
+  networking = {
+    # Avoid depending on public DNS and PPP hairpin access to our own control plane.
+    hosts."127.0.0.1" = ["tailscale.imdomestic.com"];
+    networkmanager.enable = false; # Easiest to use and most distros use this by default.
+    useDHCP = false;
+    useNetworkd = true;
+    nftables = {
+      enable = true;
+      tables.router = {
+        name = "mss-clamping";
+        enable = true;
+        family = "inet";
+        content = ''
+          chain postrouting {
+            type filter hook forward priority 0; policy accept;
+
+            oifname "ppp0" meta nfproto ipv4 tcp flags syn tcp option maxseg size set 1452
+            oifname "ppp0" meta nfproto ipv6 tcp flags syn tcp option maxseg size set 1432
+          }
+        '';
+      };
+    };
+    # **firewall 的所有设置都写在这一个块里。** 别在文件别处再写
+    # `networking.firewall.xxx = ...` —— 那样就有了两个 networking 定义,新版
+    # Nix 会静默合并,但 CI 用的 install-nix-action@v27 那个旧 Nix 会报
+    # `attribute 'firewall' already defined` 直接失败。本地绿、CI 红,而且本地
+    # 怎么试都复现不出来(tank 上刚踩过,见 docs/incidents.md#nix-dup-attr-ci)。
+    firewall = {
+      enable = true;
+      # br-lan 是这台当网关的局域网(dae 透明代理,理由同 r2s);docker 的网桥
+      # 也在 dae 的 lanInterfaces 里。
+      trustedInterfaces = ["br-lan" "docker0"];
+      interfaces."ppp0".allowedUDPPorts = [546];
+      # nginx(*.inner 的 vhost)、headplane、本地模型 API,只给 tailnet。
+      interfaces.tailscale0.allowedTCPPorts = [80 443 3001 11434 11435];
+      # 公网:headscale / h610.imdomestic.com / max webhook(8443)、matrix 和
+      # livekit 的反代(8448)、livekit RTC(7881)、coturn、xray 入站。
+      allowedTCPPorts = [8443 8448 7881 3478 3480 5349 5351 1444 1445 54322 54323 54324];
+      # coturn,以及 headscale 内置 DERP 的 STUN(3479)。
+      allowedUDPPorts = [3478 3479 3480 5349 5351];
+      allowedUDPPortRanges = [
+        # coturn 的 relay
+        {
+          from = 49152;
+          to = 49999;
+        }
+        # livekit 的 RTC
+        {
+          from = 50000;
+          to = 51000;
+        }
+      ];
+      checkReversePath = false;
+      # docker compose 的网桥(br-<id>)、nspawn 容器、max 的沙箱和 operations 口。
+      extraInputRules = ''
+        iifname "br-*" accept
+        iifname "ve-*" accept
+        iifname "max-sb-*" accept
+        iifname "max-ops-host" accept
+      '';
+    };
+  };
+
+  services.pppd = {
+    enable = true;
+    peers = {
+      telecom = {
+        autostart = true;
+        enable = true;
+        config = ''
+          plugin pppoe.so eno1
+          user "051012664304"
+          password "845747"
+
+          # usepeerdns
+
+          # 关键参数
+          defaultroute    # 自动添加默认路由
+          persist         # 断线重连
+          maxfail 0       # 无限次重试
+          holdoff 5       # 重试间隔
+          noipdefault
+          noauth
+          hide-password
+          lcp-echo-interval 30
+          lcp-echo-failure 20
+          lcp-echo-adaptive
+
+          +ipv6
+          ipv6cp-use-ipaddr
+
+          mtu 1492
+          mru 1492
+        '';
+      };
+    };
+  };
+
+  systemd.network = {
+    enable = true;
+
+    # bridge
+    netdevs."10-br-lan" = {
+      netdevConfig = {
+        Kind = "bridge";
+        Name = "br-lan";
+      };
+    };
+
+    # wireguard
+    netdevs."40-wg0" = wg.netdev;
+    networks."40-wg0" = wg.network;
+
+    # LAN
+    networks."20-lan-uplink" = {
+      matchConfig.Name = "enp5s0";
+      networkConfig.Bridge = "br-lan";
+      linkConfig.RequiredForOnline = "enslaved";
+    };
+
+    networks."20-wan-uplink" = {
+      matchConfig.Name = "eno1";
+      linkConfig.RequiredForOnline = "no";
+      networkConfig = {
+        LinkLocalAddressing = "no";
+        DHCP = "no";
+      };
+    };
+
+    networks."25-wan-ppp" = {
+      matchConfig.Name = "ppp0";
+      networkConfig = {
+        IPv6AcceptRA = true;
+        DHCP = "ipv6";
+        # pppd installs the IPv4 (IPCP) address; keep it across networkd
+        # restarts so `nixos-rebuild switch` doesn't flush it.
+        KeepConfiguration = "yes";
+      };
+      linkConfig = {
+        RequiredForOnline = "carrier";
+      };
+      dhcpV6Config = {
+        WithoutRA = "solicit";
+        PrefixDelegationHint = "::/60";
+        UseDelegatedPrefix = true;
+      };
+    };
+
+    networks."30-br-lan" = {
+      matchConfig.Name = "br-lan";
+      networkConfig = {
+        Address = "10.0.1.1/24";
+        DHCPServer = true;
+        IPMasquerade = "ipv4";
+
+        IPv6SendRA = true;
+        IPv6AcceptRA = false;
+        DHCPPrefixDelegation = true;
+      };
+      linkConfig = {
+        RequiredForOnline = "no"; # carrier
+      };
+
+      dhcpServerConfig = {
+        PoolOffset = 100;
+        PoolSize = 100;
+        EmitDNS = true;
+        DNS = ["10.0.1.1"];
+      };
+
+      # SLAAC
+      ipv6SendRAConfig = {
+        Managed = false; # no DHCPv6
+        OtherInformation = false;
+        EmitDNS = true; # send DNS with RA
+      };
+    };
+  };
+
+  systemd.tmpfiles.rules =
+    ["d /var/lib/coturn 0750 root turnserver -"]
+    ++ lib.optional (!config.services.gaoji.napcat.enable)
+    "r ${config.my.telemetry.textfileDir}/gaoji-qq.prom - - - -";
+
+  services.dnsmasq.enable = false;
+  services.resolved = {
+    enable = true;
+    settings.Resolve = {
+      FallbackDNS = ["223.5.5.5"];
+      DNSStubListener = "yes";
+      DNSStubListenerExtra = ["10.0.1.1" "::"];
+    };
+  };
+
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "hankchogan@gmail.com";
+
+    # **dae 开着时 lego 的 DNS-01 一定失败**,所以不做探测,固定等 120s 再让 LE
+    # 去验(LE 在境外,那里没有 dae)。120s 是拿 LE staging 实测过的。
+    # 根因和证据见 docs/incidents.md#dae-breaks-lego-dns01。
+    #
+    # 别改成 `dnsPropagationCheck = false`:它展开成
+    # --dns.propagation-disable-ans,是把检查整个取消而不是换一种做法 —— lego
+    # 建完记录 2 秒就让 LE 去验,记录还没生效 → NXDOMAIN。两个标志还互斥。
+    defaults.extraLegoFlags = ["--dns.propagation-wait" "120s"];
+  };
+
+  security.acme.certs."tailscale.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
+  };
+
+  security.acme.certs."matrix.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
+  };
+
+  security.acme.certs."rtc.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
+    reloadServices = [
+      "nginx.service"
+      "coturn.service"
+    ];
+  };
+
+  security.acme.certs."max.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
+  };
+
+  security.acme.certs."gaoji.inner.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    # Tailnet DNS does not answer SOA; see docs/incidents.md#gaoji-acme-inner-soa.
+    dnsResolver = "1.1.1.1:53";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
+    extraDomainNames = ["kennethbot.inner.imdomestic.com"];
+  };
+
+  my.ddns = {
+    enable = true;
+    zones = [
+      {
+        name = "h610";
+        ipv4 = {
+          enable = true;
+          interface = "ppp0";
+          domains = ["h610:imdomestic.com" "tailscale:imdomestic.com" "matrix:imdomestic.com" "rtc:imdomestic.com" "max:imdomestic.com"];
+        };
+        ipv6.domains = ["h610:imdomestic.com" "matrix:imdomestic.com" "rtc:imdomestic.com"];
+      }
+    ];
+  };
+
+
+  # Xray 的凭据全部走 sops。内联到 `settings` 会把 UUID 和 Reality 私钥同时写进
+  # 这个公开仓库和 world-readable 的 nix store,所以整份 config 改由
+  # sops.templates 渲染,再用 settingsFile 交给 xray。xray.service 是
+  # DynamicUser + LoadCredential:systemd 先以 root 读取渲染结果,再投给动态用户,
+  # 所以 root-only 的 /run/secrets/rendered 够用。
+  sops.secrets."xray/reality_private_key" = {};
+  sops.secrets."xray/interconn2_uuid" = {};
+  sops.secrets."xray/interconn2_short_id" = {};
+  sops.secrets."xray/client_in2_uuid" = {};
+  sops.secrets."xray/client_in2_short_id" = {};
+  # 悉尼出口那条隧道的两个入口。复用本机同一对 REALITY 密钥,各自一个 shortId
+  # —— 和上面三个入口的做法一致。
+  sops.secrets."xray/interconn_au_uuid" = {};
+  sops.secrets."xray/interconn_au_short_id" = {};
+  sops.secrets."xray/client_au_uuid" = {};
+  sops.secrets."xray/client_au_short_id" = {};
+  # 订阅服务要把这两个值写进给客户端的配置里,所以 airport 用户得读得到。
+  sops.secrets."xray/friends_short_id".owner = "airport";
+  sops.secrets."xray/reality_public_key".owner = "airport";
+
+  services.xray.enable = true;
+  services.xray.settingsFile = config.sops.templates."xray-config.json".path;
+
+  sops.templates."xray-config.json" = {
+    restartUnits = ["xray.service"];
+    content = let
+      s = config.sops.placeholder;
+
+      # 三个新入口共用 h610 这台的新密钥对,各自一个 shortId。
+      # 新入口换 aliyun:www.apple.com 是全网最被滥用的 SNI(xray 为此告警),
+      # 而 www.aliyun.com 证书记录 2845B、解析到江苏电信段、dest 拨号不出省。
+      reality = shortId: {
+        network = "tcp";
+        security = "reality";
+        realitySettings = {
+          show = false;
+          dest = "www.aliyun.com:443";
+          serverNames = ["www.aliyun.com"];
+          privateKey = s."xray/reality_private_key";
+          shortIds = [shortId];
+        };
+      };
+
+      # 老密钥对。私钥和 UUID 都已随公开仓库泄露,只为过渡期保活,Step 5 删。
+      vision = id: {
+        inherit id;
+        flow = "xtls-rprx-vision";
+      };
+
+      vlessIn = tag: port: clients: streamSettings: {
+        inherit tag port streamSettings;
+        protocol = "vless";
+        settings = {
+          inherit clients;
+          decryption = "none";
+        };
+      };
+    in
+      builtins.toJSON {
+        log.loglevel = "warning";
+
+        # 每用户流量计数 + 运行时增删用户,airport 控制器靠这两个接口干活。
+        # 只有带 email 的 client 才会产生 user>>> 计数,所以 client-in2 和
+        # interconn2 那些不带 email 的连接不会被统计。
+        stats = {};
+        api = {
+          tag = "api";
+          listen = "127.0.0.1:10085";
+          services = ["StatsService" "HandlerService"];
+        };
+        policy = {
+          levels."0" = {
+            statsUserUplink = true;
+            statsUserDownlink = true;
+          };
+          system = {
+            statsInboundUplink = true;
+            statsInboundDownlink = true;
+          };
+        };
+
+        # 两条反向隧道,两个 portal。domain 是它们唯一的区分 —— 对面那台
+        # bridge 注册的名字必须和这里一字不差。
+        reverse.portals = [
+          {
+            tag = "portal-h610";
+            domain = "reverse-h610.hank.internal";
+          }
+          # rpi4(悉尼)。它没有公网入口,所以由它拨进来。
+          {
+            tag = "portal-h610-au";
+            domain = "reverse-h610-au.hank.internal";
+          }
+        ];
+
+        inbounds = [
+          # gizmo 的 bridge 拨进来的新落点(Step 4 切换)。
+          (vlessIn "interconn2" 1444
+            [(vision s."xray/interconn2_uuid")]
+            (reality s."xray/interconn2_short_id"))
+
+          # 自己用:dae 的 im 组换到这里(Step 2)。不带 email,不计量不限额。
+          (vlessIn "client-in2" 54322
+            [(vision s."xray/client_in2_uuid")]
+            (reality s."xray/client_in2_short_id"))
+
+          # 朋友专用。clients 故意留空,由 airport 控制器在运行时用
+          # `xray api adu` 注入(Step 6),这样 UUID 既不进 git 也不进 nix store。
+          (vlessIn "friends-in" 54323 [] (reality s."xray/friends_short_id"))
+
+          # ↓ 悉尼出口。端口取 +1 / +2,和上面日本那套错开。
+          # rpi4 的 bridge 拨进来的落点。
+          (vlessIn "interconn-au" 1445
+            [(vision s."xray/interconn_au_uuid")]
+            (reality s."xray/interconn_au_short_id"))
+
+          # 自己用:想从悉尼出网时连这个口。
+          (vlessIn "client-au" 54324
+            [(vision s."xray/client_au_uuid")]
+            (reality s."xray/client_au_short_id"))
+        ];
+
+        outbounds = [
+          {
+            tag = "direct";
+            protocol = "freedom";
+          }
+        ];
+
+        # 入口决定出口:前三个进日本那条隧道,后两个进悉尼那条。
+        #
+        # 每条规则都必须同时收下 interconn-* 和 client-*:前者是 bridge 拨进来
+        # 的控制信道(目的地正是 portal 的内部域名),后者是真正的用户流量。
+        # 少收一个,隧道要么建不起来,要么建起来了没人用。
+        routing.rules = [
+          {
+            type = "field";
+            inboundTag = ["interconn2" "client-in2" "friends-in"];
+            outboundTag = "portal-h610";
+          }
+          {
+            type = "field";
+            inboundTag = ["interconn-au" "client-au"];
+            outboundTag = "portal-h610-au";
+          }
+        ];
+      };
+  };
+
+  # 朋友的订阅服务。UUID 和订阅 token 由控制器在运行时签发,存在
+  # /var/lib/airport,所以这里只声明配额和到期,加人不用碰 sops。
+  services.airport = {
+    enable = true;
+    server = {
+      address = "h610.imdomestic.com";
+      port = 54323;
+      name = "imdomestic-jp";
+      publicKeyFile = config.sops.secrets."xray/reality_public_key".path;
+      shortIdFile = config.sops.secrets."xray/friends_short_id".path;
+    };
+    # 电信把 80/443 入站掐了,所以订阅和 headscale 一起挂在 8443,靠 SNI 分流。
+    subscription.baseUrl = "https://h610.imdomestic.com:8443";
+
+    users = {
+      # 示例,按需增删。quotaGB 是上下行合计,用完为止不自动重置;
+      # 想续期就改数字重新部署,或者跑 `airport reset <用户>`。
+      # alice = {
+      #   quotaGB = 100;
+      #   expires = "2026-12-31";
+      # };
+      test = {
+        quotaGB = 100;
+        expires = "2026-08-31";
+      };
+
+      bordersaki = {
+        quotaGB = 200;
+        expires = "2026-09-30";
+      };
+    };
+  };
+
+  # 自用订阅。和上面的 airport 共用这台机器和这个 8443,但内容完全不同:
+  # 六个节点全给、永久有效、带完整分流规则。token 是唯一的认证,换掉它
+  # 就等于吊销全部旧链接。链接用 `sudo imsub-url` 打印。
+  sops.secrets."imsub/token".owner = "imsub";
+  services.imsub = {
+    enable = true;
+    baseUrl = "https://h610.imdomestic.com:8443";
+    tokenFile = config.sops.secrets."imsub/token".path;
+  };
+
+  # 订阅走已有的 8443,证书用现成的 Cloudflare DNS-01 签。h610.imdomestic.com
+  # 本来就由 ddns-go 在更新,所以不用额外加 DNS 记录。
+  security.acme.certs."h610.imdomestic.com" = {
+    dnsProvider = "cloudflare";
+    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
+    group = "nginx";
+  };
+
+  services.displayManager.gdm.enable = false;
+  services.desktopManager.gnome.enable = false;
+
+  my.tailscale.bindServices = ["ollama" "headplane"];
+
+  services.ollama = {
+    enable = true;
+    package = pkgs-unstable.ollama-vulkan;
+    host = config.my.host.tsName;
+    loadModels = [
+      "bge-m3"
+      "qwen3.5:2b-q4_K_M"
+    ];
+  };
+
+  systemd.services.ollama = {
+    after = ["network-online.target" "tailscaled.service"];
+    wants = ["network-online.target" "tailscaled.service"];
+  };
+
+  users.users.turnserver.extraGroups = ["nginx"];
+
+  programs.zsh = {
+    enable = true;
+  };
+
+  programs.nix-ld.enable = true;
+
+  xdg.portal.wlr.enable = true;
+
+  hardware.enableRedistributableFirmware = true;
+  hardware.graphics = {
+    enable = true;
+    extraPackages = with pkgs; [
+      vpl-gpu-rt
+      intel-compute-runtime
+      intel-media-driver
+      mesa
+    ];
+    enable32Bit = true;
+  };
+  users.users.hank.extraGroups = ["video" "render" "docker"];
+
+  # Other QQ bot workloads still use Docker. Max has its own native systemd
+  # stack and no longer needs access to the Docker daemon.
+  virtualisation.docker.enable = true;
+  # The host resolv.conf points at the systemd-resolved stub, so docker
+  # falls back to 8.8.8.8 — which resolves CN sites to overseas CDNs that
+  # don't load from here. Pin domestic resolvers for containers instead.
+  virtualisation.docker.daemon.settings.dns = ["223.5.5.5" "119.29.29.29"];
+
+  services.gaoji = {
+    enable = true;
+    runBot = false;
+    # Keep existing data during the service rename; see docs/decisions.md#gaoji-rename.
+    stateDirectory = "qq-deepseek-bot";
+    cacheDirectory = "qq-deepseek-bot";
+    environmentFile = "/home/kenneth/services/chat-bot/.env";
+    user = "kenneth";
+    group = "users";
+    host = "172.17.0.1";
+    port = 18080;
+    admin = {
+      secretFile = config.sops.secrets."gaoji/authorization_key".path;
+      origin = "https://gaoji.inner.imdomestic.com";
+      botId = "3580515978";
+    };
+    environment = {
+      FORWARDED_ALLOW_IPS = "127.0.0.1";
+      AI_OBSERVABILITY_ENABLED = "true";
+      AI_METRICS_PATH = "/metrics";
+      AI_PROMETHEUS_URL = "http://h610.inner.imdomestic.com:9009";
+      AI_ALERTMANAGER_URL = "http://h610.inner.imdomestic.com:9093";
+      AI_ALERT_NOTIFY_ENABLED = "false";
+      AI_ALERT_NOTIFY_GROUP_ID = "611798505";
+      AI_ALERT_NOTIFY_CHECK_SECONDS = "30";
+      AI_SEMANTIC_ENABLED = "true";
+      AI_EMBEDDING_BASE_URL = "http://${config.my.host.tsName}:11434/v1";
+      AI_EMBEDDING_API_KEY = "ollama-local";
+      AI_EMBEDDING_MODEL = "bge-m3";
+      AI_EMBEDDING_DIMENSIONS = "1024";
+      AI_EMBEDDING_TIMEOUT_SECONDS = "60";
+      OTEL_SERVICE_NAME = "gaoji";
+    };
+    runtimePackages = [pkgs.ffmpeg-headless];
+    sandbox.enable = true;
+    sandbox.nixCacheVolume = "kennethbot-nix-v2";
+    browser.enable = true;
+    videoDeep = {
+      enable = true;
+      frameCount = 12;
+      maxDownloadMB = 1024;
+      maxDurationMinutes = 60;
+      timeoutSeconds = 1800;
+    };
+    napcat = {
+      # The sole Gaoji QQ session now lives on tank.
+      enable = false;
+      backend = "native";
+      nativePackage = config.services.max.napcat.package.napcat;
+      # Retain the former image pin for an explicit, backed-up rollback only.
+      image = "mlikiowa/napcat-docker@sha256:41b1a8e10953065f4796ab19c0c8760cd3175376be976c5480710d29a77357ee";
+      containerName = "napcat-chat-bot";
+      dataDirectory = "/var/lib/napcat-chat-bot";
+      account = "3580515978";
+      reverseWebsocketUrl = "ws://${gaojiBotHost}:18080/onebot/v11/ws";
+      reverseWebsocketTokenFile = config.sops.secrets."gaoji/onebot_access_token".path;
+      webuiPort = 6100;
+      healthCheck = {
+        enable = true;
+        metricsFile = "${config.my.telemetry.textfileDir}/gaoji-qq.prom";
+      };
+      passwordLogin = {
+        enable = false;
+        passwordFile = "/var/lib/gaoji-qq-login-secret/password";
+        notification = {
+          enable = false;
+          webuiConfigFile = "/var/lib/max/napcat/config/webui.json";
+          webuiPort = config.services.max.napcat.webuiPort;
+          account = config.services.max.napcat.qq;
+          groupId = "611798505";
+          userId = "3526452465";
+        };
+      };
+    };
+  };
+
+  my.monitoring.extraScrapeConfigs = [
+    {
+      job_name = "gaoji";
+      metrics_path = "/metrics";
+      scrape_interval = "15s";
+      static_configs = [
+        {
+          targets = ["${gaojiBotHost}:18080"];
+          labels.instance = if config.services.gaoji.runBot then "h610" else "tank";
+        }
+      ];
+    }
+    {
+      job_name = "gaoji-cluster-control";
+      metrics_path = "/metrics/";
+      scrape_interval = "15s";
+      static_configs = [
+        {
+          targets = ["${config.my.host.tsName}:8091"];
+          labels.instance = "h610";
+        }
+      ];
+    }
+  ];
+  my.monitoring.extraRules = [
+    {
+      name = "gaoji";
+      rules = [
+        {
+          alert = "GaojiQQOffline";
+          expr = ''gaoji_qq_online == 0 and (time() - gaoji_qq_health_checked_timestamp_seconds < 120)'';
+          "for" = "2m";
+          labels.severity = "critical";
+          annotations = {
+            summary = "高级 QQ 账号离线，进程运行不代表能收发消息";
+            description = "查看 GaojiQQLoginRequired；需要登录时用机器人账号扫码。连接故障会有限重试，禁止循环清除登录数据。";
+          };
+        }
+        {
+          alert = "GaojiQQLoginRequired";
+          expr = ''gaoji_qq_login_required == 1 and (time() - gaoji_qq_health_checked_timestamp_seconds < 120)'';
+          "for" = "1m";
+          labels.severity = "warning";
+          annotations = {
+            summary = "高级 QQ 登录已失效，需要手机扫码";
+            description = "自动重启不能恢复被 QQ 撤销的登录凭证；请打开 NapCat 完成扫码。";
+          };
+        }
+        {
+          alert = "GaojiQQHealthStale";
+          expr = ''absent(gaoji_qq_health_checked_timestamp_seconds) or (time() - gaoji_qq_health_checked_timestamp_seconds > 120)'';
+          "for" = "2m";
+          labels.severity = "warning";
+          annotations = {
+            summary = "高级 QQ 在线检查停止更新";
+            description = "检查 gaoji-qq-health.timer/service；旧的在线状态不能证明当前 QQ 可用。";
+          };
+        }
+        {
+          alert = "GaojiMetricsUnavailable";
+          expr = ''up{job="gaoji"} == 0'';
+          "for" = "2m";
+          labels.severity = "critical";
+          annotations = {
+            summary = "Gaoji metrics endpoint is unavailable";
+            description = "Prometheus cannot scrape the Gaoji process on h610.";
+          };
+        }
+        {
+          alert = "GaojiClusterControlUnavailable";
+          expr = ''up{job="gaoji-cluster-control"} == 0'';
+          "for" = "2m";
+          labels.severity = "warning";
+          annotations = {
+            summary = "Gaoji cluster control is unavailable";
+            description = "The bot cannot perform trusted fleet queries while its local control service is unavailable.";
+          };
+        }
+        {
+          alert = "GaojiModelFailureRateHigh";
+          expr = ''
+            sum(increase(gaoji_model_requests_total[15m])) >= 5
+            and
+            sum(increase(gaoji_model_requests_total{status!="succeeded",status!="circuit_open"}[15m]))
+              / sum(increase(gaoji_model_requests_total[15m])) > 0.5
+          '';
+          "for" = "5m";
+          labels.severity = "warning";
+          annotations = {
+            summary = "Gaoji model failure rate is above 50%";
+            description = "At least five model attempts occurred in 15 minutes and more than half failed.";
+          };
+        }
+        {
+          alert = "GaojiOutboxAmbiguous";
+          expr = ''gaoji_outbox_deliveries{status="ambiguous"} > 0'';
+          "for" = "10m";
+          labels.severity = "warning";
+          annotations = {
+            summary = "Gaoji has ambiguous outbound deliveries";
+            description = "A platform timeout may have sent a message without a confirmed receipt; inspect before retrying.";
+          };
+        }
+      ];
+    }
+  ];
+
+  # The monitor remains on h610; tank is the preferred writable data node.
+  # h610 retains a bounded hot replica for failover.
+  services.qq-bot-postgres-ha = {
+    enable = true;
+    preferredNodeName = "tank";
+    access.applicationClientAddresses = ["100.64.0.3/32" "100.64.0.4/32"];
+    passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
+    haPasswordFile = config.sops.secrets."qq_bot/ha_password".path;
+    monitor.enable = true;
+    node = {
+      enable = true;
+      name = "h610";
+      hostname = config.my.host.tsName;
+      stateDir = "/var/lib/qq-bot-postgres-node";
+      dataDir = "/var/lib/qq-bot-postgres-node/data";
+      candidatePriority = 50;
+      walKeepSize = "1GB";
+      maxSlotWalKeepSize = "16GB";
+      maxWalSize = "4GB";
+      minWalSize = "1GB";
+    };
+    backup = {
+      directory = "/var/lib/qq-bot-postgres-backups";
+      retentionDays = 3;
+      retentionCount = 1;
+      minimumFreeBytes = 30 * 1024 * 1024 * 1024;
+      onCalendar = "*-*-* 03:20:00";
+      restoreCheck.onCalendar = "Sun *-*-* 04:20:00";
+    };
+  };
+
+  sops.templates."qq-deepseek-bot-postgres.env" = {
+    owner = "kenneth";
+    group = "users";
+    mode = "0400";
+    restartUnits = lib.optionals config.services.gaoji.runBot [
+      "gaoji.service"
+    ];
+    content = ''
+      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@h610.inner.imdomestic.com:55432,tank.inner.imdomestic.com:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
+      AI_POSTGRES_SCHEMA=qq_bot
+      AI_POSTGRES_POOL_MIN_SIZE=1
+      AI_POSTGRES_POOL_MAX_SIZE=10
+      AI_POSTGRES_POOL_TIMEOUT_SECONDS=10
+      AI_POSTGRES_HEALTH_CHECK_INTERVAL_SECONDS=5
+      AI_POSTGRES_NODE_NAMES=h610,tank
+      AI_ALLOW_LEGACY_SQLITE=false
+      AI_DISABLED_GROUPS=
+      AI_PROACTIVE_INTEREST_THRESHOLD=98
+      AI_PROACTIVE_GATE_PERCENT=10
+      AI_PROACTIVE_MAX_CHECKS_PER_HOUR=6
+      AI_PROACTIVE_CLASSIFIER_PROFILE=deepseek
+      AI_RECALL_ROUTER_MODEL_ENABLED=true
+      AI_RECALL_ROUTER_PROFILE=deepseek
+      AI_RECALL_ROUTER_TIMEOUT_SECONDS=8
+      AI_EVIDENCE_GUARD_ENABLED=true
+      AI_CONTEXT_INPUT_BUDGET_TOKENS=32768
+      AI_CONTEXT_HIGH_WATERMARK_TOKENS=32768
+      AI_CONTEXT_LOW_WATERMARK_TOKENS=16384
+      AI_HISTORIAN_ENABLED=true
+      AI_HISTORIAN_PROFILE=deepseek
+      AI_HISTORIAN_CHECK_SECONDS=60
+      AI_HISTORIAN_MAX_SCOPES=20
+      AI_HISTORIAN_IDLE_SECONDS=600
+      AI_HISTORIAN_MAX_ATTEMPTS=4
+      AI_SUBAGENTS_ENABLED=true
+      AI_SUBAGENT_ENTRY_ENABLED=true
+      AI_SUBAGENT_MAX_STEPS=8
+      AI_SUBAGENT_MAX_PARALLELISM=3
+      AI_SUBAGENT_MAX_TOOL_ROUNDS=20
+      AI_SUBAGENT_TIMEOUT_SECONDS=1800
+      AI_SUBAGENT_PROFILES_JSON={}
+      AI_ADMIN_ENABLED=true
+      ONEBOT_ACCESS_TOKEN=${config.sops.placeholder."gaoji/onebot_access_token"}
+      ONEBOT_SECRET=${config.sops.placeholder."gaoji/onebot_secret"}
+      AI_ADMIN_USER_IDS=3526452465
+      AI_SANDBOX_ENABLED=true
+      AI_SANDBOX_ALLOWED_USERS=
+      AI_SANDBOX_MAX_PER_USER=2
+      AI_SANDBOX_MAX_TOTAL=8
+      AI_SANDBOX_TIMEOUT_SECONDS=120
+      AI_SANDBOX_MAX_FILE_MB=0
+      AI_TOOL_SIMPLE_MAX_ROUNDS=5
+      AI_MEDIA_ENABLED=true
+      AI_MEDIA_ROOT=/var/lib/qq-deepseek-bot/media
+      AI_VISION_PROFILE=gpt-5.6-luna
+      AI_VISION_AUTO_DESCRIBE=false
+      AI_MEDIA_MAX_SOURCE_MB=100
+      AI_VISION_MAX_IMAGE_MB=20
+      AI_MEDIA_PREPARE_THRESHOLD_MB=1
+      AI_MEDIA_MAX_EDGE_PX=1568
+      AI_VISION_TIMEOUT_SECONDS=180
+      AI_MEDIA_MAX_ATTEMPTS=5
+      AI_MEDIA_LEASE_SECONDS=600
+      AI_MEDIA_BATCH_SIZE=4
+      AI_MEDIA_WORKER_CONCURRENCY=2
+      AI_ARCHIVE_ENABLED=true
+      AI_ARCHIVE_ROOT=/mnt/kennethbot-archive
+      AI_ARCHIVE_MEDIA_RETENTION_DAYS=30
+      AI_ARCHIVE_DELIVERY_RETENTION_DAYS=7
+      AI_ARCHIVE_DELIVERY_MIN_MB=1
+      AI_ARCHIVE_INTERVAL_SECONDS=60
+      AI_ARCHIVE_BATCH_SIZE=20
+      CLIPROXY_API_KEY=${config.sops.placeholder."cliproxy/api_key"}
+      AI_MODEL_DEFAULT_PROFILE=deepseek
+      AI_SIMPLE_CHAT_PROFILE=qwen-local
+      AI_MODEL_PROFILES_JSON='${qqBotModelProfiles}'
+      AI_GROUP_MODEL_PROFILES_JSON='{"201644592":"gpt-5.6-sol"}'
+    '';
+  };
+  systemd.services.gaoji = lib.mkIf config.services.gaoji.runBot {
+    serviceConfig.EnvironmentFile = lib.mkAfter [
+      config.sops.templates."qq-deepseek-bot-postgres.env".path
+    ];
+    serviceConfig.ReadWritePaths = ["/mnt/kennethbot-archive"];
+    after = lib.mkAfter [
+      "tailscaled.service"
+      "ollama.service"
+      "qq-bot-postgres-bootstrap.service"
+    ];
+    wants = lib.mkAfter [
+      "tailscaled.service"
+      "ollama.service"
+      "qq-bot-postgres-node.service"
+    ];
+  };
+
+  fileSystems."/mnt/kennethbot-archive" = {
+    device = "tank.inner.imdomestic.com:/data/services/kennethbot-archive";
+    fsType = "nfs";
+    options = [
+      "nfsvers=4.2"
+      "_netdev"
+      "nofail"
+      "noauto"
+      "x-systemd.automount"
+      "x-systemd.idle-timeout=300"
+      "soft"
+      "timeo=50"
+      "retrans=2"
+    ];
+  };
+
+  environment = {
+    variables = {
+      EDITOR = "nvim";
+    };
+  };
+
+  environment.systemPackages = with pkgs; [
+    # nginx 删了:services.nginx.enable 已经把它装进 system path 了,再声明一遍
+    # 只会让人以为这台上有两个来源。
+    #
+    # deploy-rs 删了:home/profiles/dev.nix 里本来就有。
+    #
+    # gcc 没搬。这台上有 hank / linwhite / kenneth / fendada / genisys 五个账户,
+    # 只有 hank 引了 dev profile —— 而 pip / npm / cargo 会隐式去找 cc。
+    # 按 AGENTS.md 的说法这属于"every account must have regardless of who logs in",
+    # 留在 system 是对的。
+    gcc
+    neovim
+    # 核显转码出问题时要看的,root 侧工具。
+    intel-gpu-tools
+    # 这台的容器是 root 起的(hank 不在 docker 组),所以它得在 root 的 PATH 里。
+    docker-compose
+  ];
+
+  environment.sessionVariables = {
+    LIBVA_DRIVER_NAME = "iHD";
+    NIXOS_OZONE_WL = "1";
+  };
+  xdg.portal.config.common.default = "*";
+
+  services.openssh.enable = true;
+
+  services.headscale = {
+    enable = true;
+    # nixpkgs 26.05 still has 0.28.0; pin upstream 0.29.4 for the incremental-map fix.
+    package = pkgs.headscale.overrideAttrs (old: {
+      version = "0.29.4";
+      src = pkgs.fetchFromGitHub {
+        owner = "juanfont";
+        repo = "headscale";
+        tag = "v0.29.4";
+        hash = "sha256-oBl8oQuZ8LUhK6FsGZkTXCJtwqmegmUDreeIILH4wRg=";
+      };
+      vendorHash = "sha256-fzKyXNMw/2yAEhaTZu0n1NXatPO2IP0HFA2ey1vZIYM=";
+      postPatch = ''
+        substituteInPlace hscontrol/types/version.go \
+          --replace-fail 'Version:   "dev"' 'Version: "0.29.4"' \
+          --replace-fail 'Commit:    "unknown"' 'Commit: "v0.29.4"'
+      '';
+    });
+    address = "127.0.0.1";
+    port = 8080;
+    settings = {
+      policy.path = "${pkgs.writeText "headscale-policy.json" (builtins.toJSON {
+        groups = {
+          "group:imdomestic" = [
+            "hank@imdomestic.com"
+            "linwhite@imdomestic.com"
+            "fendada@imdomestic.com"
+            "kenneth@imdomestic.com"
+            "genisys@imdomestic.com"
+            "max@imdomestic.com"
+          ];
+        };
+
+        acls = [
+          # 核心规则：允许这个组内的所有人访问该组内的所有设备（所有端口）
+          {
+            action = "accept";
+            src = ["group:imdomestic"];
+            dst = ["group:imdomestic:*"];
+          }
+
+          # 放行经 exit node 的出网流量。shanghai 广播 --advertise-exit-node
+          # (见 hosts/tokyo/system.nix),没有这条的话策略层面就把出网挡掉,
+          # 广播了也用不了。
+          #
+          # autogroup:internet **只能出现在 ACL 的 dst**,headscale 源码里有
+          # 专门的 ErrAutogroupInternetSrc 拦着放到 src 的写法。
+          {
+            action = "accept";
+            src = ["group:imdomestic"];
+            dst = ["autogroup:internet:*"];
+          }
+
+          # 子网路由。上面那条 group -> group 只覆盖 tailnet 设备地址
+          # (100.64.0.0/10),不含被广播的局域网网段 —— 少了这条,路由批准了
+          # 也会在策略层被挡掉,而且现象是"不通",不会告诉你是 ACL 拦的。
+          {
+            action = "accept";
+            src = ["group:imdomestic"];
+            dst = map (route: "${route}:*") lanRoutes;
+          }
+        ];
+
+        # 路由广播出来还要批准,否则只是挂在 `headscale nodes list-routes` 里。
+        # 交给 autoApprovers 自动过:这些网段本来就是我们自己声明在 registry
+        # 里的,重装一台机器不该还要人去 h610 上敲一次 approve-routes。
+        autoApprovers = {
+          routes = lib.genAttrs lanRoutes (_: ["group:imdomestic"]);
+          exitNode = ["group:imdomestic"];
+        };
+
+        # Tailscale SSH。**这一段在任何节点开启 `tailscale set --ssh` 之前
+        # 完全不生效** —— SSH 规则只对启用了 tailscale SSH 的节点有意义,所以
+        # 先落地规则、后开节点,中间没有"开了但没规则"的空窗。
+        #
+        # 目标是机器之间互相 ssh 不用管密钥:认证走 tailnet 身份,客户端零配置、
+        # 零密钥,新机器接进 tailnet 就能用。这也顺带解决 tank 当远程构建机的
+        # 认证问题(nix-daemon 以 root 发起 ssh,原本需要一把 root 能读的私钥)。
+        #
+        # **这三行的每一处写法都是踩出来的**,照抄 tailscale 官方示例会错:
+        # dst 不能用 group(headscale 不认)、action 不能用 check(会打断
+        # deploy-rs)、users 必须显式列 root。而 `headscale policy check`
+        # 只抓得住第一条 —— 后两种它照样报 "Policy is valid"。
+        # 完整的三个坑见 docs/incidents.md#headscale-ssh-policy-traps。
+        #
+        # 改这一段要 rebuild + switch h610(策略是 nix store 里的文件)。
+        # 需要频繁调试时可以临时切 policy.mode = "database" 用
+        # `headscale policy set` 热更新,定稿再切回来。
+        ssh = [
+          {
+            action = "accept";
+            src = ["group:imdomestic"];
+            dst = ["autogroup:member"];
+            # root 要显式列出 —— autogroup:nonroot 的语义是"除 root 外的任何
+            # 用户"。deploy-rs 和 nix 远程构建都是以 root 连过去的。
+            users = ["root" "autogroup:nonroot"];
+          }
+        ];
+      })}";
+      server_url = "https://tailscale.imdomestic.com:8443";
+      derp.server = {
+        enabled = true;
+        region_id = 610;
+        region_code = "h610";
+        region_name = "H610";
+        stun_listen_addr = "0.0.0.0:3479";
+      };
+      derp.paths = [headscaleDerpMap];
+      dns = {
+        base_domain = "inner.imdomestic.com";
+        magic_dns = true;
+        nameservers.split."vex.internal" = ["100.64.0.43"];
+        override_local_dns = false;
+      };
+      ip_prefixes = ["100.64.0.0/10"];
+    };
+  };
+
+  # headplane —— headscale 的 Web UI。
+  #
+  # **不要再挂 `github:tale/headplane` 那个 flake input**(2026-03 那版是这么
+  # 干的,在 git 历史里)。nixpkgs 26.05 自带 `services.headplane` 模块和
+  # headplane/headplane-agent 两个包(0.6.2 / 0.6.3),少一个 input、少一份
+  # 跟着 nixpkgs 漂的 follows。
+  #
+  # **端口是 3001 不是 3000。** 3000 在这台上被 Grafana 占着(h610 的 roles
+  # 里有 monitor,grafana 绑 100.64.0.3:3000)。下面 headplane 绑的是同一个
+  # 地址,所以 3000 会是硬冲突 —— 后起的那个直接 bind 失败,不是"两个都能
+  # 跑"。modules/monitoring 里 grafanaPort 的说明记着这件事的另一半。
+  #
+  # 只绑 tailnet 地址,不进 nginx —— **tailnet 就是这里的认证边界**,和
+  # Grafana、r6s 的 metacubexd 面板同一个思路。headscale 的 ACL 已经把能连
+  # 上来的人限定成 group:imdomestic 那四个。代价是 cookie_secure 只能是
+  # false(明文 HTTP),但这条链路整段在 WireGuard 里,没有额外暴露面。
+  #
+  # 登录方式是 headscale API key(fleet 里没有 OIDC provider):
+  #   headscale apikeys create -e 87600h
+  # 生成后粘进登录框。**/admin 这个前缀是 headplane 构建期烤进去的**
+  # (vite.config.ts 里的 __INTERNAL_PREFIX),不是可配置项,开根路径会 404。
+  #
+  # **入口一律用 MagicDNS 短名 http://h610:3001/admin** —— 裸 tailnet IP 和
+  # FQDN 两种写法在开着 Clash Verge 的 mac 上浏览器都是 502(而 curl 全绿,
+  # 验证不出来)。见 docs/incidents.md#tailnet-panels-502。
+  #
+  # UI 里"配置"和"ACL"两页是只读的:config_path 和 policy.path 都指向 nix
+  # store。这是 NixOS 上的正常形态,不是坏了 —— 用户、节点、pre-auth key
+  # 这些走数据库的东西照常能改。
+  sops.secrets."headplane/cookie_secret" = {
+    owner = "headscale";
+    restartUnits = ["headplane.service"];
+  };
+  # agent 的 pre-auth key。reusable,2036 年过期(`headscale preauthkeys
+  # create --user 1 --reusable -e 87600h`,user 1 = hank@imdomestic.com)。
+  # **不能带 --tags**:打了 tag 的节点不再属于 group:imdomestic,上面 ACL
+  # 那条 dst 就匹配不到它。
+  sops.secrets."headplane/agent_preauthkey" = {
+    owner = "headscale";
+    restartUnits = ["headplane.service"];
+  };
+
+  services.headplane = {
+    enable = true;
+    settings = {
+      server = {
+        # The package wrapper supplies HEADPLANE_SERVER__HOST from the local tailnet address.
+        host = "127.0.0.1";
+        port = 3001;
+        base_url = "http://${config.my.host.tsName}:3001";
+        cookie_secure = false;
+        cookie_secret_path = config.sops.secrets."headplane/cookie_secret".path;
+      };
+      # headscale.url / public_url / config_path 三个默认值都是从
+      # services.headscale 推出来的(127.0.0.1:8080、server_url、configFile),
+      # 照抄一遍只会多一处漂移点,所以不写。
+      integration.agent = {
+        enabled = true;
+        pre_authkey_path = config.sops.secrets."headplane/agent_preauthkey".path;
+      };
+    };
+  };
+
+  # 绑 tsName 的服务都得等 tailscaled 把地址配上,否则首次启动 bind 失败。
+  # 和 modules/monitoring 里 prometheus/grafana/alertmanager 同样的处理。
+  systemd.services.headplane = {
+    after = ["tailscaled.service"];
+    wants = ["tailscaled.service"];
+  };
+  # 3001 的放行写在文件上方那个唯一的 firewall 块里(见那里的说明:这个文件
+  # 只能有一个 networking 定义,否则 CI 的旧 Nix 会报 already defined)。
+
+  services.coturn = {
+    enable = true;
+    no-cli = true;
+    use-auth-secret = true;
+    static-auth-secret-file = config.sops.secrets."coturn/static_auth_secret".path;
+    realm = "rtc.imdomestic.com";
+    cert = "/var/lib/acme/rtc.imdomestic.com/fullchain.pem";
+    pkey = "/var/lib/acme/rtc.imdomestic.com/key.pem";
+    listening-port = 3478;
+    alt-listening-port = 3480;
+    tls-listening-port = 5349;
+    alt-tls-listening-port = 5351;
+    min-port = 49152;
+    max-port = 49999;
+  };
+
+  services.livekit = {
+    enable = true;
+    keyFile = config.sops.secrets."livekit/keys_yaml".path;
+    settings = {
+      port = 7880;
+      room.auto_create = false;
+      rtc = {
+        tcp_port = 7881;
+        port_range_start = 50000;
+        port_range_end = 51000;
+        use_external_ip = true;
+      };
+    };
+  };
+
+  services.lk-jwt-service = {
+    enable = true;
+    keyFile = config.sops.secrets."livekit/keys_yaml".path;
+    port = 8088;
+    livekitUrl = "wss://rtc.imdomestic.com:8448/livekit/sfu";
+  };
+
+  systemd.services.lk-jwt-service = {
+    wants = ["livekit.service"];
+    after = ["livekit.service"];
+    environment.LIVEKIT_FULL_ACCESS_HOMESERVERS = "imdomestic.com";
+  };
+
+  services.nginx = {
+    enable = true;
+    clientMaxBodySize = "50m";
+    # 订阅端点唯一的认证就是路径里那段 token,所以给它一个限速桶,
+    # 别让人拿这个公网端口慢慢撞。
+    appendHttpConfig = ''
+      limit_req_zone $binary_remote_addr zone=airportsub:1m rate=10r/m;
+      # 自用订阅同理。只有我自己在拉,10r/m 绰绰有余。
+      limit_req_zone $binary_remote_addr zone=imsub:1m rate=10r/m;
+      # max 管理面板的唯一凭据是一个 bearer token,而它挂在公网上,
+      # 所以给 /api/ 一个桶:正常用起来一次翻页也就几个请求,
+      # 但撞 token 需要的量级远在这之上。
+      limit_req_zone $binary_remote_addr zone=maxapi:1m rate=60r/m;
+    '';
+  };
+
+  # 即使上面的 ip_nonlocal_bind 已经打断了那个环,这条也值得留着:nginx 依赖的
+  # 晚到资源不止一个地址(ACME 证书、上游 socket…),任何一个在开机时慢一步,都会
+  # 让它连败 5 次然后**永久**放弃。
+  #
+  # 上游 nginx 模块自己设了 `startLimitIntervalSec = 60`(system/modules/services/
+  # web-servers/nginx/default.nix),配上默认的 StartLimitBurst=5,就是"60 秒内失败
+  # 5 次就再也不启动"。2026-08-17 那次实测正好落在这个窗口里:22:38:13 起第一次,
+  # 22:39:04 放弃,51 秒 5 次。而同一个单元里写着 `Restart = "always"` —— 那句话
+  # 很容易让人以为它会一直重试,实际不会。
+  #
+  # 必须 mkForce:上游那 60 是普通定义,不覆盖就是定义冲突而不是取较小值。
+  # 0 = 取消时间窗,不再有"失败太快"的判定,按 RestartSec 一直重试下去。
+  systemd.services.nginx.startLimitIntervalSec = lib.mkForce 0;
+
+  # Private web ports are interface-filtered; see ./tailscale-names.nix.
+  services.nginx.virtualHosts."gaoji.inner.imdomestic.com" = {
+    serverName = "gaoji.inner.imdomestic.com";
+    useACMEHost = "gaoji.inner.imdomestic.com";
+    forceSSL = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 80;
+      }
+      {
+        addr = "0.0.0.0";
+        port = 443;
+        ssl = true;
+      }
+    ];
+    locations."/" = {
+      proxyPass = "http://${gaojiBotHost}:18080";
+      proxyWebsockets = true;
+      extraConfig = ''
+        ${lib.optionalString config.services.gaoji.runBot "proxy_bind 127.0.0.1;"}
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
+    };
+  };
+
+  services.nginx.virtualHosts."kennethbot.inner.imdomestic.com" = {
+    useACMEHost = "gaoji.inner.imdomestic.com";
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 80;
+      }
+      {
+        addr = "0.0.0.0";
+        port = 443;
+        ssl = true;
+      }
+    ];
+    locations."/".return = "308 https://gaoji.inner.imdomestic.com$request_uri";
+  };
+
+  # 订阅端点。和 headscale 共用 8443,靠 SNI 分流。
+  services.nginx.virtualHosts."h610.imdomestic.com" = {
+    serverName = "h610.imdomestic.com";
+    useACMEHost = "h610.imdomestic.com";
+    forceSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8443;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8443;
+        ssl = true;
+      }
+    ];
+    # 只开 /sub/,其余一律 404,不暴露这台机器上还有别的东西。
+    locations."/sub/" = {
+      proxyPass = "http://127.0.0.1:8081";
+      extraConfig = ''
+        limit_req zone=airportsub burst=5 nodelay;
+        proxy_set_header Host $host;
+        # 订阅客户端靠这个响应头显示已用/总量/到期,别被过滤掉
+        proxy_pass_header Subscription-Userinfo;
+      '';
+    };
+    # 自用订阅(modules/imsub)。和 /sub/ 分开是为了各限各的速。
+    locations."/imsub/" = {
+      proxyPass = "http://127.0.0.1:8082";
+      extraConfig = ''
+        limit_req zone=imsub burst=5 nodelay;
+        proxy_set_header Host $host;
+      '';
+    };
+    locations."/" = {
+      extraConfig = "return 404;";
+    };
+  };
+
+  # max 管理面板。和别的一样挂 8443(电信封了 443),SNI 分流。
+  #
+  # 面板本身跑在 bot 进程里,只绑 127.0.0.1,所以进出这台机器的唯一
+  # 通道就是这个 vhost。它自己不做 TLS、没有用户体系,认证只有一个
+  # bearer token 由 max.nix 的 SOPS 模板提供。
+  #
+  # 静态资源(HTML/JS/CSS)是不需要 token 的:<script> 标签带不了
+  # Authorization 头。它们不含任何数据,所有状态都要过 /api/,而
+  # /api/ 每一条都验 token。
+  # Max runs on tank since 2026-09-27; its admin listener binds only tank's
+  # tailnet address. The router still forwards :8443 here, so this vhost keeps
+  # terminating TLS and proxies across the tailnet. An address, not a name:
+  # nginx resolves names once at start and would fail without MagicDNS.
+  services.nginx.virtualHosts."max.imdomestic.com" = let
+    maxBackend = "100.64.0.4:7700";
+  in {
+    serverName = "max.imdomestic.com";
+    useACMEHost = "max.imdomestic.com";
+    forceSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8443;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8443;
+        ssl = true;
+      }
+    ];
+    locations."/" = {
+      proxyPass = "http://${maxBackend}";
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
+    };
+    locations."/hooks/" = {
+      proxyPass = "http://${maxBackend}";
+      extraConfig = ''
+        client_max_body_size 64k;
+        limit_req zone=maxapi burst=20 nodelay;
+        limit_req_status 429;
+      '';
+    };
+    # 数据面单独限速。burst 给到 20 是因为切一次标签页会并发拉
+    # overview + 列表 + 两张图,一次操作打出小几个请求很正常。
+    locations."/api/" = {
+      proxyPass = "http://${maxBackend}";
+      extraConfig = ''
+        limit_req zone=maxapi burst=20 nodelay;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
+    };
+  };
+
+  services.nginx.virtualHosts."tailscale.imdomestic.com" = {
+    serverName = "tailscale.imdomestic.com";
+    useACMEHost = "tailscale.imdomestic.com";
+    forceSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8443;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8443;
+        ssl = true;
+      }
+    ];
+    locations."/" = {
+      proxyPass = "http://127.0.0.1:8080";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+      '';
+    };
+  };
+  services.nginx.virtualHosts."matrix.imdomestic.com" = {
+    serverName = "matrix.imdomestic.com";
+    useACMEHost = "matrix.imdomestic.com";
+    addSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8448;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8448;
+        ssl = true;
+      }
+    ];
+
+    locations."/" = {
+      proxyPass = matrixUpstream;
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+      '';
+    };
+  };
+  services.nginx.virtualHosts."rtc.imdomestic.com" = {
+    serverName = "rtc.imdomestic.com";
+    useACMEHost = "rtc.imdomestic.com";
+    addSSL = true;
+    http2 = true;
+    listen = [
+      {
+        addr = "0.0.0.0";
+        port = 8448;
+        ssl = true;
+      }
+      {
+        addr = "[::]";
+        port = 8448;
+        ssl = true;
+      }
+    ];
+
+    locations."= /livekit/jwt" = {
+      return = "308 /livekit/jwt/";
+    };
+
+    locations."/livekit/jwt/" = {
+      proxyPass = "http://127.0.0.1:8088/";
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+      '';
+    };
+
+    locations."= /livekit/sfu" = {
+      return = "308 /livekit/sfu/";
+    };
+
+    locations."/livekit/sfu/" = {
+      proxyPass = "http://127.0.0.1:7880/";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+      '';
+    };
+
+    locations."/" = {
+      return = "404";
+    };
+  };
+
+  # Passwordless deploy from this box (it rebuilds itself, often driven
+  # by an agent without a tty).  nixos-rebuild/nh only ever sudo three
+  # things: `nix-env --set` on the system profile, the systemd-run
+  # wrapper, and the generation's switch-to-configuration.  Deliberately
+  # narrower than a blanket wheel NOPASSWD, though not a hard privilege
+  # boundary — treat it as convenience, not containment.
+  security.sudo.extraRules = lib.mkAfter [
+    {
+      users = ["hank"];
+      commands = [
+        {
+          command = "/run/current-system/sw/bin/nix-env";
+          options = ["NOPASSWD"];
+        }
+        {
+          command = "/run/current-system/sw/bin/systemd-run";
+          options = ["NOPASSWD"];
+        }
+        {
+          command = "/nix/store/*/bin/switch-to-configuration";
+          options = ["NOPASSWD"];
+        }
+      ];
+    }
+  ];
+
+  system.stateVersion = "25.11";
+}

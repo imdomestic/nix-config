@@ -136,7 +136,7 @@ jobs:
           # x470 的唯一差别就是 externalModules 里的 noctalia。单独求值
           # inputs.noctalia.packages.x86_64-linux.default 不报,所以在模块导入
           # 路径上,不是包本身。本仓库自己那处 prev.system 已在
-          # nixos/modules/nix.nix 修掉,和这条无关。
+          # system/modules/nix.nix 修掉,和这条无关。
           renamed to/replaced by 'stdenv\.hostPlatform\.system'
 
           # deploy / deployChecks / hosts / systemConfigs 不是 nix 认识的标准 flake
@@ -191,11 +191,11 @@ jobs:
           fi
 
       # host registry 的概览。纯求值,不碰构建 —— 想知道"现在到底管着哪些机器、
-      # 谁被部署、谁被监控",看这张表比翻 nixos/hosts/ 快。
+      # 谁被部署、谁被监控",看这张表比翻 hosts/ 快。
       #
       # 判据和运行时用的是同一个来源:tsName 决定是否可部署 + 是否被抓
       # (flake/schema/inventory.nix、flake/builders/deploy.nix),roles 决定跑不跑监控
-      # (nixos/modules/monitoring)。
+      # (system/modules/monitoring)。
       - name: Inventory 概览
         run: |
           nix eval --json --impure --expr '
@@ -236,7 +236,7 @@ jobs:
   #
   # 2026-08-15 之前 ci.yml 里躺着一份 17 条的 include 列表,而它已经漂了:
   # h310 / marble / alex 三台从来没进过矩阵 —— 其中 h310 正是把 nix flake check
-  # 撑爆的那台。加机器的人改了 nixos/hosts 却没人记得改 workflow,这种漂移不靠
+  # 撑爆的那台。加机器的人改了 hosts 却没人记得改 workflow,这种漂移不靠
   # 纪律能防住,只能靠让它没法漂。
   #
   # 规则写在 flake.nix 的 ciMatrix 输出里(哪些跳过、哪个 system 用哪个 runner),

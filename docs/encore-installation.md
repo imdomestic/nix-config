@@ -27,7 +27,7 @@ ssh root@nixos-rescue.local
 
 ## 安装系统
 
-主机定义位于 `nixos/hosts/encore/`，作为 GPU 服务器运行。RTX 3060 提供计算能力，Podman 可以使用 NVIDIA CDI。合盖和空闲均保持运行。局域网地址为 `encore.local`，服务器管理地址为 `encore.inner.imdomestic.com`。
+主机定义位于 `hosts/encore/`，作为 GPU 服务器运行。RTX 3060 提供计算能力，Podman 可以使用 NVIDIA CDI。合盖和空闲均保持运行。局域网地址为 `encore.local`，服务器管理地址为 `encore.inner.imdomestic.com`。
 
 Windows 的 Tailscale 节点名称为 `m16`，地址为 `100.64.0.28`；NixOS 使用独立的 `encore` 节点身份，地址为 `100.64.0.43`。NixOS 的节点状态保存在 `/var/lib/tailscale`。
 

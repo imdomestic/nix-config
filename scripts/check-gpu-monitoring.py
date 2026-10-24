@@ -11,7 +11,7 @@ import urllib.request
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location("gpu_metrics", ROOT / "nixos/modules/telemetry/gpu-metrics.py")
+spec = importlib.util.spec_from_file_location("gpu_metrics", ROOT / "system/modules/telemetry/gpu-metrics.py")
 gpu = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(gpu)
 SETTINGS = {"uuids": ["GPU-aaa"], "temperatureWarning": 83,

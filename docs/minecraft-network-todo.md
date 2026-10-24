@@ -42,9 +42,9 @@
 
 ## 现状（2026-10-17 核对）
 
-- **encore 上的旧服全部停用了。** 旧的 Velocity、bedrock-proxy、lobby、bingo、speedrun、GTL 都被 `nixos/modules/chorus/legacy-minecraft.nix` 停用。
+- **encore 上的旧服全部停用了。** 旧的 Velocity、bedrock-proxy、lobby、bingo、speedrun、GTL 都被 `system/modules/chorus/legacy-minecraft.nix` 停用。
 - **运营集群（2026-10-17 起）是 tank 上的单节点 k3s。**
-  - 节点配置在 `nixos/hosts/tank/k3s.nix`，集群内容在 `k8s/`，由 Argo CD 从 `k8s-rendered` 分支同步。
+  - 节点配置在 `hosts/tank/k3s.nix`，集群内容在 `k8s/`，由 Argo CD 从 `k8s-rendered` 分支同步。
   - 目前跑着一套用旧存档搭的测试网络：Velocity + 大厅（Paper 1.21.1）+ bingo（Fabric 1.21.11）。
   - 大厅是常驻的 StatefulSet，世界存在 PVC 里，作为静态后端写在 velocity.toml。
   - bingo 是 Agones Fleet：`minecraft/agones-fabric` 上报状态，Velocity 上的 `minecraft/velocity-router` 动态注册。玩家在大厅用 `/play bingo` 进 bingo，房间关掉时被送回大厅。

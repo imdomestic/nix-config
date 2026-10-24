@@ -18,7 +18,7 @@ hosts=("$@")
 if [ ${#hosts[@]} -eq 0 ]; then
   for f in secrets/hosts/*.yaml; do
     h=$(basename "$f" .yaml)
-    [ -d "nixos/hosts/$h" ] && hosts+=("$h")
+    [ -d "hosts/$h" ] && hosts+=("$h")
   done
 fi
 

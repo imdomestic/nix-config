@@ -21,7 +21,7 @@ in
       my.host = {
         inherit (h) name system roles tsName lanRoutes gpuMonitoring clusterControl homeOverlays usernames;
         # The account table's ssh keys travel with each account
-        # (nixos/modules/users.nix turns them into authorized keys).
+        # (system/modules/users.nix turns them into authorized keys).
         users = lib.mapAttrs (a: acct: let
           keys = config.users.${a}.sshKeys or [];
         in
