@@ -56,7 +56,7 @@
     ...
   }: {
     options =
-      import ../../modules/shared/host-facts.nix {inherit lib;}
+      import ../_lib/host-facts.nix {inherit lib;}
       // {
         kind = mkOption {
           type = types.enum ["nixos" "darwin" "home"];

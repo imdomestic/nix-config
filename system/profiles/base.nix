@@ -20,7 +20,7 @@
     ../modules/tailscale
   ];
 
-  # Host metadata comes from config.my.host (see modules/shared/host-options.nix);
+  # Host metadata comes from config.my.host (see flake/_lib/host-options.nix);
   # the specialArgs that remain are set in flake/builders/systems.nix.
   nixpkgs.hostPlatform = lib.mkDefault system;
   networking.hostName = lib.mkDefault config.my.host.name;

@@ -10,7 +10,7 @@
   ...
 }: let
   hostModules = import ../_lib/host-modules.nix {inherit config lib;};
-  roles = import ../../modules/shared/roles.nix;
+  roles = import ../_lib/roles.nix;
 
   # Profiles come in this order whatever order a host lists its roles in.
   # Module order is definition order for list options (systemPackages…), so it
@@ -21,7 +21,7 @@
     m = config.flake.modules.${class};
   in
     lib.throwIfNot (lib.all (r: roles.${r} ? profiles -> lib.elem r profileOrder) (lib.attrNames roles))
-    "modules/shared/roles.nix: every role with profiles must be in profileOrder (flake/builders/systems.nix)"
+    "flake/_lib/roles.nix: every role with profiles must be in profileOrder (flake/builders/systems.nix)"
     ([m.base]
       ++ lib.concatMap (r: map (p: m.${p}) (roles.${r}.profiles.${class} or []))
       (lib.filter (r: lib.elem r host.roles) profileOrder));

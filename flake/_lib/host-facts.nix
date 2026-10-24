@@ -17,7 +17,7 @@
   roles = lib.mkOption {
     type = lib.types.listOf (lib.types.enum (builtins.attrNames (import ./roles.nix)));
     default = [];
-    description = "What this host is; the vocabulary and what each role does are in modules/shared/roles.nix.";
+    description = "What this host is; the vocabulary and what each role does are in flake/_lib/roles.nix.";
   };
 
   lanRoutes = lib.mkOption {

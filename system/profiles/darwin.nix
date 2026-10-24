@@ -11,7 +11,7 @@
     ../modules/home-manager-cli.nix
   ];
 
-  # Host metadata comes from config.my.host (see modules/shared/host-options.nix);
+  # Host metadata comes from config.my.host (see flake/_lib/host-options.nix);
   # the specialArgs that remain are set in flake/builders/systems.nix.
   networking.hostName = lib.mkDefault config.my.host.name;
   nixpkgs.hostPlatform = lib.mkDefault system;
