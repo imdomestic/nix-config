@@ -51,7 +51,7 @@ Taipan 实机的全部 DP/HDMI 接口报告 `disconnected`，其 Mutter 规则�
 
 远程配置目录为 `~/.config/nix-config-bonsai-ninfer`，本次构建日志、设备检查、
 推理请求和结果位于 `.work/compute-node/`。模型参数和上下文测量见
-[NInfer 部署报告](../REPORT.md)。
+[NInfer 部署报告](seraph-bonsai-deployment.md)。
 
 ## 配置恢复
 
