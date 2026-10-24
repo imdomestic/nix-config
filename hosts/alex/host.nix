@@ -1,10 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.alex = {
     system = "aarch64-darwin";
     kind = "darwin";
@@ -20,6 +14,6 @@ in {
       inputs.determinate.darwinModules.default
     ];
 
-    users.kenneth.modules = [m.homeManager.kenneth-alex];
+    users.kenneth = {};
   };
 }

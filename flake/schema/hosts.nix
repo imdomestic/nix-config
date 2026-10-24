@@ -6,7 +6,6 @@
   inherit (lib) mkOption types;
   tiers = import ../_lib/tiers.nix {inherit lib;};
   ageKeyType = types.strMatching "age1[0-9a-z]{58}";
-  guiType = import ../_lib/gui-type.nix {inherit lib;};
   modulesOption = description:
     mkOption {
       type = types.listOf types.raw;
@@ -21,12 +20,6 @@
         default = null;
         description = "Overrides the account's default tier (`users.<name>.tier`) on this host; `maxTier` still caps it.";
       };
-      gui = mkOption {
-        type = types.nullOr guiType;
-        default = null;
-        description = "Replaces the account's GUI layers (`users.<name>.gui.<platform>`) on this host.";
-      };
-      modules = modulesOption "Home modules only this account on this host gets. They load last.";
       extraGroups = mkOption {
         type = types.nullOr (types.listOf types.str);
         default = null;
@@ -136,16 +129,20 @@
       h.kind != "home" && (h.kind == "darwin") != lib.hasSuffix "darwin" h.system)
     hosts);
     # A builder must exist, share the system, be reachable and build for itself.
+    # An account's <host>.nix sits next to these, and homes.nix picks files by name.
+    reserved = ["user" "default" "shell" "interactive" "dev" "gui-darwin" "gui-linux" "modules"];
+    shadowing = lib.filter (n: lib.elem n reserved) (lib.attrNames hosts);
     badBuilders = lib.attrNames (lib.filterAttrs (_: h: let
       b = hosts.${h.buildOn} or null;
     in
       h.buildOn != null && (b == null || b.system != h.system || b.tsName == null || b.buildOn != null))
     hosts);
   in
-    lib.throwIf (dupRoutes != []) "hosts: lanRoutes advertised by more than one host: ${toString dupRoutes}"
-    (lib.throwIf (kindMismatch != []) "hosts: kind does not match system for ${toString kindMismatch}"
-      (lib.throwIf (badBuilders != []) "hosts: buildOn must name a host of the same system with a tsName that builds for itself: ${toString badBuilders}"
-        hosts));
+    lib.throwIf (shadowing != []) "hosts: these names are account file names in home/users/<account>/: ${toString shadowing}"
+    (lib.throwIf (dupRoutes != []) "hosts: lanRoutes advertised by more than one host: ${toString dupRoutes}"
+      (lib.throwIf (kindMismatch != []) "hosts: kind does not match system for ${toString kindMismatch}"
+        (lib.throwIf (badBuilders != []) "hosts: buildOn must name a host of the same system with a tsName that builds for itself: ${toString badBuilders}"
+          hosts)));
 in {
   options.hosts = mkOption {
     type = types.attrsOf hostType;

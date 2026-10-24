@@ -32,7 +32,7 @@
 
   nixpkgs.hostPlatform = "aarch64-darwin";
 
-  # iproute2mac 删了:home/profiles/dev.nix 的 darwin 分支里本来就有。
+  # iproute2mac 删了:linwhite 的 modules/dev-tools.nix 的 darwin 分支里本来就有。
   # host-users
   networking.computerName = config.my.host.name;
   networking.localHostName = config.my.host.name;

@@ -28,6 +28,8 @@
     fi
   '';
 in {
+  imports = [./modules/opencode/local-bonsai.nix];
+
   programs.aerospace.settings = {
     # 显示器 pattern 是正则;没有其他显示器匹配时 AeroSpace 自己回落到现有显示器。
     "workspace-to-monitor-force-assignment" = builtins.listToAttrs (map (ws: {

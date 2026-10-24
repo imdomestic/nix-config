@@ -30,9 +30,5 @@ in {
     externalModules = [inputs.nix-index-database.nixosModules.default];
 
     users.linwhite.ageKey = "age1svatkwy2klm39twkpv7rxfteampuzkyu3ccxtjzpmuz2kq3d6sus8l3hg4";
-    users.linwhite.modules = [
-      m.homeManager.linwhite-seraph
-      m.homeManager.linwhite-opencode-local-bonsai
-    ];
   };
 }

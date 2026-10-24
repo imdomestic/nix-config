@@ -32,7 +32,7 @@ flake.nix               # inputs, and the import-tree roots
 flake/                  # top-level (flake-parts) modules
   schema/               #   the tables: hosts, users, placements, inventory
   builders/             #   systems, homes, system-manager, deploy
-  modules/              #   flake.modules registrations, one file per class
+  modules/              #   flake.modules registrations (nixos, darwin, systemManager)
   outputs/              #   packages, ciMatrix, nixidy, hosts, mcImageTag
   placements.nix        #   where fleet services run
   secrets.nix           #   who reads which sops file; renders .sops.yaml
@@ -43,8 +43,8 @@ hosts/<name>/           # every machine, whatever its kind: host.nix + system.ni
 system/profiles/        # base, server, desktop, netdiag, virtualisation (picked by roles); darwin.nix
 system/modules/         # NixOS and nix-darwin modules side by side
 system/installers/      # the x86_64-rescue image
-home/profiles/          # the tiers shell, interactive, dev: tools only, no preferences
-home/users/<account>/   # user.nix (table entry), default.nix, dev.nix, <host>.nix; modules/ for the rest
+home/users/<account>/   # user.nix (table entry); default, shell, interactive, dev, gui-<platform>,
+                        # <host>.nix, picked by name; modules/ for everything they import
 lib/                    # data and helpers modules import: nixpkgs-registry pins, wg*, model tables
 pkgs/                   # local packages
 secrets/                # sops files: secrets.yaml, hosts/<host>.yaml, clients/, gaoji/
@@ -55,13 +55,11 @@ Justfile                # every rebuild/deploy command
 
 Which class a module under `system/` is for is what its
 `flake.modules.<class>` registration (`flake/modules/<class>.nix`) or its
-importer says, not the directory. Accounts share no home modules: each keeps
-its own copy of what it uses in `home/users/<account>/modules/` (ghostty,
-codex, opencode, sops, nixvim's `options.nix`, its GUI layer … exist once per
-account that loads them), and a change to one copy does not reach the others.
-The only shared home code is the tiers in `home/profiles/`, which decide how
-much toolchain a machine gets and switch programs on; themes, key bindings
-and options are each account's.
+importer says, not the directory. Accounts share no home code: each keeps its
+own copy of what it uses in `home/users/<account>/modules/` (its tiers'
+packages, ghostty, codex, opencode, sops, nixvim's `options.nix` … exist once
+per account that loads them), and a change to one copy does not reach the
+others. The only home file every account loads is `flake/_lib/home-base.nix`.
 
 ### Hosts
 
@@ -97,8 +95,6 @@ in {
       hank = {};                    # has an account here; its home comes from users.hank
       linwhite = {
         tier = "interactive";       # lower than its default, on this host
-        gui.profile = m.homeManager.linwhite-gui-common; # replaces its GUI layers here
-        modules = [m.homeManager.linwhite-example]; # home/users/linwhite/example.nix, loaded last
         extraGroups = ["wheel"];    # replaces the default groups
         nixos.uid = 501;            # merged into users.users.linwhite
         ageKey = "age1…";           # this account's sops key on this machine
@@ -127,53 +123,52 @@ tsName) and `placements` (resolved to a tsName). Never `import` the registry
 from a module. Evaluation fails if two hosts advertise the same `lanRoutes`, a
 `kind` does not match its `system`, or a `buildOn` names an unusable builder.
 
-Modules a `host.nix` or `user.nix` picks by name are registered as
-`flake.modules.<class>.<name>` (classes `nixos`, `darwin`, `homeManager`,
-`systemManager`). The values are plain paths, not flake-parts' class-tagged
+System modules a `host.nix` picks by name are registered as
+`flake.modules.<class>.<name>` (classes `nixos`, `darwin`, `systemManager`).
+Homes register nothing (see below). The values are plain paths, not flake-parts' class-tagged
 wrappers (`flake/flake-parts.nix` says why). Modules that only other modules
 import stay relative imports.
 
 ### Accounts and home tiers
 
 ```nix
-# home/users/hank/user.nix
-{config, ...}: let
-  hm = config.flake.modules.homeManager;
-in {
-  flake.modules.homeManager = {hank = ./default.nix; hank-dev = ./dev.nix; …};
+# home/users/hank/user.nix — who the person is, nothing about their home
+{
   users.hank = {
     tier = "dev";                   # default on every host
-    module = hm.hank;               # loaded on every host
-    dev = hm.hank-dev;              # at the dev tier, in place of home/profiles/dev.nix
-    gui.linux.modules = [hm.hank-gnome hm.hank-ibus];
-    gui.darwin = {profile = hm.hank-gui-darwin; modules = [hm.hank-aerospace];};
     sshKeys = [...];                # may log in as this account, wherever it exists
     ageKeys."1" = "age1…";          # sops keys tied to no registry machine
   };
 }
 ```
 
-The table is keyed by account name; an account called something else on one
-machine gets its own entry reusing the module (`users.a123456` in
+```text
+home/users/hank/                    what goes into a home, by file name
+  default.nix                       always (the only file that must exist)
+  shell.nix  interactive.nix        from that tier up
+  dev.nix                           at the dev tier
+  gui-darwin.nix  gui-linux.nix     on hosts with the gui role, from the shell tier up
+  tank.nix  praxic.nix …            on that host
+  modules/                          everything those files import
+```
+
+`flake/builders/homes.nix` loads `flake/_lib/home-base.nix`, then shell →
+interactive → gui-<platform> → default → dev → <host>, skipping files that do
+not exist; there is no registration and no list to keep in sync. A host name
+may not be one of those file names (evaluation fails if it is). The table is
+keyed by account name; an account called something else on one machine gets
+its own entry pointing at the same directory (`users.a123456.dir` in
 `home/users/fendada/user.nix`). Tiers are `minimal < shell < interactive < dev`
 (`flake/_lib/tiers.nix`): an account's tier on a host is its host-level `tier`
 (else its default), capped by the host's `maxTier`; a home reads its own as
-`config.my.home.tier`. `flake/builders/homes.nix` composes a home as
-`flake/_lib/home-base.nix` → shell → interactive → gui profile → the account's
-module → its dev module → its gui modules → the host's extra modules; GUI
-layers load only on `gui` hosts, from the shell tier up. A program an account
-wants only from some tier up switches itself on with `config.my.home.tier`
-(hank's and linwhite's yazi) instead of joining a shared tier.
+`config.my.home.tier`.
 
 Accounts share no configuration and no preferences: what one person wants goes
-in `home/users/<account>/`, never into a shared profile for others to opt out
-of, and never as `if config.home.username == …` inside a shared module. What an
-account loads on one machine only is `home/users/<account>/<host>.nix`,
-registered as `<account>-<host>` and listed in that host's
-`users.<account>.modules` (`hank-tank`, `linwhite-aegis`, `kenneth-alex`). No
-module branches on `config.my.host.name`; a difference between machines is a
-registry fact (`kind`, `roles`, `inChina`, a placement) or one of those
-per-host modules.
+in `home/users/<account>/`, never into something shared for others to opt out
+of, and never as `if config.home.username == …`. No module branches on
+`config.my.host.name`; a difference between machines is a registry fact
+(`kind`, `roles`, `inChina`, a placement), the account's `<host>.nix`, or its
+tier (`config.my.home.tier`).
 
 ### Outputs
 
@@ -214,11 +209,10 @@ with its key). Remove the node from headscale. If the reason is not obvious,
 add a `docs/decisions.md` entry.
 
 **Add or change an account.** An existing account on another machine is
-`users.<account> = {};` in that `host.nix`. A new account is
-`home/users/<account>/user.nix` (registers its modules, sets `module`, `tier`,
-`gui`, `sshKeys`, `ageKeys`) plus its `default.nix`. Per-host exceptions are a
-`home/users/<account>/<host>.nix` that the host's account entry lists by name
-(see "Accounts and home tiers"). A key for one account goes in its `sshKeys`;
+`users.<account> = {};` in that `host.nix`. A new account is a directory
+`home/users/<account>/` with `user.nix` (`tier`, `sshKeys`, `ageKeys`) and
+`default.nix`, plus whichever tier, GUI and `<host>.nix` files it wants (see
+"Accounts and home tiers"); new files must be `git add`ed. A key for one account goes in its `sshKeys`;
 `system/modules/ssh/keys.nix` is for keys trusted as every account, root
 included.
 
@@ -297,9 +291,9 @@ adds no home-manager module at all.
   `system/modules/users.nix` (which creates the accounts), and
   `system/modules/home-manager-cli.nix` (which ships the `home-manager` binary so
   a fresh machine can bootstrap its first activation).
-- **Where a package goes.** Default to `home.packages` in the asking user's
-  `home/users/<user>/`; if every account at some tier should have it, the tier
-  bundle in `home/profiles/`. `environment.systemPackages` is only for things the
+- **Where a package goes.** `home.packages` in the asking user's
+  `home/users/<user>/` (their tier file if it should follow the tier).
+  `environment.systemPackages` is only for things the
   machine itself needs, or that every account must have regardless of who logs
   in — it costs a system rebuild and root to change.
 
@@ -520,7 +514,8 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   definitions by import depth, so an extra `imports` layer reorders
   `environment.systemPackages` / `home.packages` — and buildEnv's
   `ignoreCollisions` lets order decide which package wins a colliding file. This
-  is why `flake.modules` holds plain paths.
+  is why `flake.modules` holds plain paths, and why moving a home's `imports`
+  around changes drvPaths even when nothing else does.
 - **An attribute defined twice in one attrset** (`networking = { firewall = …; }`
   plus `networking.firewall.x = …`) merges on a current Nix but is an error on
   older ones (`docs/incidents.md#nix-dup-attr-ci`, from when CI ran 2.22).

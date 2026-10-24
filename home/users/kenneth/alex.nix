@@ -1,3 +1,4 @@
+# kenneth 在 alex 上的东西:原来那台 Mac 的 Homebrew 软件和 shell 钩子。
 {
   lib,
   pkgs,

@@ -41,7 +41,7 @@ in {
     ];
 
     users = {
-      hank.modules = [m.homeManager.hank-tank];
+      hank = {};
       # 她自己的 zsh 里有 `ls = "eza --icons"`,所以需要 interactive。
       fendada = {};
       linwhite = {};

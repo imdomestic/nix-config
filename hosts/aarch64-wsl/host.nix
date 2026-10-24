@@ -1,8 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: {
+{inputs, ...}: {
   hosts.aarch64-wsl = {
     system = "aarch64-linux";
     kind = "nixos";
@@ -19,6 +15,6 @@
       inputs.sops-nix.nixosModules.sops
     ];
 
-    users.hank.modules = [config.flake.modules.homeManager.hank-aarch64-wsl];
+    users.hank = {};
   };
 }

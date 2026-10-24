@@ -53,7 +53,7 @@ in {
   # 所以排在后面。k3s.yaml 是原来就有的入口，没有这个文件也不影响。
   home.sessionVariables.KUBECONFIG = "${home}/.config/k3s.yaml:${config.sops.templates."kube-tank.yaml".path}";
 
-  # k9s 本身由 home/profiles/dev.nix 装，这里只写配置。
+  # k9s 本身由 ../dev-tools.nix 装，这里只写配置。
   programs.k9s = {
     enable = true;
     package = null;

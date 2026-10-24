@@ -9,7 +9,7 @@
   options.flake.modules = lib.mkOption {
     type = lib.types.lazyAttrsOf (lib.types.lazyAttrsOf lib.types.raw);
     default = {};
-    description = "Modules by class (nixos, darwin, homeManager, systemManager) and name.";
+    description = "System modules by class (nixos, darwin, systemManager) and name.";
   };
 
   # perSystem is unused; flake-parts still needs the list. These are the systems
