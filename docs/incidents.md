@@ -4,6 +4,25 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-24 · AeroSpace 迁移后旧用户启动项仍在 {#aerospace-legacy-agent}
+
+praxic 同时运行 `org.nixos.aerospace` 和
+`org.nix-community.home.aerospace`。最初以为是系统没有应用移除 AeroSpace 的配置，
+但 `/run/current-system` 与当前求值的系统路径相同，`services.aerospace.enable`
+也已经是 `false`。
+
+遗留项是旧 nix-darwin 安装的
+`~/Library/LaunchAgents/org.nixos.aerospace.plist`。当前 nix-darwin 的激活脚本只清理
+`/Library/LaunchAgents` 中的旧项，不再清理这个用户目录，所以系统切换后旧进程
+仍然运行，登录时也会再次启动。
+
+`system/profiles/darwin.nix` 显式禁用系统服务；`home/profiles/gui/darwin.nix`
+在 Home Manager 管理 AeroSpace 时，于链接配置和安装新 agent 之前卸载旧 label、
+删除旧 plist。清理使用 Home Manager 的 `run`，dry-run 不会停止进程或删除文件。
+只修改配置不会立即清理，需激活对应账户的 Home Manager。
+
+---
+
 ## 2026-10-23 · OpenCode 升级后 LaTeX 渲染退回源码 {#opencode-latex-opentui-06}
 
 OpenCode 2.1.2 使用 OpenTUI 0.6.6。插件依赖升到同版本后，加载阶段的

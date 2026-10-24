@@ -16,6 +16,9 @@
   networking.hostName = lib.mkDefault config.my.host.name;
   nixpkgs.hostPlatform = lib.mkDefault system;
 
+  # AeroSpace 由各账户的 Home Manager 启动。
+  services.aerospace.enable = false;
+
   # nix-darwin 默认往 /etc/zshrc 里写 `autoload -U compinit && compinit`,而
   # home-manager 生成的 .zshrc 里还有一个。两次之间 home-manager 往 fpath 里塞了
   # 插件目录,所以两边数到的补全文件数不同 —— 而 compinit 复用 dump 的条件正是
