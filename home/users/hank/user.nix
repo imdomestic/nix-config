@@ -9,6 +9,7 @@ in {
     hank-gnome = ./gnome.nix;
     hank-flatpak = ./flatpak.nix;
     hank-aerospace = ./aerospace.nix;
+    hank-rex = ./rex.nix;
   };
 
   users.hank = {
@@ -25,7 +26,7 @@ in {
       linux.modules = [hm.hank-gnome hm.hank-flatpak hm.ibus];
       darwin = {
         profile = hm.gui-darwin;
-        modules = [hm.hank-aerospace];
+        modules = [hm.hank-aerospace hm.hank-rex];
       };
     };
   };
