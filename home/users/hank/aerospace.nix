@@ -1,7 +1,9 @@
 # hank 的 AeroSpace,由 users.hank.gui.darwin 加载(./user.nix),所以 hank 的
 # 每台 Mac 桌面都有。Home Manager 管:配置写进 ~/.config/aerospace,launchd
 # agent 跟着账户走,两个人的键位各用各的。
-_: {
+{config, ...}: let
+  rex = "${config.home.homeDirectory}/.local/bin/rex";
+in {
   programs.aerospace = {
     enable = true;
     launchd.enable = true;
@@ -39,7 +41,9 @@ _: {
       ];
 
       mode.main.binding = {
-        "alt-enter" = "exec-and-forget kitty";
+        # 新窗口带一个新 session。要 Rex 设置里 Rex Server 下的 Remote Control;
+        # 没开或者 Rex 没在跑时 CLI 失败,open 只负责把 Rex 拉起来/提到前台。
+        "alt-enter" = "exec-and-forget '${rex}' --autostart=false do client.window.new >/dev/null 2>&1; open -b com.superlogical.rex";
 
         "alt-h" = "focus left";
         "alt-j" = "focus down";

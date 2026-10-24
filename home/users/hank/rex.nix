@@ -10,6 +10,20 @@
   zenId = "custom-F26A132B-4D31-47EB-87D9-24AED11165C4";
   pearlId = "custom-26E5B310-00BF-40B2-98BC-0268B1FCC6EF";
   rexCliDir = "${config.home.homeDirectory}/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS";
+  # tmux-style copy mode: the pane's scrollback in a read-only nvim.
+  copyMode = pkgs.writeShellScript "rex-copy-mode" ''
+    set -eu
+    file=$(mktemp -t rex-copy-mode)
+    trap 'rm -f "$file"' EXIT
+    "''${REX_BIN_DIR:-${rexCliDir}}/rex" capture -b "$1" --unwrap --trim >"$file"
+    # y leaves after yanking, like tmux's copy-selection-and-cancel; "+ is OSC 52.
+    ${lib.getExe' config.programs.nixvim.build.package "nvim"} -R -n \
+      -c 'setlocal buftype=nofile nonumber norelativenumber signcolumn=no' \
+      -c 'normal! Gzb' \
+      -c 'nnoremap <buffer> <nowait> q <Cmd>qa!<CR>' \
+      -c 'xnoremap <buffer> y "+y<Cmd>qa!<CR>' \
+      -- "$file"
+  '';
   themeSource = pkgs.writeText "rex-themes.json" (builtins.toJSON [
     {
       id = zenId;
@@ -54,12 +68,46 @@ in {
 
   home.file.".local/bin/rex".source = config.lib.file.mkOutOfStoreSymlink "${rexCliDir}/rex";
 
-  # Restore the running server's CLI after Nix/Homebrew reorder PATH.
-  programs.zsh.initContent = lib.mkOrder 2000 ''
-    if [[ -n "''${REX_BIN_DIR:-}" ]]; then
-      path=("$REX_BIN_DIR" $path)
-    fi
-  '';
+  programs.zsh.initContent = lib.mkMerge [
+    # Restore the running server's CLI after Nix/Homebrew reorder PATH.
+    (lib.mkOrder 2000 ''
+      if [[ -n "''${REX_BIN_DIR:-}" ]]; then
+        path=("$REX_BIN_DIR" $path)
+      fi
+    '')
+    # Rex reads OSC 7 (cwd) and OSC 133 (prompt marks) but ships no shell
+    # integration; Ghostty's own only loads inside Ghostty.
+    (lib.mkOrder 2000 ''
+      if [[ $TERM_PROGRAM == rex ]]; then
+        typeset -gi __rex_cmd_ran=0
+        __rex_osc7() {
+          emulate -L zsh
+          setopt extendedglob
+          local LC_ALL=C
+          builtin printf '\e]7;file://%s%s\e\\' "$HOST" \
+            "''${PWD//(#m)([^@-Za-z&-;_~])/%''${(l:2::0:)$(([##16]#MATCH))}}"
+        }
+        __rex_precmd() {
+          local ret=$?
+          if (( __rex_cmd_ran )); then
+            builtin printf '\e]133;D;%d\a' $ret
+            __rex_cmd_ran=0
+          fi
+          __rex_osc7
+          builtin printf '\e]133;A\a'
+          [[ $PS1 == *$'\e]133;B\a'* ]] || PS1+=$'%{\e]133;B\a%}'
+          return $ret
+        }
+        __rex_preexec() {
+          __rex_cmd_ran=1
+          builtin printf '\e]133;C\a'
+        }
+        # First in line, so $? is still the command's status.
+        precmd_functions=(__rex_precmd $precmd_functions)
+        preexec_functions+=(__rex_preexec)
+      fi
+    '')
+  ];
 
   programs.rex = {
     enable = true;
@@ -115,6 +163,7 @@ in {
           action = "pane.split";
           args.direction = "down";
         };
+        "ctrl+b>[" = bind "copy_mode";
         "ctrl+b>z" = bind "pane.zoom";
         "ctrl+b>o" = bind "pane.focus_next";
         "ctrl+b>x" = bind "pane.close";
@@ -130,6 +179,8 @@ in {
         };
       };
     # Rex's pane.move restructures splits; tmux swaps their contents instead.
+    # copy_mode floats over the pane instead of splitting it, so the pane is
+    # not resized and its program does not redraw.
     extraConfig = ''
       rex.action{
         name = "tmux_swap",
@@ -156,6 +207,44 @@ in {
             })
             assert(rex.session.focus_block{ block_id = original })
           end
+        end,
+      }
+
+      local function rect_of(node, block_id)
+        if node == nil then return nil end
+        if node.block_id == block_id then return node.rect end
+        if node.split then
+          return rect_of(node.split.before, block_id)
+            or rect_of(node.split.after, block_id)
+        end
+      end
+
+      rex.action{
+        name = "copy_mode",
+        title = "Copy Mode",
+        category = "Pane",
+        run = function(ctx)
+          local target = assert(ctx.block_id, "no focused pane")
+          local view = assert(rex.session.view{})
+          for _, window in ipairs(view.windows or {}) do
+            for _, layer in ipairs(window.layers or {}) do
+              local rect = rect_of(layer.layout, target)
+              if rect then
+                if window.zoomed_block_id == target then rect = { 0, 0, 1, 1 } end
+                assert(rex.session.new_layer{
+                  window_id = window.window_id,
+                  bounds = rect,
+                  focus = true,
+                  layout = rex.layout.block{
+                    flavor = "com.superlogical.terminal.shell",
+                    options = { command = { "${copyMode}", target }, shell = "none" },
+                  },
+                })
+                return
+              end
+            end
+          end
+          error("focused pane is not in this session's layout", 0)
         end,
       }
     '';
