@@ -90,10 +90,12 @@ in {
     hostControlHelpers = lib.genAttrs gaojiManagementHosts (_: "/run/current-system/sw/bin/gaoji-host-control");
     ssh = {
       enable = true;
-      targets = lib.listToAttrs (map (entry: lib.nameValuePair entry.name {
-        destination = "gaoji-operator@${entry.tsName}";
-        port = 2224;
-      }) gaojiManaged);
+      targets = lib.listToAttrs (map (entry:
+        lib.nameValuePair entry.name {
+          destination = "gaoji-operator@${entry.tsName}";
+          port = 2224;
+        })
+      gaojiManaged);
       knownHostsFile = "${../../lib/gaoji-ssh-known-hosts}";
       identityFile = "/var/lib/gaoji-operations-identity/id_ed25519";
       managementHosts = gaojiManagementHosts;

@@ -1,4 +1,8 @@
-{config, pkgs, ...}: {
+{
+  config,
+  pkgs,
+  ...
+}: {
   boot = {
     kernelPackages = pkgs.linuxPackages_latest;
     # Intel hybrid EAS requires passive intel_pstate with schedutil.

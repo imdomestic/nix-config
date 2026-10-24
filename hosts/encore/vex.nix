@@ -147,11 +147,13 @@ in {
             manifest_fallback = "${inputs.vex}/config/manifests/chorus.toml";
             github.repository = "imdomestic/chorus";
           };
-        example = project // {
-          remote = "https://github.com/imdomestic/vex-example-fabric.git";
-          manifest_fallback = "${inputs.vex}/config/manifests/example.toml";
-          github.repository = "imdomestic/vex-example-fabric";
-        };
+        example =
+          project
+          // {
+            remote = "https://github.com/imdomestic/vex-example-fabric.git";
+            manifest_fallback = "${inputs.vex}/config/manifests/example.toml";
+            github.repository = "imdomestic/vex-example-fabric";
+          };
       };
       build = {
         max_concurrent = 1;

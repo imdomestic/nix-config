@@ -1,4 +1,10 @@
-{config, inputs, lib, pkgs, ...}: let
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}: let
   cfg = config.services.gaoji;
   runtimeDir = "/home/kenneth/services/gaoji";
 in {

@@ -304,7 +304,6 @@ in {
   services.openssh.enable = true;
   my.ddns.enable = true;
 
-
   # Xray 的凭据全部走 sops。整份配置由 sops.templates 在 /run 下渲染，
   # 避免 UUID 和 Reality 私钥进入公开仓库或 world-readable 的 nix store。
   sops.secrets."xray/reality_private_key" = {};

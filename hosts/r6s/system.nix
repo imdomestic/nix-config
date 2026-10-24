@@ -314,7 +314,6 @@ in {
   };
   my.ddns.enable = true;
 
-
   services.dnsmasq.enable = false;
   services.resolved = {
     enable = true;

@@ -1,4 +1,8 @@
-{config, lib, ...}: let
+{
+  config,
+  lib,
+  ...
+}: let
   user = config.services.gaoji-host-control.ssh.user;
   port = 2224;
 in {
@@ -11,8 +15,14 @@ in {
   services.openssh.listenAddresses = lib.mkAfter [
     {addr = "0.0.0.0";}
     {addr = "[::]";}
-    {addr = "0.0.0.0"; inherit port;}
-    {addr = "[::]"; inherit port;}
+    {
+      addr = "0.0.0.0";
+      inherit port;
+    }
+    {
+      addr = "[::]";
+      inherit port;
+    }
   ];
   services.openssh.extraConfig = ''
     Match LocalPort ${toString port}
