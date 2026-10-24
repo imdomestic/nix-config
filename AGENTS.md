@@ -9,7 +9,7 @@ commands, deploys and the traps all live here.
 One flake, four evaluators: NixOS, nix-darwin, standalone Home Manager, and
 system-manager. The flake itself is a flake-parts evaluation: `flake.nix` only
 lists inputs and hands import-tree three sets of files — everything under
-`flake/`, every `hosts/<name>/host.nix`, every `home/users/<account>/user.nix`.
+`flake/`, every `hosts/<name>/host.nix`, every `home/<account>/user.nix`.
 Those are top-level (flake-parts) modules. Everything else is a plain NixOS /
 nix-darwin / Home Manager / system-manager module.
 
@@ -19,7 +19,7 @@ fleet, and `flake/builders/` turns them into configurations:
 | Table | Entries | Schema |
 | --- | --- | --- |
 | `hosts.<name>` | `hosts/<name>/host.nix` | `flake/schema/hosts.nix` |
-| `users.<account>` | `home/users/<account>/user.nix` | `flake/schema/users.nix` |
+| `users.<account>` | `home/<account>/user.nix` | `flake/schema/users.nix` |
 | `placements.<service>` | `flake/placements.nix` | `flake/schema/placements.nix` |
 
 Start reading at `flake/schema/hosts.nix`. Why it is shaped this way:
@@ -43,8 +43,8 @@ hosts/<name>/           # every machine, whatever its kind: host.nix + system.ni
 system/profiles/        # base, server, desktop, netdiag, virtualisation (picked by roles); darwin.nix
 system/modules/         # NixOS and nix-darwin modules side by side
 system/installers/      # the x86_64-rescue image
-home/users/<account>/   # user.nix (table entry); default, shell, interactive, dev, gui-<platform>,
-                        # <host>.nix, picked by name; modules/ for everything they import
+home/<account>/         # user.nix (table entry), default.nix, <host>.nix; profiles/ (shell,
+                        # interactive, dev, gui-<platform>); modules/ for what they import
 lib/                    # data and helpers modules import: nixpkgs-registry pins, wg*, model tables
 pkgs/                   # local packages
 secrets/                # sops files: secrets.yaml, hosts/<host>.yaml, clients/, gaoji/
@@ -56,7 +56,7 @@ Justfile                # every rebuild/deploy command
 Which class a module under `system/` is for is what its
 `flake.modules.<class>` registration (`flake/modules/<class>.nix`) or its
 importer says, not the directory. Accounts share no home code: each keeps its
-own copy of what it uses in `home/users/<account>/modules/` (its tiers'
+own copy of what it uses in `home/<account>/modules/` (its tiers'
 packages, ghostty, codex, opencode, sops, nixvim's `options.nix` … exist once
 per account that loads them), and a change to one copy does not reach the
 others. The only home file every account loads is `flake/_lib/home-base.nix`.
@@ -132,7 +132,7 @@ import stay relative imports.
 ### Accounts and home tiers
 
 ```nix
-# home/users/hank/user.nix — who the person is, nothing about their home
+# home/hank/user.nix — who the person is, nothing about their home
 {
   users.hank = {
     tier = "dev";                   # default on every host
@@ -143,28 +143,30 @@ import stay relative imports.
 ```
 
 ```text
-home/users/hank/                    what goes into a home, by file name
+home/hank/                          what goes into a home, by file name
   default.nix                       always (the only file that must exist)
-  shell.nix  interactive.nix        from that tier up
-  dev.nix                           at the dev tier
-  gui-darwin.nix  gui-linux.nix     on hosts with the gui role, from the shell tier up
   tank.nix  praxic.nix …            on that host
+  profiles/shell.nix                from that tier up
+  profiles/interactive.nix
+  profiles/dev.nix                  at the dev tier
+  profiles/gui-darwin.nix           on hosts with the gui role, from the shell tier up
+  profiles/gui-linux.nix
   modules/                          everything those files import
 ```
 
 `flake/builders/homes.nix` loads `flake/_lib/home-base.nix`, then shell →
 interactive → gui-<platform> → default → dev → <host>, skipping files that do
-not exist; there is no registration and no list to keep in sync. A host name
-may not be one of those file names (evaluation fails if it is). The table is
+not exist; there is no registration and no list to keep in sync. A host may
+not be named `user`, `default`, `modules` or `profiles` (evaluation fails). The table is
 keyed by account name; an account called something else on one machine gets
 its own entry pointing at the same directory (`users.a123456.dir` in
-`home/users/fendada/user.nix`). Tiers are `minimal < shell < interactive < dev`
+`home/fendada/user.nix`). Tiers are `minimal < shell < interactive < dev`
 (`flake/_lib/tiers.nix`): an account's tier on a host is its host-level `tier`
 (else its default), capped by the host's `maxTier`; a home reads its own as
 `config.my.home.tier`.
 
 Accounts share no configuration and no preferences: what one person wants goes
-in `home/users/<account>/`, never into something shared for others to opt out
+in `home/<account>/`, never into something shared for others to opt out
 of, and never as `if config.home.username == …`. No module branches on
 `config.my.host.name`; a difference between machines is a registry fact
 (`kind`, `roles`, `inChina`, a placement), the account's `<host>.nix`, or its
@@ -210,9 +212,10 @@ add a `docs/decisions.md` entry.
 
 **Add or change an account.** An existing account on another machine is
 `users.<account> = {};` in that `host.nix`. A new account is a directory
-`home/users/<account>/` with `user.nix` (`tier`, `sshKeys`, `ageKeys`) and
-`default.nix`, plus whichever tier, GUI and `<host>.nix` files it wants (see
-"Accounts and home tiers"); new files must be `git add`ed. A key for one account goes in its `sshKeys`;
+`home/<account>/` with `user.nix` (`tier`, `sshKeys`, `ageKeys`) and
+`default.nix`, plus whichever `profiles/` and `<host>.nix` files it wants (see
+"Accounts and home tiers"); new files must be `git add`ed. A key for one
+account goes in its `sshKeys`;
 `system/modules/ssh/keys.nix` is for keys trusted as every account, root
 included.
 
@@ -250,15 +253,15 @@ Home Manager module options** (`programs.*`, `services.*`, etc.).
   (`extraConfig`, `settings`, `extraOptions`) for **only that fragment**, and
   keep everything else in typed options.
 - Only fall back to raw files for assets that are genuinely not configuration
-  (scripts, wallpapers, snippets), e.g. `home/users/hank/modules/claude-code/statusline.sh`.
+  (scripts, wallpapers, snippets), e.g. `home/hank/modules/claude-code/statusline.sh`.
 
 ### Neovim: nixvim only
 
 Neovim is configured with **nixvim** (flake input, pinned to the `nixos-26.05`
 branch). Each account's nixvim lives in its own directory:
-`home/users/hank/modules/nixvim/` is Hank's terminal baseline (`default.nix`),
+`home/hank/modules/nixvim/` is Hank's terminal baseline (`default.nix`),
 with `vscode.nix` for VS Code and `editing.nix` shared by both.
-`home/users/{kenneth,linwhite}/modules/nixvim/` are independent copies (forked
+`home/{kenneth,linwhite}/modules/nixvim/` are independent copies (forked
 from hank's on 2026-10-06): each has its own `base.nix`, `editing.nix`,
 `options.nix` and `snippets/`, plus `default.nix` with that account's
 overrides. A change in one does not reach the others.
@@ -292,7 +295,7 @@ adds no home-manager module at all.
   `system/modules/home-manager-cli.nix` (which ships the `home-manager` binary so
   a fresh machine can bootstrap its first activation).
 - **Where a package goes.** `home.packages` in the asking user's
-  `home/users/<user>/` (their tier file if it should follow the tier).
+  `home/<user>/` (a file in `profiles/` if it should follow the tier).
   `environment.systemPackages` is only for things the
   machine itself needs, or that every account must have regardless of who logs
   in — it costs a system rebuild and root to change.
@@ -506,7 +509,7 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
 
 - **import-tree loads every `.nix` under `flake/`** as a flake-parts module.
   Plain helpers go under `flake/_lib/` (import-tree skips any path containing
-  `/_`). Under `hosts/` and `home/users/` only `host.nix` / `user.nix` load.
+  `/_`). Under `hosts/` and `home/` only `host.nix` / `user.nix` load.
 - **Two `config`s.** In `flake/`, `host.nix` and `user.nix`, `config` is the
   flake-level one (`config.hosts`, `config.flake.modules`); inside a module
   value it is that evaluation's.

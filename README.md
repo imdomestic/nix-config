@@ -53,7 +53,7 @@ does ops on the fleet over plain SSH as the `max` account; see
 **Where are your dotfiles?** Mostly, there aren't any. Programs are
 configured through their module options (`programs.tmux.*`, nixvim instead of
 a tree of `.lua` files). When a module can't express something, only that
-fragment goes through its escape hatch, e.g. `home/users/hank/modules/init-extra.zsh`
+fragment goes through its escape hatch, e.g. `home/hank/modules/init-extra.zsh`
 spliced into zsh's init. The other raw files aren't config at all, like the
 Claude Code statusline script.
 

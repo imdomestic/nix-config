@@ -675,7 +675,7 @@ in {
   };
 
   # 这里只留 tank 这台机器自己需要的。搬走的去处:
-  #   GUI / 桌面配套 (clapper radeontop brightnessctl) -> home/users/hank
+  #   GUI / 桌面配套 (clapper radeontop brightnessctl) -> home/hank
   #   内核构建那几个 (flex bison elfutils libelf pkg-config) -> hank 的 modules/dev-tools.nix
   #   虚拟化那一组 -> profiles/virtualisation 本来就装了,这里是抄的第二遍
   #   wget git starship zsh duf bat just btop cachix -> home 的 base / interactive / dev 早就有

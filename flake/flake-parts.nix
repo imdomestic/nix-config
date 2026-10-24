@@ -1,6 +1,6 @@
 {lib, ...}: {
   # Modules picked by name: `flake.modules.<class>.<name>` (./modules/*.nix and
-  # home/users/*/user.nix). Unlike flake-parts' own `flake.modules`
+  # home/*/user.nix). Unlike flake-parts' own `flake.modules`
   # (flakeModules.modules) the values stay as given, with no class-tagging
   # wrapper: the module system orders definitions by import depth, so every
   # extra `imports` layer reorders list options like `environment.systemPackages`

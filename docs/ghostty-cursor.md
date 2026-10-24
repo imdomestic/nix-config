@@ -1,13 +1,13 @@
 # Ghostty：Neovide 风格光标与 pixiedust
 
-`home/users/hank/modules/ghostty/shaders/neovide-cursor.glsl` 是 Ghostty 1.3+ 的
+`home/hank/modules/ghostty/shaders/neovide-cursor.glsl` 是 Ghostty 1.3+ 的
 custom shader，提供随移动方向伸缩的四角弹簧拖尾，以及沿移动路径散落、
 旋转漂移、逐渐淡出的方形粒子。颜色取当前终端光标，保留应用的 block、bar、
 underline 形状和原有光标文字。默认不添加辉光、彩虹或全屏滤镜。
 
 ## 配置与启用
 
-Hank 的 home 导入 `home/users/hank/modules/ghostty/neovide-cursor.nix`，Linux 启用
+Hank 的 home 导入 `home/hank/modules/ghostty/neovide-cursor.nix`，Linux 启用
 `my.ghostty.neovideCursor.enable`，macOS 因持续重绘成本停用。
 模块只在该开关与 `programs.ghostty.enable` 同时启用时生成
 `programs.ghostty.settings.custom-shader` 和
