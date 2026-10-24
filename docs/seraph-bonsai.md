@@ -6,6 +6,6 @@
 两个模型均使用 NInfer、NVFP4 KV、174080 上下文和 MTP K=3。
 
 使用方法、模型校验值、性能测量、网络认证、验证结果和恢复命令见
-[部署报告](../REPORT.md)。构建与转换记录见
+[部署报告](seraph-bonsai-deployment.md)。构建与转换记录见
 [运行记录](incidents.md#seraph-bonsai-ninfer-174080)，配置决定见
 [方案记录](decisions.md#seraph-bonsai-ninfer)。
