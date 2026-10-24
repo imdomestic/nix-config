@@ -7,7 +7,7 @@
   gui = config.programs.ghostty.enable;
   darwin = pkgs.stdenv.isDarwin;
 in {
-  imports = [./flat-white/ghostty.nix];
+  imports = [../flat-white/ghostty.nix];
   # aegis 未装 Homebrew cask，使用原生 HM package 安装官方 macOS 二进制。
   programs.ghostty.package = lib.mkIf (gui && darwin) (lib.mkForce pkgs.ghostty-bin);
 

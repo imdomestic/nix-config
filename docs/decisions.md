@@ -11,6 +11,24 @@
 
 ---
 
+## 2026-10-25 · 没有 home/modules,也没有共享的 GUI profile {#no-shared-home-modules}
+
+账户之间既不共享配置,也不共享偏好。原来的 `home/modules/<app>` 和
+`home/profiles/gui/` 名义上是共享的,实际上要么只有 hank 一个人用,要么别人得在
+自己那边把它盖掉(linwhite 用 `mkForce {}` 清掉共享的 yazi 主题,kenneth 要从共享的
+GUI profile 里排除 wezterm)。现在每个账户在 `home/users/<account>/modules/` 里留
+自己用到的那一份,和 2026-10-06 分叉 nixvim 是同一个做法;GUI profile 变成
+`<account>-gui-<platform>`。
+
+共享的只剩 `home/profiles/` 的四个档位:它们决定一台机器给多少工具链(小机器靠
+`maxTier` 压档),只负责把程序打开,不带主题、键位和参数。
+
+代价是同一个修复要在每份副本里各做一次 —— nixvim 的 `files` 那次就是三份
+(`#nixvim-no-files`)。换来的是改自己那份不会碰到别人。全部按原位置引用副本,
+搬迁前后 26 个系统、tank 和 45 个 home 的 drvPath 逐一相同。
+
+---
+
 ## 2026-10-24 · 没有 zen-browser 的 flake {#no-zen-browser}
 
 `home/modules/zen-browser`(经 `hank-gnome` 进了 hank 所有 Linux GUI 主机)和

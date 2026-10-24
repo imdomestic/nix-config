@@ -11,6 +11,7 @@ in {
     hank-aerospace = ./modules/aerospace.nix;
     hank-rex = ./modules/rex/default.nix;
     hank-ibus = ./modules/ibus;
+    hank-gui-darwin = ./modules/gui/darwin.nix;
     hank-postgresql = ./modules/postgresql;
     hank-tailscale = ./modules/tailscale;
     # 只在某一台上加载的部分,由那台 host.nix 的 users.hank.modules 引用。
@@ -35,7 +36,7 @@ in {
     gui = {
       linux.modules = [hm.hank-gnome hm.hank-flatpak hm.hank-ibus];
       darwin = {
-        profile = hm.gui-darwin;
+        profile = hm.hank-gui-darwin;
         modules = [hm.hank-aerospace hm.hank-rex];
       };
     };

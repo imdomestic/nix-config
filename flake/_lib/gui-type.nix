@@ -1,14 +1,14 @@
-# What an account loads on a GUI host of one platform. The two fields load at
-# different points: `profile` is a shared bundle from home/profiles/gui and
-# loads before the account's own module, `modules` are the account's own
-# desktop tweaks and load after it (see flake/builders/homes.nix).
+# What an account loads on a GUI host of one platform. Both are the account's
+# own modules; they load at different points: `profile` (its GUI layer: apps,
+# terminal) before the account's main module, `modules` (desktop tweaks) after
+# it (see flake/builders/homes.nix).
 {lib}:
 lib.types.submodule {
   options = {
     profile = lib.mkOption {
       type = lib.types.nullOr lib.types.raw;
       default = null;
-      description = "Shared GUI bundle, e.g. `flake.modules.homeManager.gui-darwin`.";
+      description = "The account's GUI layer, e.g. `flake.modules.homeManager.hank-gui-darwin`.";
     };
     modules = lib.mkOption {
       type = lib.types.listOf lib.types.raw;

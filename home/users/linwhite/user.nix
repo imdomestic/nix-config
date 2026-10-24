@@ -7,6 +7,9 @@ in {
     # 精简版 nixvim(保留 nix 支持)。
     linwhite-dev = ./dev.nix;
     linwhite-aerospace = ./modules/aerospace.nix;
+    linwhite-gui-common = ./modules/gui/common.nix;
+    linwhite-gui-darwin = ./modules/gui/darwin.nix;
+    linwhite-gui-linux = ./modules/gui/linux.nix;
     linwhite-opencode-local-bonsai = ./modules/opencode/local-bonsai.nix;
     linwhite-rex = ./modules/rex/default.nix;
     # 只在某一台上加载的部分,由那台 host.nix 的 users.linwhite.modules 引用。
@@ -22,9 +25,9 @@ in {
     dev = hm.linwhite-dev;
     ageKeys.personal = "age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7"; # linwhite@linwhite.top
     gui = {
-      linux.profile = hm.gui-linux;
+      linux.profile = hm.linwhite-gui-linux;
       darwin = {
-        profile = hm.gui-darwin;
+        profile = hm.linwhite-gui-darwin;
         modules = [hm.linwhite-aerospace hm.linwhite-rex];
       };
     };

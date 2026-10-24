@@ -42,8 +42,7 @@ hosts/<name>/           # every machine, whatever its kind: host.nix + system.ni
 system/profiles/        # base, server, desktop, netdiag, virtualisation (picked by roles); darwin.nix
 system/modules/         # NixOS and nix-darwin modules side by side
 system/installers/      # the x86_64-rescue image
-home/profiles/          # tier bundles core, shell, interactive, dev; gui/{common,linux,darwin}
-home/modules/<app>/     # only what home/profiles import: ghostty, vicinae, yazi
+home/profiles/          # the tiers core, shell, interactive, dev: tools only, no preferences
 home/users/<account>/   # user.nix (table entry), default.nix, dev.nix, <host>.nix; modules/ for the rest
 lib/                    # data and helpers modules import: nixpkgs-registry pins, wg*, model tables
 pkgs/                   # local packages
@@ -56,10 +55,12 @@ Justfile                # every rebuild/deploy command
 Which class a module under `system/` is for is what its
 `flake.modules.<class>` registration (`flake/modules/<class>.nix`) or its
 importer says, not the directory. Accounts share no home modules: each keeps
-its own copy of what it uses in `home/users/<account>/modules/` (codex,
-opencode, sops, nixvim's `options.nix` … exist once per account that loads
-them), and a change to one copy does not reach the others. `home/modules/`
-holds only what the shared tier and GUI profiles in `home/profiles/` import.
+its own copy of what it uses in `home/users/<account>/modules/` (ghostty,
+codex, opencode, sops, nixvim's `options.nix`, its GUI layer … exist once per
+account that loads them), and a change to one copy does not reach the others.
+The only shared home code is the tiers in `home/profiles/`, which decide how
+much toolchain a machine gets and switch programs on; themes, key bindings
+and options are each account's.
 
 ### Hosts
 
@@ -95,7 +96,7 @@ in {
       hank = {};                    # has an account here; its home comes from users.hank
       linwhite = {
         tier = "interactive";       # lower than its default, on this host
-        gui.profile = m.homeManager.gui-common; # replaces its GUI layers here
+        gui.profile = m.homeManager.linwhite-gui-common; # replaces its GUI layers here
         modules = [m.homeManager.linwhite-example]; # home/users/linwhite/example.nix, loaded last
         extraGroups = ["wheel"];    # replaces the default groups
         nixos.uid = 501;            # merged into users.users.linwhite
@@ -143,8 +144,8 @@ in {
     tier = "dev";                   # default on every host
     module = hm.hank;               # loaded on every host
     dev = hm.hank-dev;              # at the dev tier, in place of home/profiles/dev.nix
-    gui.linux.modules = [hm.hank-gnome hm.ibus];
-    gui.darwin = {profile = hm.gui-darwin; modules = [hm.hank-aerospace];};
+    gui.linux.modules = [hm.hank-gnome hm.hank-ibus];
+    gui.darwin = {profile = hm.hank-gui-darwin; modules = [hm.hank-aerospace];};
     sshKeys = [...];                # may log in as this account, wherever it exists
     ageKeys."1" = "age1…";          # sops keys tied to no registry machine
   };

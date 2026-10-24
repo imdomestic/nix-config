@@ -1,10 +1,10 @@
 # homeConfigurations."hosts/<host>/<account>", aliased "<account>@<host>": one
 # standalone Home Manager closure per account on every host. What goes in is
 # composed from the account's entry in the `users` table, the host's account
-# entry and the host itself, shared layers first:
+# entry and the host itself, the shared tiers first:
 #
 #   core → shell → interactive        by tier (flake/_lib/tiers.nix)
-#   gui profile                       gui role; shared bundle from home/profiles/gui
+#   gui profile                       gui role; the account's GUI layer
 #   the account's own module
 #   its dev module                    dev tier
 #   its gui modules                   gui role; its own desktop tweaks

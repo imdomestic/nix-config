@@ -1,7 +1,7 @@
 {pkgs, ...}: {
   imports = [
-    ../../modules/vicinae
-    ../../modules/ghostty
+    ../vicinae
+    ../ghostty
   ];
 
   # use qemu system session
