@@ -5,14 +5,12 @@
   ...
 }: let
   isLinux = pkgs.stdenv.isLinux;
-  isHome = config.my.host.name == "aarch64-headless" || config.my.host.name == "x86_64-headless";
 
   # package = null 的意思是"配置文件照常下发,但别装 ghostty 本体":
   #   - darwin 上它由 homebrew 装
-  #   - aarch64-headless / x86_64-headless 是纯 home-manager 的机器,
-  #     那边终端是别人的事
+  #   - kind = "home" 的机器只归我们管 home,那边终端是别人的事
   ghosttyPackage =
-    if isHome || !isLinux
+    if config.my.host.kind == "home" || !isLinux
     then null
     else pkgs.ghostty;
 in {

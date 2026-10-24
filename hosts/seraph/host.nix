@@ -31,7 +31,7 @@ in {
 
     users.linwhite.ageKey = "age1svatkwy2klm39twkpv7rxfteampuzkyu3ccxtjzpmuz2kq3d6sus8l3hg4";
     users.linwhite.modules = [
-      ./home.nix
+      m.homeManager.linwhite-seraph
       m.homeManager.opencode-local-bonsai
     ];
   };

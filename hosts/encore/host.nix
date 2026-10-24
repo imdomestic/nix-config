@@ -30,9 +30,13 @@ in {
     ];
 
     users = {
-      hank.ageKey = "age1wh7zpq8aaqx5anad9nxk9cr40q0rq2qcnsrpujmrmsf8z59aycsqhlpmth";
+      hank = {
+        ageKey = "age1wh7zpq8aaqx5anad9nxk9cr40q0rq2qcnsrpujmrmsf8z59aycsqhlpmth";
+        modules = [m.homeManager.hank-encore];
+      };
       linwhite = {
         gui.profile = m.homeManager.gui-common;
+        modules = [m.homeManager.linwhite-encore];
         ageKey = "age1kmgn6snvphehfluadsztazkvlj5q8u6rydzm3at0y3muu45ny43szct0qr";
       };
     };

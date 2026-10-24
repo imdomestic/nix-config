@@ -994,42 +994,24 @@ in {
     rm -f "${config.home.homeDirectory}/.cache/zsh/zcompdump-"*
   '';
 
-  home.packages =
-    [
-      pkgs.zsh-completions
+  home.packages = [
+    pkgs.zsh-completions
 
-      # 二进制单独进 PATH,不只是躺在插件目录里:Claude Code 那份 hook.sh 是从
-      # 它自己的 plugin cache 里跑的,查找顺序的最后一档才是 PATH —— 没有这条,
-      # 它会退回 cache 里那个 TPM 时代下载来的副本。
-      tmux-agent-sidebar
+    # 二进制单独进 PATH,不只是躺在插件目录里:Claude Code 那份 hook.sh 是从
+    # 它自己的 plugin cache 里跑的,查找顺序的最后一档才是 PATH —— 没有这条,
+    # 它会退回 cache 里那个 TPM 时代下载来的副本。
+    tmux-agent-sidebar
 
-      # snacks.image 的转换在 **nvim 所在的机器** 上跑,所以 ssh 过去看图要求远端也有
-      # 这两个。它们本来只在 profiles/dev.nix 里,而 hank 没开 dev profile 的机器
-      # ssh 过去 magick 不在,图就是出不来。
-      # 提到这里 = 每台有 hank 的机器都能看图,又不用把整套 dev 工具链背过去。
-      #
-      # dev.nix 里那份没删:它同时被 linwhite/dev.nix 引着。taipan 上两边都声明,指向
-      # 同一个 derivation,profile 里会去重,无害。
-      # mermaid(mmdc)和 tectonic 仍然只在 dev profile —— 那两个是真的重。
-      pkgs.imagemagick
-      pkgs.ghostscript
-    ]
-    # 下面这些原本在各自 host 的 environment.systemPackages 里。都是"我"用的
-    # 单机工具,不是机器跑起来需要的,所以按 host 挂在这儿。
+    # snacks.image 的转换在 **nvim 所在的机器** 上跑,所以 ssh 过去看图要求远端也有
+    # 这两个。它们本来只在 profiles/dev.nix 里,而 hank 没开 dev profile 的机器
+    # ssh 过去 magick 不在,图就是出不来。
+    # 提到这里 = 每台有 hank 的机器都能看图,又不用把整套 dev 工具链背过去。
     #
-    # iproute2mac 不在这儿:profiles/dev.nix 的 darwin 分支早就有了,
-    # praxic 的 system 那份纯属重复。
-    ++ lib.optionals (config.my.host.name == "aarch64-wsl") [pkgs.distrobox]
-    ++ lib.optionals (config.my.host.name == "gizmo") [pkgs.wakeonlan]
-    # tank 的 hank 没引 gui.linux,所以这台的桌面工具单独列出。
-    ++ lib.optionals (config.my.host.name == "tank") [
-      pkgs.brightnessctl
-      pkgs.radeontop
-      pkgs.clapper
-    ]
-    ++ lib.optionals (lib.elem config.my.host.name ["praxic" "m1elite"]) [
-      # 用来推别的机器,不是这台 Mac 自己要的。
-      pkgs.nixos-rebuild
-      pkgs.nixos-rebuild-ng
-    ];
+    # dev.nix 里那份没删:它同时被 linwhite/dev.nix 引着。taipan 上两边都声明,指向
+    # 同一个 derivation,profile 里会去重,无害。
+    # mermaid(mmdc)和 tectonic 仍然只在 dev profile —— 那两个是真的重。
+    pkgs.imagemagick
+    pkgs.ghostscript
+  ];
+  # 只在某一台上用的单机工具挂在那台 host.nix 的 users.hank.modules 里。
 }

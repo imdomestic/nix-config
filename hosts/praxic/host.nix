@@ -34,7 +34,7 @@ in {
       modules = with m.homeManager; [
         postgresql
         tailscale
-        {my.vscode.enable = true;}
+        hank-praxic
       ];
     };
   };

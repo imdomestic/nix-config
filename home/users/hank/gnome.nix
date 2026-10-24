@@ -50,8 +50,7 @@ in {
       // {
         toggle-fullscreen = ["<Alt>f"];
       };
-    # encore 的休眠设置由系统统一管理。
-    "org/gnome/settings-daemon/plugins/power" = lib.optionalAttrs (config.my.host.name != "encore") {
+    "org/gnome/settings-daemon/plugins/power" = {
       sleep-inactive-ac-type = "nothing";
       sleep-inactive-battery-type = "nothing";
     };

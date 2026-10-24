@@ -101,7 +101,7 @@ in {
   };
 
   # 这里只留机器自己需要的。GUI 应用、编译工具链、看 GPU 的那几个都搬去了
-  # home(modules/gui、profiles/dev)—— 换一个浏览器不该需要 root + 整机重建。
+  # home(./desktop-apps.nix、profiles/dev)—— 换一个浏览器不该需要 root + 整机重建。
   # vim 留着:系统坏掉时是以 root 身份进来修的,那时候 home 的 PATH 帮不上忙。
   environment.systemPackages = with pkgs; [
     vim

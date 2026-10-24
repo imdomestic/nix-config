@@ -21,7 +21,7 @@ in {
 
     users.linwhite.modules = [
       m.homeManager.opencode-local-bonsai
-      ./aerospace-dummy.nix
+      m.homeManager.linwhite-aegis
     ];
   };
 }
