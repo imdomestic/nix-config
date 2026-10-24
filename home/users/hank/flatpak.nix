@@ -10,7 +10,6 @@
 in {
   imports = [inputs.nix-flatpak.homeManagerModules.nix-flatpak];
 
-  programs.zen-browser.enable = false;
   home.packages = [zen];
   home.sessionVariables.BROWSER = lib.getExe zen;
   systemd.user.sessionVariables.BROWSER = lib.getExe zen;

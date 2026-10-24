@@ -56,12 +56,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    zen-browser = {
-      url = "github:0xc000022070/zen-browser-flake/beta";
-      inputs.nixpkgs.follows = "nixpkgs-unstable";
-      inputs.home-manager.follows = "home-manager";
-    };
-
     system-manager = {
       # 必须钉在和 nixpkgs 同一个 release 分支上:main 跟的是 nixos-unstable,
       # 它会在求值时直接 throw 拒绝配一个 26.05 的 nixpkgs。

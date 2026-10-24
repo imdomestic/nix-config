@@ -2157,7 +2157,6 @@
         "vex": "vex",
         "wayland-scroll-factor": "wayland-scroll-factor",
         "wg-config": "wg-config",
-        "zen-browser": "zen-browser",
         "zjstatus": "zjstatus",
         "zsh-hank": "zsh-hank",
         "zsh-linwhite": "zsh-linwhite"
@@ -2862,30 +2861,6 @@
       "original": {
         "type": "git",
         "url": "ssh://git@github.com/imdomestic/wgconfigs"
-      }
-    },
-    "zen-browser": {
-      "inputs": {
-        "home-manager": [
-          "home-manager"
-        ],
-        "nixpkgs": [
-          "nixpkgs-unstable"
-        ]
-      },
-      "locked": {
-        "lastModified": 1792595242,
-        "narHash": "sha256-kH/E0uJDslOgYcnmU+c0cm6HrUjsEtvZQKZtuQ1+uvo=",
-        "owner": "0xc000022070",
-        "repo": "zen-browser-flake",
-        "rev": "f19490ac889eabb05bdb7e8dcb85225ee75bd87b",
-        "type": "github"
-      },
-      "original": {
-        "owner": "0xc000022070",
-        "ref": "beta",
-        "repo": "zen-browser-flake",
-        "type": "github"
       }
     },
     "zjstatus": {

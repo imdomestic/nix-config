@@ -11,6 +11,18 @@
 
 ---
 
+## 2026-10-24 · 没有 zen-browser 的 flake {#no-zen-browser}
+
+`home/modules/zen-browser`(经 `hank-gnome` 进了 hank 所有 Linux GUI 主机)和
+`zen-browser` input 一起删了。那个 input 跟着 nixpkgs-unstable,每个用它的 home
+都要多求值一整份 nixpkgs,闭包里也多一套 pipewire / ffmpeg / X11 —— 约占这类
+home 求值的一成。268v 上 `hank-flatpak` 装的 Flatpak 版(`app.zen_browser.zen`)
+不走 flake,留着。同一天 nixvim 的 `enableMan` 也关了(三份都是),`man nixvim`
+的 options.json 在 `#nixvim-no-files` 之后已是 home 求值里最大的一块(约 28%)。
+45 个 home 的总 CPU 183 s → 125 s。
+
+---
+
 ## 2026-10-24 · nixvim 不用 `files` {#nixvim-no-files}
 
 hank、kenneth、linwhite 三份 nixvim 的 13 个 `after/ftplugin/*.lua`(缩进偏好)
