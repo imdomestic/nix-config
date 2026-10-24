@@ -347,7 +347,7 @@
     };
     "log_color" = "always";
   };
-  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-gemini-3.8-flash-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token" "cliproxy-management-key" "bungie-api-key" "bungie-client-id" "bungie-client-secret"];
+  secretNames = ["admin-token" "search-exa-api-key" "llm-profiles-claude-opus-4-6-api-key" "llm-profiles-qwen3.8-27b-api-key" "llm-profiles-gpt-5.6-terra-api-key" "llm-profiles-gpt-6-astra-api-key" "llm-profiles-gpt-5.6-sol-api-key" "llm-profiles-gpt-5.6-luna-api-key" "llm-profiles-gpt-5.6-luna-medium-api-key" "llm-profiles-gemini-3.8-flash-api-key" "llm-profiles-deepseek-v4-flash-vision-exp-api-key" "llm-profiles-deepseek-pro-api-key" "llm-profiles-grok-4.5-api-key" "llm-profiles-glm-5.2-api-key" "llm-profiles-glm-5.1-api-key" "llm-profiles-kimi-k2.7-code-api-key" "llm-profiles-kimi-k2.6-api-key" "llm-profiles-kimi-k3-api-key" "llm-profiles-mimo-v2.5-api-key" "llm-profiles-qwen3.6-plus-api-key" "llm-profiles-minimax-m3-api-key" "llm-profiles-minimax-m2.7-api-key" "matrix-access-token" "server-access-token" "cliproxy-management-key" "bungie-api-key" "bungie-client-id" "bungie-client-secret" "qq-groups"];
 in {
   sops.secrets =
     lib.genAttrs (map (name: "max/${name}") secretNames) (name: {
@@ -369,6 +369,14 @@ in {
     mode = "0400";
     restartUnits = ["max.service"];
   };
+  # Max serves only these QQ groups (plus private chats and the Matrix mirror
+  # group); everything else is dropped unread. Group numbers stay out of git
+  # and the store: comma-separated in sops, handed over as MAX_QQ_GROUPS.
+  sops.templates."max.env" = {
+    content = "MAX_QQ_GROUPS=${config.sops.placeholder."max/qq-groups"}\n";
+    mode = "0400";
+    restartUnits = ["max.service"];
+  };
   services.max = {
     enable = true;
     operations = {
@@ -378,6 +386,7 @@ in {
       authKeyFile = config.sops.secrets."max/ops-preauthkey".path;
     };
     configFile = config.sops.templates."max-config.json".path;
+    environmentFile = config.sops.templates."max.env".path;
     # tank has no GPU: video renditions decode in software and command
     # sandboxes get no render node.
     napcat = {
