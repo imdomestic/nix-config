@@ -3,7 +3,7 @@
   # 账户到 dev 档时由 flake/builders/homes.nix 加载(见 ./user.nix);
   # 没有 dev 的机器由 linwhite/default.nix 提供精简版 nixvim(保留 nix 支持)。
   imports = [
-    ../../profiles/dev.nix
+    ./modules/dev-tools.nix
     ./modules/nixvim
     ./modules/opencode
     ./modules/flat-white/opencode.nix

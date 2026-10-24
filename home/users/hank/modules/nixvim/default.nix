@@ -32,7 +32,7 @@
   # 不再是两份要手工同步的列表。
   #
   # 一个都不由 nixvim 安装(lsp.servers.*.package = null)。要用的装在
-  # home/profiles/dev.nix 里,项目 devshell 里的版本会盖掉它 —— nixvim 不往
+  # ../dev-tools.nix 里,项目 devshell 里的版本会盖掉它 —— nixvim 不往
   # PATH 里塞东西,PATH 的顺序自然就是 devshell > home profile。
   #
   # exe 是给守卫用的可执行文件名,省略表示从 vim.lsp.config[name].cmd[1] 推。
@@ -229,7 +229,7 @@ in {
     ./options.nix
   ];
 
-  # nixvim replaces the plain neovim enabled by home/profiles/shell.nix
+  # nixvim replaces the plain neovim enabled by ../../shell.nix
   programs.neovim.enable = lib.mkForce false;
 
   programs.nixvim = {
@@ -1469,7 +1469,7 @@ in {
           # PATH 上没有这个可执行文件就不启动,免得 nvim 去 spawn 一个不存在的
           # 进程然后报错。
           activate = false;
-          # nixvim 一个 LSP 都不装。装在 home/profiles/dev.nix 里,项目 devshell
+          # nixvim 一个 LSP 都不装。装在 ../dev-tools.nix 里,项目 devshell
           # 可以再覆盖 —— package = null 意味着 nixvim 不往 PATH 里塞东西,
           # 于是顺序就是 devshell > home profile,天然是对的。
           package = null;

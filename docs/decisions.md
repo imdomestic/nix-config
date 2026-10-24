@@ -11,6 +11,26 @@
 
 ---
 
+## 2026-10-25 · home 按文件名组装,没有注册表 {#home-by-file-name}
+
+`flake.modules.homeManager`、`users.<account>.{module,dev,gui}`、主机账户条目的
+`modules` / `gui` 都删了。一个 home 由 `flake/builders/homes.nix` 在账户目录里按名字
+找:`shell.nix` / `interactive.nix` / `dev.nix` 按档位,`gui-<platform>.nix` 按 gui
+role,`<host>.nix` 按主机,`default.nix` 每台都要;不存在就跳过。原来同一件事要在
+`user.nix` 的注册表、`users` 条目和 host.nix 三处写对应关系,加一个文件要改三处。
+
+共享的 `home/profiles/` 也一起拆了:每个用到某档的账户有自己的 `shell.nix` /
+`interactive.nix`,dev 档的工具链是 hank 和 linwhite 各自的 `modules/dev-tools.nix`。
+`users.<account>.dir` 让 a123456 用 fendada 的目录。主机名不能和这些文件名重名,
+求值时检查。
+
+唯一的行为变化:linwhite 在 encore 上原来单独用 gui-common,现在和她别的 Linux GUI
+机器一样加载 `gui-linux.nix`(多了 vicinae、那批应用和 `NIXOS_OZONE_WL`,少了
+swiftlint / jdk)。其余 home 的包、托管文件、环境变量都和改前一致,只有 5 个因为
+import 层级变了而换了 drvPath。
+
+---
+
 ## 2026-10-25 · 没有 home/modules,也没有共享的 GUI profile {#no-shared-home-modules}
 
 账户之间既不共享配置,也不共享偏好。原来的 `home/modules/<app>` 和

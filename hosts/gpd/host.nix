@@ -12,6 +12,6 @@ in {
       ./hardware-configuration.nix
     ];
 
-    users.linwhite.modules = [m.homeManager.linwhite-gpd];
+    users.linwhite = {};
   };
 }

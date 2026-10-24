@@ -1,7 +1,5 @@
-{
-  pkgs,
-  ...
-}: {
+# shell 档以上加载(flake/builders/homes.nix 按文件名找)。
+{pkgs, ...}: {
   home.packages = with pkgs; [
     curl
     tmux

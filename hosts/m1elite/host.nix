@@ -1,10 +1,4 @@
-{
-  config,
-  inputs,
-  ...
-}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.m1elite = {
     system = "aarch64-darwin";
     kind = "darwin";
@@ -30,10 +24,6 @@ in {
         uid = 501;
         description = "Hank Hogan";
       };
-      modules = [
-        m.homeManager.hank-postgresql
-        m.homeManager.hank-m1elite
-      ];
     };
   };
 }

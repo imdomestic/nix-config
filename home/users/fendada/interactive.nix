@@ -1,3 +1,4 @@
+# interactive 档以上加载。
 {pkgs, ...}: {
   home.packages = with pkgs; [
     bat
@@ -7,7 +8,7 @@
     btop
   ];
 
-  # 只负责打开;默认参数是各人的偏好,在 home/users/<account>/modules/。
+  # 默认参数在 ./modules/fzf.nix。
   programs.fzf.enable = true;
 
   programs.zoxide = {

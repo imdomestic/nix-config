@@ -1,21 +1,22 @@
 # homeConfigurations."hosts/<host>/<account>", aliased "<account>@<host>": one
-# standalone Home Manager closure per account on every host. What goes in is
-# composed from the account's entry in the `users` table, the host's account
-# entry and the host itself, the shared tiers first:
+# standalone Home Manager closure per account on every host, assembled from the
+# files in the account's directory (`users.<account>.dir`) by name, in order:
 #
-#   base → shell → interactive        by tier (flake/_lib/tiers.nix; base is ../_lib/home-base.nix)
-#   gui profile                       gui role; the account's GUI layer
-#   the account's own module
-#   its dev module                    dev tier
-#   its gui modules                   gui role; its own desktop tweaks
-#   the host's extra modules for it
+#   ../_lib/home-base.nix   always: the plumbing, and my.home.tier
+#   shell.nix               shell tier and up (flake/_lib/tiers.nix)
+#   interactive.nix         interactive tier and up
+#   gui-<platform>.nix      hosts with the gui role, shell tier and up
+#   default.nix             always; the only file that must exist
+#   dev.nix                 dev tier
+#   <host>.nix              on that host
+#
+# A missing file is skipped. Nothing is registered: the file is the entry.
 {
   config,
   inputs,
   lib,
   ...
 }: let
-  hm = config.flake.modules.homeManager;
   tiers = import ../_lib/tiers.nix {inherit lib;};
   hostModules = import ../_lib/host-modules.nix {inherit config lib;};
   nixpkgsConfig = import ../_lib/nixpkgs-config.nix;
@@ -46,16 +47,13 @@
       if lib.hasSuffix "darwin" host.system
       then "darwin"
       else "linux";
-    gui =
-      if !(lib.elem "gui" host.roles && at "shell")
-      then {
-        profile = null;
-        modules = [];
-      }
-      else if account.gui != null
-      then account.gui
-      else entry.gui.${platform};
+    file = n: let
+      f = entry.dir + "/${n}.nix";
+    in
+      lib.optional (builtins.pathExists f) f;
+    default = entry.dir + "/default.nix";
   in
+    lib.throwIfNot (builtins.pathExists default) "users.${accountName}: no default.nix in ${toString entry.dir}"
     inputs.home-manager.lib.homeManagerConfiguration {
       inherit (pkgs) pkgs;
       modules =
@@ -64,17 +62,12 @@
         # `config.home.username` / `config.home.homeDirectory`.
         ++ [{home.username = accountName;}]
         ++ [../_lib/home-base.nix {my.home.tier = tier;}]
-        ++ lib.optional (at "shell") hm.shell
-        ++ lib.optional (at "interactive") hm.interactive
-        ++ lib.optional (gui.profile != null) gui.profile
-        ++ [entry.module]
-        ++ lib.optional (at "dev") (
-          if entry.dev != null
-          then entry.dev
-          else hm.dev
-        )
-        ++ gui.modules
-        ++ account.modules;
+        ++ lib.optionals (at "shell") (file "shell")
+        ++ lib.optionals (at "interactive") (file "interactive")
+        ++ lib.optionals (lib.elem "gui" host.roles && at "shell") (file "gui-${platform}")
+        ++ [default]
+        ++ lib.optionals (at "dev") (file "dev")
+        ++ file hostName;
       # `inputs` and `system` stay specialArgs because they are used in
       # `imports`; host/account metadata lives in `config.my.host` / `config.home`.
       extraSpecialArgs = {

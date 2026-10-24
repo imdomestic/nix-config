@@ -19,9 +19,6 @@ in {
       inputs.determinate.darwinModules.default
     ];
 
-    users.linwhite.modules = [
-      m.homeManager.linwhite-opencode-local-bonsai
-      m.homeManager.linwhite-aegis
-    ];
+    users.linwhite = {};
   };
 }

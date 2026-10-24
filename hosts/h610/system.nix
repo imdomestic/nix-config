@@ -1163,7 +1163,7 @@ in {
     # nginx 删了:services.nginx.enable 已经把它装进 system path 了,再声明一遍
     # 只会让人以为这台上有两个来源。
     #
-    # deploy-rs 删了:home/profiles/dev.nix 里本来就有。
+    # deploy-rs 删了:hank 和 linwhite 的 modules/dev-tools.nix 里本来就有。
     #
     # gcc 没搬。这台上有 hank / linwhite / kenneth / fendada / genisys 五个账户,
     # 只有 hank 引了 dev profile —— 而 pip / npm / cargo 会隐式去找 cc。

@@ -1,4 +1,4 @@
-{config, ...}: {
+{
   hosts.gizmo = {
     system = "aarch64-linux";
     kind = "nixos";
@@ -22,7 +22,7 @@
     users = {
       nix = {};
       linwhite = {};
-      hank.modules = [config.flake.modules.homeManager.hank-gizmo];
+      hank = {};
     };
   };
 }

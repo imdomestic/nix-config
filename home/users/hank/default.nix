@@ -1015,5 +1015,5 @@ in {
     pkgs.imagemagick
     pkgs.ghostscript
   ];
-  # 只在某一台上用的单机工具挂在那台 host.nix 的 users.hank.modules 里。
+  # 只在某一台上用的单机工具在那台的 <host>.nix 里(./tank.nix 之类)。
 }
