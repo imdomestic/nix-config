@@ -11,12 +11,12 @@ in {
     hank-aerospace = ./aerospace.nix;
     hank-rex = ./rex.nix;
     # 只在某一台上加载的部分,由那台 host.nix 的 users.hank.modules 引用。
-    hank-aarch64-wsl = ./aarch64-wsl.nix;
-    hank-encore = ./encore.nix;
-    hank-gizmo = ./gizmo.nix;
-    hank-m1elite = ./m1elite.nix;
-    hank-praxic = ./praxic.nix;
-    hank-tank = ./tank.nix;
+    hank-aarch64-wsl = ./hosts/aarch64-wsl.nix;
+    hank-encore = ./hosts/encore.nix;
+    hank-gizmo = ./hosts/gizmo.nix;
+    hank-m1elite = ./hosts/m1elite.nix;
+    hank-praxic = ./hosts/praxic.nix;
+    hank-tank = ./hosts/tank.nix;
   };
 
   users.hank = {

@@ -8,10 +8,10 @@ in {
     linwhite-dev = ./dev.nix;
     linwhite-aerospace = ./aerospace.nix;
     # 只在某一台上加载的部分,由那台 host.nix 的 users.linwhite.modules 引用。
-    linwhite-aegis = ./aegis.nix;
-    linwhite-encore = ./encore.nix;
-    linwhite-gpd = ./gpd.nix;
-    linwhite-seraph = ./seraph.nix;
+    linwhite-aegis = ./hosts/aegis.nix;
+    linwhite-encore = ./hosts/encore.nix;
+    linwhite-gpd = ./hosts/gpd.nix;
+    linwhite-seraph = ./hosts/seraph.nix;
   };
 
   users.linwhite = {

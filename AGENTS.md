@@ -44,7 +44,7 @@ system/modules/         # NixOS and nix-darwin modules side by side
 system/installers/      # the x86_64-rescue image
 home/profiles/          # tier bundles core, shell, interactive, dev; gui/{common,linux,darwin}
 home/modules/<app>/     # Home Manager modules that accounts share
-home/users/<account>/   # user.nix (table entry), default.nix, dev.nix, nixvim/, <host>.nix, the account's own modules
+home/users/<account>/   # user.nix (table entry), default.nix, dev.nix, hosts/<host>.nix, the account's own modules
 lib/                    # data and helpers modules import: nixpkgs-registry pins, wg*, model tables
 pkgs/                   # local packages
 secrets/                # sops files: secrets.yaml, hosts/<host>.yaml, clients/, gaoji/
@@ -161,7 +161,7 @@ layers load only on `gui` hosts, from the shell tier up.
 Accounts share no configuration and no preferences: what one person wants goes
 in `home/users/<account>/`, never into a shared profile for others to opt out
 of, and never as `if config.home.username == …` inside a shared module. What an
-account loads on one machine only is `home/users/<account>/<host>.nix`,
+account loads on one machine only is `home/users/<account>/hosts/<host>.nix`,
 registered as `<account>-<host>` and listed in that host's
 `users.<account>.modules` (`hank-tank`, `linwhite-aegis`, `kenneth-alex`). No
 module branches on `config.my.host.name`; a difference between machines is a
@@ -210,7 +210,7 @@ add a `docs/decisions.md` entry.
 `users.<account> = {};` in that `host.nix`. A new account is
 `home/users/<account>/user.nix` (registers its modules, sets `module`, `tier`,
 `gui`, `sshKeys`, `ageKeys`) plus its `default.nix`. Per-host exceptions are a
-`home/users/<account>/<host>.nix` that the host's account entry lists by name
+`home/users/<account>/hosts/<host>.nix` that the host's account entry lists by name
 (see "Accounts and home tiers"). A key for one account goes in its `sshKeys`;
 `system/modules/ssh/keys.nix` is for keys trusted as every account, root
 included.
