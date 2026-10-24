@@ -22,7 +22,7 @@ in {
       "3" = "age1f0ch7vfsqs3u5c4mzqs4m228wge5vulz0s0yj30gkapk7nlk3g2s43x42l";
     };
     gui = {
-      linux.modules = [hm.hank-gnome hm.ibus];
+      linux.modules = [hm.hank-gnome hm.hank-flatpak hm.ibus];
       darwin = {
         profile = hm.gui-darwin;
         modules = [hm.hank-aerospace];

@@ -16,7 +16,6 @@ in {
     ./hardware-configuration.nix
     ../../system/modules/dae
     ../../system/modules/keyd
-    ../../system/modules/tuigreet
   ];
 
   boot.loader.systemd-boot.enable = true;
@@ -94,9 +93,12 @@ in {
     __GLX_VENDOR_LIBRARY_NAME = "nvidia";
   };
 
-  # Enable the GNOME Desktop Environment.
-  services.displayManager.gdm.enable = false;
+  # 和其他 desktop 一样:GNOME + ibus。这台也是 server,greeter 闲着不能让它休眠。
+  services.displayManager.gdm.enable = true;
+  services.displayManager.gdm.autoSuspend = false;
   services.desktopManager.gnome.enable = true;
+  my.inputMethod = "ibus";
+  i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
   users.users.hank = {
     isNormalUser = true;
     extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.

@@ -18,6 +18,8 @@
   };
 
   services.printing.enable = lib.mkDefault true;
+  # 账户的 home 用 nix-flatpak 装应用(hank-flatpak),它要系统侧的 flatpak。
+  services.flatpak.enable = lib.mkDefault true;
 
   hardware = {
     bluetooth.enable = lib.mkDefault true;
