@@ -5,10 +5,6 @@
     inChina = true;
     roles = [];
 
-    modules = [
-      ./system.nix
-    ];
-
     externalModules = [
       inputs.nixos-wsl.nixosModules.wsl
       inputs.nix-index-database.nixosModules.default

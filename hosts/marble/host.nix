@@ -7,10 +7,6 @@
     sshUser = "hank";
     # tsName = "marble.inner.imdomestic.com";
 
-    modules = [
-      ./system.nix
-    ];
-
     users.hank = {
       extraGroups = ["wheel"];
       nixos = {

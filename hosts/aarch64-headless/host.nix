@@ -1,6 +1,4 @@
-{config, ...}: let
-  m = config.flake.modules;
-in {
+{
   hosts.aarch64-headless = {
     system = "aarch64-linux";
     kind = "home";
@@ -10,7 +8,7 @@ in {
     systemManager = {
       enable = true;
       modules = [
-        m.systemManager.nix-settings
+        ../../system/modules/nix-settings.nix
         ./system-manager.nix
       ];
     };

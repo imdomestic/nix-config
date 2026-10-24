@@ -15,11 +15,6 @@
     sshUser = "root";
     maxTier = "interactive";
 
-    modules = [
-      ./system.nix
-      ./hardware-configuration.nix
-    ];
-
     externalModules = [
       # inputs.determinate.nixosModule.default
     ];

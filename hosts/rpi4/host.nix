@@ -17,11 +17,6 @@
     maxTier = "interactive";
     buildOn = "r6s";
 
-    modules = [
-      ./system.nix
-      ./hardware-configuration.nix
-    ];
-
     externalModules = [
       inputs.nixos-hardware.nixosModules.raspberry-pi-4
     ];

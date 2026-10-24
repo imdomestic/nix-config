@@ -6,8 +6,6 @@
     # tsName = "268v.inner.imdomestic.com";
 
     modules = [
-      ./system.nix
-      ./hardware-configuration.nix
       ./desktop.nix
       ./display.nix
       ./virtualisation.nix

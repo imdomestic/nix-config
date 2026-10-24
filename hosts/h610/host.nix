@@ -28,11 +28,9 @@
     sshUser = "root";
 
     modules = [
-      ./system.nix
       ./tailscale-names.nix
       ./cluster.nix
       ./qwen35-sycl.nix
-      ./hardware-configuration.nix
     ];
 
     externalModules = [

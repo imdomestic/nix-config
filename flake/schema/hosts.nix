@@ -87,7 +87,13 @@
           '';
         };
 
-        modules = modulesOption "This host's own system modules.";
+        dir = mkOption {
+          type = types.path;
+          default = ../../hosts + "/${name}";
+          defaultText = lib.literalExpression ''../../hosts + "/<name>"'';
+          description = "The host's directory; system.nix, hardware-configuration.nix and system-manager.nix there load by name.";
+        };
+        modules = modulesOption "System modules beyond the ones that load by name from `dir`.";
         hardwareModules = modulesOption "nixos-hardware modules.";
         externalModules = modulesOption "Third-party modules out of flake inputs.";
 

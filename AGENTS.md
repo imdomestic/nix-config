@@ -32,14 +32,14 @@ flake.nix               # inputs, and the import-tree roots
 flake/                  # top-level (flake-parts) modules
   schema/               #   the tables: hosts, users, placements, inventory
   builders/             #   systems, homes, system-manager, deploy
-  modules/              #   flake.modules registrations (nixos, darwin, systemManager)
   outputs/              #   packages, ciMatrix, nixidy, hosts, mcImageTag
   placements.nix        #   where fleet services run
   secrets.nix           #   who reads which sops file; renders .sops.yaml
   _lib/                 #   plain files import-tree skips: host-facts, host-options,
                         #   roles, tiers, host-modules (the my.host / my.fleet plumbing),
                         #   home-base (what every home starts with)
-hosts/<name>/           # every machine, whatever its kind: host.nix + system.nix + hardware-configuration.nix
+hosts/<name>/           # every machine: host.nix; system.nix, hardware-configuration.nix and
+                        # system-manager.nix load by name; anything else is listed in host.nix
 system/profiles/        # base, server, desktop, netdiag, virtualisation (picked by roles); darwin.nix
 system/modules/         # NixOS and nix-darwin modules side by side
 system/installers/      # the x86_64-rescue image
@@ -53,9 +53,8 @@ docs/                   # incidents.md, decisions.md, topic docs, runbooks/
 Justfile                # every rebuild/deploy command
 ```
 
-Which class a module under `system/` is for is what its
-`flake.modules.<class>` registration (`flake/modules/<class>.nix`) or its
-importer says, not the directory. Accounts share no home code: each keeps its
+Which class a module under `system/` is for is what its importer says, not
+the directory. Accounts share no home code: each keeps its
 own copy of what it uses in `home/<account>/modules/` (its tiers'
 packages, ghostty, codex, opencode, sops, nixvim's `options.nix` … exist once
 per account that loads them), and a change to one copy does not reach the
@@ -65,9 +64,7 @@ others. The only home file every account loads is `flake/_lib/home-base.nix`.
 
 ```nix
 # hosts/example/host.nix
-{config, inputs, ...}: let
-  m = config.flake.modules;
-in {
+{inputs, ...}: {
   hosts.example = {
     system = "x86_64-linux";
     kind = "nixos";                 # nixos | darwin | home
@@ -81,13 +78,13 @@ in {
     buildOn = "r6s";                # too small to build itself (see 小内存机器)
     lanRoutes = ["192.168.22.0/24"]; # LAN advertised to the tailnet; must be unique
 
-    modules = [./system.nix ./hardware-configuration.nix m.nixos.vex];
+    modules = [./k3s.nix ../../system/modules/vex]; # besides system.nix / hardware-configuration.nix
     hardwareModules = [...];        # nixos-hardware modules
     externalModules = [...];        # third-party modules out of flake inputs
 
     systemManager = {               # optional, Linux only
       enable = true;
-      modules = [m.systemManager.nix-settings ./system-manager.nix];
+      modules = [../../system/modules/nix-settings.nix]; # then ./system-manager.nix, by name
       overlays = [...];             # overlays go here, NOT nixpkgs.overlays
     };
 
@@ -123,11 +120,11 @@ tsName) and `placements` (resolved to a tsName). Never `import` the registry
 from a module. Evaluation fails if two hosts advertise the same `lanRoutes`, a
 `kind` does not match its `system`, or a `buildOn` names an unusable builder.
 
-System modules a `host.nix` picks by name are registered as
-`flake.modules.<class>.<name>` (classes `nixos`, `darwin`, `systemManager`).
-Homes register nothing (see below). The values are plain paths, not flake-parts' class-tagged
-wrappers (`flake/flake-parts.nix` says why). Modules that only other modules
-import stay relative imports.
+Nothing is registered by name. `flake/builders/systems.nix` loads base, the
+roles' profiles (paths in `flake/_lib/roles.nix`), then `system.nix` and
+`hardware-configuration.nix` from `hosts.<name>.dir`, then the host's lists;
+everything else is a plain relative path, from a host.nix or from the module
+that needs it.
 
 ### Accounts and home tiers
 
@@ -184,7 +181,7 @@ tier (`config.my.home.tier`).
 | `ciMatrix` | the CI host list, derived by rule from the registry |
 | `packages` | the few local builds pushed to `imdomestic.cachix.org` |
 | `sopsConfig` | the rendered `.sops.yaml` (`flake/secrets.nix`) |
-| `hosts`, `modules` | the evaluated registry; `flake.modules` |
+| `hosts` | the evaluated registry |
 
 ## Common tasks
 
@@ -220,8 +217,8 @@ account goes in its `sshKeys`;
 included.
 
 **Change what a machine is.** Edit its `roles`. A new role is an entry in
-`flake/_lib/roles.nix`; if it brings profiles, also add it to `profileOrder`
-in `flake/builders/systems.nix`.
+`flake/_lib/roles.nix` (its profiles by path); if it brings profiles, also add
+it to `profileOrder` in `flake/builders/systems.nix`.
 
 **Add or move a fleet service.** Its address lives in `flake/placements.nix`
 (`host`, `port`); clients read `config.my.fleet.placements.<service>`. Moving it
@@ -511,14 +508,14 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   Plain helpers go under `flake/_lib/` (import-tree skips any path containing
   `/_`). Under `hosts/` and `home/` only `host.nix` / `user.nix` load.
 - **Two `config`s.** In `flake/`, `host.nix` and `user.nix`, `config` is the
-  flake-level one (`config.hosts`, `config.flake.modules`); inside a module
+  flake-level one (`config.hosts`, `config.users`); inside a module
   value it is that evaluation's.
 - **Don't wrap modules you put in a host's lists.** The module system orders
   definitions by import depth, so an extra `imports` layer reorders
   `environment.systemPackages` / `home.packages` — and buildEnv's
-  `ignoreCollisions` lets order decide which package wins a colliding file. This
-  is why `flake.modules` holds plain paths, and why moving a home's `imports`
-  around changes drvPaths even when nothing else does.
+  `ignoreCollisions` lets order decide which package wins a colliding file. List
+  modules as plain paths, and expect moving a home's `imports` around to change
+  drvPaths even when nothing else does.
 - **An attribute defined twice in one attrset** (`networking = { firewall = …; }`
   plus `networking.firewall.x = …`) merges on a current Nix but is an error on
   older ones (`docs/incidents.md#nix-dup-attr-ci`, from when CI ran 2.22).

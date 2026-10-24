@@ -15,10 +15,6 @@
     maxTier = "interactive";
     buildOn = "r6s";
 
-    modules = [
-      ./system.nix
-    ];
-
     users = {
       nix = {};
       linwhite = {};
