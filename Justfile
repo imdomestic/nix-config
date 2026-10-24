@@ -1,4 +1,4 @@
-set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
+set shell := ["bash", "--norc", "-eu", "-o", "pipefail", "-c"]
 
 substituters := "https://mirror.sjtu.edu.cn/nix-channels/store https://cache.nixos.org"
 
