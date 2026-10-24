@@ -7,7 +7,8 @@ Max 的 `services.max.operations` 模块提供专用 tailscaled、`maxops` netns
 
 - `system/modules/max-operator.nix`：NixOS / nix-darwin 的 `max` 运维账户，完整免密 sudo。
   macOS 使用 UID 550；首次激活前核对本机该 UID 未被其他账户占用。
-- `hosts/tank/max.nix`：开启 QQ 群 611798505、650536599 的 SSH 运维网络；
+- `hosts/tank/max.nix`：为 sops 里 `operations-allowed-groups` 列出的 QQ 群开启 SSH 运维网络
+  （`operations.allowedGroupsFile`，max-runtime 启动时读取，secret 变化时重启它）；
   Max 进程及渲染配置的所有者是 `max-service`。Max 于 2026-09-27 从 h610 迁到
   tank（`273926d`），下文「首次切换顺序」和「2026-09-15 fleet rollout」记的是迁移前
   在 h610 上的操作。
