@@ -1,0 +1,84 @@
+diff --git a/src/prefill-endpoints.ts b/src/prefill-endpoints.ts
+new file mode 100644
+--- /dev/null
++++ b/src/prefill-endpoints.ts
+@@ -0,0 +1,35 @@
++import { readFileSync } from "node:fs"
++
++export function readPrefillEndpoints(value: unknown): Map<string, Record<string, string>> {
++  const endpoints = new Map<string, Record<string, string>>()
++  if (value === undefined) return endpoints
++  if (!Array.isArray(value)) throw new TypeError("prefillWsEndpoints must be an array")
++  for (const endpoint of value) {
++    if (!endpoint || typeof endpoint.url !== "string" || typeof endpoint.apiKeyFile !== "string") {
++      throw new TypeError("Each prefill endpoint requires url and apiKeyFile")
++    }
++    const url = new URL(endpoint.url)
++    if (!["ws:", "wss:"].includes(url.protocol) || url.username || url.password) {
++      throw new Error("Invalid prefill WebSocket URL")
++    }
++    const key = readFileSync(endpoint.apiKeyFile, "utf8").trim()
++    if (!key) throw new Error(`Empty prefill API key file: ${endpoint.apiKeyFile}`)
++    if (endpoints.has(url.href)) throw new Error(`Duplicate prefill endpoint: ${url.href}`)
++    endpoints.set(url.href, { Authorization: `Bearer ${key}` })
++  }
++  return endpoints
++}
++
++export function connectPrefillSocket(url: string, endpoints: Map<string, Record<string, string>>): WebSocket {
++  const headers = endpoints.get(url)
++  if (!headers) return new WebSocket(url)
++  // OpenCode 使用 Bun 的 WebSocket，自定义请求头通过运行时扩展提供。
++  const AuthenticatedWebSocket = WebSocket as typeof WebSocket & {
++    new(url: string, options: { headers: Record<string, string> }): WebSocket
++  }
++  return new AuthenticatedWebSocket(url, { headers })
++}
++
++export function isConfiguredPrefillEndpoint(url: string, endpoints: Map<string, Record<string, string>>): boolean {
++  return endpoints.has(url)
++}
+diff --git a/src/tui.tsx b/src/tui.tsx
+--- a/src/tui.tsx
++++ b/src/tui.tsx
+@@ -1,8 +1,9 @@
+ /** @jsxImportSource @opentui/solid */
+ import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui"
+ import { appendFileSync } from "node:fs"
+ import { resolve } from "node:path"
+ import { createMemo, createSignal } from "solid-js"
++import { readPrefillEndpoints, connectPrefillSocket, isConfiguredPrefillEndpoint } from "./prefill-endpoints"
+ 
+ type StreamSample = {
+   at: number
+@@ -299,5 +300,6 @@
+   const configWsUrl: string | null = typeof options?.prefillWsUrl === "string" && options.prefillWsUrl.length > 0
+     ? options.prefillWsUrl
+     : null
++  const configuredEndpoints = readPrefillEndpoints(options?.prefillWsEndpoints)
+ 
+   log?.("tui plugin initialized" + (configWsUrl ? ", wsUrl=" + configWsUrl : ", wsUrl=auto (derived from model API URL)"))
+@@ -545,5 +547,5 @@
+   const isUrlWanted = (url: string): boolean => {
+     if (wsDisposed) return false
+-    if (url === configWsUrl) return true
++    if (url === configWsUrl || isConfiguredPrefillEndpoint(url, configuredEndpoints)) return true
+     return Object.values(currentWsUrlBySession).some((u) => u === url)
+   }
+@@ -581,4 +583,4 @@
+     let socket: WebSocket
+     try {
+-      socket = new WebSocket(url)
++      socket = connectPrefillSocket(url, configuredEndpoints)
+     } catch (err) {
+@@ -613,4 +615,5 @@
+         log?.("ws: parsed:", msg)
++        currentWsUrlBySession[msg.kind === "timings" ? msg.timing.sessionID : msg.sessionID] = url
+         if (msg.kind === "timings") {
+           tracker.backendTimingBySession[msg.timing.sessionID] = msg.timing
+           tracker.backendTimingByMessage[msg.timing.messageID] = msg.timing
+@@ -701,3 +704,4 @@
+   if (configWsUrl) openWs(configWsUrl)
++  for (const url of configuredEndpoints.keys()) openWs(url)
+ 
+   const pruneSamples = (now = Date.now()) => {

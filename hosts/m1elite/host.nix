@@ -31,7 +31,7 @@ in {
         description = "Hank Hogan";
       };
       modules = [
-        m.homeManager.postgresql
+        m.homeManager.hank-postgresql
         m.homeManager.hank-m1elite
       ];
     };

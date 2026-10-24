@@ -10,14 +10,14 @@
 in {
   imports = [
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
-    ./nixvim/default.nix
-    ./vscode
+    ./modules/nixvim/default.nix
+    ./modules/vscode
     ../../modules/ghostty/neovide-cursor.nix
     # 只 import 不 enable:2026-08-28 整套试过一轮,终端那边不合用,退回
     # kanso + evergarden。模块留着(默认关),想再试就
     # `my.theme.token.enable = true`。import 在这里的另一个作用是让它继续
     # 参与求值,不会烂在仓库里没人发现。
-    ../../modules/token-theme
+    ./modules/token-theme
   ];
 
   # macOS shader redraw cost: docs/incidents.md#ghostty-shader-vsync.
@@ -821,7 +821,7 @@ in {
         zmodload zsh/complist
       '')
       ''
-        ${builtins.readFile ./init-extra.zsh}
+        ${builtins.readFile ./modules/init-extra.zsh}
       ''
       ''
         # Home Manager's strategy enum excludes custom strategy names.
@@ -908,7 +908,7 @@ in {
 
   xdg.configFile = {
     fastfetch = {
-      source = ../../modules/fastfetch;
+      source = ./modules/fastfetch;
       recursive = true;
     };
   };
@@ -923,7 +923,7 @@ in {
   # 全部内容都是左对齐、按调用顺序依次追加的,不读终端宽度,所以不需要
   # refreshInterval 之类的定时重绘 —— 每次渲染跑一遍就够了。
   home.file.".claude/statusline-command.sh" = {
-    source = ../../modules/claude-code/statusline.sh;
+    source = ./modules/claude-code/statusline.sh;
     executable = true;
   };
 
@@ -937,7 +937,7 @@ in {
   # 用 $HOME 不写死路径:darwin 是 /Users/hank,NixOS 那边是 /home/hank,而
   # settings.json 不归 nix 管、不会按机器分叉。
   home.file.".claude/tmux-agent-status.sh" = {
-    source = ../../modules/claude-code/tmux-agent-status.sh;
+    source = ./modules/claude-code/tmux-agent-status.sh;
     executable = true;
   };
 

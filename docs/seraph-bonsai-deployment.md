@@ -175,7 +175,7 @@ sudo /nix/store/x7h705zazxbmn2lpzc296kx5xvp4qvzp-nixos-system-seraph-26.05.20260
 
 关闭 Bonsai 服务：同样将 `services.bonsaiNinfer.enable` 改为 false。
 恢复 Home Manager 的默认模型时，使用文件编辑工具移除该主机的
-`home/modules/opencode/local-bonsai.nix` 导入，运行 `just hm-dry` 和 `just hm`。
+`home/users/linwhite/modules/opencode/local-bonsai.nix` 导入，运行 `just hm-dry` 和 `just hm`。
 原有 provider 配置一直保留。seraph 激活前的 Home Manager generation 为：
 `/nix/store/39ja9v9irjhf7f605b57ipyss6kvy19q-home-manager-generation`，可运行其 `activate`。
 

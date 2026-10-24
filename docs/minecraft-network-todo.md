@@ -49,7 +49,7 @@
   - 大厅是常驻的 StatefulSet，世界存在 PVC 里，作为静态后端写在 velocity.toml。
   - bingo 是 Agones Fleet：`minecraft/agones-fabric` 上报状态，Velocity 上的 `minecraft/velocity-router` 动态注册。玩家在大厅用 `/play bingo` 进 bingo，房间关掉时被送回大厅。
   - 测试网络是离线模式，在 tailnet 内连 `tank.inner.imdomestic.com:25565`。tank 的防火墙是关着的，局域网 192.168.20.0/24 也能连。
-  - kubectl 和 k9s 用 `tank` 这个 context，见 `home/modules/kube`。
+  - kubectl 和 k9s 用 `tank` 这个 context，见 `home/users/hank/modules/kube`。
 - **k3s 只有一个 server，就是 encore。**
   - encore 是一台笔记本（见 `docs/encore-cooling.md`），网络走 WiFi `wlo1`。
   - 数据存储用默认的 SQLite，没开 `clusterInit`。

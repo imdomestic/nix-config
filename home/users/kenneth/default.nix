@@ -4,7 +4,7 @@
   ...
 }: {
   imports = [
-    ./nixvim
+    ./modules/nixvim
   ];
 
   home = {

@@ -20,7 +20,7 @@ in {
     ];
 
     users.linwhite.modules = [
-      m.homeManager.opencode-local-bonsai
+      m.homeManager.linwhite-opencode-local-bonsai
       m.homeManager.linwhite-aegis
     ];
   };
