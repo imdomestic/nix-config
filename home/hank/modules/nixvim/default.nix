@@ -298,6 +298,9 @@ in {
       foldlevel = 99;
       foldlevelstart = 99;
       cmdheight = 0;
+      # cmdheight = 0 时默认的最后一行不存在,showcmd(计数、未完成的操作符、
+      # 可视选区大小)就无处显示;挪进 statusline 的 %S。
+      showcmdloc = "statusline";
       # nvim 默认 "ltToOCF" + "A"：发现残留 swap 时不再弹 E325 ATTENTION 提示。
       # 该提示在 snacks picker/explorer 的跳转里无法交互，会直接抛 Lua error。
       # "W"：:w 后不报 "written"。
@@ -927,6 +930,22 @@ in {
                   return "⏺ @" .. recording_register
                 end
 
+                -- 只在偏离 utf-8 / unix 时出现。
+                local function file_format()
+                  local parts = {}
+                  local fenc = vim.bo.fileencoding
+                  if fenc ~= "" and fenc ~= "utf-8" then
+                    table.insert(parts, fenc)
+                  end
+                  if vim.bo.bomb then
+                    table.insert(parts, "bom")
+                  end
+                  if vim.bo.fileformat ~= "unix" then
+                    table.insert(parts, vim.bo.fileformat)
+                  end
+                  return table.concat(parts, " ")
+                end
+
                 return MiniStatusline.combine_groups({
                   { hl = mode_hl, strings = { mode } },
                   { hl = "MiniStatuslineDevinfo", strings = { git } },
@@ -934,7 +953,7 @@ in {
                   { hl = "MiniStatuslineFilename", strings = { "%=" } },
                   { hl = "MiniStatuslineFilename", strings = { diagnostics } },
                   "%=",
-                  { hl = "MiniStatuslineFileinfo", strings = { lsp_client() } },
+                  { hl = "MiniStatuslineFileinfo", strings = { "%S", file_format(), lsp_client() } },
                   { hl = mode_hl, strings = { macro() } },
                 })
               end
@@ -1600,6 +1619,35 @@ in {
       for _, key in ipairs({ "grn", "gra", "grr", "gri", "grt", "grx" }) do
         pcall(vim.keymap.del, "n", key)
       end
+
+      -- Rex 把 pane 边缘格子的背景色延伸进 padding(terminalPaddingColor = extend),
+      -- 最后一行的色块会被拉高成"多出来的一行"。所以 statusline 各段一律用 Normal
+      -- 的背景,模式改靠字色区分;换配色也照样生效。
+      vim.api.nvim_create_autocmd("ColorScheme", {
+        group = vim.api.nvim_create_augroup("flat-statusline", { clear = true }),
+        callback = function()
+          local function get(name)
+            return vim.api.nvim_get_hl(0, { name = name, link = false })
+          end
+          local bg = get("Normal").bg
+          for _, name in ipairs({
+            "StatusLine",
+            "StatusLineNC",
+            "MiniStatuslineDevinfo",
+            "MiniStatuslineFilename",
+            "MiniStatuslineFileinfo",
+            "MiniStatuslineInactive",
+          }) do
+            vim.api.nvim_set_hl(0, name, { fg = get(name).fg, bg = bg })
+          end
+          for _, mode in ipairs({ "Normal", "Insert", "Visual", "Replace", "Command", "Other" }) do
+            local name = "MiniStatuslineMode" .. mode
+            local hl = get(name)
+            -- 配色给模式的颜色在底色上,挪来当字色;已经挪过(底色等于 Normal)就不动。
+            vim.api.nvim_set_hl(0, name, { fg = hl.bg ~= bg and hl.bg or hl.fg, bg = bg, bold = true })
+          end
+        end,
+      })
 
       require("evergarden").setup({
         theme = {
