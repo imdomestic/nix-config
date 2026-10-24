@@ -533,8 +533,11 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   `hosts.<name>.users.<account>.ageKey`, `users.<account>.ageKeys`). After
   changing either, run `just sops-config`, then `sops updatekeys` on each file
   whose readers changed.
-- **Every NixOS host runs the firewall** (nftables backend), except marble,
-  whose network namespace is Android's (`docs/decisions.md#marble-no-firewall`).
+- **Every NixOS host runs the firewall**, except marble, whose network
+  namespace is Android's (`docs/decisions.md#marble-no-firewall`). The backend
+  is nftables where something turns it on (`system/modules/tailscale/guards.nix`
+  on any host with guarded ports, vex's k3s); the rest, h310 among them, still
+  run the iptables one.
   `openFirewall` is left to each module. Routers trust `br-lan` (dae / mihomo
   hand LAN connections to arbitrary ports to INPUT); hosts whose LAN NIC carries
   a public IPv6 (tank, x470, gizmo) trust only container and VM bridges and

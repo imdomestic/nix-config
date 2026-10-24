@@ -34,6 +34,29 @@
 还踩了一下自己:`ssh … "bash -s" <<EOF` 里的内层 `ssh` 没加 `-n`,把后面整段脚本
 吞了,任务"成功"结束却什么都没做;zsh 里 `for u in $users` 不按换行拆分。
 
+**之后的重启**(同日 06:20–07:00 HKT,gizmo → r5s → rpi4 → r6s → h310 → tokyo →
+h610 → tank,encore 上 linwhite 开着会话没动)。每台 28–91 秒回来,tank 关机就花了
+140 秒。都进了新代,但有这几样:
+
+- **保险。** systemd-boot 的机器先 `bootctl set-default <正在跑的那代>`、
+  `bootctl set-oneshot <新代>`,起不来断一次电就回旧代,确认后 `bootctl set-default ""`。
+  正在跑的那代往往早被 `configurationLimit` 挤出菜单(r6s 116、h610 481、tank 289
+  都不在),就把 `/run/booted-system` 的 kernel / initrd 拷到 ESP,临时写一条
+  `known-good-<n>.conf`,加 gcroot,验证后删掉;tank 有 initrd secrets,要跑
+  `/run/booted-system/append-initrd-secrets <initrd>`。r6s 的 EFI 变量不保存,
+  extlinux 的板子也没有 oneshot,只能靠有人在菜单里选。
+- **PPPoE 重拨换地址,隧道要等 DNS。** r5s、r6s、h610 重拨后地址都变了。gizmo 的
+  xray 按域名连 portal,走 linwhite 家路由器的缓存,r5s 约 5 分钟、r6s 7 分钟后才连上
+  新地址。r6s 的 ddns-go 开机第一次请求 Cloudflare 时 mihomo 还没就绪(`EOF`),
+  只能等 300 秒后的下一轮。
+- **重启 h610,tailnet 控制面和 DERP 中继一起掉。** headscale 和 DERP #610 都在它
+  上面,新 IP 的 DDNS 生效、缓存过期之前,h610 在 tailnet 上不可达;经 h610 中继的
+  路径(mac → tank)也断了,直连的(r6s → tank)不受影响。用 `ssh -J root@r6s` 跳过去,
+  h610 本身直接连它的新公网 IP 上 sshd。
+
+误导过我的:把 gizmo 当成"不要紧"的试验机 —— 它就是原来的 r5sjp,日本出口;tank
+突然连不上,以为是它出事了,其实是中继在正在重启的 h610 上。
+
 ## 2026-10-24 · AeroSpace 迁移后旧用户启动项仍在 {#aerospace-legacy-agent}
 
 praxic 同时运行 `org.nixos.aerospace` 和
