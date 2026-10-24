@@ -6,7 +6,7 @@
 }: {
   imports = [./flat-white/wezterm.nix];
   programs.wezterm.settings = lib.mkIf config.programs.wezterm.enable {
-    font = lib.generators.mkLuaInline ''wezterm.font_with_fallback({"Recursive", "RecMonoSmCasual Nerd Font Mono", ${
+    font = lib.generators.mkLuaInline ''wezterm.font_with_fallback({"RecMonoSmCasual Nerd Font Mono", ${
         if pkgs.stdenv.isDarwin
         then ''"Menlo", "Apple Color Emoji", "azuki_font", "PingFang SC"''
         else ''"DejaVu Sans Mono", "Noto Color Emoji", "Noto Sans CJK SC"''
