@@ -953,11 +953,6 @@ in {
   #   /plugin install tmux-agent-sidebar@hiroppy
   home.file.".claude/plugin-sources/tmux-agent-sidebar".source = "${tmux-agent-sidebar}/share/tmux-plugins/tmux-agent-sidebar";
 
-  home.file.".local/share/fonts/Recursive-Bold.ttf".source = ../../../fonts/Recursive-Bold.ttf;
-  home.file.".local/share/fonts/Recursive-Italic.ttf".source = ../../../fonts/Recursive-Italic.ttf;
-  home.file.".local/share/fonts/Recursive-Regular.ttf".source = ../../../fonts/Recursive-Regular.ttf;
-  # home.file.wallpapers.source = ../../../wallpapers;
-
   # snacks.image 靠终端名判断能不能画图:它拿到终端名后剥掉 `xterm-` 前缀,再去
   # match kitty/ghostty/wezterm。ghostty 默认的 xterm-ghostty 剥完正好是 ghostty,
   # 但我们在 modules/ghostty 里把 term 设成了 xterm-256color(远端没有 ghostty 的

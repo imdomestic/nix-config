@@ -13,7 +13,6 @@ in {
 
   # 共用 hank 的终端集成；尺寸、透明度和留白来自 linwhite 的 WezTerm。
   programs.ghostty.settings = lib.mkIf gui ({
-      font-family = lib.mkBefore ["Recursive"];
       font-size = lib.mkForce 14;
       background-opacity = lib.mkForce 0.7;
       window-width = 150;

@@ -5,6 +5,8 @@
 }: {
   imports = [
     inputs.nixos-wsl.nixosModules.wsl
+    # linwhite 的 ghostty / wezterm 用 RecMonoSmCasual Nerd Font Mono。
+    ../../system/modules/nerdfonts
   ];
 
   wsl = {

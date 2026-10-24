@@ -5,11 +5,6 @@
   ...
 }: let
   isDarwin = pkgs.stdenv.isDarwin;
-  # 仓库 fonts/ 里的 Recursive(静态、等宽)。放进 home.packages 后,Home Manager
-  # 会把 share/fonts 复制到 ~/Library/Fonts/HomeManager。
-  recursiveFonts = pkgs.runCommandLocal "recursive-fonts" {} ''
-    install -Dm444 -t $out/share/fonts/truetype ${../../../fonts}/*.ttf
-  '';
 in {
   imports = [
     ./tmux.nix
@@ -50,14 +45,14 @@ in {
   # pkgs/kazumi 是上游 macOS dmg 的二进制包,只在 darwin 上有;Linux 上要用
   # 的话 nixpkgs 自带从源码构建的 kazumi。
   home.packages =
-    lib.optional isDarwin (pkgs.callPackage ../../../pkgs/kazumi {})
-    ++ lib.optional config.programs.ghostty.enable recursiveFonts;
+    lib.optional isDarwin (pkgs.callPackage ../../../pkgs/kazumi {});
 
   # macOS 不允许换界面字体(SF);能改的只有 AppKit 的用户字体和等宽字体,
   # 不自带字体设置的应用(TextEdit 新文档之类)会用它们。
   targets.darwin.defaults.NSGlobalDomain = lib.mkIf isDarwin {
-    NSFont = "Recursive-Regular";
-    NSFixedPitchFont = "Recursive-Regular";
+    # RecMonoSmCasual Nerd Font Mono(system/modules/nerdfonts)。
+    NSFont = "RecMonoSmCasualNFM";
+    NSFixedPitchFont = "RecMonoSmCasualNFM";
   };
 
   programs.bat.enable = true;
