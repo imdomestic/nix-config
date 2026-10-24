@@ -92,8 +92,8 @@ in {
 
   config = lib.mkIf cfg.enable {
     assertions = [{
-      assertion = config.my.host.name == "seraph";
-      message = "Bonsai 的 SM120a 镜像与容量仅在 seraph 上验证。";
+      assertion = config.my.fleet.placements.bonsai-ninfer.host == config.my.host.name;
+      message = "bonsai-ninfer 开在了 ${config.my.host.name} 上,但 flake/placements.nix 把它放在 ${config.my.fleet.placements.bonsai-ninfer.host}(SM120a 镜像与容量只在那台验证过)。";
     }];
     sops.secrets."bonsai/api_key".sopsFile = ../../secrets/clients/bonsai.yaml;
     sops.templates."bonsai-environment".content = ''

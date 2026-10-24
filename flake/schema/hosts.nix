@@ -58,10 +58,6 @@
     options =
       import ../_lib/host-facts.nix {inherit lib;}
       // {
-        kind = mkOption {
-          type = types.enum ["nixos" "darwin" "home"];
-          description = "Which system configuration this host gets; `home` means none, only homes.";
-        };
         ip = mkOption {
           type = types.nullOr types.str;
           default = null;

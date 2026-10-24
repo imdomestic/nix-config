@@ -19,7 +19,7 @@ in
     ./host-options.nix
     {
       my.host = {
-        inherit (h) name system roles inChina tsName lanRoutes gpuMonitoring clusterControl homeOverlays usernames;
+        inherit (h) name system kind roles inChina tsName lanRoutes gpuMonitoring clusterControl homeOverlays usernames;
         # The account table's ssh keys travel with each account
         # (system/modules/users.nix turns them into authorized keys).
         users = lib.mapAttrs (a: acct: let

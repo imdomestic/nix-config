@@ -2,9 +2,7 @@
   imports = [
     ../../modules/vicinae
     ../../modules/ghostty
-    ../../modules/gui
   ];
-  # ++ pkgs.lib.optional (hostname == "b660") [../../modules/gui];
 
   # use qemu system session
   # dconf.settings = {

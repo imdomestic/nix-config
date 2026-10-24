@@ -1,7 +1,8 @@
-# aegis 上接的 EK1080T2KHR 是 HDMI 诱骗器:只为 KVM 切走时机器不锁屏、切回来不重排。
+# linwhite 在 aegis 上的东西。
+#
+# 这台接的 EK1080T2KHR 是 HDMI 诱骗器:只为 KVM 切走时机器不锁屏、切回来不重排。
 # AeroSpace 没有"忽略某个显示器"的选项,所以分两步:所有命名工作区强制钉在别的显示器上,
 # 守卫脚本再把漏到诱骗器上的窗口和焦点挪走。只剩诱骗器时(KVM 切走)什么都不做。
-# Home Manager 模块,是 aegis 上 linwhite 账户的额外模块(./host.nix)。
 {
   pkgs,
   config,
@@ -38,5 +39,22 @@ in {
     "after-startup-command" = lib.mkAfter ["exec-and-forget ${evict}"];
     "on-focused-monitor-changed" = lib.mkAfter ["exec-and-forget ${evict}"];
     "exec-on-workspace-change" = lib.mkAfter ["${evict}"];
+  };
+
+  programs.claude-code.settings = {
+    env = {
+      # macOS 上仅使用 system 时，当前运行时读取的 CA 无法验证 Anthropic 证书。
+      CLAUDE_CODE_CERT_STORE = "bundled,system";
+      CLAUDE_CODE_SUBAGENT_MODEL = "haiku";
+      CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS = "8";
+    };
+    model = "opus";
+    statusLine = {
+      type = "command";
+      command = "sh ${config.home.homeDirectory}/.claude/statusline-command.sh";
+    };
+    modelSettings.claude-opus-5-5.effortLevel = "xhigh";
+    skipDangerousModePermissionPrompt = true;
+    enabledPlugins."swift-lsp@claude-plugins-official" = true;
   };
 }

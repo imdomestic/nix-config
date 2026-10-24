@@ -14,6 +14,11 @@
     description = "Platform double of the host.";
   };
 
+  kind = lib.mkOption {
+    type = lib.types.enum ["nixos" "darwin" "home"];
+    description = "Which system configuration this host gets; `home` means none, only homes.";
+  };
+
   roles = lib.mkOption {
     type = lib.types.listOf (lib.types.enum (builtins.attrNames (import ./roles.nix)));
     default = [];

@@ -19,8 +19,6 @@ in {
     ./flat-white/vicinae.nix
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
     ./nixvim
-    # MC 开发脚本（mc-client / mc-server-remote），模块内部只对 encore 生效
-    ../../modules/chorus
   ];
 
   # 与 shell 导出的 XDG_CONFIG_HOME 一致，尤其是 macOS 上的 lazygit。

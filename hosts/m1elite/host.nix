@@ -32,7 +32,7 @@ in {
       };
       modules = [
         m.homeManager.postgresql
-        {my.vscode.enable = true;}
+        m.homeManager.hank-m1elite
       ];
     };
   };

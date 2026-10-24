@@ -1,11 +1,9 @@
+# linwhite 在 encore(MC 开发机)上的东西:MC 开发的工作流入口。
 {
-  config,
   lib,
   pkgs,
   ...
-}:
-# 只在 encore（MC 开发机）上安装工作流入口。
-lib.mkIf (config.my.host.name == "encore") {
+}: {
   # KMS 串流需要活动的屏幕；GNOME 自动熄屏后不会留下可捕获的 framebuffer。
   dconf.settings."org/gnome/desktop/session".idle-delay = lib.hm.gvariant.mkUint32 0;
   home.packages = [
