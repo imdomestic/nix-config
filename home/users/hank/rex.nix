@@ -49,6 +49,118 @@
     }
   ]);
 in {
+  imports = [../../modules/rex];
+
+  programs.rex = {
+    enable = true;
+    bindings = let
+      bind = action: {inherit action;};
+      directions = {
+        h = "left";
+        j = "down";
+        k = "up";
+        l = "right";
+      };
+    in
+      lib.concatMapAttrs (key: direction: {
+        "ctrl+b>${key}" = {
+          action = "pane.focus";
+          args = {
+            inherit direction;
+            wrap = true;
+          };
+        };
+        "ctrl+b>shift+${key}" = {
+          action = "tmux_swap";
+          args = {inherit direction;};
+        };
+        "ctrl+b>${direction}" = {
+          action = "pane.resize";
+          args = {
+            inherit direction;
+            amount = 5;
+          };
+        };
+      })
+      directions
+      // builtins.listToAttrs (map (index: {
+        name = "ctrl+b>${toString index}";
+        value = {
+          action = "client.tab.goto";
+          args = {inherit index;};
+        };
+      }) (lib.range 1 9))
+      // {
+        "ctrl+b>c" = bind "client.tab.new";
+        "ctrl+b>n" = bind "client.tab.next";
+        "ctrl+b>p" = bind "client.tab.previous";
+        "ctrl+b>," = bind "client.tab.rename";
+        "ctrl+b>shift+," = bind "client.tab.move.backward";
+        "ctrl+b>shift+." = bind "client.tab.move.forward";
+        "ctrl+b>shift+5" = {
+          action = "pane.split";
+          args.direction = "right";
+        };
+        "ctrl+b>shift+'" = {
+          action = "pane.split";
+          args.direction = "down";
+        };
+        "ctrl+b>z" = bind "pane.zoom";
+        "ctrl+b>o" = bind "pane.focus_next";
+        "ctrl+b>x" = bind "pane.close";
+        "ctrl+b>shift+1" = bind "pane.move_to_new_tab";
+        "ctrl+b>s" = bind "session.switch";
+        "ctrl+b>shift+4" = bind "session.rename";
+        "ctrl+b>shift+;" = bind "client.palette.toggle";
+        "ctrl+b>d" = bind "client.window.close";
+        "ctrl+b>r" = bind "client.config.reload";
+        "ctrl+b>ctrl+b" = {
+          action = "pane.send_key";
+          args.key = "ctrl+b";
+        };
+      };
+    # Rex's pane.move restructures splits; tmux swaps their contents instead.
+    extraConfig = ''
+      rex.action{
+        name = "tmux_swap",
+        title = "Swap with Adjacent Pane",
+        category = "Pane",
+        args = { direction = "string" },
+        repeats = true,
+        run = function(ctx, args)
+          local function focused()
+            local view = assert(rex.session.view{})
+            for _, window in ipairs(view.windows or {}) do
+              if window.window_id == view.active_window_id then
+                return window.focused_block_id
+              end
+            end
+          end
+          local original = focused()
+          if not original then return end
+          assert(rex.session.focus_direction{ direction = args.direction, wrap = true })
+          local neighbor = focused()
+          if neighbor and neighbor ~= original then
+            assert(rex.session.swap_blocks{
+              block_id = original, other_block_id = neighbor,
+            })
+            assert(rex.session.focus_block{ block_id = original })
+          end
+        end,
+      }
+    '';
+  };
+
+  home.activation.reloadRexConfig = lib.hm.dag.entryAfter ["linkGeneration"] ''
+    rexBin="$HOME/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS/rex"
+    if [[ -x "$rexBin" ]]; then
+      run "$rexBin" config check
+      if "$rexBin" --autostart=false server status >/dev/null 2>&1; then
+        run "$rexBin" --autostart=false config reload
+      fi
+    fi
+  '';
+
   # Rex 1408 stores appearance in user defaults, separately from init.lua.
   # Migration coverage and remaining differences: docs/rex.md.
   targets.darwin.defaults."com.superlogical.rex" = {
