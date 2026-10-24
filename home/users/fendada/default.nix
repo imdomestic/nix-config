@@ -5,8 +5,13 @@
 }: let
   isDarwin = pkgs.stdenv.isDarwin;
   dotfiles = ./modules/dotfiles;
-in
-  lib.mkMerge [
+in {
+  imports = [
+    ./modules/yazi
+    ./modules/fzf.nix
+  ];
+
+  config = lib.mkMerge [
     {
       programs.git = {
         enable = true;
@@ -95,4 +100,5 @@ in
         nix-direnv.enable = true;
       };
     })
-  ]
+  ];
+}

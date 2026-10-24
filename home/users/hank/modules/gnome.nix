@@ -18,8 +18,8 @@ in {
     ./appmenu
     ./top-bar-organizer
     ./forge
-    ../../../modules/ghostty
-    ../../../modules/vicinae
+    ./ghostty
+    ./vicinae
   ];
 
   fonts.fontconfig = {

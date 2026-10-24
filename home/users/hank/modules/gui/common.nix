@@ -1,5 +1,5 @@
 {pkgs, ...}: {
-  imports = [../../modules/ghostty];
+  imports = [../ghostty];
 
   home.packages = with pkgs; [
     swiftlint

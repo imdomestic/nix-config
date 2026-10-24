@@ -10,8 +10,10 @@ in {
     ./modules/tmux.nix
     ./modules/zsh.nix
     ./modules/starship.nix
-    ./modules/ghostty.nix
+    ./modules/ghostty/settings.nix
     ./modules/wezterm.nix
+    ./modules/yazi
+    ./modules/fzf.nix
     ./modules/flat-white/fzf.nix
     ./modules/flat-white/bat.nix
     ./modules/flat-white/btop.nix

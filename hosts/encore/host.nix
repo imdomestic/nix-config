@@ -35,7 +35,7 @@ in {
         modules = [m.homeManager.hank-encore];
       };
       linwhite = {
-        gui.profile = m.homeManager.gui-common;
+        gui.profile = m.homeManager.linwhite-gui-common;
         modules = [m.homeManager.linwhite-encore];
         ageKey = "age1kmgn6snvphehfluadsztazkvlj5q8u6rydzm3at0y3muu45ny43szct0qr";
       };
