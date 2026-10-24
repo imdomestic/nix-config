@@ -5,7 +5,9 @@
 #   check    用新的 flake.lock 在 x86_64-linux 和 aarch64-darwin 上真的把 home 里
 #            用到的那几个包构建出来,再求值几台 dev 档的 home(属性名被上游改掉
 #            时在这里炸)
-#   commit   rebase 到最新的 main 再推;别人同时动了 flake.lock 就放弃,等下一轮
+#   commit   rebase 到最新的 main 再推;别人同时动了 flake.lock 就放弃,等下一轮。
+#            提交信息由 scripts/llm-agents-changes.sh 生成:本仓库用到的包逐个写
+#            旧版本 -> 新版本,其余只列名字
 #
 # 用 GITHUB_TOKEN 推的提交不会再触发 ci.yml,上面的 check 就是这条路径上唯一的门。
 name: update llm-agents
@@ -50,11 +52,24 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
             echo "llm-agents $old -> $new"
           fi
+      - name: 提交信息(哪些包变了版本)
+        if: steps.bump.outputs.changed == 'true'
+        env:
+          OLD: ${{ steps.bump.outputs.old }}
+          NEW: ${{ steps.bump.outputs.new }}
+        run: |
+          # 算不出来也不该挡住更新:退回只写 rev 的那句。
+          scripts/llm-agents-changes.sh "$OLD" "$NEW" > llm-agents-message.txt \
+            || printf 'flake: update llm-agents\n\nnumtide/llm-agents.nix %s -> %s, built on x86_64-linux and aarch64-darwin.\n' \
+              "${OLD:0:7}" "${NEW:0:7}" > llm-agents-message.txt
+          cat llm-agents-message.txt
       - if: steps.bump.outputs.changed == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: flake-lock
-          path: flake.lock
+          path: |
+            flake.lock
+            llm-agents-message.txt
 
   check:
     needs: update
@@ -99,7 +114,7 @@ jobs:
       - name: 构建 home 里用到的 llm-agents 包
         run: |
           # 从 nix 文件里取包名(跳过注释掉的),dev.nix 加减包不用回来改这里。
-          want=$(grep -rhoE '^[^#]*inputs\.llm-agents\.packages\.\$\{[^}]+\}\.[A-Za-z0-9_-]+' home nixos darwin \
+          want=$(grep -rhoE '^[^#]*inputs\.llm-agents\.packages\.\$\{[^}]+\}\.[A-Za-z0-9_-]+' home system hosts \
             | sed -E 's/.*\.//' | sort -u)
           # 只构建上游给这个平台提供了的(cli-proxy-api 只有 tank 用)。真正用到却
           # 被上游下架的,下一步求值 home 时会报出来。
@@ -137,7 +152,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "flake: update llm-agents" -m "numtide/llm-agents.nix ${OLD:0:7} -> ${NEW:0:7}, built on x86_64-linux and aarch64-darwin." -- flake.lock
+          git commit -F llm-agents-message.txt -- flake.lock
           for _ in 1 2 3; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0
             git rebase --abort 2>/dev/null || true

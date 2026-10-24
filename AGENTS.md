@@ -496,7 +496,8 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
 - `.github/workflows/update-llm-agents.yml` bumps the `llm-agents` input every
   hour, builds the packages homes use from it on x86_64-linux and
   aarch64-darwin, evaluates a few dev homes, and commits straight to main as
-  `github-actions[bot]`. Pushes made with `GITHUB_TOKEN` do not trigger ci.yml.
+  `github-actions[bot]`, with the version changes of the packages this repo
+  uses in the message (`scripts/llm-agents-changes.sh`). Pushes made with `GITHUB_TOKEN` do not trigger ci.yml.
 - Pulling the private flake inputs needs the `SSH_PRIVATE_KEY` repo secret (a key
   with read access to the private `imdomestic/*` and `HCHogan/*` repos). macOS
   runners need the Determinate installer: the classic one aborts on their
