@@ -7,6 +7,7 @@ in {
     # 精简版 nixvim(保留 nix 支持)。
     linwhite-dev = ./dev.nix;
     linwhite-aerospace = ./aerospace.nix;
+    linwhite-rex = ./rex.nix;
     # 只在某一台上加载的部分,由那台 host.nix 的 users.linwhite.modules 引用。
     linwhite-aegis = ./hosts/aegis.nix;
     linwhite-encore = ./hosts/encore.nix;
@@ -23,7 +24,7 @@ in {
       linux.profile = hm.gui-linux;
       darwin = {
         profile = hm.gui-darwin;
-        modules = [hm.linwhite-aerospace];
+        modules = [hm.linwhite-aerospace hm.linwhite-rex];
       };
     };
   };
