@@ -2,7 +2,8 @@
   fetchurl,
   lib,
   python3Packages,
-}: python3Packages.buildPythonPackage {
+}:
+python3Packages.buildPythonPackage {
   pname = "pyobjc-framework-NetFS";
   version = "11.1";
   format = "wheel";

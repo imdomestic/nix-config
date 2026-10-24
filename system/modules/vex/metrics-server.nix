@@ -25,8 +25,9 @@ in {
   systemd.services.k3s.preStart = lib.mkAfter ''
     ${pkgs.coreutils}/bin/install -d -m 0755 ${manifestsDirectory}/metrics-server
     ${lib.concatMapStringsSep "\n" (name: ''
-      ${pkgs.coreutils}/bin/touch ${manifestsDirectory}/metrics-server/${name}.yaml.skip
-    '') packagedManifests}
+        ${pkgs.coreutils}/bin/touch ${manifestsDirectory}/metrics-server/${name}.yaml.skip
+      '')
+      packagedManifests}
     ${pkgs.coreutils}/bin/install -m 0644 ${./manifests/vex-metrics-server.yaml} ${manifestsDirectory}/vex-metrics-server.yaml
   '';
 }

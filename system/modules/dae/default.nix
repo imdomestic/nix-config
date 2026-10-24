@@ -272,77 +272,81 @@ in {
             ${lib.optionalString (jpDomainMatchers != "") "domain(${jpDomainMatchers}) -> im"}
 
             ${lib.optionalString cfg.chinaRouting ''
-            pname(qbittorrent, qq, wechat) -> direct
-            pname(git) -> im
-            domain(suffix: qq.com, full: woshicver.com, geosite:category-companies@cn) -> direct
-            domain(
-                geosite:category-game-platforms-download@cn,
-                geosite:category-games-cn,
-                geosite:steam@cn,
-                suffix: cm.steampowered.com,
-                suffix: steamserver.net
-            ) -> direct
-            dip(
-                45.121.184.0/24,
-                103.10.124.0/23,
-                103.28.54.0/24,
-                146.66.152.0/24,
-                146.66.155.0/24,
-                153.254.86.0/24,
-                155.133.224.0/22,
-                155.133.230.0/24,
-                155.133.232.0/23,
-                155.133.234.0/24,
-                155.133.236.0/22,
-                155.133.240.0/23,
-                155.133.244.0/23,
-                155.133.246.0/24,
-                155.133.248.0/21,
-                162.254.192.0/21,
-                185.25.182.0/23,
-                190.217.32.0/22,
-                192.69.96.0/22,
-                205.196.6.0/24,
-                208.64.200.0/22,
-                208.78.164.0/22,
-                205.185.194.0/24
-            ) -> direct
-            dip(8.8.8.8) -> im
+          pname(qbittorrent, qq, wechat) -> direct
+          pname(git) -> im
+          domain(suffix: qq.com, full: woshicver.com, geosite:category-companies@cn) -> direct
+          domain(
+              geosite:category-game-platforms-download@cn,
+              geosite:category-games-cn,
+              geosite:steam@cn,
+              suffix: cm.steampowered.com,
+              suffix: steamserver.net
+          ) -> direct
+          dip(
+              45.121.184.0/24,
+              103.10.124.0/23,
+              103.28.54.0/24,
+              146.66.152.0/24,
+              146.66.155.0/24,
+              153.254.86.0/24,
+              155.133.224.0/22,
+              155.133.230.0/24,
+              155.133.232.0/23,
+              155.133.234.0/24,
+              155.133.236.0/22,
+              155.133.240.0/23,
+              155.133.244.0/23,
+              155.133.246.0/24,
+              155.133.248.0/21,
+              162.254.192.0/21,
+              185.25.182.0/23,
+              190.217.32.0/22,
+              192.69.96.0/22,
+              205.196.6.0/24,
+              208.64.200.0/22,
+              208.78.164.0/22,
+              205.185.194.0/24
+          ) -> direct
+          dip(8.8.8.8) -> im
 
-            domain(geosite:cn) -> direct
-            dip(geoip:cn) -> direct
+          domain(geosite:cn) -> direct
+          dip(geoip:cn) -> direct
 
-            domain(geosite:bilibili) -> direct
+          domain(geosite:bilibili) -> direct
 
-            domain(suffix:cm.steampowered.com) -> direct
-            domain(suffix:steamserver.net) -> direct
-            domain(suffix:steamcontent.com) -> direct
-            domain(geosite:steam@cn) -> direct
-            domain(geosite:steam) -> im
+          domain(suffix:cm.steampowered.com) -> direct
+          domain(suffix:steamserver.net) -> direct
+          domain(suffix:steamcontent.com) -> direct
+          domain(geosite:steam@cn) -> direct
+          domain(geosite:steam) -> im
 
-            domain(geosite:epicgames) -> direct
-            domain(geosite:ea) -> direct
-            domain(geosite:ubisoft) -> direct
+          domain(geosite:epicgames) -> direct
+          domain(geosite:ea) -> direct
+          domain(geosite:ubisoft) -> direct
 
-            domain(geosite:apple@cn) -> direct
-            domain(geosite:apple) -> direct
+          domain(geosite:apple@cn) -> direct
+          domain(geosite:apple) -> direct
 
-            domain(geosite:github) -> im
+          domain(geosite:github) -> im
 
-            domain(geosite:microsoft) -> direct
+          domain(geosite:microsoft) -> direct
 
-            domain(geosite:category-ads-all) -> block
+          domain(geosite:category-ads-all) -> block
 
-            # ipversion(6) && domain(geosite:discord) -> block
-            domain(geosite:discord) -> im
+          # ipversion(6) && domain(geosite:discord) -> block
+          domain(geosite:discord) -> im
 
-            domain(geosite:google-gemini) -> im
-            domain(geosite:google) -> im
+          domain(geosite:google-gemini) -> im
+          domain(geosite:google) -> im
 
-            domain(geosite:telegram) -> im
-            ''}
+          domain(geosite:telegram) -> im
+        ''}
 
-            fallback: ${if cfg.chinaRouting then "im" else "direct"}
+            fallback: ${
+          if cfg.chinaRouting
+          then "im"
+          else "direct"
+        }
         }
       '';
     };

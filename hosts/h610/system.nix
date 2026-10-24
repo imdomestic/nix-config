@@ -11,7 +11,10 @@
   # 跟上,不会重演 ci.yml 那种"名单漂了三台没人发现"。
   lanRoutes = lib.unique (lib.concatMap (h: h.lanRoutes) (lib.attrValues config.my.fleet.hosts));
   matrixUpstream = "http://matrix-tailnet";
-  gaojiBotHost = if config.services.gaoji.runBot then "172.17.0.1" else "100.64.0.4";
+  gaojiBotHost =
+    if config.services.gaoji.runBot
+    then "172.17.0.1"
+    else "100.64.0.4";
   mkCliProxyProfile = model: aliases: {
     provider = "cliproxy";
     protocol = "openai-chat";
@@ -575,7 +578,6 @@ in {
     ];
   };
 
-
   # Xray 的凭据全部走 sops。内联到 `settings` 会把 UUID 和 Reality 私钥同时写进
   # 这个公开仓库和 world-readable 的 nix store,所以整份 config 改由
   # sops.templates 渲染,再用 settingsFile 交给 xray。xray.service 是
@@ -911,7 +913,10 @@ in {
       static_configs = [
         {
           targets = ["${gaojiBotHost}:18080"];
-          labels.instance = if config.services.gaoji.runBot then "h610" else "tank";
+          labels.instance =
+            if config.services.gaoji.runBot
+            then "h610"
+            else "tank";
         }
       ];
     }

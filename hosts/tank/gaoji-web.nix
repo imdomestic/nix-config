@@ -1,4 +1,9 @@
-{config, lib, pkgs, ...}: let
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}: let
   bot = config.services.gaoji;
   domain = "gaoji.inner.imdomestic.com";
   legacyDomain = "kennethbot.inner.imdomestic.com";

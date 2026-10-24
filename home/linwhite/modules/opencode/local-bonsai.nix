@@ -31,12 +31,16 @@ in {
           tool_call = true;
           temperature = true;
           limit = {inherit (bonsai) context output;};
-          modalities = {input = ["text"]; output = ["text"];};
+          modalities = {
+            input = ["text"];
+            output = ["text"];
+          };
           options.reasoningEffort = model.reasoningEffort;
         }
         // lib.optionalAttrs (id == "bonsai-main") {
           variants = lib.genAttrs ["low" "medium" "high"] (effort: {reasoningEffort = effort;});
-        }) bonsai.models;
+        })
+      bonsai.models;
     };
     agent.aggressive = {
       description = "使用本地 Hikari 模型进行研究与代码分析";

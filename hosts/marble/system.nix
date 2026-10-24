@@ -22,7 +22,7 @@
   # Droidspaces generates /etc/resolv.conf as a symlink into /run. Nix copies
   # the symlink into build sandboxes, so include its target as well; otherwise
   # fixed-output derivations cannot resolve GitHub or Codeberg.
-  nix.settings.extra-sandbox-paths = [ "/run/droidspaces/resolv.conf" ];
+  nix.settings.extra-sandbox-paths = ["/run/droidspaces/resolv.conf"];
   systemd.services.nix-daemon.serviceConfig.ExecStart = lib.mkForce [
     ""
     "${pkgs.util-linux}/bin/unshare --mount --mount-proc ${config.nix.package}/bin/nix-daemon --daemon"

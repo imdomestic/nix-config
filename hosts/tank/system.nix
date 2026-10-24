@@ -7,7 +7,6 @@
   ...
 }: let
   # Rendered via sops.templates (cloudflare tokens + web password from sops).
-
   wg = import ../../lib/wgClient.nix {inherit pkgs;} {
     privateKeyFile = config.sops.secrets."wireguard/private_key".path;
     presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
@@ -759,7 +758,6 @@ in {
     content = ''MURMURD_PASSWORD=${config.sops.placeholder."murmur/password"}'';
     restartUnits = ["murmur.service"];
   };
-
 
   systemd.services.systemd-vconsole-setup = {
     overrideStrategy = "asDropin";

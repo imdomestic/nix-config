@@ -8,10 +8,12 @@
   cfg = config.services.bonsaiNinfer;
   bonsai = import ../../lib/bonsai-models.nix;
   gateway = (pkgs.callPackage inputs.llama-swap-proxy {}).overrideAttrs (old: {
-    patches = (old.patches or []) ++ [
-      ../../hosts/wsl/llama-swap-proxy-backend-timings.patch
-      ../../scripts/patches/llama-swap-proxy-api-key.patch
-    ];
+    patches =
+      (old.patches or [])
+      ++ [
+        ../../hosts/wsl/llama-swap-proxy-backend-timings.patch
+        ../../scripts/patches/llama-swap-proxy-api-key.patch
+      ];
     vendorHash = "sha256-LS+PBnNbtSr3cibu8Nb6DEkko78EVO2l+1hxgsj5Iiw=";
   });
   swapConfig = (pkgs.formats.yaml {}).generate "bonsai-gateway.yaml" config.services.llama-swap.settings;
@@ -35,12 +37,17 @@
 in {
   options.services.bonsaiNinfer.tailnet.enable = lib.mkEnableOption "Bonsai access from aegis over Tailscale";
   config = lib.mkIf (cfg.enable && cfg.tailnet.enable) {
-    assertions = [{
-      assertion = config.services.tailscale.enable && config.my.host.tsName != null;
-      message = "Bonsai 的远程网关需要 Tailscale 与主机注册名称。";
-    }];
+    assertions = [
+      {
+        assertion = config.services.tailscale.enable && config.my.host.tsName != null;
+        message = "Bonsai 的远程网关需要 Tailscale 与主机注册名称。";
+      }
+    ];
     users.groups.bonsai-gateway = {};
-    users.users.bonsai-gateway = {isSystemUser = true; group = "bonsai-gateway";};
+    users.users.bonsai-gateway = {
+      isSystemUser = true;
+      group = "bonsai-gateway";
+    };
     systemd.tmpfiles.rules = ["d ${bonsai.directory}/gateway 0750 bonsai-gateway bonsai-gateway -"];
     systemd.services.bonsai-tailnet-gateway = {
       description = "Authenticated Bonsai gateway for aegis";
