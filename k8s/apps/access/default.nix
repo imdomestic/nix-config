@@ -1,7 +1,7 @@
 # 给人用的集群账号。
 #
 # token 由 k8s 填进 hank-token 这个 Secret，取出来后存在
-# secrets/clients/kube-tank.yaml（只加密给 hank 自己），home/users/hank/modules/kube 用它生成
+# secrets/clients/kube-tank.yaml（只加密给 hank 自己），home/hank/modules/kube 用它生成
 # kubeconfig。这个 token 不会过期，撤销的办法是删掉 hank-token，k8s 会再签一个新的。
 {
   applications.access = {

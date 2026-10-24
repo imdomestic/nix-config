@@ -1,6 +1,6 @@
 # Pi 模型费用估算
 
-核对日期：2026-10-18。配置在 `home/users/hank/modules/pi/pricing.nix`，单位均为
+核对日期：2026-10-18。配置在 `home/hank/modules/pi/pricing.nix`，单位均为
 **美元 / 百万 token**，采用公开 API 的 Standard 付费价。
 CLIProxy 的订阅额度和实际账单与这个估算金额并不等价。
 

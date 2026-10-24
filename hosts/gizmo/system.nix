@@ -102,7 +102,7 @@
   powerManagement.cpuFreqGovernor = "performance";
 
   # 见 profiles/netdiag.nix。iproute2 / tailscale 是冗余声明,删了。
-  # wakeonlan 搬去了 home/users/hank —— 是人用的,机器自己不需要。
+  # wakeonlan 搬去了 home/hank —— 是人用的,机器自己不需要。
 
   security.sudo.wheelNeedsPassword = false;
   # Delta only: this option merges definitions, so root arrives from nixpkgs'

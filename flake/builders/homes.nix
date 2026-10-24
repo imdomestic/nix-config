@@ -2,13 +2,13 @@
 # standalone Home Manager closure per account on every host, assembled from the
 # files in the account's directory (`users.<account>.dir`) by name, in order:
 #
-#   ../_lib/home-base.nix   always: the plumbing, and my.home.tier
-#   shell.nix               shell tier and up (flake/_lib/tiers.nix)
-#   interactive.nix         interactive tier and up
-#   gui-<platform>.nix      hosts with the gui role, shell tier and up
-#   default.nix             always; the only file that must exist
-#   dev.nix                 dev tier
-#   <host>.nix              on that host
+#   ../_lib/home-base.nix         always: the plumbing, and my.home.tier
+#   profiles/shell.nix            shell tier and up (flake/_lib/tiers.nix)
+#   profiles/interactive.nix      interactive tier and up
+#   profiles/gui-<platform>.nix   hosts with the gui role, shell tier and up
+#   default.nix                   always; the only file that must exist
+#   profiles/dev.nix              dev tier
+#   <host>.nix                    on that host
 #
 # A missing file is skipped. Nothing is registered: the file is the entry.
 {
@@ -34,7 +34,7 @@
   };
 
   mkHome = hostName: host: pkgs: accountName: account: let
-    entry = config.users.${accountName} or (throw "hosts.${hostName}.users.${accountName}: no `users.${accountName}` entry (home/users/*/user.nix)");
+    entry = config.users.${accountName} or (throw "hosts.${hostName}.users.${accountName}: no `users.${accountName}` entry (home/*/user.nix)");
     tier =
       tiers.min (
         if account.tier != null
@@ -62,11 +62,11 @@
         # `config.home.username` / `config.home.homeDirectory`.
         ++ [{home.username = accountName;}]
         ++ [../_lib/home-base.nix {my.home.tier = tier;}]
-        ++ lib.optionals (at "shell") (file "shell")
-        ++ lib.optionals (at "interactive") (file "interactive")
-        ++ lib.optionals (lib.elem "gui" host.roles && at "shell") (file "gui-${platform}")
+        ++ lib.optionals (at "shell") (file "profiles/shell")
+        ++ lib.optionals (at "interactive") (file "profiles/interactive")
+        ++ lib.optionals (lib.elem "gui" host.roles && at "shell") (file "profiles/gui-${platform}")
         ++ [default]
-        ++ lib.optionals (at "dev") (file "dev")
+        ++ lib.optionals (at "dev") (file "profiles/dev")
         ++ file hostName;
       # `inputs` and `system` stay specialArgs because they are used in
       # `imports`; host/account metadata lives in `config.my.host` / `config.home`.

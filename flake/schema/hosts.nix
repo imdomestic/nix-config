@@ -129,8 +129,9 @@
       h.kind != "home" && (h.kind == "darwin") != lib.hasSuffix "darwin" h.system)
     hosts);
     # A builder must exist, share the system, be reachable and build for itself.
-    # An account's <host>.nix sits next to these, and homes.nix picks files by name.
-    reserved = ["user" "default" "shell" "interactive" "dev" "gui-darwin" "gui-linux" "modules"];
+    # An account's <host>.nix sits next to these in home/<account>/, and homes.nix
+    # picks files by name.
+    reserved = ["user" "default" "modules" "profiles"];
     shadowing = lib.filter (n: lib.elem n reserved) (lib.attrNames hosts);
     badBuilders = lib.attrNames (lib.filterAttrs (_: h: let
       b = hosts.${h.buildOn} or null;
@@ -138,7 +139,7 @@
       h.buildOn != null && (b == null || b.system != h.system || b.tsName == null || b.buildOn != null))
     hosts);
   in
-    lib.throwIf (shadowing != []) "hosts: these names are account file names in home/users/<account>/: ${toString shadowing}"
+    lib.throwIf (shadowing != []) "hosts: these names are account file names in home/<account>/: ${toString shadowing}"
     (lib.throwIf (dupRoutes != []) "hosts: lanRoutes advertised by more than one host: ${toString dupRoutes}"
       (lib.throwIf (kindMismatch != []) "hosts: kind does not match system for ${toString kindMismatch}"
         (lib.throwIf (badBuilders != []) "hosts: buildOn must name a host of the same system with a tsName that builds for itself: ${toString badBuilders}"

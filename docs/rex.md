@@ -1,7 +1,7 @@
 # Rex appearance migration
 
 On 2026-10-24, Hank's Ghostty settings were migrated to Rex Beta 0.1.0
-(build 1408) on praxic. `home/users/hank/modules/rex/default.nix` applies the same preferences
+(build 1408) on praxic. `home/hank/modules/rex/default.nix` applies the same preferences
 to Hank's macOS GUI homes, using the evaluated Ghostty settings as the source
 for the dark theme and fonts. The light theme is
 [Kanso Pearl](https://github.com/webhooked/kanso.nvim/blob/main/extras/ghostty/kanso-pearl),
@@ -68,8 +68,8 @@ switch.
 
 ## Tmux keys
 
-`home/users/hank/modules/rex/module.nix` generates `init.lua` through `programs.rex.bindings` and
-`extraConfig`. Hank's bindings are in `home/users/hank/modules/rex/default.nix`. Home activation
+`home/hank/modules/rex/module.nix` generates `init.lua` through `programs.rex.bindings` and
+`extraConfig`. Hank's bindings are in `home/hank/modules/rex/default.nix`. Home activation
 checks the file and reloads an already-running local Rex server.
 
 Each sequence starts with **Ctrl-b**, then the key below. Escape cancels a
@@ -111,7 +111,7 @@ switch was needed. The test session was retained after the user began using it.
 
 ## Copy mode
 
-**Ctrl-b [** runs the `copy_mode` action from `home/users/hank/modules/rex/default.nix`. It
+**Ctrl-b [** runs the `copy_mode` action from `home/hank/modules/rex/default.nix`. It
 opens a floating layer exactly over the focused pane (the whole window when
 the pane is zoomed) and shows that pane's scrollback, captured with
 `rex capture --unwrap --trim`, in a read-only nvim with the cursor on the last

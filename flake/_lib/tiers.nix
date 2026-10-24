@@ -2,7 +2,7 @@
 # includes the ones below it.
 #
 #   minimal      ./home-base.nix only — the standalone HM plumbing
-#   shell        + the account's shell.nix (home/users/<account>/)
+#   shell        + the account's shell.nix (home/<account>/)
 #   interactive  + its interactive.nix
 #   dev          + its dev.nix
 {lib}: let

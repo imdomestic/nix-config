@@ -1,4 +1,4 @@
-# The account table. Each entry lives in home/users/<account>/user.nix and says
+# The account table. Each entry lives in home/<account>/user.nix and says
 # who the person is (tier, keys); what their home is made of is the files in
 # that directory, picked by name in flake/builders/homes.nix. A host only says
 # which accounts it has (`hosts.<name>.users`).
@@ -16,8 +16,8 @@ in {
         };
         dir = mkOption {
           type = types.path;
-          default = ../../home/users + "/${name}";
-          defaultText = lib.literalExpression ''../../home/users + "/<account>"'';
+          default = ../../home + "/${name}";
+          defaultText = lib.literalExpression ''../../home + "/<account>"'';
           description = ''
             The account's home directory in this repo: default.nix, the tier
             and GUI files, <host>.nix and modules/. Another name for the same
