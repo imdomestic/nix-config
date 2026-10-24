@@ -13,7 +13,7 @@
   ...
 }: let
   substituters = import ../../lib/nix-substituters.nix {
-    inherit (config.my.host) useChinaMirror;
+    inherit (config.my.host) inChina;
   };
 
   publicKeys = [

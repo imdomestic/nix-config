@@ -87,7 +87,6 @@ in {
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [25565];
 
   nixpkgs.config.allowUnfree = true;
-  my.host.useChinaMirror = false;
 
   services = {
     tailscale.extraSetFlags = ["--hostname=${config.networking.hostName}"];

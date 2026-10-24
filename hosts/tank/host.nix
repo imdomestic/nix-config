@@ -8,6 +8,7 @@ in {
   hosts.tank = {
     system = "x86_64-linux";
     kind = "nixos";
+    inChina = true;
     # "monitor" = 在这台上跑一份完整监控(Prometheus + Alertmanager + Grafana)。
     # 见 system/modules/monitoring —— 这个角色同时决定本机的开关、对端 Alertmanager
     # 的 gossip 名单、以及"另一份挂了"那条告警的预期成员数。

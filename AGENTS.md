@@ -73,6 +73,7 @@ in {
     tsName = "example.inner.imdomestic.com"; # opts into tailscale, deploy, telemetry
     ip = "10.0.0.68";               # optional WireGuard address
     sshUser = "root";
+    inChina = true;                 # SJTU mirror first; off by default
     ageKey = "age1…";               # the host's sops key (ssh host key via ssh-to-age)
     maxTier = "interactive";        # caps every account's home tier here
     buildOn = "r6s";                # too small to build itself (see 小内存机器)
@@ -111,11 +112,12 @@ accounts their GUI layers, `monitor` / `monitor-gateway` turn on monitoring.
 pipewire and NetworkManager to the desktop one, whose input method is
 `my.inputMethod` (fcitx5; the GNOME/ibus hosts set `"ibus"`).
 
-The fact fields (`name`, `system`, `roles`, `tsName`, `lanRoutes`,
+The fact fields (`name`, `system`, `roles`, `inChina`, `tsName`, `lanRoutes`,
 `gpuMonitoring`, `clusterControl`, `homeOverlays`) are declared once in
 `flake/_lib/host-facts.nix` and reach every evaluator as `config.my.host`,
-with `users`, `usernames` and `useChinaMirror` (on by default; hosts opt out in
-`system.nix`). Modules that need to see past their own host read
+with `users` and `usernames`. `inChina` (off by default) is the only thing that
+puts the SJTU mirror in front of the substituters (and Homebrew's bottles).
+Modules that need to see past their own host read
 `config.my.fleet`: `hosts` (every entry's facts), `inventory` (the hosts with a
 tsName) and `placements` (resolved to a tsName). Never `import` the registry
 from a module. Evaluation fails if two hosts advertise the same `lanRoutes`, a

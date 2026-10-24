@@ -82,7 +82,6 @@
       enable = true;
       ssh = true;
     };
-    host.useChinaMirror = false;
   };
   system.stateVersion = "26.05";
 }

@@ -11,13 +11,6 @@
   options.my.host =
     import ./host-facts.nix {inherit lib;}
     // {
-      useChinaMirror = lib.mkOption {
-        type = lib.types.bool;
-        default = config.my.host.usernames != ["linwhite"];
-        defaultText = lib.literalExpression ''config.my.host.usernames != ["linwhite"]'';
-        description = "Whether to use the China (SJTU) substituter mirror.";
-      };
-
       users = lib.mkOption {
         type = lib.types.attrsOf lib.types.raw;
         default = {};

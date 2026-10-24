@@ -2,6 +2,7 @@
   hosts.x470 = {
     system = "x86_64-linux";
     kind = "nixos";
+    inChina = true;
     roles = ["desktop" "gui" "server"];
     ip = "10.0.0.77";
     sshUser = "root";

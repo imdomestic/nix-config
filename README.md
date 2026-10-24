@@ -73,8 +73,8 @@ you're deploying is the one routing your packets.
 That's the normal state of affairs. I judge a rebuild by its closure
 (`nix store diff-closures`), not by the commit count.
 
-**Does this work from China?** Yes. Hosts default to the SJTU mirror
-(`my.host.useChinaMirror`); my Mac opts out.
+**Does this work from China?** Yes. A host marked `inChina` in its `host.nix`
+puts the SJTU mirror first; the rest use the upstream caches.
 
 **Twenty-six hosts in one flake? Doesn't one change break everything?**
 Sometimes it breaks something. CI dry-builds nearly every host that has a
