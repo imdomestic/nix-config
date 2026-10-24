@@ -3,7 +3,7 @@
 in {
   flake.modules.homeManager = {
     fendada = ./default.nix;
-    a123456-macbook-pro-3 = ./macbook-pro-3.nix;
+    a123456-macbook-pro-3 = ./hosts/macbook-pro-3.nix;
   };
 
   users.fendada = {
