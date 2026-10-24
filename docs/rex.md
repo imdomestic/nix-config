@@ -48,6 +48,24 @@ Use `just hm-dry <host> hank` to review a home generation, and
 `just hm <host> hank` when activating it. A system rebuild does not apply this
 module. Rex remains separately installed; this module does not install the app.
 
+## CLI path
+
+`~/.local/bin/rex` points to the installed server's `Versions/Current` CLI.
+That directory is already on Hank's PATH, so ordinary terminals can run `rex`
+without a version-specific path. The app and server are not copied into Nix.
+
+Inside Rex, `programs.zsh.initContent` restores `REX_BIN_DIR` to the front at
+order 2000, after Nix and Homebrew initialization. This keeps the CLI matched
+to the server that opened that terminal, including when it differs from
+`Versions/Current`. `REX_BIN_DIR` is not added to `home.sessionPath`, and an
+unset variable does not add an empty PATH entry. See the
+[upstream PATH documentation](https://www.superlogical.com/rex/docs/automate/cli#path).
+
+Validated in an ordinary shell and a fresh login shell started by Rex: both
+resolve `rex`, and the Rex shell has `REX_BIN_DIR` as its first PATH entry.
+The generated `.zshrc` and CLI link were applied directly, without a full home
+switch.
+
 ## Tmux keys
 
 `home/modules/rex` generates `init.lua` through `programs.rex.bindings` and

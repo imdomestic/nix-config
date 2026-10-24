@@ -9,6 +9,7 @@
   fonts = lib.toList ghostty.settings.font-family;
   zenId = "custom-F26A132B-4D31-47EB-87D9-24AED11165C4";
   pearlId = "custom-26E5B310-00BF-40B2-98BC-0268B1FCC6EF";
+  rexCliDir = "${config.home.homeDirectory}/Library/Application Support/com.superlogical.rex/RexServer/Versions/Current/Rex Server.app/Contents/MacOS";
   themeSource = pkgs.writeText "rex-themes.json" (builtins.toJSON [
     {
       id = zenId;
@@ -50,6 +51,15 @@
   ]);
 in {
   imports = [../../modules/rex];
+
+  home.file.".local/bin/rex".source = config.lib.file.mkOutOfStoreSymlink "${rexCliDir}/rex";
+
+  # Restore the running server's CLI after Nix/Homebrew reorder PATH.
+  programs.zsh.initContent = lib.mkOrder 2000 ''
+    if [[ -n "''${REX_BIN_DIR:-}" ]]; then
+      path=("$REX_BIN_DIR" $path)
+    fi
+  '';
 
   programs.rex = {
     enable = true;
