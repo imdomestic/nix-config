@@ -86,6 +86,7 @@ including to a nested remote tmux.
 | n / p / 1–9 | Next / previous / numbered tab |
 | , | Rename tab |
 | < / > | Move the current tab backward / forward |
+| [ | Copy mode (see below) |
 | z | Toggle pane zoom |
 | o | Focus next pane |
 | x | Close pane using Rex's normal close behavior |
@@ -98,7 +99,7 @@ including to a nested remote tmux.
 This uses Rex's native key sequences. Its resize unit is a percentage, rather
 than tmux's five rows or columns, and it does not reproduce tmux's 300 ms
 repeat-key table. Press Ctrl-b for each new sequence. Existing macOS shortcuts
-remain available. Tmux's last-window Tab, copy-mode, scratch popup, resurrect,
+remain available. Tmux's last-window Tab, scratch popup, resurrect,
 thumbs and agent-sidebar bindings are not mapped to unrelated actions.
 
 Validated on Rex 1408 with 39 loaded bindings and one custom action, without
@@ -107,3 +108,43 @@ directional focus, swapping unequal panes while preserving split IDs and
 ratios, resizing from 50% to 55%, zoom toggling, tab creation/navigation and tab
 reordering. The generated file was linked and reloaded directly; no full home
 switch was needed. The test session was retained after the user began using it.
+
+## Copy mode
+
+**Ctrl-b [** runs the `copy_mode` action from `home/users/hank/rex.nix`. It
+opens a floating layer exactly over the focused pane (the whole window when
+the pane is zoomed) and shows that pane's scrollback, captured with
+`rex capture --unwrap --trim`, in a read-only nvim with the cursor on the last
+line. A floating layer is used instead of a split so the original pane is not
+resized and its program does not redraw. In visual mode `y` copies the
+selection through OSC 52, which Rex writes to the macOS clipboard, and leaves,
+like tmux's `copy-selection-and-cancel`. `q` leaves without copying; the layer
+closes and focus returns to the pane. All other nvim motions and searches
+work as usual. Colors are not kept.
+
+Verified on 2026-10-24 by running the action against a test tab through
+`rex do --action`: the layer bounds matched the pane, the view ended at the
+pane's last line, soft-wrapped lines were joined, and three yank-and-leave
+runs put the selected line on the clipboard (`clipboard_written`, then
+`child_exited`, then `block_closed`). One run against a just-created,
+never-shown tab did not reach the clipboard.
+
+## Shell integration
+
+Rex reads OSC 7 (working directory) and OSC 133 (prompt and command marks),
+but does not inject a shell integration, and Ghostty's own loads only inside
+Ghostty. `rex.nix` adds a small zsh hook, active only when `TERM_PROGRAM` is
+`rex`: it reports the directory and marks prompt start, input start, command
+start and exit status. The directory report is verified: before the hook,
+`rex block call pwd` returned `{}`; with it, a new shell reports
+`file://praxic/Users/hank` and follows `cd`. The prompt marks are what Jump to
+Previous/Next Prompt and the program status protocol's prompt-time cleanup
+rely on; those were not yet checked in the app.
+
+## Opening Rex from AeroSpace
+
+`alt-enter` asks the Rex app for a new window, which comes with a new session,
+then brings Rex to the front. This needs **Remote Control** under Rex Server in
+Rex's settings; without it, or when Rex is not running, the CLI call fails and
+`alt-enter` only opens or raises Rex. The previous binding launched kitty,
+which was not installed.
