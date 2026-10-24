@@ -8,8 +8,12 @@
     mode = "0444";
   };
 
+  # Appended to NixOS' own list (~/.ssh/authorized_keys, authorized_keys.d/%u),
+  # not set in `settings`: settings render ahead of that list in sshd_config and
+  # sshd keeps the first AuthorizedKeysFile, which hid every per-account key.
+  services.openssh.authorizedKeysFiles = ["/etc/ssh/authorized_keys.d/master"];
+
   services.openssh.settings = {
-    AuthorizedKeysFile = "%h/.ssh/authorized_keys /etc/ssh/authorized_keys.d/master";
     PasswordAuthentication = false;
     KbdInteractiveAuthentication = false;
     PermitRootLogin = "prohibit-password";

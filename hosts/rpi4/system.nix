@@ -361,7 +361,7 @@ in {
   # 它存在的唯一原因是旧桌面需要。
 
   # services.openssh.enable 删了:profiles/server.nix → modules/ssh 已经开了,
-  # 而且那边还配了 AuthorizedKeysFile 指向 /etc/ssh/authorized_keys.d/master。
+  # 而且 profiles/base.nix → modules/ssh/policy.nix 配了 /etc/ssh/authorized_keys.d/master。
   # 在这里再写一遍只会让人以为有两个来源。
   system.stateVersion = "25.05"; # Did you read the comment?
 }
