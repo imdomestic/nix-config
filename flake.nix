@@ -1,5 +1,5 @@
 {
-  description = "Hank's nix configuration for both NixOS & macOS";
+  description = "Hank's fleet: NixOS, nix-darwin, standalone Home Manager and system-manager configurations";
 
   # Every file under flake/ is a flake-parts module (import-tree), plus each
   # host's registry entry (hosts/<name>/host.nix) and each account's
