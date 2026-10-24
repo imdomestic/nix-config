@@ -235,4 +235,8 @@ in {
       "kanso-zen".theme = kansoZen;
     };
   };
+
+  # Homes last activated before 44c00a2f (2026-10-18) left a real tui.json, and
+  # often a tui.json.backup, which makes Home Manager refuse to link over it.
+  xdg.configFile."opencode/tui.json".force = true;
 }
