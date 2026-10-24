@@ -5,7 +5,6 @@
 }: {
   imports = [
     ./modules/nixvim
-    ./modules/yazi
     ./modules/fzf.nix
   ];
 

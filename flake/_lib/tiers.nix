@@ -1,9 +1,9 @@
 # Home tiers: how much of an environment an account gets on a host. Each tier
 # includes the ones below it.
 #
-#   minimal      home/profiles/core.nix only — the standalone HM plumbing
+#   minimal      ./home-base.nix only — the standalone HM plumbing
 #   shell        + home/profiles/shell.nix (coreutils, archives, zsh, neovim)
-#   interactive  + home/profiles/interactive.nix (bat, eza, yazi, fzf, zoxide)
+#   interactive  + home/profiles/interactive.nix (bat, eza, fzf, zoxide)
 #   dev          + the account's dev module (or home/profiles/dev.nix)
 {lib}: let
   names = ["minimal" "shell" "interactive" "dev"];

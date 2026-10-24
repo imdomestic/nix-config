@@ -3,7 +3,7 @@
 # composed from the account's entry in the `users` table, the host's account
 # entry and the host itself, the shared tiers first:
 #
-#   core → shell → interactive        by tier (flake/_lib/tiers.nix)
+#   base → shell → interactive        by tier (flake/_lib/tiers.nix; base is ../_lib/home-base.nix)
 #   gui profile                       gui role; the account's GUI layer
 #   the account's own module
 #   its dev module                    dev tier
@@ -63,7 +63,7 @@
         # Single injection point for the account name; everything else reads
         # `config.home.username` / `config.home.homeDirectory`.
         ++ [{home.username = accountName;}]
-        ++ [hm.core]
+        ++ [../_lib/home-base.nix {my.home.tier = tier;}]
         ++ lib.optional (at "shell") hm.shell
         ++ lib.optional (at "interactive") hm.interactive
         ++ lib.optional (gui.profile != null) gui.profile

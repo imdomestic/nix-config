@@ -7,7 +7,6 @@
   dotfiles = ./modules/dotfiles;
 in {
   imports = [
-    ./modules/yazi
     ./modules/fzf.nix
   ];
 
