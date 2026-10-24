@@ -4,6 +4,16 @@
   lib,
   ...
 }: {
+  # Older generations linked all of ~/.config/zsh to the store as one symlink;
+  # programs.zsh now puts files inside it, and checkLinkTargets cannot move the
+  # read-only ones out of the way. Drop the stale link first.
+  home.activation.dropStoreZshDir = lib.hm.dag.entryBefore ["checkLinkTargets"] ''
+    zdir=${lib.escapeShellArg "${config.xdg.configHome}/zsh"}
+    if [ -L "$zdir" ] && [[ "$(readlink "$zdir")" == /nix/store/* ]]; then
+      run rm "$zdir"
+    fi
+  '';
+
   programs.zsh = {
     enable = true;
     dotDir = "${config.xdg.configHome}/zsh";
