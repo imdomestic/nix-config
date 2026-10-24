@@ -11,6 +11,37 @@
 
 ---
 
+## 2026-10-24 · nixvim 不用 `files` {#nixvim-no-files}
+
+hank、kenneth、linwhite 三份 nixvim 的 13 个 `after/ftplugin/*.lua`(缩进偏好)
+原来写在 `programs.nixvim.files` 里。`files` 的每一项都是一整份 nixvim 子模块
+求值(`modules/top-level/files` 把全部插件模块再 import 一遍),13 项加主配置就是
+14 份。现在写成 `extraFiles."<path>".text`,一个普通文本文件,生成的文件和每项
+设置逐个核对过,完全一致。
+
+实测 `hosts/taipan/hank` 求到 `activationPackage.system`(单线程、无缓存):CPU
+5.65 s → 1.54 s,分配 2.1 GB → 0.4 GB,thunk 3245 万 → 441 万。45 个 home 求到
+drvPath 的总 CPU 377 s → 259 s。
+
+线索是 assertion 数:这个 home 有 12,286 条,其中 12,160 条是 nixvim 的"选项已删除",
+每条正好重复 14 次。一开始以为是 Determinate 的并行求值在 GC 锁上打架
+(`nix flake show` 采样几乎全是 `GC_mark_from` / `__psynch_mutexwait`),但
+`eval-cores 1` 和 `GC_INITIAL_HEAP_SIZE=20G` 都没让它跑完 —— GC 只是放大器,
+根子是每个 home 本身就太重。
+
+---
+
+## 2026-10-24 · home 里没有 devenv {#devenv-not-in-home}
+
+`home/profiles/dev.nix` 原来装 `inputs.devenv` 的 devenv(钉在 v2.3)。它自带
+一份打过补丁的 nixpkgs,还用 crate2nix 把每个 Rust crate 展开成一个 derivation:
+dev 档 home 求值时间的约 40% 花在它身上(单独求它的 drvPath 3.86 s,nixpkgs-unstable
+的 devenv 2.4.0 是 0.86 s,其中大半是 home 本来就要付的 nixpkgs 导入)。devenv 平时
+只在项目的 devshell 里用,所以包和 input 一起删了;`devenv.cachix.org` 的 substituter
+留着,devshell 里的 devenv 还要用。删掉后 45 个 home 的总 CPU 259 s → 183 s。
+
+---
+
 ## 2026-10-24 · 没有 darwin/,主机在顶层 hosts/ {#system-dir}
 
 registry 早就不分平台了,目录还停在 NixOS 时代:Mac 和只有 home 的机器住在
