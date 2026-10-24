@@ -15,7 +15,7 @@ work=$(mktemp -d); trap 'rm -rf "$work"' EXIT
 
 hosts=("$@")
 if [ ${#hosts[@]} -eq 0 ]; then
-  for d in nixos/hosts/*/; do
+  for d in hosts/*/; do
     h=$(basename "$d")
     grep -rqs "services.xray" "$d" && hosts+=("$h")
   done

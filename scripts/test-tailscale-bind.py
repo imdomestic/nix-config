@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-source = Path(__file__).resolve().parents[1] / 'nixos/modules/tailscale/resolve-bind.py'
+source = Path(__file__).resolve().parents[1] / 'system/modules/tailscale/resolve-bind.py'
 spec = importlib.util.spec_from_file_location('resolve_bind', source)
 bind = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(bind)

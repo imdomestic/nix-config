@@ -1,6 +1,6 @@
 # linwhite 的 AeroSpace,由 users.linwhite.gui.darwin 加载(./user.nix)。
 # Home Manager 管:配置写进 ~/.config/aerospace,launchd agent 跟着账户走,
-# 两个人的键位各用各的。aegis 专属的那部分在 nixos/hosts/aegis/aerospace-dummy.nix。
+# 两个人的键位各用各的。aegis 专属的那部分在 hosts/aegis/aerospace-dummy.nix。
 _: {
   programs.aerospace = {
     enable = true;

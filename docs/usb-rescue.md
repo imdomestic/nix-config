@@ -37,7 +37,7 @@ ssh -J hank@gizmo root@<救援系统的局域网地址>
 nix build .#nixosConfigurations.x86_64-rescue.config.system.build.isoImage
 ```
 
-输出位于 `result/iso/`。`nixos/installers/grub-iso.nix` 使用 NixOS 的
+输出位于 `result/iso/`。`system/installers/grub-iso.nix` 使用 NixOS 的
 UEFI GRUB 镜像及 `grub-mkrescue` 生成 ISO，系统内容和启动菜单均保存在
 ISO 中。
 

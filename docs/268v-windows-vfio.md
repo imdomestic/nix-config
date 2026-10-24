@@ -607,8 +607,8 @@ Bungie 安全团队 BNGSecurity 在 2021-08-26 的
 
 ## 声明的内容
 
-- `nixos/hosts/268v/virtualisation.nix`：libvirtd、NixVirt、启动项及可调整选项。
-- `nixos/hosts/268v/windows-domain.nix`：Windows 硬件定义，通过 NixVirt 生成 XML。
+- `hosts/268v/virtualisation.nix`：libvirtd、NixVirt、启动项及可调整选项。
+- `hosts/268v/windows-domain.nix`：Windows 硬件定义，通过 NixVirt 生成 XML。
 - `pkgs/vfio-igd-rom/default.nix`：固定 VfioIgdPkg 源码和 hash，用 Nixpkgs EDK2
   构建 `8086:64a0` 的 `IgdAssignmentDxe` Option ROM，不包含 Intel 私有 GOP。
 

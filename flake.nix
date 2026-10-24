@@ -2,13 +2,13 @@
   description = "Hank's nix configuration for both NixOS & macOS";
 
   # Every file under flake/ is a flake-parts module (import-tree), plus each
-  # host's registry entry (nixos/hosts/<name>/host.nix) and each account's
+  # host's registry entry (hosts/<name>/host.nix) and each account's
   # table entry (home/users/<dir>/user.nix). Start at flake/schema/hosts.nix.
   outputs = inputs:
     inputs.flake-parts.lib.mkFlake {inherit inputs;} {
       imports = [
         (inputs.import-tree ./flake)
-        (inputs.import-tree.match ".*/host\\.nix" ./nixos/hosts)
+        (inputs.import-tree.match ".*/host\\.nix" ./hosts)
         (inputs.import-tree.match ".*/user\\.nix" ./home/users)
       ];
     };

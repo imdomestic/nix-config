@@ -3,7 +3,7 @@
 # 大厅是常驻的 StatefulSet，世界存在 PVC 里，作为静态后端写在 velocity.toml。小游戏房间
 # 是 Agones Fleet，由 minecraft/agones-{paper,fabric} 上报状态，Velocity 上的
 # minecraft/velocity-router 按 GameServer 动态注册。旧服的定义见
-# nixos/modules/minecraft/wuxi.nix，存档在 tank 的 /data/srv/minecraft。
+# system/modules/minecraft/wuxi.nix，存档在 tank 的 /data/srv/minecraft。
 {lib, ...}: let
   tag = import ../../../minecraft/image-tag.nix;
 
@@ -273,7 +273,7 @@
 in {
   applications.mc = {
     namespace = "mc";
-    # 命名空间和 velocity-forwarding 密钥一起由 nixos/hosts/tank/k3s.nix 建。
+    # 命名空间和 velocity-forwarding 密钥一起由 hosts/tank/k3s.nix 建。
     createNamespace = false;
 
     # Fleet 和 FleetAutoscaler 没有 nixidy 的类型定义，原样放进去。

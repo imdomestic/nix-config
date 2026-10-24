@@ -1,0 +1,411 @@
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}: let
+  cfg = config.services.qwen38Ninfer;
+  llamaSwapPort = 8001;
+
+  modelUnitRunner = name: unit:
+    pkgs.writeShellApplication {
+      inherit name;
+      runtimeInputs = [pkgs.coreutils pkgs.systemd];
+      text = ''
+        # shellcheck disable=SC2329 # The trap invokes this function indirectly.
+        cleanup() {
+          systemctl stop ${unit} || true
+        }
+        trap cleanup EXIT INT TERM
+
+        systemctl start ${unit}
+        while systemctl is-active --quiet ${unit}; do
+          sleep 1
+        done
+        exit 1
+      '';
+    };
+
+  qwenRunner = modelUnitRunner "run-qwen38" "podman-qwen38.service";
+  abliteratedRunner = modelUnitRunner "run-qwen38-abliterated" "podman-qwen38-abliterated.service";
+
+  commonModel = {
+    checkEndpoint = "/health";
+    # Matches NInfer's own pending queue. At 1 llama-swap answers every
+    # concurrent request with an instant 429 instead of letting the backend
+    # queue it: docs/incidents.md#b650-ninfer-429-not-queued
+    concurrencyLimit = 16;
+    ttl = 0;
+    unloadTimeout = 60;
+    useModelName = "qwen3.8-27b";
+    # Responses 拒绝这些扩展字段，见 docs/incidents.md#qwen-responses-progress-injection。
+    filters.byPath = {
+      "/v1/chat/completions".setParams = {
+        return_progress = true;
+        timings_per_token = true;
+      };
+      # Qwen 只有初始 system 消息，且没有加密推理表示；见 docs/incidents.md#qwen-codex-cli-responses。
+      "/v1/responses" = {
+        responsesSystemMessages = true;
+        stripParams = "include";
+      };
+      "/v1/responses/input_tokens" = {
+        responsesSystemMessages = true;
+        stripParams = "include";
+      };
+    };
+    capabilities = {
+      "in" = ["text" "image"];
+      "out" = ["text"];
+      tools = true;
+    };
+  };
+
+  llamaSwapSettings = {
+    healthCheckTimeout = 300;
+    logLevel = "info";
+    models = {
+      "qwen3.8-27b-aligned" =
+        commonModel
+        // {
+          name = "qwen3.8-27b-aligned";
+          description = "QUASAR QAT NVFP4 weights, NVFP4 KV cache, vision and MTP3";
+          useModelName = "qwen3.8-27b-aligned";
+          cmd = lib.getExe qwenRunner;
+          proxy = "http://127.0.0.1:8100";
+          metadata = {
+            model_type = "vlm";
+            context = 262144;
+          };
+          capabilities = commonModel.capabilities // {context = 262144;};
+        };
+      "qwen3.8-27b" =
+        commonModel
+        // {
+          name = "qwen3.8-27b";
+          description = "Swift-1.5 ajgazin ablation, NVFP4 weights and KV cache, vision and MTP3";
+          useModelName = "qwen3.8-27b";
+          cmd = lib.getExe abliteratedRunner;
+          proxy = "http://127.0.0.1:8101";
+          metadata = {
+            model_type = "vlm";
+            context = 262144;
+          };
+          capabilities = commonModel.capabilities // {context = 262144;};
+        };
+    };
+  };
+
+  llamaSwapConfig = (pkgs.formats.yaml {}).generate "llama-swap-qwen38.yaml" config.services.llama-swap.settings;
+  llamaSwapProxy = (pkgs.callPackage inputs.llama-swap-proxy {}).overrideAttrs (old: {
+    patches = (old.patches or []) ++ [../../hosts/wsl/llama-swap-proxy-backend-timings.patch];
+    vendorHash = "sha256-LS+PBnNbtSr3cibu8Nb6DEkko78EVO2l+1hxgsj5Iiw=";
+  });
+
+  gatewayRunner = pkgs.writeShellApplication {
+    name = "run-qwen38-tailnet-gateway";
+    runtimeInputs = [pkgs.coreutils pkgs.tailscale];
+    text = ''
+      tailnet_address="$(${lib.getExe pkgs.tailscale} ip -4 | head -n 1)"
+      if [[ -z "$tailnet_address" ]]; then
+        echo "Tailscale has no IPv4 address yet" >&2
+        exit 1
+      fi
+
+      exec ${lib.getExe llamaSwapProxy} \
+        --listen "$tailnet_address:${toString cfg.gatewayPort}" \
+        --upstream http://127.0.0.1:${toString llamaSwapPort} \
+        --config ${llamaSwapConfig} \
+        --disable-return-progress-injection \
+        --sessions-dir ${cfg.stateDirectory}/llama-swap-proxy \
+        --default-user hank \
+        --opencode-hostname "$tailnet_address:${toString cfg.gatewayPort}"
+    '';
+  };
+
+  commonContainer = {
+    image = cfg.image;
+    autoStart = false;
+    environment.NO_PROXY = "127.0.0.1,localhost,.inner.imdomestic.com";
+    volumes = [
+      "${cfg.modelDirectory}:/models:ro"
+      "${cfg.logDirectory}:/logs"
+    ];
+    extraOptions = [
+      "--device=nvidia.com/gpu=all"
+      "--network=host"
+      "--ipc=host"
+    ];
+  };
+in {
+  options.services.qwen38Ninfer = {
+    enable = lib.mkEnableOption "Qwen3.8 27B NInfer inference gateway";
+    image = lib.mkOption {
+      type = lib.types.str;
+      # Artifact pins and measured residency: docs/incidents.md#b650-quasar-nvfp4-262k.
+      default = "localhost/ninfer:qwen38-quasar-bace20dc-vision48k";
+      description = "NInfer v3 image for QUASAR; built by scripts/build-qwen38-quasar.sh.";
+    };
+    stateDirectory = lib.mkOption {
+      type = lib.types.str;
+      default = "/var/lib/qwen38";
+    };
+    modelDirectory = lib.mkOption {
+      type = lib.types.str;
+      default = "${cfg.stateDirectory}/ninfer-models";
+    };
+    logDirectory = lib.mkOption {
+      type = lib.types.str;
+      default = "${cfg.stateDirectory}/ninfer-logs";
+    };
+    imageArchive = lib.mkOption {
+      type = lib.types.str;
+      default = "${cfg.stateDirectory}/ninfer-quasar-bace20dc-vision48k.tar";
+      description = "OCI archive imported on demand when the configured image is absent.";
+    };
+    gatewayPort = lib.mkOption {
+      type = lib.types.port;
+      default = 8000;
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = config.services.tailscale.enable;
+        message = "services.qwen38Ninfer requires Tailscale because its gateway binds to the Tailnet address.";
+      }
+    ];
+
+    hardware.nvidia-container-toolkit.enable = true;
+    virtualisation = {
+      podman.enable = true;
+      oci-containers = {
+        backend = "podman";
+        containers = {
+          qwen38-abliterated =
+            commonContainer
+            // {
+              # Pins and 24 GB profile: docs/incidents.md#b650-swift15-abliterated.
+              cmd = [
+                "ninfer-serve"
+                "/models/qwen3_8_27b_swift15abl_nvfp4full-dflash2-d52441e7.ninfer"
+                "--model-id"
+                "qwen3.8-27b"
+                "--host"
+                "127.0.0.1"
+                "--port"
+                "8101"
+                "--max-context"
+                "262144"
+                "--default-max-tokens"
+                "32768"
+                "--kv-capacity"
+                "262144"
+                # Four active lanes share one pool: docs/incidents.md#b650-swift15-concurrency-four.
+                "--max-concurrency"
+                "4"
+                "--max-pending-requests"
+                "16"
+                "--pending-timeout-ms"
+                "600000"
+                "--prefill-chunk"
+                "1024"
+                "--kv-dtype"
+                "nvfp4"
+                "--device-state-slots"
+                "0"
+                "--host-state-slots"
+                "24"
+                "--host-kv-mib"
+                "8192"
+                "--max-private-continuations"
+                "8"
+                "--max-shared-prefixes"
+                "1"
+                "--max-long-anchors-per-continuation"
+                "1"
+                "--media-cache-mib"
+                "256"
+                "--media-live-mib"
+                "2048"
+                "--vision"
+                "--spec"
+                "mtp"
+                "--draft-tokens"
+                "3"
+                "--lm-head-draft"
+                "--preserve-thinking"
+                "--request-log-jsonl"
+                "/logs/qwen38-abliterated.jsonl"
+              ];
+            };
+          qwen38 =
+            commonContainer
+            // {
+              cmd = [
+                "ninfer-serve"
+                "/models/qwen3_8_27b_nvfp4qat-a45b9f5c.ninfer"
+                "--model-id"
+                "qwen3.8-27b-aligned"
+                "--host"
+                "127.0.0.1"
+                "--port"
+                "8100"
+                "--max-context"
+                "262144"
+                "--default-max-tokens"
+                "262144"
+                "--kv-capacity"
+                "262144"
+                # Four active lanes share this KV pool: docs/incidents.md#b650-quasar-concurrency-four.
+                "--max-concurrency"
+                "4"
+                # A queued request waits behind a full-length prefill, and the
+                # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
+                "--max-pending-requests"
+                "16"
+                "--pending-timeout-ms"
+                "600000"
+                "--prefill-chunk"
+                "1024"
+                "--kv-dtype"
+                "nvfp4"
+                "--device-state-slots"
+                "0"
+                # Host state and KV are sized for one full checkpoint: docs/incidents.md#b650-ninfer-host-kv-undersized
+                "--host-state-slots"
+                "24"
+                "--host-kv-mib"
+                "8192"
+                "--max-private-continuations"
+                "8"
+                "--max-shared-prefixes"
+                "1"
+                "--max-long-anchors-per-continuation"
+                "1"
+                "--media-cache-mib"
+                "256"
+                "--media-live-mib"
+                "2048"
+                "--vision"
+                "--spec"
+                "mtp"
+                "--draft-tokens"
+                "3"
+                "--lm-head-draft"
+                "--preserve-thinking"
+                "--request-log-jsonl"
+                "/logs/qwen38.jsonl"
+              ];
+            };
+        };
+      };
+    };
+
+    systemd.tmpfiles.rules = [
+      "d ${cfg.modelDirectory} 0755 root root -"
+      "d ${cfg.logDirectory} 0755 root root -"
+      "d ${cfg.stateDirectory}/llama-swap-proxy 0750 llama-swap-proxy llama-swap-proxy -"
+    ];
+
+    systemd.services = {
+      qwen38-image-import = {
+        description = "Import the local NInfer OCI image";
+        path = [pkgs.podman];
+        script = ''
+          if podman image exists ${lib.escapeShellArg cfg.image}; then
+            exit 0
+          fi
+          if [[ ! -r ${lib.escapeShellArg cfg.imageArchive} ]]; then
+            echo "Missing NInfer image archive: ${cfg.imageArchive}" >&2
+            exit 1
+          fi
+          podman load --input ${lib.escapeShellArg cfg.imageArchive}
+          podman image exists ${lib.escapeShellArg cfg.image}
+        '';
+        serviceConfig = {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+      };
+      podman-qwen38 = {
+        after = [
+          "network-online.target"
+          "nvidia-container-toolkit-cdi-generator.service"
+          "qwen38-image-import.service"
+        ];
+        requires = [
+          "nvidia-container-toolkit-cdi-generator.service"
+          "qwen38-image-import.service"
+        ];
+      };
+      podman-qwen38-abliterated = {
+        after = [
+          "network-online.target"
+          "nvidia-container-toolkit-cdi-generator.service"
+          "qwen38-image-import.service"
+        ];
+        requires = [
+          "nvidia-container-toolkit-cdi-generator.service"
+          "qwen38-image-import.service"
+        ];
+      };
+      llama-swap.serviceConfig = {
+        DynamicUser = lib.mkForce false;
+        User = "root";
+        Group = "root";
+        PrivateUsers = lib.mkForce false;
+        ProtectProc = lib.mkForce "default";
+        ProcSubset = lib.mkForce "all";
+      };
+      llama-swap-proxy = {
+        description = "Tailnet OpenAI gateway for llama-swap";
+        wantedBy = ["multi-user.target"];
+        wants = ["network-online.target" "tailscaled.service"];
+        requires = ["llama-swap.service"];
+        after = ["network-online.target" "tailscaled.service" "llama-swap.service"];
+        serviceConfig = {
+          Type = "simple";
+          User = "llama-swap-proxy";
+          Group = "llama-swap-proxy";
+          ExecStart = lib.getExe gatewayRunner;
+          Restart = "on-failure";
+          RestartSec = 5;
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+          ProtectHome = true;
+          ProtectSystem = "strict";
+          ReadWritePaths = ["${cfg.stateDirectory}/llama-swap-proxy"];
+        };
+      };
+    };
+
+    services.llama-swap = {
+      enable = true;
+      package = pkgs.llama-swap.overrideAttrs (old: {
+        patches =
+          (old.patches or [])
+          ++ [
+            ../../scripts/patches/llama-swap-parameter-defaults.patch
+            ../../scripts/patches/llama-swap-responses-system-messages.patch
+            ../../scripts/patches/llama-swap-systemone.patch
+          ];
+      });
+      listenAddress = "127.0.0.1";
+      port = llamaSwapPort;
+      settings = llamaSwapSettings;
+    };
+
+    users = {
+      groups.llama-swap-proxy = {};
+      users.llama-swap-proxy = {
+        isSystemUser = true;
+        group = "llama-swap-proxy";
+      };
+    };
+
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts = [cfg.gatewayPort];
+  };
+}

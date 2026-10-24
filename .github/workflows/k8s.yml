@@ -5,7 +5,7 @@ name: k8s-render
 #           已经有这个 tag 就跳过。镜像里没有 Mojang 的服务端 jar，可以公开。
 #   render：渲染 nixidy 环境，推到 k8s-rendered 分支的 tank/ 下，Argo CD 从那里拉。
 #           排在 images 后面，Argo CD 才不会去拉一个还不存在的镜像。
-# 源码在 minecraft/ 和 k8s/，根 Application 在 nixos/hosts/tank/k3s.nix。
+# 源码在 minecraft/ 和 k8s/，根 Application 在 hosts/tank/k3s.nix。
 # 渲染分支是公开的，里面不能有任何密钥。
 on:
   push:

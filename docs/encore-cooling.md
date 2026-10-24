@@ -1,7 +1,7 @@
 # encore 散热配置
 
 encore 使用 ROG Zephyrus M16 GU603ZM、Intel Core i7-12700H 和 RTX 3060 Laptop GPU。
-配置位于 `nixos/hosts/encore/cooling.nix`，由独立的 NixOS 系统配置管理。
+配置位于 `hosts/encore/cooling.nix`，由独立的 NixOS 系统配置管理。
 
 ## 风扇曲线
 

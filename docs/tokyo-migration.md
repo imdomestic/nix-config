@@ -31,7 +31,7 @@ bridge endpoints continue to match.
 ## Installation
 
 Build on `tank`, never on the 2 GiB target. The disk layout is declared in
-`nixos/hosts/tokyo/disk-config.nix`: GPT, BIOS boot partition, 512 MiB FAT ESP,
+`hosts/tokyo/disk-config.nix`: GPT, BIOS boot partition, 512 MiB FAT ESP,
 4 GiB swap and ext4 root. Disko selects GRUB's `/dev/vda` device; specifying
 it again in hardware configuration would duplicate `mirroredBoots` devices.
 

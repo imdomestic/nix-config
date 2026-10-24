@@ -1,5 +1,5 @@
 # The host registry: one `hosts.<name>` entry per machine, contributed by
-# nixos/hosts/<name>/host.nix. The builders in flake/builders turn each entry
+# hosts/<name>/host.nix. The builders in flake/builders turn each entry
 # into whichever configurations its `kind` asks for, and flake/_lib/host-modules.nix
 # hands the facts to every evaluation as `config.my.host`.
 {lib, ...}: let
@@ -30,12 +30,12 @@
       extraGroups = mkOption {
         type = types.nullOr (types.listOf types.str);
         default = null;
-        description = "Replaces the default groups nixos/modules/users.nix gives the account.";
+        description = "Replaces the default groups system/modules/users.nix gives the account.";
       };
       nixos = mkOption {
         type = types.attrsOf types.raw;
         default = {};
-        description = "Merged into `users.users.<name>` by nixos/modules/users.nix (NixOS and nix-darwin).";
+        description = "Merged into `users.users.<name>` by system/modules/users.nix (NixOS and nix-darwin).";
       };
       ageKey = mkOption {
         type = types.nullOr ageKeyType;

@@ -9,7 +9,7 @@ the traps all live here.
 One flake, four evaluators: NixOS, nix-darwin, standalone Home Manager, and
 system-manager. The flake itself is a flake-parts evaluation: `flake.nix` only
 lists inputs and hands import-tree three sets of files — everything under
-`flake/`, every `nixos/hosts/<name>/host.nix`, every `home/users/<dir>/user.nix`.
+`flake/`, every `hosts/<name>/host.nix`, every `home/users/<dir>/user.nix`.
 Those are top-level (flake-parts) modules. Everything else stays a plain NixOS /
 nix-darwin / Home Manager / system-manager module.
 
@@ -17,7 +17,7 @@ Three top-level tables, each typed, so a misspelled field fails evaluation:
 
 | Table | Entries | Schema |
 | --- | --- | --- |
-| `hosts.<name>` | `nixos/hosts/<name>/host.nix` | `flake/schema/hosts.nix` |
+| `hosts.<name>` | `hosts/<name>/host.nix` | `flake/schema/hosts.nix` |
 | `users.<account>` | `home/users/<dir>/user.nix` | `flake/schema/users.nix` |
 | `placements.<service>` | `flake/placements.nix` | `flake/schema/placements.nix` |
 
@@ -28,7 +28,7 @@ Three top-level tables, each typed, so a misspelled field fails evaluation:
 ### Host registry
 
 ```nix
-# nixos/hosts/example/host.nix
+# hosts/example/host.nix
 {config, inputs, ...}: let
   m = config.flake.modules;
 in {
@@ -145,11 +145,11 @@ flake.nix                       # inputs, and the import-tree roots
 flake/                          # top-level modules: schema/, builders/, modules/, outputs/; _lib/ is plain helpers
 Justfile                        # every rebuild/deploy command
 lib/                            # helpers modules import: nixpkgs-registry.nix pins, wg*, model tables
-modules/shared/                 # host-facts.nix + host-options.nix: the config.my.host / my.fleet schema
-nixos/hosts/<name>/             # host.nix (registry entry) + system.nix + hardware-configuration.nix
-nixos/profiles/                 # base, desktop, server, netdiag, virtualisation — picked by roles
-nixos/modules/                  # system modules: nix*, users, mihomo, monitoring, vfio, …
-darwin/profiles/                # macOS base (pulls in nixos/modules/nix.nix, users, home-manager-cli)
+modules/shared/                 # host-facts, host-options, roles: the config.my.host / my.fleet schema
+hosts/<name>/                   # every machine: host.nix (registry entry) + system.nix + hardware-configuration.nix
+system/profiles/                # NixOS: base, desktop, server, netdiag, virtualisation (picked by roles); darwin.nix is macOS's base
+system/modules/                 # NixOS and nix-darwin modules: nix*, users, ssh, tailscale, monitoring, lidguard, …
+system/installers/              # the x86_64-rescue image
 home/profiles/                  # tiers core, shell, interactive, dev; gui/{common,linux,darwin}
 home/modules/                   # one directory per app: nixvim, ghostty, tmux, vicinae, …
 home/users/<name>/              # user.nix (account table entry), default.nix, dev.nix, nixvim/ and the account's own app modules
@@ -204,9 +204,11 @@ Import these entry files explicitly.
 - `home/profiles/` — the tier bundles (`core`, `shell`, `interactive`, `dev`)
   and the shared GUI bundles (`gui/`). Hosts never list them; the tier and the
   `gui` role pick them.
-- `nixos/{hosts,modules,profiles}/`, `darwin/profiles/`, `modules/shared/` —
-  system-level equivalents.
-- New machines are a `nixos/hosts/<name>/host.nix`, new accounts a
+- `system/{profiles,modules}/` — the system-closure equivalents, NixOS and
+  nix-darwin side by side; which class a module is for is what its
+  `flake.modules.<class>` registration (or its importer) says.
+- `hosts/<name>/` — every machine, whatever its `kind`.
+- New machines are a `hosts/<name>/host.nix`, new accounts a
   `home/users/<dir>/user.nix`. Read host facts from `config.my.host` and fleet
   facts from `config.my.fleet` instead of re-deriving them.
 - An account's differences go in its own directory or in its entry on that
@@ -264,8 +266,8 @@ adds no home-manager module at all.
 - Conversely, a system-level change does not need a home eval to prove it works,
   and a broken home no longer breaks its host's system eval.
 - The two sides meet in exactly three places: `config.my.host`,
-  `nixos/modules/users.nix` (which creates the accounts), and
-  `nixos/modules/home-manager-cli.nix` (which ships the `home-manager` binary so
+  `system/modules/users.nix` (which creates the accounts), and
+  `system/modules/home-manager-cli.nix` (which ships the `home-manager` binary so
   a fresh machine can bootstrap its first activation).
 - **Where a package goes.** Default to `home.packages` in the asking user's
   `home/users/<user>/`; if every account at some tier should have it, the tier
@@ -456,7 +458,7 @@ Pull before touching `flake.lock`.
   `host.nix` or `user.nix` is a host or account that silently does not exist.
 - **import-tree loads every `.nix` under `flake/`** as a flake-parts module.
   Plain helper functions go under `flake/_lib/` (import-tree skips any path
-  containing `/_`). Under `nixos/hosts/` and `home/users/` only files named
+  containing `/_`). Under `hosts/` and `home/users/` only files named
   `host.nix` / `user.nix` load.
 - **Two `config`s.** In `flake/`, `host.nix` and `user.nix`, `config` is the
   flake-level one (`config.hosts`, `config.flake.modules`); inside a module
@@ -482,12 +484,12 @@ Pull before touching `flake.lock`.
   `checkReversePath = false` wherever policy routing or transparent proxying
   runs. Forwarding is not filtered, so a router's firewall does not shield the
   LAN behind it.
-- **sshd takes keys only** (`nixos/modules/ssh/policy.nix`, in the base
-  profile). `nixos/modules/ssh/keys.nix` works for every account, root
+- **sshd takes keys only** (`system/modules/ssh/policy.nix`, in the base
+  profile). `system/modules/ssh/keys.nix` works for every account, root
   included; a key for one account goes in that account's `sshKeys`.
 - **Determinate hosts** (`praxic`, `aegis`, `alex`) set `nix.enable = false`,
   which drops nix-darwin's entire nix module — `nix.settings` and `nix.registry`
-  evaluate to nothing, with no error. `nixos/modules/nix-settings.nix` and
+  evaluate to nothing, with no error. `system/modules/nix-settings.nix` and
   `nix-registry.nix` detect this and route the same values to
   `determinateNix.customSettings` / `determinateNix.registry`. Put shared
   nix.conf values there, never on a host directly.

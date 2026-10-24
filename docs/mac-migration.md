@@ -114,7 +114,7 @@ Nix 安装状态；不要盲目重复创建卷。安装后检查加密和大小�
 
 旧机 `hank` 为 UID 501，原受管 shell 为 `/run/current-system/sw/bin/zsh`；迁移前
 已临时切到 `/bin/zsh`，避免新机尚无 Nix 时账户不能启动 shell。实测新机
-`id -u hank` 后更新 `nixos/hosts/praxic/default.nix`，不要直接更改账户 UID。
+`id -u hank` 后更新 `hosts/praxic/default.nix`，不要直接更改账户 UID。
 
 每次激活前 fetch 并检查配置漂移。分别验证、激活系统与 standalone Home Manager：
 

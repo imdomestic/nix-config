@@ -45,8 +45,8 @@ the backend directly while another model is active.
 
 ## Configuration and storage
 
-- Host: `nixos/hosts/taipan/system.nix` imports
-  `nixos/modules/clef-ollama.nix`.
+- Host: `hosts/taipan/system.nix` imports
+  `system/modules/clef-ollama.nix`.
 - Runtime: official Ollama 0.40.4 container, with NVIDIA CDI and host networking.
 - Unit: `podman-clef.service`, started on demand by llama-swap.
 - Persistent model directory: `/var/lib/clef-ollama`.

@@ -4,18 +4,18 @@
 {
   flake.modules.nixos = {
     # profiles
-    base = ../../nixos/profiles/base.nix;
-    desktop = ../../nixos/profiles/desktop.nix;
-    netdiag = ../../nixos/profiles/netdiag.nix;
-    server = ../../nixos/profiles/server.nix;
-    virtualisation = ../../nixos/profiles/virtualisation.nix;
+    base = ../../system/profiles/base.nix;
+    desktop = ../../system/profiles/desktop.nix;
+    netdiag = ../../system/profiles/netdiag.nix;
+    server = ../../system/profiles/server.nix;
+    virtualisation = ../../system/profiles/virtualisation.nix;
 
-    bonsai-conversion = ../../nixos/modules/bonsai-conversion.nix;
-    bonsai-ninfer = ../../nixos/modules/bonsai-ninfer.nix;
-    bonsai-tailnet = ../../nixos/modules/bonsai-tailnet.nix;
-    gaoji-worker = ../../nixos/modules/gaoji-worker.nix;
-    linwhite-smb = ../../nixos/modules/linwhite-smb.nix;
-    sudo-pwfeedback = ../../nixos/modules/sudo-pwfeedback.nix;
-    vex = ../../nixos/modules/vex;
+    bonsai-conversion = ../../system/modules/bonsai-conversion.nix;
+    bonsai-ninfer = ../../system/modules/bonsai-ninfer.nix;
+    bonsai-tailnet = ../../system/modules/bonsai-tailnet.nix;
+    gaoji-worker = ../../system/modules/gaoji-worker.nix;
+    linwhite-smb = ../../system/modules/linwhite-smb/nixos.nix;
+    sudo-pwfeedback = ../../system/modules/sudo-pwfeedback.nix;
+    vex = ../../system/modules/vex;
   };
 }

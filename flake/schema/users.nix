@@ -29,7 +29,7 @@ in {
           default = [];
           description = ''
             Public keys that may log in as this account, on every host it has
-            an account on. Keys in nixos/modules/ssh/keys.nix work for every
+            an account on. Keys in system/modules/ssh/keys.nix work for every
             account instead, root included.
           '';
         };

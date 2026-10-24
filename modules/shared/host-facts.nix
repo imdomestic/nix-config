@@ -25,7 +25,7 @@
     default = [];
     example = ["192.168.22.0/24"];
     description = ''
-      这台机器背后的局域网网段,会由 `nixos/modules/tailscale` 向 tailnet
+      这台机器背后的局域网网段,会由 `system/modules/tailscale` 向 tailnet
       广播,让别处的设备直接用局域网 IP 访问那边**没装 tailscale**的主机。
 
       放在 registry 而不是各自的 system.nix,是因为它有**两个**消费方:

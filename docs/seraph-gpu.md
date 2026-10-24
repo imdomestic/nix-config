@@ -1,6 +1,6 @@
 # seraph SSH 计算节点
 
-`nixos/hosts/seraph/compute.nix` 将系统设为通过 SSH 使用的计算节点，
+`hosts/seraph/compute.nix` 将系统设为通过 SSH 使用的计算节点，
 默认启动目标为 `multi-user.target`。GNOME、GDM、Xserver、音频、打印和
 蓝牙服务均停用。
 

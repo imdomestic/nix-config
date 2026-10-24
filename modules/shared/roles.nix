@@ -4,29 +4,29 @@
 # `roles` is an enum of these names, so a typo fails evaluation.
 {
   server = {
-    description = "Headless service box: nixos/profiles/server.nix (ssh, telemetry, no docs; no graphics unless also `desktop`).";
+    description = "Headless service box: system/profiles/server.nix (ssh, telemetry, no docs; no graphics unless also `desktop`).";
     profiles.nixos = ["server"];
   };
   desktop = {
-    description = "Has a graphical session: nixos/profiles/desktop.nix (GNOME, pipewire, input method) on NixOS; a label on macOS.";
+    description = "Has a graphical session: system/profiles/desktop.nix (GNOME, pipewire, input method) on NixOS; a label on macOS.";
     profiles.nixos = ["desktop"];
   };
   router = {
-    description = "Router or gateway people debug from a shell: nixos/profiles/netdiag.nix.";
+    description = "Router or gateway people debug from a shell: system/profiles/netdiag.nix.";
     profiles.nixos = ["netdiag"];
   };
   vm-host = {
-    description = "Runs VMs and containers: nixos/profiles/virtualisation.nix.";
+    description = "Runs VMs and containers: system/profiles/virtualisation.nix.";
     profiles.nixos = ["virtualisation"];
   };
   gui = {
     description = "Accounts here get their GUI layers (flake/builders/homes.nix).";
   };
   monitor = {
-    description = "Runs a full monitoring stack (nixos/modules/monitoring).";
+    description = "Runs a full monitoring stack (system/modules/monitoring).";
   };
   monitor-gateway = {
-    description = "Runs the Grafana entry point in front of the monitors (nixos/modules/monitoring/gateway.nix).";
+    description = "Runs the Grafana entry point in front of the monitors (system/modules/monitoring/gateway.nix).";
   };
   gpu-compute = {
     description = "GPU compute box; only a monitoring label for now.";
