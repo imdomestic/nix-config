@@ -4,7 +4,6 @@
 {
   flake.modules.homeManager = {
     # tiers (flake/_lib/tiers.nix)
-    core = ../../home/profiles/core.nix;
     shell = ../../home/profiles/shell.nix;
     interactive = ../../home/profiles/interactive.nix;
     dev = ../../home/profiles/dev.nix;

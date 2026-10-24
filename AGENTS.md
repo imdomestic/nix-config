@@ -37,12 +37,13 @@ flake/                  # top-level (flake-parts) modules
   placements.nix        #   where fleet services run
   secrets.nix           #   who reads which sops file; renders .sops.yaml
   _lib/                 #   plain files import-tree skips: host-facts, host-options,
-                        #   roles, tiers, host-modules (the my.host / my.fleet plumbing)
+                        #   roles, tiers, host-modules (the my.host / my.fleet plumbing),
+                        #   home-base (what every home starts with)
 hosts/<name>/           # every machine, whatever its kind: host.nix + system.nix + hardware-configuration.nix
 system/profiles/        # base, server, desktop, netdiag, virtualisation (picked by roles); darwin.nix
 system/modules/         # NixOS and nix-darwin modules side by side
 system/installers/      # the x86_64-rescue image
-home/profiles/          # the tiers core, shell, interactive, dev: tools only, no preferences
+home/profiles/          # the tiers shell, interactive, dev: tools only, no preferences
 home/users/<account>/   # user.nix (table entry), default.nix, dev.nix, <host>.nix; modules/ for the rest
 lib/                    # data and helpers modules import: nixpkgs-registry pins, wg*, model tables
 pkgs/                   # local packages
@@ -156,10 +157,13 @@ The table is keyed by account name; an account called something else on one
 machine gets its own entry reusing the module (`users.a123456` in
 `home/users/fendada/user.nix`). Tiers are `minimal < shell < interactive < dev`
 (`flake/_lib/tiers.nix`): an account's tier on a host is its host-level `tier`
-(else its default), capped by the host's `maxTier`. `flake/builders/homes.nix`
-composes a home as core → shell → interactive → gui profile → the account's
+(else its default), capped by the host's `maxTier`; a home reads its own as
+`config.my.home.tier`. `flake/builders/homes.nix` composes a home as
+`flake/_lib/home-base.nix` → shell → interactive → gui profile → the account's
 module → its dev module → its gui modules → the host's extra modules; GUI
-layers load only on `gui` hosts, from the shell tier up.
+layers load only on `gui` hosts, from the shell tier up. A program an account
+wants only from some tier up switches itself on with `config.my.home.tier`
+(hank's and linwhite's yazi) instead of joining a shared tier.
 
 Accounts share no configuration and no preferences: what one person wants goes
 in `home/users/<account>/`, never into a shared profile for others to opt out

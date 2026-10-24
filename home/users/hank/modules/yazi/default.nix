@@ -1,9 +1,15 @@
-# yazi 的偏好。原来在 home/profiles/interactive.nix 里给所有人;那里现在只在
-# interactive 档以上打开 programs.yazi,档位不到时这些设置不起作用。
+# hank 的 yazi。interactive 档以上才装:nixpkgs 的包装带着一串预览依赖,小机器犯不上。
 {
+  config,
+  lib,
+  ...
+}: {
   programs.yazi = {
+    enable = lib.elem config.my.home.tier ["interactive" "dev"];
     shellWrapperName = "y";
-    settings.theme.flavor = {
+    # flavor 属于 theme.toml。原来写在 settings.theme 下,进的是 yazi.toml,yazi 不认,
+    # kanso 一直没生效。
+    theme.flavor = {
       dark = "kanso-ink";
       light = "kanso-pearl";
     };

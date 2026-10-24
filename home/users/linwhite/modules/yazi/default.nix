@@ -1,7 +1,11 @@
-# yazi 的偏好。原来在 home/profiles/interactive.nix 里给所有人;那里现在只在
-# interactive 档以上打开 programs.yazi,档位不到时这些设置不起作用。
+# yazi:interactive 档以上才装,主题在 ../flat-white/yazi.nix。
 {
+  config,
+  lib,
+  ...
+}: {
   programs.yazi = {
+    enable = lib.elem config.my.home.tier ["interactive" "dev"];
     shellWrapperName = "y";
     settings.theme.flavor = {
       dark = "kanso-ink";
