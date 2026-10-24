@@ -2,7 +2,6 @@
   hosts.gizmo = {
     system = "aarch64-linux";
     kind = "nixos";
-    inChina = true;
     roles = ["server" "router"];
     tsName = "gizmo.inner.imdomestic.com";
     ageKey = "age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq";
