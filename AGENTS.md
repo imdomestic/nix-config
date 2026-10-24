@@ -464,7 +464,14 @@ nix eval --json .#deploy.nodes --apply builtins.attrNames
 - **Builds happen on the initiator.** Nodes do not set `remoteBuild`, so
   deploying a Linux host from a Mac needs `--remote-build` (build on the
   target); `docs/incidents.md#deploy-remote-build` has the history. Never for
-  the small boxes — they go through their builders (above).
+  the small boxes — they go through their builders (above). For hosts in
+  China, even `--remote-build` stalls copying derivations from the Mac: build
+  on tank or r6s instead, as `deploy-built` does
+  (`docs/incidents.md#fleet-rollout-2026-10-25`).
+- **System first, then each home, as separate deploys** (`deploy-system`, then
+  `deploy-home`). A failing home makes deploy-rs revoke the whole node, and
+  reverting the system half can fail, leaving the new system running with the
+  old one as the boot default.
 - **Pass `--skip-checks`.** Without it deploy-rs first runs the flake's checks,
   which takes long and a lot of memory; CI's matrix already checks each node.
 - **A new kernel or GPU driver: `--boot`, then reboot.** `switch` would leave the

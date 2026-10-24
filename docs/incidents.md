@@ -4,6 +4,36 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-25 · 全车队部署:home 失败连带系统、跨境复制 drv 太慢 {#fleet-rollout-2026-10-25}
+
+一次把 12 个 deploy 节点推到 `fdae36e3`(nixpkgs 21a67dc → cd4ea8d 的 9 台用
+`--boot`)。踩到四件事,都会再来:
+
+1. **home 失败会让 deploy-rs 回滚整个节点,系统那一半回滚又失败。** seraph 上
+   `deploy .#seraph` 先切好了系统,linwhite 的 home 在 checkLinkTargets 失败,
+   deploy-rs 随即 revoke 所有 profile:system profile 退回 29、删掉 30,但
+   "reactivate last generation" 报 `No such file or directory`,结果**跑着新系统、
+   开机默认旧系统**。之后一律先 `deploy-system`、再逐个 `deploy-home`。
+2. **两种 home 接管冲突**,都是旧代留下的东西:
+   - opencode 的 `tui.json` 在 44c00a2f(10-18)之前被激活脚本做成可写的真文件,
+     常常还有一份 `tui.json.backup`,备份会覆盖它 → 拒绝。修:`force = true`。
+   - linwhite 的 `~/.config/zsh` 曾是指向 store 的整目录软链接,新代要往里放文件,
+     挪只读文件时报 `Read-only file system`。修:激活前删掉指向 store 的旧链接。
+   一开始以为是 `HOME_MANAGER_BACKUP_EXT` 没生效 —— 其实生效了,是备份目标已存在 /
+   在只读 store 里。
+3. **从 mac 推国内机器,`--remote-build` 卡在复制 drv。** r6s、tank、h610 都在
+   `nix copy --derivation` 上耗了 30–90 分钟(上万个小文件走 tailscale),r6s 以
+   `Broken pipe` 告终。改在当地构建:tank(20 核)给 tank / h610 / tokyo / h310,
+   r6s 给 r6s 和 ARM 小盒子,构建机自己求值、构建,再把成品拷过去;home 也在构建机
+   上 build、`nix copy` 过去、以该用户身份跑 `activate`。
+4. **构建机上 hank 的 known_hosts 不全。** `nixos-rebuild --target-host root@<自己
+   或 rpi4>` 报 `Host key verification failed`,构建已完成、只差拷贝。先
+   `ssh -o StrictHostKeyChecking=accept-new` 一次,或者东西已在目标 store 里时直接
+   `nix-env -p /nix/var/nix/profiles/system --set` + `switch-to-configuration boot`。
+
+还踩了一下自己:`ssh … "bash -s" <<EOF` 里的内层 `ssh` 没加 `-n`,把后面整段脚本
+吞了,任务"成功"结束却什么都没做;zsh 里 `for u in $users` 不按换行拆分。
+
 ## 2026-10-24 · AeroSpace 迁移后旧用户启动项仍在 {#aerospace-legacy-agent}
 
 praxic 同时运行 `org.nixos.aerospace` 和
