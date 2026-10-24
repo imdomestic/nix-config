@@ -47,3 +47,45 @@ initial migration; appearance was applied directly in Rex.
 Use `just hm-dry <host> hank` to review a home generation, and
 `just hm <host> hank` when activating it. A system rebuild does not apply this
 module. Rex remains separately installed; this module does not install the app.
+
+## Tmux keys
+
+`home/modules/rex` generates `init.lua` through `programs.rex.bindings` and
+`extraConfig`. Hank's bindings are in `home/users/hank/rex.nix`. Home activation
+checks the file and reloads an already-running local Rex server.
+
+Each sequence starts with **Ctrl-b**, then the key below. Escape cancels a
+pending prefix. **Ctrl-b Ctrl-b** sends a literal Ctrl-b to the terminal,
+including to a nested remote tmux.
+
+| Key after Ctrl-b | Action |
+| --- | --- |
+| h / j / k / l | Focus left / down / up / right, wrapping at an edge |
+| H / J / K / L | Swap with the neighboring pane; focus follows the original pane |
+| Arrow keys | Move a divider in that direction by 5% of its split |
+| % / " | Split right / down |
+| c | New tab |
+| n / p / 1–9 | Next / previous / numbered tab |
+| , | Rename tab |
+| < / > | Move the current tab backward / forward |
+| z | Toggle pane zoom |
+| o | Focus next pane |
+| x | Close pane using Rex's normal close behavior |
+| ! | Move pane into a new tab |
+| s / $ | Choose / rename session |
+| : | Rex command palette |
+| d | Close the client window; sessions remain on the server |
+| r | Check/reload Rex configuration |
+
+This uses Rex's native key sequences. Its resize unit is a percentage, rather
+than tmux's five rows or columns, and it does not reproduce tmux's 300 ms
+repeat-key table. Press Ctrl-b for each new sequence. Existing macOS shortcuts
+remain available. Tmux's last-window Tab, copy-mode, scratch popup, resurrect,
+thumbs and agent-sidebar bindings are not mapped to unrelated actions.
+
+Validated on Rex 1408 with 39 loaded bindings and one custom action, without
+keymap diagnostics. Live keyboard checks covered both split directions,
+directional focus, swapping unequal panes while preserving split IDs and
+ratios, resizing from 50% to 55%, zoom toggling, tab creation/navigation and tab
+reordering. The generated file was linked and reloaded directly; no full home
+switch was needed. The test session was retained after the user began using it.
