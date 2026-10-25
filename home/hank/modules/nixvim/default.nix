@@ -904,6 +904,7 @@ in {
             content.active = mkRaw ''
               function()
                 local mode, mode_hl = MiniStatusline.section_mode({ trunc_width = 120 })
+                mode = mode:upper()
                 local git = MiniStatusline.section_git({ trunc_width = 40 })
                 local diagnostics = MiniStatusline.section_diagnostics({ trunc_width = 75 })
 
@@ -947,9 +948,9 @@ in {
                 end
 
                 return MiniStatusline.combine_groups({
-                  -- 两端各一格模式色块,照 AstroNvim 的样子。用 █ 靠字色涂满格子,格子背景
+                  -- 两端各一格模式色块,同 AstroNvim。用 █ 靠字色涂满格子,格子背景
                   -- 仍是 Normal,Rex 的 padding 不会跟着变色;背景色或 reverse 都会被拉高。
-                  "%#" .. mode_hl .. "#█ ",
+                  "%#" .. mode_hl .. "#█",
                   { hl = mode_hl, strings = { mode } },
                   { hl = "MiniStatuslineDevinfo", strings = { git } },
                   "%<",
@@ -958,7 +959,7 @@ in {
                   "%=",
                   { hl = "MiniStatuslineFileinfo", strings = { "%S", file_format(), lsp_client() } },
                   { hl = mode_hl, strings = { macro() } },
-                  " %#" .. mode_hl .. "#█",
+                  "%#" .. mode_hl .. "#█",
                 })
               end
             '';
