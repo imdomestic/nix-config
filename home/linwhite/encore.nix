@@ -156,5 +156,6 @@
       sleep 1
       exec ssh "$HOST" "tail -n 50 -F ~/$LOG"
     '')
+    pkgs.bambu-studio
   ];
 }
