@@ -37,10 +37,13 @@ is; anything else goes through resvg, at most 1000 px a side: PNG, JPEG, GIF
 and SVG (on white, with system fonts). resvg-js 2.6.2 does not decode WebP;
 such a picture shows its alt text and the reason.
 
-Pasted pictures come from `$.session.messages({ as: 'api' })`, the
-conversation as the next request carries it, and are matched to the prompt
-row by its text. Pictures pasted before a compaction are gone from it, the
-summary standing in their place, so their rows show none.
+Pasted pictures are matched to the prompt row by its text. The row is drawn
+before it is stored, so its first draw finds none; a `session.append` hook
+keeps the pictures as the prompt is appended and has the rows drawn again.
+Rows from before a reload or a `--continue` are found in
+`$.session.messages({ as: 'api' })`, the conversation as the next request
+carries it. Pictures pasted before a compaction are gone from it, the summary
+standing in their place, so their rows show none.
 
 Limits:
 
@@ -64,8 +67,9 @@ with `NODE_PATH` set to pi-math's (the `node_modules` link inside the folder
 `CLAUDE_CODE_PLUGIN_DIRS` names leads there), and with
 `CLAUDE_CODE_PLUGIN_DIRS` unset, or the installed copy loads beside it.
 
-Verified on 2026-10-25 on praxic (Rex 1443, Claude Code 2.1.310): the eight
-tests pass; the store build, loaded through `CLAUDE_CODE_PLUGIN_DIRS` in an
+Verified on 2026-10-25 on praxic (Rex 1443, Claude Code 2.1.310): the nine
+tests pass; a picture pasted into a fresh session showed under its prompt at
+once; the store build, loaded through `CLAUDE_CODE_PLUGIN_DIRS` in an
 interactive session, drew a display formula and an image line as kitty
 placeholders. Read previews and pasted pictures were checked by eye in the
 development copy the store build was made from.
@@ -75,3 +79,7 @@ blocks into one key, which never matched. The session transcript (the
 `.jsonl`) stores a pasted prompt as its text and its image, so it looked
 right; the API form merges that turn's `<system-reminder>` blocks into the
 same message as further text blocks. Blocks are now matched one by one.
+After that fix the picture of the prompt that tested it did show, but only
+because the mod's reload redrew the transcript; the next pasted picture did
+not, its row having been drawn before the conversation held it. Hence the
+`session.append` hook.

@@ -156,6 +156,34 @@ test('a pasted picture shows under the prompt that carried it', async ($, on) =>
   await ui.unmount()
 })
 
+test('a pasted picture shows once its prompt is stored', async ($, on) => {
+  on('ui.render', { component: 'UserMessage' }, ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>you: {e.props.text}</Text>
+  })
+  on('clock.now', () => ({ value: 10_000 }))
+  // The row is drawn before the conversation holds it.
+  on('session.messages', () => ({ value: [] }))
+
+  const ui = await $.ui.mount(prompt('[Image #5] how big'))
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  await $.session.append({
+    message: {
+      type: 'user',
+      role: 'user',
+      content: [
+        { type: 'text', text: '[Image #5] how big' },
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: DOT } },
+      ],
+    },
+    door: 'prompt',
+    origin: { kind: 'composer' },
+    uuid: 'row-5',
+  })
+  expect((await ui.find({ type: 'Image' }))?.props.alt).toBe('Image #5')
+  await ui.unmount()
+})
+
 test('a prompt with no picture is left to the engine', async ($, on) => {
   on('ui.render', { component: 'UserMessage' }, ($, e) => {
     const { Text } = $.ui.resolve(e)

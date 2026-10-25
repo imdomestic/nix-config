@@ -107,9 +107,9 @@ function filePicture($: EngineInterface, path: string) {
   })
 }
 
-// Pasted pictures, found in the conversation as the model reads it: a user
-// row's image blocks, matched to the row the transcript draws by its text.
-// Being the conversation's, they survive a reload and a --continue.
+// Pasted pictures: a user row's image blocks, matched to the row the
+// transcript draws by its text. Kept as each prompt is appended, and read
+// back from the conversation for rows from before a reload or a --continue.
 type Pasted = { base64: string; mediaType: string }
 let pastedByText = new Map<string, Pasted[]>()
 let indexing: Promise<void> | undefined
@@ -125,22 +125,24 @@ function imageBlock(block: { type: string; [field: string]: unknown }): Pasted[]
     : []
 }
 
+// Whether the row carried pictures. A request merges reminders into the
+// prompt's message as text blocks, so each block is a key of its own.
+function indexRow(content: ReadonlyArray<{ type: string; [field: string]: unknown }>): boolean {
+  const images = content.flatMap(imageBlock)
+  if (images.length === 0) return false
+  const text = content.flatMap(block =>
+    block.type === 'text' && typeof block.text === 'string' && !block.text.startsWith('<system-reminder>')
+      ? [pasteKey(block.text)]
+      : [],
+  )
+  for (const key of [...text, text.join(' ')]) if (key !== '') pastedByText.set(key, images)
+  return true
+}
+
 async function indexPasted($: EngineInterface) {
-  const index = new Map<string, Pasted[]>()
   for (const message of await $.session.messages({ as: 'api' })) {
-    if (message.role !== 'user') continue
-    const images = message.content.flatMap(imageBlock)
-    if (images.length === 0) continue
-    // Reminders arrive as text blocks of the same message, so each block is
-    // a key of its own, the prompt's among them.
-    const text = message.content.flatMap(block =>
-      block.type === 'text' && typeof block.text === 'string' && !block.text.startsWith('<system-reminder>')
-        ? [pasteKey(block.text)]
-        : [],
-    )
-    for (const key of [...text, text.join(' ')]) if (key !== '') index.set(key, images)
+    if (message.role === 'user') indexRow(message.content)
   }
-  pastedByText = index
 }
 
 async function pastedFor($: EngineInterface, text: string, now: number): Promise<Pasted[]> {
@@ -287,6 +289,14 @@ export const register: Register = on => {
         </Box>
       </Box>
     )
+  })
+
+  // A prompt row is drawn before it is stored, so its first draw finds no
+  // pictures: keep them as the row is appended, then draw the rows again.
+  on('session.append', { door: 'prompt' }, async ($, e, next) => {
+    const stored = await next(e)
+    if (e.agentId === undefined && indexRow(e.message.content)) $.ui.invalidate('ui.render')
+    return stored
   })
 
   // A prompt holding "[Image #N]" draws the pictures it carried under it.
