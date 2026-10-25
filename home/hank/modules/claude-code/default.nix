@@ -1,4 +1,12 @@
-{lib, ...}: let
+{
+  lib,
+  pkgs,
+  ...
+}: let
+  inline-media = pkgs.callPackage ../../../../pkgs/claude-inline-media {
+    pi-math = pkgs.callPackage ../../../../pkgs/pi-math {};
+  };
+
   palettes = {
     evergarden-winter = import ../palettes/evergarden-winter.nix;
     kanso-zen = import ../palettes/kanso-zen.nix;
@@ -54,6 +62,10 @@ in {
   # Claude Code 在 tmux 里默认降到 256 色,主题里的浅色会被压成灰。这里的 tmux
   # 客户端带 RGB 能力,真彩色能透传;透传不了的终端 tmux 会自己降色。
   home.sessionVariables.CLAUDE_CODE_TMUX_TRUECOLOR = "1";
+
+  # Claude Code 把这里列的目录当插件原地加载:不经 marketplace,也就没有要在
+  # nix 之外跑的 `claude plugin install`(docs/claude-code-mods.md#inline-media)。
+  home.sessionVariables.CLAUDE_CODE_PLUGIN_DIRS = "${inline-media}";
 
   # HM 的 programs.claude-code 没有 themes 选项。选用要在 /theme 里点一次:
   # settings.json 不归 nix 管(见 hank/default.nix 里 statusline 那段)。

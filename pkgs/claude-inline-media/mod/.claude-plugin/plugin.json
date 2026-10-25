@@ -1,0 +1,5 @@
+{
+  "name": "inline-media",
+  "version": "0.3.0",
+  "description": "Draws math and images in the transcript: display math and read, linked or pasted pictures as images, inline math as Unicode"
+}

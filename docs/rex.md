@@ -167,7 +167,8 @@ placeholders) displayed correctly in a Rex pane, so the same zsh block sets
 of that check, when `TERM_PROGRAM` is `rex`. A Claude Code started before the
 variable was set keeps its own verdict until it restarts. Inside tmux in Rex,
 `TERM_PROGRAM` is `tmux`, the variable is not set, and Claude Code's tmux
-rules apply.
+rules apply. The mod that draws math and pictures this way:
+[claude-code-mods.md](claude-code-mods.md#inline-media).
 
 ## Opening Rex from AeroSpace
 
