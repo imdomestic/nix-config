@@ -154,6 +154,21 @@ start and exit status. The directory report is verified: before the hook,
 Previous/Next Prompt and the program status protocol's prompt-time cleanup
 rely on; those were not yet checked in the app.
 
+## Claude Code pictures
+
+Claude Code 2.1.310 draws an image (a mod's `Image` element, for one) only
+when the terminal answers its kitty graphics query and its XTVERSION reply
+names `kitty` 0.28 or later or `ghostty`; anywhere else it draws the image's
+alt text. Rex answers the query, but its XTVERSION is `rex <version>`, so
+Claude Code drew text, although Rex's emulator is libghostty. On 2026-10-25 a
+picture sent the way Claude Code sends one (`a=T,U=1`, kitty Unicode
+placeholders) displayed correctly in a Rex pane, so the same zsh block sets
+`CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1`, the switch Claude Code reads in place
+of that check, when `TERM_PROGRAM` is `rex`. A Claude Code started before the
+variable was set keeps its own verdict until it restarts. Inside tmux in Rex,
+`TERM_PROGRAM` is `tmux`, the variable is not set, and Claude Code's tmux
+rules apply.
+
 ## Opening Rex from AeroSpace
 
 `alt-enter` asks the Rex app for a new window, which comes with a new session,

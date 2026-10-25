@@ -110,6 +110,14 @@ in {
         preexec_functions+=(__rex_preexec)
       fi
     '')
+    # Claude Code draws pictures only where XTVERSION names kitty or Ghostty;
+    # Rex says "rex", though it draws kitty placeholder images
+    # (docs/rex.md#claude-code-pictures).
+    (lib.mkOrder 2000 ''
+      if [[ $TERM_PROGRAM == rex ]]; then
+        export CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1
+      fi
+    '')
   ];
 
   programs.rex = {
