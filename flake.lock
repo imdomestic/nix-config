@@ -1083,11 +1083,11 @@
         "systems": "systems_3"
       },
       "locked": {
-        "lastModified": 1792974897,
-        "narHash": "sha256-HYu0sX22wU5MqAE0wCiMUaw5oEJ0lsISirFs4uUquow=",
+        "lastModified": 1792988373,
+        "narHash": "sha256-DgSArcVf0pIWaDH65ilxPyOonpWrW+Gg5nQhUmfuOhA=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "f55592495e7e40121f4b6e4a627b686970b07da8",
+        "rev": "c3491f48a6ad819512ac75fb31e6360ed0fe824b",
         "type": "github"
       },
       "original": {
