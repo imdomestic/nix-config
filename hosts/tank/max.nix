@@ -160,6 +160,12 @@
           "api_key" = config.sops.placeholder."max/llm-profiles-gemini-3.8-flash-api-key";
           "base_url" = cliproxy.baseUrl;
           "model" = "gemini-3.8-flash-high";
+          # Subscription-backed, so a long context costs latency and rate
+          # limit rather than money. The budget sizes each turn's opening
+          # context (a busy group's last 3-6 days of raw chat); tool loops get
+          # the whole 1M window.
+          "context_window" = 1048576;
+          "context_budget" = 262144;
           "effort" = "high";
           "timeout_seconds" = 300;
           "multimodal" = true;
