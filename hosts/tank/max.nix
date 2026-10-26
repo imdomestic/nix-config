@@ -181,11 +181,11 @@
           "base_url" = cliproxy.baseUrl;
           "model" = "vertex/gemini-4-argon";
           # The real 1M window: the 128K default compacted long sandbox loops
-          # into rereading the same files. The budget keeps the context each
-          # turn starts with at the old default's size; tool loops still get
-          # the whole window.
+          # into rereading the same files. The budget sizes the context each
+          # turn starts with, which is paid on every call; tool loops still
+          # get the whole window.
           "context_window" = 1048576;
-          "context_budget" = 98304;
+          "context_budget" = 196608;
           "effort" = "high";
           "timeout_seconds" = 300;
           "multimodal" = true;
