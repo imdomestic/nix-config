@@ -8,7 +8,8 @@
   ...
 }: let
   cliproxy = import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
-  secretNames = ["qq-app-id" "qq-app-secret"];
+  # owners: `qq:<user_openid>` per line, from the private chat's endpoint.
+  secretNames = ["qq-app-id" "qq-app-secret" "owners"];
   secret = name: config.sops.secrets."maxx/${name}".path;
 in {
   sops.secrets =
@@ -30,6 +31,7 @@ in {
   services.maxx = {
     enable = true;
     settings = {
+      owners_file = secret "owners";
       llm = {
         default = {
           model = "cliproxy/gemini-3.8-flash-high";
