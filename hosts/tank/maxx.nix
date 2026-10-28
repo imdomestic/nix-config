@@ -31,6 +31,9 @@ in {
 
   services.maxx = {
     enable = true;
+    # The groups' VMs, where the tools run: 32 at a time, 2 vCPUs and
+    # 4 GiB each, on taps from 10.235.0.0/24.
+    vm.enable = true;
     settings = {
       owners_file = secret "owners";
       llm = {

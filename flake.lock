@@ -1296,16 +1296,17 @@
         "advisory-db": "advisory-db",
         "crane": "crane",
         "devenv": "devenv_2",
+        "microvm": "microvm_2",
         "nixpkgs": "nixpkgs_7",
         "rust-overlay": "rust-overlay_3",
         "systems": "systems_4"
       },
       "locked": {
-        "lastModified": 1793210023,
-        "narHash": "sha256-9U9waQiNWz0cx8dQmTt9DpOjAm6E5o2ny1ZEI8ZlXLA=",
+        "lastModified": 1793231052,
+        "narHash": "sha256-A/DKsIbEayopnOyJdI8e7zNyJCmFd1lXZoKoAopcBro=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "228d24e91cd1a072fc9e09c1d8b87d5d8bb3b5b4",
+        "rev": "60892766bcca5d109f20fcbafd8e456e80e0e4fe",
         "type": "github"
       },
       "original": {
@@ -1336,6 +1337,28 @@
       },
       "original": {
         "owner": "astro",
+        "repo": "microvm.nix",
+        "type": "github"
+      }
+    },
+    "microvm_2": {
+      "inputs": {
+        "nixpkgs": [
+          "maxx",
+          "nixpkgs"
+        ],
+        "spectrum": "spectrum"
+      },
+      "locked": {
+        "lastModified": 1792810338,
+        "narHash": "sha256-0DS+A3BsygKRpKe0qmUWVDSfKqpIHZCpHJagAklE0o4=",
+        "owner": "microvm-nix",
+        "repo": "microvm.nix",
+        "rev": "4876e2ae2de6ce225f4ccf664ae441128aa3f03a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "microvm-nix",
         "repo": "microvm.nix",
         "type": "github"
       }
@@ -2731,6 +2754,22 @@
         "owner": "Mic92",
         "repo": "sops-nix",
         "type": "github"
+      }
+    },
+    "spectrum": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1786032750,
+        "narHash": "sha256-+Ba/kIn5BjvV7PN8bWOo7RoqgTY/Yv2M7qeMf3wS2Ag=",
+        "ref": "refs/heads/main",
+        "rev": "77d2389874bb092b8dbf05ecc5b1030372e80e98",
+        "revCount": 1417,
+        "type": "git",
+        "url": "https://spectrum-os.org/git/spectrum"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://spectrum-os.org/git/spectrum"
       }
     },
     "steam-fetcher": {
