@@ -1,5 +1,6 @@
-# The Rust rewrite of Max, running beside the Haskell max as a separate
-# stack: its own user, database, directories and units, all named maxx.
+# The Rust rewrite of Max, as its own stack: its own user, database,
+# directories and units, all named maxx. The Haskell max is gone from tank;
+# its database and /var/lib/max stay for maxx's import.
 # Design: docs/rust-rewrite.md on the max repo's maxx branch. It reaches QQ
 # through Tencent's official bot API, as the bot maxx.
 {
@@ -19,7 +20,7 @@ in {
       restartUnits = ["maxx.service"];
     })
     // {
-      # The Haskell max's key for cliproxy, read as maxx.
+      # The key the Haskell max had for cliproxy, still under its name.
       "maxx/cliproxy-api-key" = {
         sopsFile = ../../secrets/hosts/tank-max.yaml;
         key = "llm-profiles-gemini-3.8-flash-api-key";
@@ -42,7 +43,6 @@ in {
           model = "cliproxy/gemini-3.8-flash-high";
           effort = "high";
         };
-        # The Haskell max's classifier too: one slot, so the two queue.
         intent.model = "h610/qwen3.5-4b-q4_k_m";
         providers = {
           cliproxy = {

@@ -11,7 +11,7 @@
     ageKey = "age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs";
     clusterControl = {
       enable = true;
-      manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service" "gaoji-cluster-worker.service" "max.service" "max-napcat.service"];
+      manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service" "gaoji-cluster-worker.service"];
     };
     ip = "10.0.0.66";
     sshUser = "root";
@@ -21,13 +21,11 @@
       ./vex-archive.nix
       ./gaoji.nix
       ./gaoji-web.nix
-      ./max.nix
       ./maxx.nix
       ../../system/modules/gaoji-worker.nix
     ];
 
     externalModules = [
-      inputs.max.nixosModules.max
       inputs.maxx.nixosModules.maxx
       inputs.qq-bot.nixosModules.gaoji
       inputs.nix-minecraft.nixosModules.minecraft-servers

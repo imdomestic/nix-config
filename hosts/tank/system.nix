@@ -352,17 +352,17 @@ in {
     # 本地怎么试都复现不出来。
     firewall = {
       enable = true;
-      # 只信任本机的容器 / 虚拟机网卡:k3s(cni0、flannel.1)、libvirt(virbr0)、
-      # max 的沙箱网桥和 operations 口。br-lan 上有公网 IPv6,按端口放。
-      trustedInterfaces = ["cni0" "flannel.1" "virbr0" "max-sb-native" "max-ops-host"];
+      # 只信任本机的容器 / 虚拟机网卡:k3s(cni0、flannel.1)、libvirt(virbr0)。
+      # br-lan 上有公网 IPv6,按端口放。
+      trustedInterfaces = ["cni0" "flannel.1" "virbr0"];
       checkReversePath = false;
       interfaces = {
         # 局域网文件目录(nginx 的 tank.local)。
         br-lan.allowedTCPPorts = [80];
-        # tank.local、NFS(exports 给的是 tailnet 地址)、k3s API、max 管理面板、
+        # tank.local、NFS(exports 给的是 tailnet 地址)、k3s API、
         # matrix(h610 的 nginx 经 tailnet 反代)、cliproxy、ollama、
         # gaoji bot(h610 的 nginx / napcat 来连)。
-        tailscale0.allowedTCPPorts = [80 2049 6443 7700 8008 8317 11434 18080];
+        tailscale0.allowedTCPPorts = [80 2049 6443 8008 8317 11434 18080];
         # k3s 的 node-ip 在 wg0 上;luckperms 的 postgres(pg_hba 放了
         # 10.0.0.0/24);tokyo DNAT 过来的 cs2。
         wg0 = {
@@ -370,11 +370,10 @@ in {
           allowedUDPPorts = [8472 27015];
         };
       };
-      # nspawn 容器(ve-gaoji-web、vb-debian-guest)和每个 max 沙箱自己的 veth。
+      # nspawn 容器(ve-gaoji-web、vb-debian-guest)。
       extraInputRules = ''
         iifname "ve-*" accept
         iifname "vb-*" accept
-        iifname "max-sb-*" accept
       '';
     };
   };
@@ -501,6 +500,9 @@ in {
     enable = true;
     dataDir = "/data/lib/postgresql/${config.services.postgresql.package.psqlSchema}";
     ensureDatabases = ["luckperms" "minecraft" "matrix-synapse"];
+    # 旧 max(Haskell)的库 `max` 留着给 maxx 导入,它的表用了 vector 类型;
+    # 导完之前别去掉。
+    extensions = ps: [ps.pgvector];
     enableTCPIP = true;
     settings.password_encryption = "scram-sha-256";
     ensureUsers = [
