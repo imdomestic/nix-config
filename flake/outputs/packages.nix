@@ -35,6 +35,7 @@ in {
       tmux-agent-sidebar = agentSidebar nixos.rpi4;
     };
     x86_64-linux = {
+      cliproxy-rewind = nixos.tank.config.services.cliproxy.rewind.package;
       bonsai-convert-env = nixos.seraph.pkgs.callPackage ../../pkgs/bonsai-convert-env {};
       vfio-igd-rom = nixos."268v".config.my.windowsVM.igdROM;
       # 在 taipan 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。

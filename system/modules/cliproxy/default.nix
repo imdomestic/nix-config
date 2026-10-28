@@ -8,6 +8,8 @@
   cfg = config.services.cliproxy;
   configPath = config.sops.templates."cli-proxy-api.yaml".path;
 in {
+  imports = [./rewind.nix];
+
   options.services.cliproxy = {
     enable = lib.mkEnableOption "CLIProxyAPI:把 Codex/Claude 等订阅制 CLI 的 OAuth 凭据包装成 OpenAI 兼容 API";
 
@@ -110,6 +112,15 @@ in {
           # 账号)只服务 "vertex/..." 这种显式点名的请求。默认 false 时,不带前缀的
           # gemini-3-flash 之类也会轮询到它头上,按 token 花 GCP 的钱。
           force-model-prefix: true
+
+        ${lib.optionalString cfg.rewind.enable ''
+          plugins:
+            enabled: true
+            dir: "${cfg.rewind.package}/lib"
+            configs:
+              rewind:
+                enabled: true
+        ''}
 
         debug: false
       '';

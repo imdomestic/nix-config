@@ -4,6 +4,21 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-28 · Rewind 在 Linux 上交换会话返回 401 {#rewind-desktop-platform}
+
+`pkgs/cliproxy-rewind/` 的原生 Responses 插件在 Mac 临时实例上通过了流式响应和
+工具调用,迁到 tank 后却在 `/api/v1/rewind/sessions` 返回 401
+`REWIND_AUTH_DENIED`;前面的 challenge 仍然是 200。
+
+误导点是把 Mac 的成功当成了跨平台协议验证。最初怀疑设备注册或连接路径,
+实际在 tank 上用官方客户端认证代码逐项对照:同一密钥、同一设备,IPv4 和 IPv6
+都拒绝 `platform=linux`,换成 `platform=darwin` 就返回 verified。
+
+会话里的平台字段要使用桌面协议兼容标识,不能直接取网关的 `GOOS`。修正后在
+tank 原生构建插件,通过 CLIProxyAPI 8.0.45 的 Responses 流式、JSON、函数调用、
+函数结果续接和断连测试;续接返回 42,Go race 检查通过。配置与状态位置见
+`docs/rewind.md`。
+
 ## 2026-10-25 · 全车队部署:home 失败连带系统、跨境复制 drv 太慢 {#fleet-rollout-2026-10-25}
 
 一次把 12 个 deploy 节点推到 `fdae36e3`(nixpkgs 21a67dc → cd4ea8d 的 9 台用

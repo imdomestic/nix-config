@@ -35,12 +35,20 @@ in {
   services.cliproxy = {
     enable = true;
     bindAddress = config.my.host.tsName;
+    rewind = {
+      enable = true;
+      apiKeyFile = config.sops.secrets."rewind/api_key".path;
+    };
   };
   my.tailscale.bindServices = ["cliproxy"];
   # 管理口令和 Max 读的是同一个值,tank 上只留 tank-max.yaml 这一份。
   sops.secrets."cliproxy/management_key" = {
     sopsFile = ../../secrets/hosts/tank-max.yaml;
     key = "cliproxy-management-key";
+  };
+  sops.secrets."rewind/api_key" = {
+    owner = "cliproxy";
+    restartUnits = ["cliproxy.service"];
   };
 
   # 监控的第一份。**开关不在这里** —— my.monitoring.enable 默认读 registry 里
