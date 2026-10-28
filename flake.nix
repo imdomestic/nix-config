@@ -102,6 +102,8 @@
     };
 
     max.url = "github:HCHogan/max";
+    # The Rust rewrite, on tank as maxx beside the Haskell max.
+    maxx.url = "github:HCHogan/max/maxx";
 
     qq-bot = {
       url = "github:zty20040403/gaojibot";

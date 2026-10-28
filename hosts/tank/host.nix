@@ -22,11 +22,13 @@
       ./gaoji.nix
       ./gaoji-web.nix
       ./max.nix
+      ./maxx.nix
       ../../system/modules/gaoji-worker.nix
     ];
 
     externalModules = [
       inputs.max.nixosModules.max
+      inputs.maxx.nixosModules.maxx
       inputs.qq-bot.nixosModules.gaoji
       inputs.nix-minecraft.nixosModules.minecraft-servers
       inputs.nix-index-database.nixosModules.default
