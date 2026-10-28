@@ -37,6 +37,11 @@ in {
           model = "cliproxy/gemini-3.8-flash-high";
           effort = "high";
         };
+        # Summarizes the groups' history; without it nothing is summarized.
+        historian = {
+          model = "cliproxy/gemini-3.8-flash-high";
+          effort = "high";
+        };
         # The Haskell max's classifier too: one slot, so the two queue.
         intent.model = "h610/qwen3.5-4b-q4_k_m";
         providers = {
