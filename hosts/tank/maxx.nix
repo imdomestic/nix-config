@@ -66,6 +66,12 @@ in {
           effort = "high";
         };
         intent.model = "h610/qwen3.5-4b-q4_k_m";
+        # Says what each new picture and sticker shows; the Haskell max's
+        # captioner too.
+        caption = {
+          model = "cliproxy-responses/gpt-5.6-luna";
+          effort = "low";
+        };
         # The Haskell max's models that see pictures, for /model; maxx
         # takes every model to see them. A window nobody wrote down is the
         # Haskell max's default, 131072.
