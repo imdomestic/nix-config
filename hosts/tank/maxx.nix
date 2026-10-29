@@ -72,6 +72,12 @@ in {
           model = "cliproxy-responses/gpt-5.6-luna";
           effort = "low";
         };
+        # Background agents: pi in the groups' VMs, its model calls
+        # forwarded by maxx with this provider's key.
+        job = {
+          model = "cliproxy/gemini-3.8-flash-high";
+          effort = "high";
+        };
         # The Haskell max's models that see pictures, for /model; maxx
         # takes every model to see them. A window nobody wrote down is the
         # Haskell max's default, 131072.
