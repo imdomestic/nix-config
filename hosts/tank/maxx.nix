@@ -27,6 +27,13 @@ in {
         owner = "maxx";
         restartUnits = ["maxx.service"];
       };
+      # web_search's, Exa's: the Haskell max's, under its name.
+      "maxx/exa-api-key" = {
+        sopsFile = ../../secrets/hosts/tank-max.yaml;
+        key = "search-exa-api-key";
+        owner = "maxx";
+        restartUnits = ["maxx.service"];
+      };
     };
 
   services.maxx = {
@@ -69,6 +76,7 @@ in {
         app_id_file = secret "qq-app-id";
         app_secret_file = secret "qq-app-secret";
       };
+      search.api_key_file = secret "exa-api-key";
     };
   };
 }
