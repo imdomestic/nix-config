@@ -1302,11 +1302,11 @@
         "systems": "systems_4"
       },
       "locked": {
-        "lastModified": 1793235465,
-        "narHash": "sha256-MTqVIq8ZDFRts7OI9sLtDaW+/jvf8S64M+ViM2SrRvg=",
+        "lastModified": 1793235877,
+        "narHash": "sha256-QSsIDaIXtMyQKwXmRkNFnZX04srhWp+0fAy+stMRO3U=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "66bfca40ad6ab69682e87c81880af1ac71812595",
+        "rev": "827004157aa0ae90a1e5edd119105d471510ef74",
         "type": "github"
       },
       "original": {
