@@ -34,6 +34,18 @@ in {
         owner = "maxx";
         restartUnits = ["maxx.service"];
       };
+    }
+    # The other providers' keys the Haskell max had, under its profiles'
+    # names; one profile's for a provider whose profiles share a key.
+    // lib.mapAttrs' (name: profile:
+      lib.nameValuePair "maxx/${name}-api-key" {
+        sopsFile = ../../secrets/hosts/tank-max.yaml;
+        key = "llm-profiles-${profile}-api-key";
+        owner = "maxx";
+        restartUnits = ["maxx.service"];
+      }) {
+      taipan = "qwen3.8-27b";
+      deepseek = "deepseek-v4-flash-vision-exp";
     };
 
   services.maxx = {
@@ -54,16 +66,50 @@ in {
           effort = "high";
         };
         intent.model = "h610/qwen3.5-4b-q4_k_m";
+        # The Haskell max's models that see pictures, for /model; maxx
+        # takes every model to see them. A window nobody wrote down is the
+        # Haskell max's default, 131072.
         providers = {
           cliproxy = {
             base_url = cliproxy.baseUrl;
             protocol = "chat";
             api_key_file = secret "cliproxy-api-key";
-            models."gemini-3.8-flash-high" = {
-              context_window = cliproxy.gemini.context;
-              max_output = cliproxy.gemini.models."gemini-3.8-flash-high".output;
+            models = {
+              "gemini-3.8-flash-high" = {
+                context_window = cliproxy.gemini.context;
+                max_output = cliproxy.gemini.models."gemini-3.8-flash-high".output;
+              };
+              # Vertex AI, on the GCP trial's credit.
+              "vertex/gemini-4-argon".context_window = 1048576;
             };
           };
+          # The same cliproxy and key; GPT's reasoning only round-trips
+          # through Responses.
+          cliproxy-responses = {
+            base_url = cliproxy.baseUrl;
+            protocol = "responses";
+            api_key_file = secret "cliproxy-api-key";
+            models = lib.genAttrs ["gpt-6-astra" "gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna"] (_: {
+              context_window = cliproxy.gpt.context;
+              max_output = cliproxy.gpt.output;
+            });
+          };
+          taipan = {
+            base_url = "http://taipan.inner.imdomestic.com:8000/v1";
+            protocol = "chat";
+            api_key_file = secret "taipan-api-key";
+            models."qwen3.8-27b".context_window = 262144;
+          };
+          deepseek = {
+            base_url = "https://api.deepseek.com/v1";
+            protocol = "chat";
+            api_key_file = secret "deepseek-api-key";
+            models."deepseek-v4-flash-vision-exp".context_window = 131072;
+          };
+          # Not here, as of 2026-10-29: grok-4.5 (its relay answers 403
+          # "Task APIs are private during staging deployment"), and
+          # opencode's kimi-k3, kimi-k2.7-code and minimax-m3 (the key has
+          # expired, and opencode now wants an x-opencode-session header).
           h610 = {
             base_url = "http://h610.inner.imdomestic.com:11435/v1";
             protocol = "chat";
