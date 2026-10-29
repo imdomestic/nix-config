@@ -129,6 +129,12 @@ in {
         app_secret_file = secret "qq-app-secret";
       };
       search.api_key_file = secret "exa-api-key";
+      # The sticker library's vectors: bge-m3 on h610's Ollama, the model
+      # the Haskell max's vectors were made with.
+      embedding = {
+        base_url = "http://h610.inner.imdomestic.com:11434/v1";
+        model = "bge-m3";
+      };
     };
   };
 }
