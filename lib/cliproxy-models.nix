@@ -20,6 +20,13 @@
       "gpt-5.5"
     ];
   };
+  # tank 的 Rewind 插件(docs/rewind.md):键是 CLIProxy 上的 id,值是插件发给
+  # 上游的别名(gpt.ids 里的同名模型)。输出上限照插件在 /v1/models 声明的 96000。
+  rewind = {
+    inherit (gpt) context input;
+    output = 96000;
+    models."rewind/gpt-6-astra" = "gpt-6-astra";
+  };
   gemini = {
     context = 1048576;
     models = {

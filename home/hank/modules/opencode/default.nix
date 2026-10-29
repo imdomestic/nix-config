@@ -167,17 +167,20 @@ in {
           baseURL = cliproxy.baseUrl;
           apiKey = "{file:${config.sops.secrets."cliproxy/api_key".path}}";
         };
-        models =
-          lib.genAttrs cliproxy.gpt.ids (model: {
+        models = let
+          gpt = limits: model: {
             name = model;
             reasoning = true;
             tool_call = true;
-            limit = {inherit (cliproxy.gpt) context input output;};
+            limit = {inherit (limits) context input output;};
             modalities = {
               input = ["text" "image"];
               output = ["text"];
             };
-          })
+          };
+        in
+          lib.genAttrs cliproxy.gpt.ids (gpt cliproxy.gpt)
+          // lib.genAttrs (lib.attrNames cliproxy.rewind.models) (gpt cliproxy.rewind)
           // lib.mapAttrs (_: model: {
             inherit (model) name;
             reasoning = true;

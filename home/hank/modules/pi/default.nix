@@ -130,17 +130,20 @@ in {
         api = "openai-responses";
         # `!` 前缀让 pi 每次请求时执行命令取 key，明文不进 store。
         apiKey = "!${pkgs.coreutils}/bin/cat ${config.sops.secrets."cliproxy/api_key".path}";
-        models =
-          map (id: {
+        models = let
+          # Rewind 的 id 带前缀,推理档位和估价跟着它的上游别名 `base` 走。
+          gpt = limits: id: base: {
             inherit id;
             reasoning = true;
-            thinkingLevelMap = gptLevels id;
+            thinkingLevelMap = gptLevels base;
             input = ["text" "image"];
-            contextWindow = cliproxy.gpt.context;
-            maxTokens = cliproxy.gpt.output;
-            cost = pricing.${id};
-          })
-          cliproxy.gpt.ids
+            contextWindow = limits.context;
+            maxTokens = limits.output;
+            cost = pricing.${base};
+          };
+        in
+          map (id: gpt cliproxy.gpt id id) cliproxy.gpt.ids
+          ++ lib.mapAttrsToList (gpt cliproxy.rewind) cliproxy.rewind.models
           ++ lib.mapAttrsToList (id: model: {
             inherit id;
             inherit (model) name;
