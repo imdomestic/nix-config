@@ -107,14 +107,14 @@ in {
 
       gaps = {
         inner = {
-          horizontal = 10;
-          vertical = 10;
+          horizontal = 8;
+          vertical = 8;
         };
         outer = {
-          left = 10;
-          bottom = 10;
-          top = 10;
-          right = 10;
+          left = 8;
+          bottom = 8;
+          top = 8;
+          right = 8;
         };
       };
     };
