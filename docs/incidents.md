@@ -105,6 +105,11 @@ praxic 的 `home/hank/modules/rex/tailnet-relay.nix` 将 tailnet TCP 7297 转发
 Unix socket 上接收请求,补上令牌后转给 Tailscale.app,再用
 `--tailscaled-socket` 指向它。要把 relay 换成 `tailnet://`,得先解决这件事。
 
+结局:2026-10-31 iPhone 上的 Rex 更新到新版本后,经原 7297 relay 连同一个 1651
+server(PID 60878,未重启)即可正常显示终端。server 日志里 10:16 的数据连接
+持续了 1 分 14 秒,前一天 17:10 之后再没有出现 `refusing data client`。
+repo 与 server 两边都没有改动,确认问题就在 iOS 1577。
+
 ## 2026-10-28 · Rewind 在 Linux 上交换会话返回 401 {#rewind-desktop-platform}
 
 `pkgs/cliproxy-rewind/` 的原生 Responses 插件在 Mac 临时实例上通过了流式响应和
