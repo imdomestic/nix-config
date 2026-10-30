@@ -2,6 +2,7 @@
 {pkgs, ...}: {
   imports = [
     ./modules/postgresql
+    ./modules/rex/tailnet-relay.nix
     ./modules/tailscale
   ];
 

@@ -177,3 +177,27 @@ then brings Rex to the front. This needs **Remote Control** under Rex Server in
 Rex's settings; without it, or when Rex is not running, the CLI call fails and
 `alt-enter` only opens or raises Rex. The previous binding launched kitty,
 which was not installed.
+
+## Tailnet access on praxic {#tailnet-access}
+
+Hank's `home/hank/praxic.nix` loads `modules/rex/tailnet-relay.nix`. Its
+Home Manager launch agent, `org.nix-community.home.rex-tailnet-relay`, forwards
+TCP port 7297 on the Mac's Tailscale IPv4 address to the existing Rex Unix
+socket. It starts at login and restarts after exit, retrying every 30 seconds
+if Tailscale is not ready. It does not start or restart Rex itself.
+
+Connect from Rex for iOS with Tailscale enabled, using
+`http://praxic.inner.imdomestic.com:7297` (currently `http://100.64.0.9:7297`).
+The relay binds only the Tailscale address and accepts sources in
+`100.64.0.0/10`; Tailscale encrypts the HTTP connection. As requested, every
+tailnet device that network policy permits can connect. Rex sees the relay as
+the local Hank user, so those devices have full access to Hank's Rex sessions,
+without separate Rex authentication.
+
+The Mac must be awake, Hank logged in, and the Rex server running. Logs are in
+`~/Library/Logs/rex-tailnet-relay.log`. To inspect or restart the relay:
+
+```sh
+launchctl print gui/$(id -u)/org.nix-community.home.rex-tailnet-relay
+launchctl kickstart -k gui/$(id -u)/org.nix-community.home.rex-tailnet-relay
+```
