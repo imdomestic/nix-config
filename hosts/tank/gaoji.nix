@@ -7,6 +7,14 @@
 }: let
   cfg = config.services.gaoji;
   runtimeDir = "/home/kenneth/services/gaoji";
+  modelProfiles = import ../../lib/gaoji-model-profiles.nix {
+    placement = config.my.fleet.placements.cliproxy;
+  };
+  modelEnvironment = pkgs.writeText "gaoji-models.env" ''
+    AI_MODEL_DEFAULT_PROFILE=gpt-6.1-sol
+    AI_SIMPLE_CHAT_PROFILE=gpt-6-luna
+    AI_MODEL_PROFILES_JSON='${builtins.toJSON modelProfiles}'
+  '';
 in {
   # Bot, QQ transport and KVM workspaces run together on tank.
   services.gaoji = {
@@ -121,6 +129,7 @@ in {
         "${runtimeDir}/runtime.env"
         config.sops.templates."gaoji-tank-postgres.env".path
         "${runtimeDir}/qq-official/owner.env"
+        modelEnvironment
       ];
       ReadWritePaths = ["/data/services/gaoji" "/data/services/kennethbot-archive"];
     };

@@ -15,77 +15,9 @@
     if config.services.gaoji.runBot
     then "172.17.0.1"
     else "100.64.0.4";
-  mkCliProxyProfile = model: aliases: {
-    provider = "cliproxy";
-    protocol = "openai-chat";
-    base_url = (import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;}).baseUrl;
-    api_key_env = "CLIPROXY_API_KEY";
-    inherit model aliases;
-    timeout_seconds = 180;
-    thinking = "auto";
-    capabilities = {
-      tools = true;
-      streaming = true;
-      json_mode = true;
-      vision = true;
-    };
-  };
-  qqBotModelProfiles = builtins.toJSON {
-    default = "deepseek";
-    profiles = {
-      deepseek = {
-        provider = "deepseek";
-        protocol = "openai-chat";
-        base_url = "https://api.deepseek.com";
-        api_key_env = "DEEPSEEK_API_KEY";
-        model = "deepseek-v4-flash";
-        thinking = "disabled";
-        aliases = ["default" "ds" "flash"];
-      };
-      "deepseek-pro" = {
-        provider = "deepseek";
-        protocol = "openai-chat";
-        base_url = "https://api.deepseek.com";
-        api_key_env = "DEEPSEEK_API_KEY";
-        model = "deepseek-v4-pro";
-        thinking = "disabled";
-        aliases = ["pro"];
-      };
-      "qwen-local" = {
-        provider = "qwen";
-        protocol = "openai-chat";
-        base_url = "http://taipan.inner.imdomestic.com:8000/v1";
-        api_key_required = false;
-        model = "qwen3.8-27b";
-        timeout_seconds = 300;
-        thinking = "enabled";
-        circuit_breaker_enabled = false;
-        aliases = ["qwen" "qwen27b"];
-        fallback_profiles = [
-          "deepseek"
-          "gpt-5.6-luna"
-          "gpt-5.6-terra"
-          "gpt-5.6-sol"
-        ];
-        capabilities = {
-          tools = true;
-          forced_tool_choice = false;
-          streaming = true;
-          json_mode = true;
-          model_listing = true;
-          vision = false;
-        };
-      };
-      "gpt-5.3-codex-spark" = mkCliProxyProfile "gpt-5.3-codex-spark" ["spark"];
-      "gpt-5.4" = mkCliProxyProfile "gpt-5.4" ["gpt" "gpt54"];
-      "gpt-5.4-mini" = mkCliProxyProfile "gpt-5.4-mini" ["mini" "gpt54mini"];
-      "gpt-5.5" = mkCliProxyProfile "gpt-5.5" ["gpt55"];
-      "gpt-5.6-terra" = mkCliProxyProfile "gpt-5.6-terra" ["terra"];
-      "gpt-5.6-luna" = mkCliProxyProfile "gpt-5.6-luna" ["luna"];
-      "gpt-5.6-sol" = mkCliProxyProfile "gpt-5.6-sol" ["sol"];
-      "codex-auto-review" = mkCliProxyProfile "codex-auto-review" ["review"];
-    };
-  };
+  qqBotModelProfiles = builtins.toJSON (import ../../lib/gaoji-model-profiles.nix {
+    placement = config.my.fleet.placements.cliproxy;
+  });
   # Headscale decodes regions as map[int]*DERPRegion. Nix attrset keys are
   # strings, and pkgs.formats.yaml therefore quotes 611, which yaml.v3 rejects.
   headscaleDerpMap = pkgs.writeText "headscale-derp-map.yaml" ''
@@ -1119,8 +1051,8 @@ in {
       AI_ARCHIVE_INTERVAL_SECONDS=60
       AI_ARCHIVE_BATCH_SIZE=20
       CLIPROXY_API_KEY=${config.sops.placeholder."cliproxy/api_key"}
-      AI_MODEL_DEFAULT_PROFILE=deepseek
-      AI_SIMPLE_CHAT_PROFILE=qwen-local
+      AI_MODEL_DEFAULT_PROFILE=gpt-6.1-sol
+      AI_SIMPLE_CHAT_PROFILE=gpt-6-luna
       AI_MODEL_PROFILES_JSON='${qqBotModelProfiles}'
       AI_GROUP_MODEL_PROFILES_JSON='{"201644592":"gpt-5.6-sol"}'
     '';

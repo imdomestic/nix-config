@@ -4,6 +4,21 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-30 · Gaoji 模型目录与 tank 私有环境漂移 {#gaoji-model-catalog-drift}
+
+官方 QQ 验收中,简单对话实际耗时 48–62 秒。tank 服务读取的私有环境仍含
+b650 的旧千问地址、开启的思考模式和过期 GPT 型号,而 h610 的 Nix 模型配置
+已指向 taipan。误导点是以为更新 h610 的模板也会更新 tank 的手工环境文件。
+
+模型目录改为 `lib/gaoji-model-profiles.nix`,两台宿主共用。tank 在既有环境文件后
+加载 Nix 生成的模型设置,API key 继续由原私有环境提供。CLIProxy 使用 placement
+中的 tank 地址;默认 GPT‑6.1 Sol,简单对话 GPT‑6 Luna,默认低推理强度。千问仍可
+显式选择,地址修正为 taipan,关闭思考并缩短故障等待。退役型号保留选择别名。
+
+使用原 API key 实测 `/v1/models` 返回 200;短流式请求 Sol 首字 3.89 秒、Luna
+2.11 秒,Sol 强制工具调用 3.56 秒通过。taipan 千问相同短请求 0.65 秒且无推理
+输出;旧 b650 地址连接失败。这些是小请求连通性证据,不代表长上下文延迟。
+
 ## 2026-10-30 · Rex iOS 控制连接成功,终端数据握手超时 {#rex-ios-data-handshake}
 
 praxic 的 `home/hank/modules/rex/tailnet-relay.nix` 将 tailnet TCP 7297 转发到
