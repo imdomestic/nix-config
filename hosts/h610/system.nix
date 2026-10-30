@@ -863,7 +863,7 @@ in {
       OTEL_SERVICE_NAME = "gaoji";
     };
     runtimePackages = [pkgs.ffmpeg-headless];
-    sandbox.enable = true;
+    sandbox.enable = false;
     sandbox.nixCacheVolume = "kennethbot-nix-v2";
     browser.enable = true;
     videoDeep = {

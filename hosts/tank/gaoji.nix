@@ -11,6 +11,15 @@ in {
   # Bot, QQ transport and KVM workspaces run together on tank.
   services.gaoji = {
     enable = true;
+    oneBot.enable = true;
+    qqOfficial = {
+      enable = true;
+      appIdFile = "${runtimeDir}/qq-official/app-id";
+      appSecretFile = "${runtimeDir}/qq-official/app-secret";
+      bindPepperFile = "${runtimeDir}/qq-official/bind-pepper";
+      hostConfigFile = "${runtimeDir}/qq-official/host.json";
+      certification = "certified";
+    };
     user = "kenneth";
     group = "users";
     stateDirectory = "qq-deepseek-bot";
@@ -111,6 +120,7 @@ in {
       EnvironmentFile = lib.mkAfter [
         "${runtimeDir}/runtime.env"
         config.sops.templates."gaoji-tank-postgres.env".path
+        "${runtimeDir}/qq-official/owner.env"
       ];
       ReadWritePaths = ["/data/services/gaoji" "/data/services/kennethbot-archive"];
     };
