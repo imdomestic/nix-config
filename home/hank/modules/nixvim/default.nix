@@ -298,9 +298,9 @@ in {
       foldlevel = 99;
       foldlevelstart = 99;
       cmdheight = 0;
-      # cmdheight = 0 时默认的最后一行不存在,showcmd(计数、未完成的操作符、
-      # 可视选区大小)就无处显示;挪进 statusline 的 %S。
-      showcmdloc = "statusline";
+      # cmdheight = 0 时 showcmd 本就无处显示;也不放进 statusline(%S),
+      # 那里按 : / / 进命令行时会留着这个键,像个模式提示。
+      showcmd = false;
       # nvim 默认 "ltToOCF" + "A"：发现残留 swap 时不再弹 E325 ATTENTION 提示。
       # 该提示在 snacks picker/explorer 的跳转里无法交互，会直接抛 Lua error。
       # "W"：:w 后不报 "written"。
@@ -948,8 +948,8 @@ in {
                 end
 
                 return MiniStatusline.combine_groups({
-                  -- 左端一格模式色块。用 █ 靠字色涂满格子,格子背景仍是 Normal,
-                  -- Rex 的 padding 不会跟着变色;背景色或 reverse 都会被拉高。
+                  -- 两端各一格模式色块,同 AstroNvim。用 █ 靠字色涂满格子,格子背景
+                  -- 仍是 Normal,Rex 的 padding 不会跟着变色;背景色或 reverse 都会被拉高。
                   "%#" .. mode_hl .. "#█",
                   { hl = mode_hl, strings = { mode } },
                   { hl = "MiniStatuslineDevinfo", strings = { git } },
@@ -957,8 +957,9 @@ in {
                   { hl = "MiniStatuslineFilename", strings = { "%=" } },
                   { hl = "MiniStatuslineFilename", strings = { diagnostics } },
                   "%=",
-                  { hl = "MiniStatuslineFileinfo", strings = { "%S", file_format(), lsp_client() } },
+                  { hl = "MiniStatuslineFileinfo", strings = { file_format(), lsp_client() } },
                   { hl = mode_hl, strings = { macro() } },
+                  "%#" .. mode_hl .. "#█",
                 })
               end
             '';
