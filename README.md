@@ -46,7 +46,8 @@ Codex) working in this checkout. [`AGENTS.md`](AGENTS.md) is the rulebook I
 hand them, and some of its rules point straight at the incident that
 produced them. Separately, Max, an LLM bot, sits in a couple of group chats and
 does ops on the fleet over plain SSH as the `max` account; see
-[Max SSH operations](docs/max-ssh-operations.md).
+[Max SSH operations](docs/max-ssh-operations.md). Its successor, maxx,
+also interacts with GitHub and submits pull requests via `@maxxagent`.
 
 ### Common Questions Related To This Workflow
 
