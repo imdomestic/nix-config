@@ -79,9 +79,10 @@ in {
           effort = "high";
         };
         # Background agents: pi in the groups' VMs, its model calls
-        # forwarded by maxx with this provider's key.
+        # forwarded by maxx with this provider's key. Rewind's model is
+        # free, so they try it.
         job = {
-          model = "cliproxy-responses/gpt-5.6-luna";
+          model = "cliproxy-responses/rewind/gpt-6-astra";
           effort = "xhigh";
         };
         # The Haskell max's models that see pictures, for /model; maxx
@@ -107,10 +108,29 @@ in {
             base_url = cliproxy.baseUrl;
             protocol = "responses";
             api_key_file = secret "cliproxy-api-key";
-            models = lib.genAttrs ["gpt-6-astra" "gpt-5.6-sol" "gpt-5.6-terra" "gpt-5.6-luna"] (_: {
-              context_window = cliproxy.gpt.context;
-              max_output = cliproxy.gpt.output;
-            });
+            models = {
+              "gpt-6-astra" = {
+                context_window = cliproxy.gpt.context;
+                max_output = cliproxy.gpt.output;
+              };
+              "gpt-5.6-sol" = {
+                context_window = cliproxy.gpt.context;
+                max_output = cliproxy.gpt.output;
+              };
+              "gpt-5.6-terra" = {
+                context_window = cliproxy.gpt.context;
+                max_output = cliproxy.gpt.output;
+              };
+              "gpt-5.6-luna" = {
+                context_window = cliproxy.gpt.context;
+                max_output = cliproxy.gpt.output;
+              };
+              # Rewind's, through the plugin on tank's cliproxy.
+              "rewind/gpt-6-astra" = {
+                context_window = cliproxy.rewind.context;
+                max_output = cliproxy.rewind.output;
+              };
+            };
           };
           taipan = {
             base_url = "http://taipan.inner.imdomestic.com:8000/v1";
