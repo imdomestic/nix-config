@@ -948,8 +948,8 @@ in {
                 end
 
                 return MiniStatusline.combine_groups({
-                  -- 两端各一格模式色块,同 AstroNvim。用 █ 靠字色涂满格子,格子背景
-                  -- 仍是 Normal,Rex 的 padding 不会跟着变色;背景色或 reverse 都会被拉高。
+                  -- 左端一格模式色块。用 █ 靠字色涂满格子,格子背景仍是 Normal,
+                  -- Rex 的 padding 不会跟着变色;背景色或 reverse 都会被拉高。
                   "%#" .. mode_hl .. "#█",
                   { hl = mode_hl, strings = { mode } },
                   { hl = "MiniStatuslineDevinfo", strings = { git } },
@@ -959,7 +959,6 @@ in {
                   "%=",
                   { hl = "MiniStatuslineFileinfo", strings = { "%S", file_format(), lsp_client() } },
                   { hl = mode_hl, strings = { macro() } },
-                  "%#" .. mode_hl .. "#█",
                 })
               end
             '';
