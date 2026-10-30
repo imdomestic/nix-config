@@ -61,6 +61,17 @@ in {
           effort = "high";
         };
         intent.model = "h610/qwen3.5-4b-q4_k_m";
+        # Summarizes the groups that have /historian on; without it
+        # nothing is summarized.
+        historian = {
+          model = "cliproxy/gemini-3.8-flash-high";
+          effort = "high";
+        };
+        # Tidies each memory file Max wrote in the day, at 05:00.
+        dreamer = {
+          model = "cliproxy/gemini-3.8-flash-high";
+          effort = "high";
+        };
         # Says what each new picture and sticker shows; the Haskell max's
         # captioner too.
         caption = {
