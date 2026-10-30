@@ -13,9 +13,10 @@ over the config being pretty, so when something here looks strange, there is
 usually a dated entry in `docs/` about the afternoon that made it that way.
 
 My main machine is a Mac (`praxic`). Day to day I live in three apps: Arc for
-browsing, Raycast for launching everything, and Ghostty for the terminal. The
-actual work happens inside Ghostty with tmux + Neovim (nixvim), either locally
-or over SSH on whichever box has the hardware the job needs.
+browsing, Raycast for launching everything, and Rex for the terminal. The
+actual work happens inside Rex with Neovim (nixvim), either locally
+or over SSH on whichever box has the hardware the job needs; see
+[`docs/rex.md`](docs/rex.md).
 
 Behind that is a small fleet, spread over a few places on purpose:
 
