@@ -4,6 +4,27 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-30 · Rex iOS 控制连接成功,终端数据握手超时 {#rex-ios-data-handshake}
+
+praxic 的 `home/hank/modules/rex/tailnet-relay.nix` 将 tailnet TCP 7297 转发到
+现有 Rex Unix socket。iPhone(100.64.0.22)运行 Rex Dev 1577,Mac 运行 Rex Beta
+1651、server `0.0.1793316310-g0b1328`。iOS 能列出并加入两个现有会话,但终端
+一直显示 Connecting。
+
+误导点是把 CLI 的跨机 `rex ls` 成功当成整个客户端的验收:它只证明控制 API,
+没有覆盖 `/api/data` 的终端流。实际日志显示 `session.bootstrap`、`data.connect`
+都返回 200,数据 WebSocket 也升级为 101,但随后报
+`refusing data client that sent nothing after the WebSocket upgrade`,5 秒超时。
+
+临时换成独立的单进程转发器,只记录 HTTP 路径、WebSocket 帧类型和字节数,
+不记录会话内容或票据。iOS 重试仍复现:收到数据连接的 101 后,客户端发出的
+数据帧为 0 字节,随后服务端发送拒绝并关闭。由此排除 socat fork 和字节转发是
+必要原因;尚不能仅凭版本号断言协议不兼容。用户确认 TestFlight 的可用最新版
+就是 1577,具体客户端原因仍需 iOS 日志或上游源码确认。
+
+诊断后恢复原 launchd relay。Rex server PID 60878 及原会话保持运行,没有降级
+或重启。已验证的是控制连接与 relay 自动恢复,iOS 终端显示仍未通过验收。
+
 ## 2026-10-28 · Rewind 在 Linux 上交换会话返回 401 {#rewind-desktop-platform}
 
 `pkgs/cliproxy-rewind/` 的原生 Responses 插件在 Mac 临时实例上通过了流式响应和

@@ -188,6 +188,10 @@ if Tailscale is not ready. It does not start or restart Rex itself.
 
 Connect from Rex for iOS with Tailscale enabled, using
 `http://praxic.inner.imdomestic.com:7297` (currently `http://100.64.0.9:7297`).
+On 2026-10-30, iOS build 1577 could connect to the control API but its terminal
+data handshake timed out against server build 1651; terminal display remains
+unverified. Evidence and remaining uncertainty:
+[iOS data handshake](incidents.md#rex-ios-data-handshake).
 The relay binds only the Tailscale address and accepts sources in
 `100.64.0.0/10`; Tailscale encrypts the HTTP connection. As requested, every
 tailnet device that network policy permits can connect. Rex sees the relay as
