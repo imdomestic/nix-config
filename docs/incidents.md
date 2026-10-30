@@ -40,6 +40,22 @@ praxic 的 `home/hank/modules/rex/tailnet-relay.nix` 将 tailnet TCP 7297 转发
 诊断后恢复原 launchd relay。Rex server PID 60878 及原会话保持运行,没有降级
 或重启。已验证的是控制连接与 relay 自动恢复,iOS 终端显示仍未通过验收。
 
+同日 17:10 的对照实验排除了 relay 这条路径。另起一个同为 1651 的临时 server,
+用 `--extra-listen tailnet://:7298` 直接监听 tailnet,不经 socat,也不再以
+本地 uid 501 的身份进入:server 通过 tailscaled 识别出 `hank@imdomestic.com`
+和节点 terciopelo,会话也是新建的。iOS 1577 照样能 `session.attach`、
+`data.connect`,数据 WebSocket 也升级成功,但 5 秒内仍一个字节都不发 HELLO,被同一条
+`refusing data client that sent nothing after the WebSocket upgrade` 拒绝。
+所以问题出在 iOS 客户端本身,与 socat、Unix socket 身份和原有会话都无关;本机
+已经无法再缩小范围,剩下的要靠 iOS 新版本或上游确认。
+
+顺带发现:praxic 装的是独立版 Tailscale.app,它的 LocalAPI 只有
+`127.0.0.1:<ipnport>` 加 `/Library/Tailscale/sameuserproof-*` 令牌,没有
+`/var/run/tailscaled.socket`,所以 `tailnet://` 监听起不来,会报
+`Failed to connect to local Tailscale daemon`。实验时临时写了个转接程序:在
+Unix socket 上接收请求,补上令牌后转给 Tailscale.app,再用
+`--tailscaled-socket` 指向它。要把 relay 换成 `tailnet://`,得先解决这件事。
+
 ## 2026-10-28 · Rewind 在 Linux 上交换会话返回 401 {#rewind-desktop-platform}
 
 `pkgs/cliproxy-rewind/` 的原生 Responses 插件在 Mac 临时实例上通过了流式响应和
