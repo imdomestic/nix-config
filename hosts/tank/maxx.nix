@@ -64,7 +64,7 @@ in {
         # Summarizes the groups that have /historian on; without it
         # nothing is summarized.
         historian = {
-          model = "cliproxy/gemini-3.8-flash-high";
+          model = "cliproxy-responses/gpt-5.6-luna";
           effort = "high";
         };
         # Tidies each memory file Max wrote in the day, at 05:00.
@@ -75,8 +75,12 @@ in {
         # Says what each new picture and sticker shows; the Haskell max's
         # captioner too.
         caption = {
+          model = "cliproxy/gemini-3.8-flash-high";
+          effort = "high";
+        };
+        job = {
           model = "cliproxy-responses/gpt-5.6-luna";
-          effort = "low";
+          effort = "xhigh";
         };
         # Background agents: pi in the groups' VMs, its model calls
         # forwarded by maxx with this provider's key.
