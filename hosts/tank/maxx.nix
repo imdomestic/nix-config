@@ -10,7 +10,8 @@
 }: let
   cliproxy = import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
   # owners: `qq:<user_openid>` per line, from the private chat's endpoint.
-  secretNames = ["qq-app-id" "qq-app-secret" "owners"];
+  # github-token: maxxagent's classic token, public_repo only.
+  secretNames = ["qq-app-id" "qq-app-secret" "owners" "github-token"];
   secret = name: config.sops.secrets."maxx/${name}".path;
 in {
   sops.secrets =
@@ -167,6 +168,13 @@ in {
         app_secret_file = secret "qq-app-secret";
       };
       search.api_key_file = secret "exa-api-key";
+      # Max's own GitHub account, for github and github_push; its commits
+      # in the VMs are by it too.
+      github = {
+        login = "maxxagent";
+        user_id = 350365311;
+        token_file = secret "github-token";
+      };
       # The sticker library's vectors: bge-m3 on h610's Ollama, the model
       # the Haskell max's vectors were made with.
       embedding = {
