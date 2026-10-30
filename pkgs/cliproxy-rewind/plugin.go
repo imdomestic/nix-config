@@ -78,7 +78,7 @@ func modelResponse(enabled bool) any {
 func dispatch(method string, raw []byte) (any, *problem) {
 	switch method {
 	case "plugin.register", "plugin.reconfigure":
-		return map[string]any{"schema_version": 6, "metadata": map[string]any{"Name": "rewind", "Version": "0.1.0", "Author": "imdomestic", "GitHubRepository": "https://github.com/imdomestic/nix-config", "ConfigFields": []any{}},
+		return map[string]any{"schema_version": 6, "metadata": map[string]any{"Name": "rewind", "Version": "0.1.1", "Author": "imdomestic", "GitHubRepository": "https://github.com/imdomestic/nix-config", "ConfigFields": []any{}},
 			"capabilities": map[string]any{"model_provider": true, "auth_provider": true, "executor": true, "executor_model_scope": "both",
 				"executor_input_formats": []string{"responses"}, "executor_output_formats": []string{"responses"}}}, nil
 	case "plugin.quiesce", "plugin.shutdown":

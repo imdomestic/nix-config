@@ -14,13 +14,16 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
 
 const rewindOrigin = "https://rewind-api.apiwharf.com"
-const appVersion = "1.0.6"
+const appVersion = "1.0.8"
+
+var clientVersionPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$`)
 
 // The desktop session protocol rejects Linux's GOOS; this is a wire compatibility tag.
 const clientPlatform = "darwin"
@@ -162,17 +165,22 @@ func (c *sessionClient) proof(token, nonce, url, method string, body []byte) (st
 }
 
 func upstreamProblem(status int, headers http.Header, raw []byte) *problem {
-	if status == 426 {
-		return fail(426, "rewind_update_required", "Rewind requires a newer client protocol")
-	}
 	var v struct {
 		Code  string `json:"code"`
 		Error struct {
-			Code string `json:"code"`
-			Type string `json:"type"`
+			Code           string `json:"code"`
+			Type           string `json:"type"`
+			MinimumVersion string `json:"minimum_version"`
 		} `json:"error"`
 	}
 	_ = json.Unmarshal(raw, &v)
+	if status == 426 {
+		message := "Rewind requires a newer client protocol (current " + appVersion + ")"
+		if clientVersionPattern.MatchString(v.Error.MinimumVersion) {
+			message += "; minimum " + v.Error.MinimumVersion
+		}
+		return fail(426, "rewind_update_required", message)
+	}
 	code := strings.ToLower(v.Code + " " + v.Error.Code + " " + v.Error.Type)
 	if status == 402 || strings.Contains(code, "insufficient_quota") || strings.Contains(code, "quota_exhausted") || strings.Contains(code, "insufficient_balance") {
 		return fail(402, "insufficient_quota", "Rewind quota exhausted")

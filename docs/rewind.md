@@ -69,9 +69,13 @@ upstream remains active, with a five-minute idle timeout. Truncated streams
 are failures. Authentication, quota and HTTP errors have bounded, sanitized
 messages rather than forwarding arbitrary upstream error text.
 
-Rewind currently negotiates the 1.0.6 client protocol. HTTP 426 means this
-protocol version needs reviewing against a newer official client. The
-upstream URL and protocol version live in `session.go`.
+Rewind currently negotiates the 1.0.8 client protocol. HTTP 426 means this
+protocol version needs reviewing against a newer official client; the error
+includes the current version and, when supplied, a validated minimum version.
+The upstream URL and protocol version live in `session.go`. A successful
+challenge/session exchange does not prove model compatibility: upstream can
+apply its minimum version only at `/v1/responses`. See
+[the minimum-version investigation](incidents.md#rewind-minimum-client-version).
 
 The session protocol's `platform` field uses the desktop-compatible `darwin`
 tag even when the gateway runs on Linux. It identifies protocol compatibility,

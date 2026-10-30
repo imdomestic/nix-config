@@ -17,6 +17,23 @@ Bot 已修复该转换;继续验收仍被模型称为“工具不可用”。实
 3,500,000 字节路由限制。普通 QQ 消息与管理员凭据不变,模型制作至群内交付
 还需新的真实请求验收。
 
+## 2026-10-30 · Rewind 登录成功但模型接口要求升级 {#rewind-minimum-client-version}
+
+tank 的 Rewind 请求返回 426。插件使用 1.0.6,上游 `/v1/responses` 返回
+`REWIND_UPDATE_REQUIRED`,明确给出 `minimum_version: 1.0.7`。当日官方发布的
+客户端为 1.0.8,其 `rewind-session.cjs` 与先前提取的 1.0.6 文件逐字节一致。
+
+误导点是把 challenge/session 成功当成版本仍受支持:在 tank 上同一密钥、同一
+持久设备的 1.0.6 和 1.0.8 会话交换都返回 verified,只有模型接口检查最低版本。
+同一短请求在 1.0.6 返回 426,在 1.0.8 返回 200、completed 和 `OK`。
+
+插件升级为 0.1.1,会话声明改为已核对的 1.0.8。保留原 DPoP 和设备身份;
+升级报错附带当前版本,并仅在上游最低版本符合有界数字格式时显示它,继续屏蔽
+任意上游消息。配置与 Responses 行为见 `docs/rewind.md`。
+
+tank 原生构建与 Go race 检查通过。使用现有生产设备身份的临时 CLIProxyAPI
+8.0.47 实例通过 Responses 流式、JSON 函数调用、结果续接(42)及客户端断连检查。
+
 ## 2026-10-30 · Gaoji 模型目录与 tank 私有环境漂移 {#gaoji-model-catalog-drift}
 
 官方 QQ 验收中,简单对话实际耗时 48–62 秒。tank 服务读取的私有环境仍含
