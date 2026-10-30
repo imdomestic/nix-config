@@ -117,6 +117,7 @@ in {
       AI_ARCHIVE_ROOT=/data/services/kennethbot-archive
       AI_SANDBOX_MAX_TOTAL=2
       AI_SANDBOX_MAX_PER_USER=1
+      AI_SANDBOX_MAX_FILE_MB=20
     '';
   };
 
