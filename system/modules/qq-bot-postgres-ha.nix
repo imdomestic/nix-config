@@ -123,6 +123,10 @@
     ssl_key_file = 'server.key'
     unix_socket_directories = '${nodeSocketDir}'
 
+    # Let WAL catch up through evening packet loss; see docs/incidents.md#qq-ha-wal-reconnect-loop.
+    wal_sender_timeout = '5min'
+    wal_receiver_timeout = '5min'
+
     # A long-offline peer must require a fresh base backup instead of filling
     # the smaller h610 disk with unbounded replication-slot WAL.
     wal_keep_size = '${cfg.node.walKeepSize}'

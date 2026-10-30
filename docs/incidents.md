@@ -4,6 +4,25 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-30 · QQ 数据库复制在丢包时反复从同一段 WAL 重传 {#qq-ha-wal-reconnect-loop}
+
+21 点多 tank 与 h610 的 Tailscale 直连短测丢包 20–25%，SSH、控制 API 和
+数据库复制均受影响。tank 一度自动降级并完成基础备份；确认副本健康后，用
+`qq-bot-postgres-prefer-tank` 切回 tank。命令等待通知超时，但实际角色已经切换，
+不能因此重放切换。随后 h610 每隔一两分钟记录 `terminating walreceiver due to timeout`，
+每次都从 `2A/7D000000` 重新开始，始终传不到已有恢复位置。主库等待同步副本的
+`SyncRep` 堵住事务，进一步积累行锁，Bot 本机健康请求也超时。
+
+把两端 `wal_sender_timeout` 和 `wal_receiver_timeout` 设为 5 分钟，并只 reload
+数据库配置，让慢连接有机会完成追平；不降低同步提交要求，也不重启 keeper。
+这只是避免频繁重传，并非修复运营商链路，恢复仍以实际复制位置和应用健康为准。
+
+误导点：Tailscale 探测有响应、进程 active、monitor 显示 secondary，都不证明
+复制已追平。临时避开该 peer 的 UDP 直连后，中继短测丢包下降但延迟达到秒级，
+没有改善复制；试验规则和自动清理定时器均已撤销，没有留下网络配置改动。
+现象与 [此前晚间跨运营商问题](#max-evening-cross-carrier) 相似，但本次没有确认
+运营商侧根因。
+
 ## 2026-10-30 · Gaoji 官方文件工具被旧的无限制配置关闭 {#gaoji-official-file-export-limit}
 
 真实群聊 PDF 验收没有产物。第一轮先暴露代理流式无参数工具调用的空字符串问题,
