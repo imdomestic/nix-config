@@ -113,6 +113,7 @@ in {
       PORT=${toString cfg.port}
       AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@tank.inner.imdomestic.com:55432,h610.inner.imdomestic.com:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
       AI_POSTGRES_NODE_NAMES=tank,h610
+      AI_POSTGRES_POOL_MAX_SIZE=24
       AI_MEDIA_ROOT=/data/services/gaoji/media
       AI_ARCHIVE_ROOT=/data/services/kennethbot-archive
       AI_SANDBOX_MAX_TOTAL=2
