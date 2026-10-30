@@ -25,20 +25,46 @@ in {
       default-root-container-layout = "tiles";
       default-root-container-orientation = "auto";
 
-      on-window-detected = [
-        {
-          "if".app-id = "com.mitchellh.ghostty";
+      on-window-detected =
+        # 整个应用都浮动:尺寸或宽高比固定,或者会弹出一堆小窗口。
+        map (id: {
+          "if".app-id = id;
           run = ["layout floating"];
-        }
-        {
-          # Minecraft 的 Java 进程可能没有 bundle ID,用应用名和游戏标题匹配。
-          "if" = {
-            app-name-regex-substring = "^(java|Minecraft)$";
-            window-title-regex-substring = "^Minecraft(\\s|$)";
-          };
-          run = ["layout floating"];
-        }
-      ];
+        }) [
+          "com.mitchellh.ghostty"
+          "com.apple.Passwords"
+          "com.apple.ScreenContinuity" # iPhone Mirroring
+          "com.apple.systempreferences"
+          "com.apple.calculator"
+          "com.moonlight-stream.Moonlight"
+          "com.apple.ScreenSharing"
+          "com.apple.QuickTimePlayerX"
+          "com.apple.FaceTime"
+          "com.tencent.meeting" # 腾讯会议
+          "com.tencent.tencentmeeting" # VooV Meeting
+          "org.localsend.localsendApp"
+          "com.macpaw.site.theunarchiver"
+          "com.valvesoftware.steam"
+        ]
+        ++ [
+          {
+            # 微信只浮动图片/视频查看器,主窗口照常平铺。标题按界面语言是
+            # 英文/简体/繁体三种(WeChat 4.1 的字符串表)。
+            "if" = {
+              app-id = "com.tencent.xinWeChat";
+              window-title-regex-substring = "^(Photos and Videos|图片和视频|圖片和影片)$";
+            };
+            run = ["layout floating"];
+          }
+          {
+            # Minecraft 的 Java 进程可能没有 bundle ID,用应用名和游戏标题匹配。
+            "if" = {
+              app-name-regex-substring = "^(java|Minecraft)$";
+              window-title-regex-substring = "^Minecraft(\\s|$)";
+            };
+            run = ["layout floating"];
+          }
+        ];
 
       mode.main.binding = {
         # 新窗口带一个新 session。要 Rex 设置里 Rex Server 下的 Remote Control;
