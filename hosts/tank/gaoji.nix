@@ -21,8 +21,7 @@ in {
       certification = "certified";
     };
     user = "kenneth";
-    # systemd credentials must use a service group, not the shared users group.
-    group = "gaoji";
+    group = "users";
     stateDirectory = "qq-deepseek-bot";
     cacheDirectory = "qq-deepseek-bot";
     environmentFile = "${runtimeDir}/base.env";

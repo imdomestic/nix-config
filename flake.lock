@@ -2550,11 +2550,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1793319369,
-        "narHash": "sha256-HBcVCoRrlhTUKei6sjiScTlQj41/gF5xTUCI4Og7i6c=",
+        "lastModified": 1793320979,
+        "narHash": "sha256-3WakICZAi34PYKHj60V+FnvPITIMKB66h35xDoJcsK4=",
         "owner": "zty20040403",
         "repo": "gaojibot",
-        "rev": "291218b813ffa917df39b6a796624a0c50732f27",
+        "rev": "aeb3984c434ff286bdd74455b896ec4d66f38353",
         "type": "github"
       },
       "original": {
