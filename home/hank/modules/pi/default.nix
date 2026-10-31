@@ -96,7 +96,14 @@ in {
   '';
   home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";
   home.file.".pi/agent/themes/cc-light.json".source = "${ccExtensions}/themes/cc-light.json";
+  home.file.".pi/agent/themes/evergarden-fall.json".text = builtins.toJSON themes.evergarden-fall;
+  home.file.".pi/agent/themes/evergarden-lunar.json".text = builtins.toJSON themes.evergarden-lunar;
+  home.file.".pi/agent/themes/evergarden-spring.json".text = builtins.toJSON themes.evergarden-spring;
+  home.file.".pi/agent/themes/evergarden-summer.json".text = builtins.toJSON themes.evergarden-summer;
   home.file.".pi/agent/themes/evergarden-winter.json".text = builtins.toJSON themes.evergarden-winter;
+  home.file.".pi/agent/themes/kanso-ink.json".text = builtins.toJSON themes.kanso-ink;
+  home.file.".pi/agent/themes/kanso-mist.json".text = builtins.toJSON themes.kanso-mist;
+  home.file.".pi/agent/themes/kanso-pearl.json".text = builtins.toJSON themes.kanso-pearl;
   home.file.".pi/agent/themes/kanso-zen.json".text = builtins.toJSON themes.kanso-zen;
   home.file.".pi/agent/extensions/magic-context.ts".text = ''
     export { default } from "${magicContext}/dist/index.js";
