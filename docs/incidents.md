@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-31 · Pi 在 Rex 滚动公式时不断累积旧图片 {#pi-rex-math-ghosting}
+
+`pi-better-render` 0.4.0 只把 Kitty / Ghostty 识别为支持 Unicode 图片占位符的
+终端。Rex 的 `TERM_PROGRAM=rex`、`TERM=xterm-rex` 不在名单中，于是即使开启
+Kitty 图片，也会进入 `direct` 模式。该路径逐行发送没有 placement ID 的
+`a=p` 图片切片；重绘增加新 placement，而擦除文字行不会删除旧图片。
+上下滚动后便出现整列公式重复、块公式相互覆盖。
+
+**误导点：能生成 PNG、终端支持 Kitty 图片，不代表选中了适合文字重绘的路径。**
+先前的离线组合测试强制 `placeholder`，绕过了终端识别，因此没有暴露问题。
+Rex Beta 1659 实际支持 Unicode 占位符，无须关闭公式或修改终端。
+
+`pkgs/pi-better-render/rex-placeholders.patch` 将 Rex 的两个终端标识加入识别，
+保留图片能力检查、环境变量覆盖和 tmux / screen 的既有限制。
+按 [Kitty 协议](https://sw.kovidgoyal.net/kitty/graphics-protocol/#unicode-placeholders)，
+虚拟图片跟随占位文字移动和擦除，不再由每次重绘新增实体切片。
+
+在 Rex 中用真实 `RichMarkdown` 生成行内公式、分式、积分、矩阵和求和，回放
+61 帧上下往返的视口重绘：旧包重现截图中的大面积堆叠；补丁包同样回放后
+公式位置正常、无残影。自动检查另覆盖 Rex 标识、图片能力缺失、tmux、重复重绘、
+文字替换与清屏后的图片恢复；原有工具卡、思考、窄屏和两轮重载检查仍通过。
+Home Manager 求值通过；本次未激活 home。
+
 ## 2026-10-31 · Pi 正文与 CC 思考补丁需要栈式卸载 {#pi-renderer-lifecycle}
 
 将 `pi-better-render` 0.4.0 与 `pi-cc-extensions` 1.0.8 组合时，第一轮离线测试

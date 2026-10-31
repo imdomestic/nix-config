@@ -18,6 +18,7 @@ export default function (pi: ExtensionAPI) {
       const { default: betterRender } = await import(`${better}/src/index.ts`);
       const { RichMarkdown } = await import(`${better}/src/render/rich-markdown.ts`);
       const { loadMathJaxSync, rasterize } = await import(`${better}/src/math/mathjax.ts`);
+      const { imageMode, installFrameHook, registerImage, placeholderRows, forgetImages } = await import(`${better}/src/math/kitty.ts`);
       const { loadMermaid } = await import(`${better}/src/render/mermaid.ts`);
       const { default: ccStyle, getCompactThinkingConfig } = await import(`${cc}/extensions/renderer/index.ts`);
       const { installCompactThinking } = await import(`${cc}/extensions/feature/compact-thinking.ts`);
@@ -27,6 +28,33 @@ export default function (pi: ExtensionAPI) {
       loadMathJaxSync();
       const raster = rasterize({ tex: String.raw`\frac{-b+\sqrt{b^2-4ac}}{2a}`, display: true, color: "#cdd6f4", cellWidth: 10, cellHeight: 20, maxColumns: 80, maxRows: 20 });
       assert.equal(Buffer.from(raster.base64, "base64").subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+      for (const env of [{ TERM_PROGRAM: "rex" }, { TERM: "xterm-rex" }]) {
+        assert.equal(imageMode(env, true), "placeholder", "Rex must anchor images to text cells");
+        assert.equal(imageMode(env, false), "off", "Rex still requires Kitty graphics support");
+        assert.equal(imageMode({ ...env, TMUX: "/tmp/tmux" }, true), "off", "Rex detection must not enable unsupported tmux images");
+      }
+      const frames: string[] = [];
+      const terminal = { write(data: string) { frames.push(data); } };
+      const uninstall = installFrameHook(terminal, imageMode({ TERM_PROGRAM: "rex" }, true));
+      try {
+        const id = 1234567;
+        registerImage(id, raster.base64, raster.columns, raster.rows);
+        const rows = placeholderRows(id, raster.columns, raster.rows);
+        for (let redraw = 0; redraw < 20; redraw++) {
+          terminal.write(`\x1b[H\x1b[2K${rows.join("\r\n")}`);
+          terminal.write("\x1b[H\x1b[2Kplain text replaces the first formula row");
+        }
+        const output = frames.join("");
+        assert.equal((output.match(/a=T,/g) ?? []).length, 1, "Repeated repaint must not create more image placements");
+        assert(output.includes("U=1"), "Formula placements must be virtual");
+        assert(!output.includes("a=p,"), "Rex repaint must not emit accumulating direct placements");
+        terminal.write(`\x1b[2J\x1b[H${rows.join("\r\n")}`);
+        assert.equal((frames.join("").match(/a=T,/g) ?? []).length, 2, "A screen clear must restore the formula image");
+      } finally {
+        uninstall();
+        forgetImages();
+      }
+      console.error("Rex detection, repeated repaint, text replacement and clear recovery passed");
       assert(await loadMermaid(), "The packaged Mermaid engine must load without npm");
 
       const originalAssistant = AssistantMessageComponent.prototype.updateContent;

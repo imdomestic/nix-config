@@ -25,7 +25,9 @@ CC 的 `enableMarkdownEnhance` 设为 `false`，避免两套 Mermaid 转换叠�
 
 `pkgs/pi-better-render/` 固定 npm 源码及 lockfile，使用发布包内的 MathJax 4 bundle，
 并打包 `beautiful-mermaid` 1.1.3；默认关闭运行时 npm 安装与字体下载。
-图片继续走 Kitty 协议；不支持图片的终端回退到字符公式，不保证 tmux 图片显示。
+图片继续走 Kitty 协议；Rex 与 Kitty / Ghostty 使用随文字移动的 Unicode
+占位符，Rex 识别补丁及滚动实测见 [事故记录](incidents.md#pi-rex-math-ghosting)。
+不支持图片的终端回退到字符公式，不保证 tmux 图片显示。
 
 两套扩展由 `.pi/agent/extensions/pi-render.ts` 统一加载。
 `home/hank/modules/pi/render.ts` 明确初始化及栈式卸载顺序，避免 `/reload` 后留下

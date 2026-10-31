@@ -33,6 +33,9 @@ in
         hash = "sha256-LB9K/naejepIIydXmPD/jtb2yYBs1iU7s3DXa6AZOCo=";
       };
 
+      # Rex supports text-anchored Kitty images; direct placements leave ghosts.
+      patches = [./rex-placeholders.patch];
+
       postPatch = ''
         cp ${writeText "package.json" (builtins.toJSON package)} package.json
         cp ${./package-lock.json} package-lock.json

@@ -1,0 +1,11 @@
+diff --git a/src/math/kitty.ts b/src/math/kitty.ts
+--- a/src/math/kitty.ts
++++ b/src/math/kitty.ts
+@@ -80,5 +80,7 @@ export function placeholderTerminal(env: NodeJS.ProcessEnv = process.env): boolean
+ 			program === "ghostty" ||
+ 			program === "kitty" ||
++			program === "rex" ||
++			term === "xterm-rex" ||
+ 			term.includes("kitty") ||
+ 			term.includes("ghostty"),
+ 	);
