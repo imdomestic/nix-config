@@ -107,9 +107,11 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    max.url = "github:HCHogan/max";
-    # The Rust rewrite, on tank as maxx beside the Haskell max.
-    maxx.url = "github:HCHogan/max/maxx";
+    # The Haskell max, for the NapCat module h610 and tank's gaoji still
+    # use; main is the Rust rewrite since 2026-10-31.
+    max.url = "github:HCHogan/max/haskell-base";
+    # Max, the Rust rewrite, on tank as maxx.
+    maxx.url = "github:HCHogan/max";
 
     qq-bot = {
       url = "github:zty20040403/gaojibot";

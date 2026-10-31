@@ -1370,6 +1370,7 @@
       },
       "original": {
         "owner": "HCHogan",
+        "ref": "haskell-base",
         "repo": "max",
         "type": "github"
       }
@@ -1386,16 +1387,15 @@
         "systems": "systems_5"
       },
       "locked": {
-        "lastModified": 1793416333,
-        "narHash": "sha256-GnsU76pdT+gtKrcDq/8zZ3gvionFtl4j9mWgCV6qsG4=",
+        "lastModified": 1793442194,
+        "narHash": "sha256-ITH6Hpi2DjZYATCiJCSpYvcELLtOxWGrM0Kbc1Z1v8o=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "87e7d420b93779d4a36145558d03057351c7dc50",
+        "rev": "f1846efb5bb2d4c5ec731aedf84b3174d96511dc",
         "type": "github"
       },
       "original": {
         "owner": "HCHogan",
-        "ref": "maxx",
         "repo": "max",
         "type": "github"
       }
