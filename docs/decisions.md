@@ -13,12 +13,14 @@
 
 ## 2026-10-31 · Pi 的上下文压缩交给 Magic Context {#pi-magic-context}
 
-Hank 的 dev 档 Pi 加载 `@cortexkit/pi-magic-context` 0.49.33，由
-`pkgs/pi-magic-context/` 固定发布包及 npm lockfile。使用原生扩展发现机制，
+Hank 的 dev 档 Pi 保留 `@cortexkit/pi-magic-context` 0.49.33 的包和配置，
+目前暂时关闭（`magic-context-settings.nix` 的 `enabled = false`）。
+由 `pkgs/pi-magic-context/` 固定发布包及 npm lockfile，使用原生扩展发现机制，
 不另装一份 Pi peer 包；关闭 Magic Context 的自更新，由 Nix 更新版本。
 
-Pi 的 `compaction.enabled` 设为 `false`：Magic Context 接管历史压缩，避免两套
-管理器重复压缩。Historian 使用已有 CLIProxy 的 `cliproxy/gpt-5.5` / `low`，
+Pi 的 `compaction.enabled` 始终取 Magic Context `enabled` 的反值：停用时恢复
+原生自动压缩，启用时交给 Magic Context，避免两套管理器重复压缩或同时关闭。
+Historian 使用已有 CLIProxy 的 `cliproxy/gpt-5.5` / `low`，
 会产生额外的摘要模型用量，不改变主会话模型或其默认值。Dreamer 暂不开启，
 避免首次安装就启动定时模型任务。检索使用本地多语言
 `Xenova/paraphrase-multilingual-MiniLM-L12-v2` / `q8`，首次使用需下载权重；
@@ -31,8 +33,10 @@ Pi 的 `compaction.enabled` 设为 `false`：Magic Context 接管历史压缩，
 移除 Magic Context 时须同时恢复 Pi 原生自动压缩。
 
 验证：`bash scripts/check-pi-magic-context.sh` 在临时 HOME、agent 和数据库中离线
-检查 JSONC 合并、原生 ONNX / Sharp 加载、工具和命令注册、记忆写入及关键词检索，
-不下载模型、不调用 LLM、不激活 home。启用需 Home Manager 激活后重启 Pi。
+检查停用时恢复原生压缩且不注册工具、命令或创建数据库，再单独启用测试
+JSONC 合并、原生 ONNX / Sharp 加载、工具和命令注册、记忆写入及关键词检索。
+不下载模型、不调用 LLM、不激活 home。重新启用只需将上述 `enabled` 改回 `true`，
+Home Manager 激活后重启 Pi；不删除现有配置、模型缓存或数据库。
 
 ---
 

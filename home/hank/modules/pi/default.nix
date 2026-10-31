@@ -10,6 +10,7 @@
   ccExtensions = pkgs.callPackage ../../../../pkgs/pi-cc-extensions {};
   betterRender = pkgs.callPackage ../../../../pkgs/pi-better-render {};
   magicContext = pkgs.callPackage ../../../../pkgs/pi-magic-context {};
+  magicContextSettings = import ./magic-context-settings.nix;
   free = {
     input = 0;
     output = 0;
@@ -65,8 +66,8 @@ in {
       ${lib.escapeShellArg (builtins.toJSON {
       showHardwareCursor = true;
       terminal.images = "kitty";
-      # Magic Context owns compaction; see docs/decisions.md#pi-magic-context.
-      compaction.enabled = false;
+      # Keep exactly one compaction owner; docs/decisions.md#pi-magic-context.
+      compaction.enabled = !magicContextSettings.enabled;
     })}
     run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/pi-cc-extensions.json"} \
@@ -77,7 +78,7 @@ in {
     })}
     run ${pkgs.nodejs}/bin/node ${../../../../scripts/merge-jsonc-settings.mjs} \
       ${lib.escapeShellArg "${config.xdg.configHome}/cortexkit/magic-context.jsonc"} \
-      ${lib.escapeShellArg (builtins.toJSON (import ./magic-context-settings.nix))} \
+      ${lib.escapeShellArg (builtins.toJSON magicContextSettings)} \
       ${magicContext}/node_modules/comment-json
   '';
 

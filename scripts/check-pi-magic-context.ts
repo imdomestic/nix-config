@@ -18,15 +18,24 @@ export default async function (pi: ExtensionAPI) {
   });
   pi.on("session_start", async (_event, ctx) => {
     try {
+      const tools = pi.getAllTools().map((tool) => tool.name);
+      const commands = pi.getCommands().map((command) => command.name);
+      if (process.env.PI_MAGIC_CONTEXT_EXPECT_ENABLED !== "true") {
+        assert.equal(pi.getSettings().compaction?.enabled, true);
+        assert(!tools.some((name) => name.startsWith("ctx_")), "Disabled Magic Context registered context tools");
+        assert(!commands.some((name) => name.startsWith("ctx-")), "Disabled Magic Context registered context commands");
+        assert(!existsSync(`${process.env.MAGIC_CONTEXT_STORAGE_DIR}/context.db`), "Disabled Magic Context opened its database");
+        console.error("Magic Context disabled: native compaction enabled; no context tools, commands or database");
+        ctx.shutdown();
+        return;
+      }
       const require = createRequire(`${packagePath}/package.json`);
       assert.equal(typeof require("onnxruntime-node").InferenceSession, "function");
       assert.equal(typeof require("sharp"), "function");
       assert.equal(pi.getSettings().compaction?.enabled, false);
-      const tools = pi.getAllTools().map((tool) => tool.name);
       for (const name of ["ctx_search", "ctx_memory", "ctx_note", "ctx_expand", "ctx_reduce"]) {
         assert(tools.includes(name), `Missing Magic Context tool: ${name}`);
       }
-      const commands = pi.getCommands().map((command) => command.name);
       for (const name of ["ctx-status", "ctx-flush", "ctx-wrapup", "ctx-recomp", "ctx-dream"]) {
         assert(commands.includes(name), `Missing Magic Context command: ${name}`);
       }

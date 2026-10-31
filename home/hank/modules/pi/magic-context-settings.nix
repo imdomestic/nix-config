@@ -1,5 +1,5 @@
 {
-  enabled = true;
+  enabled = false;
   auto_update = false;
   language = "zh";
   historian.pi = {
