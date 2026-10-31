@@ -8,6 +8,7 @@
   pricing = import ./pricing.nix;
   ccExtensions = pkgs.callPackage ../../../../pkgs/pi-cc-extensions {};
   betterRender = pkgs.callPackage ../../../../pkgs/pi-better-render {};
+  magicContext = pkgs.callPackage ../../../../pkgs/pi-magic-context {};
   free = {
     input = 0;
     output = 0;
@@ -63,6 +64,8 @@ in {
       ${lib.escapeShellArg (builtins.toJSON {
       showHardwareCursor = true;
       terminal.images = "kitty";
+      # Magic Context owns compaction; see docs/decisions.md#pi-magic-context.
+      compaction.enabled = false;
     })}
     run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/pi-cc-extensions.json"} \
@@ -71,6 +74,10 @@ in {
       enableCustomFooter = false;
       enableMarkdownEnhance = false;
     })}
+    run ${pkgs.nodejs}/bin/node ${../../../../scripts/merge-jsonc-settings.mjs} \
+      ${lib.escapeShellArg "${config.xdg.configHome}/cortexkit/magic-context.jsonc"} \
+      ${lib.escapeShellArg (builtins.toJSON (import ./magic-context-settings.nix))} \
+      ${magicContext}/node_modules/comment-json
   '';
 
   # Shared lifecycle keeps CC tools and rich replies composable across reloads.
@@ -87,6 +94,9 @@ in {
   '';
   home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";
   home.file.".pi/agent/themes/cc-light.json".source = "${ccExtensions}/themes/cc-light.json";
+  home.file.".pi/agent/extensions/magic-context.ts".text = ''
+    export { default } from "${magicContext}/dist/index.js";
+  '';
   home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
   home.file.".pi/agent/extensions/statusline.ts".source = ./statusline.ts;
 

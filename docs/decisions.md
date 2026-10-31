@@ -11,6 +11,31 @@
 
 ---
 
+## 2026-10-31 · Pi 的上下文压缩交给 Magic Context {#pi-magic-context}
+
+Hank 的 dev 档 Pi 加载 `@cortexkit/pi-magic-context` 0.49.33，由
+`pkgs/pi-magic-context/` 固定发布包及 npm lockfile。使用原生扩展发现机制，
+不另装一份 Pi peer 包；关闭 Magic Context 的自更新，由 Nix 更新版本。
+
+Pi 的 `compaction.enabled` 设为 `false`：Magic Context 接管历史压缩，避免两套
+管理器重复压缩。Historian 使用已有 CLIProxy 的 `cliproxy/gpt-5.5` / `low`，
+会产生额外的摘要模型用量，不改变主会话模型或其默认值。Dreamer 暂不开启，
+避免首次安装就启动定时模型任务。检索使用本地多语言
+`Xenova/paraphrase-multilingual-MiniLM-L12-v2` / `q8`，首次使用需下载权重；
+选择多语言模型是为了让中文查询能找到英文记忆。
+
+`home/hank/modules/pi/magic-context-settings.nix` 声明设置，激活时合并到
+`~/.config/cortexkit/magic-context.jsonc`，保留注释与未声明字段。状态和记忆写入
+`~/.local/share/cortexkit/magic-context/context.db`（尊重 XDG 路径），不进 Nix store。
+`/ctx-status` 看状态，`/ctx-wrapup` 请求压缩；只安装 Pi 扩展，不给 OpenCode 加载。
+移除 Magic Context 时须同时恢复 Pi 原生自动压缩。
+
+验证：`bash scripts/check-pi-magic-context.sh` 在临时 HOME、agent 和数据库中离线
+检查 JSONC 合并、原生 ONNX / Sharp 加载、工具和命令注册、记忆写入及关键词检索，
+不下载模型、不调用 LLM、不激活 home。启用需 Home Manager 激活后重启 Pi。
+
+---
+
 ## 2026-10-31 · Pi 正文交给 better-render，工具卡保留 CC 风格 {#pi-better-render}
 
 Hank 的 Pi 使用固定版本 `pi-better-render` 0.4.0，负责流式 Markdown、代码块、

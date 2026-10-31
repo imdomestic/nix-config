@@ -4,6 +4,25 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-31 · Magic Context 的 libvips 被旧 patchelf 改坏 {#pi-magic-context-patchelf}
+
+新增 `@cortexkit/pi-magic-context` 0.49.33 时，Mac 的离线工具和记忆测试通过，
+在 tank 上构建 x86_64-linux 包也成功，但 Node 22 / 24 加载 `sharp` 时退出 139。
+独立加载 `onnxruntime-node` 正常，因此不能把「包构建通过」当成原生依赖可用。
+
+**误导点：最初怀疑 Node ABI 或 glibc / C++ 运行库混用。** `ldd` 的依赖都能找到，
+同一 nixpkgs 的 Node 24 仍崩溃；core 把故障定位到动态加载器 `_dl_init` 调用
+`libvips-cpp.so.8.18.7 + 0x25c`。
+
+对比原始 npm 库与 Nix 修补后的 ELF：libvips 的 `.init` 位于低地址 `0x25c`。
+nixpkgs 默认 patchelf 0.15.2 扩展 RPATH 时把 `.init` / `.plt` 移到新增 RW 段，
+但 `DT_INIT` 仍指向旧地址。不是缺库，故不能用忽略缺失依赖来解决。
+
+`pkgs/pi-magic-context/default.nix` 只在 Linux 的 `preFixup` 把 nixpkgs 的
+patchelf 0.18.0-unstable-2025-08-13 放到 PATH 前面。新版本保留原始可执行段，
+重新构建后 tank 的 ONNX 与 Sharp 都能在 Node 22 中加载；Mac drvPath 不变。
+本次只构建包、运行临时数据库测试，没有激活任何 home 或系统。
+
 ## 2026-10-31 · Pi 在 Rex 滚动公式时不断累积旧图片 {#pi-rex-math-ghosting}
 
 `pi-better-render` 0.4.0 只把 Kitty / Ghostty 识别为支持 Unicode 图片占位符的
