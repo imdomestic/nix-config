@@ -4,6 +4,27 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-31 · Gaoji 主备丢包导致同步提交等待 {#gaoji-temporary-async-replica}
+
+统一上线 Gaoji 改造时，tank 与 h610 的链路持续丢包，Bot 的数据库写入停在
+PostgreSQL `SyncRep`。Tailscale 能探测到主机、服务进程仍在运行，并不代表
+写入可完成；只看 Bot 连接状态会误以为是网关或模型卡住。
+
+owner 明确授权先恢复可用性：将 h610 的 pg_auto_failover `replication-quorum`
+临时设为 `false`。tank 保持 primary，h610 保持 secondary，主库不再等待备库
+确认；实测同步等待归零。若主库在备库追平前故障，尚未复制的最近事务可能丢失。
+这是监控器中的运行状态变更，不是 Nix 配置或主备方向变更。
+
+网络稳定且备库追平后，在 h610 用该节点的 PostgreSQL 用户与 keeper 环境执行
+`pg_autoctl set node replication-quorum --pgdata /var/lib/qq-bot-postgres-node/data true`，
+再核对 monitor 的节点状态、tank 的 `synchronous_standby_names` 和实际提交延迟。
+上线结束时仍保持临时异步，不能只因 Bot 恢复 ready 就恢复同步。
+
+本次部署的 Bot 为 `787946d`，Nix 配置为 `929c6e6c`；tank 的 Bot 和 h610 的
+cluster-control 均已切换。数据库已到 `0077_retired_features`，完整 PostgreSQL 17
+归档及旧配置位于 tank 的 `/data/services/gaoji/backups/rework-20261031-final/`。
+回滚须一起恢复数据库、宿主配置和旧 generation，不能只切旧程序。
+
 ## 2026-10-31 · Magic Context 的 libvips 被旧 patchelf 改坏 {#pi-magic-context-patchelf}
 
 新增 `@cortexkit/pi-magic-context` 0.49.33 时，Mac 的离线工具和记忆测试通过，
