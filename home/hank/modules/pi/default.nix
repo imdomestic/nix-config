@@ -6,6 +6,7 @@
 }: let
   cliproxy = import ../../../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
   pricing = import ./pricing.nix;
+  themes = import ./themes.nix;
   ccExtensions = pkgs.callPackage ../../../../pkgs/pi-cc-extensions {};
   betterRender = pkgs.callPackage ../../../../pkgs/pi-better-render {};
   magicContext = pkgs.callPackage ../../../../pkgs/pi-magic-context {};
@@ -94,6 +95,8 @@ in {
   '';
   home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";
   home.file.".pi/agent/themes/cc-light.json".source = "${ccExtensions}/themes/cc-light.json";
+  home.file.".pi/agent/themes/evergarden-winter.json".text = builtins.toJSON themes.evergarden-winter;
+  home.file.".pi/agent/themes/kanso-zen.json".text = builtins.toJSON themes.kanso-zen;
   home.file.".pi/agent/extensions/magic-context.ts".text = ''
     export { default } from "${magicContext}/dist/index.js";
   '';
