@@ -1,6 +1,5 @@
 {
   config,
-  inputs,
   lib,
   pkgs,
   ...
@@ -19,7 +18,7 @@ in {
   # Bot, QQ transport and KVM workspaces run together on tank.
   services.gaoji = {
     enable = true;
-    oneBot.enable = true;
+    oneBot.enable = false;
     qqOfficial = {
       enable = true;
       appIdFile = "${runtimeDir}/qq-official/app-id";
@@ -66,24 +65,6 @@ in {
       maxDownloadMB = 1024;
       maxDurationMinutes = 60;
       timeoutSeconds = 1800;
-    };
-    napcat = {
-      enable = true;
-      backend = "native";
-      nativePackage = (import "${inputs.max}/nix/napcat.nix" {inherit pkgs;}).napcat;
-      dataDirectory = "/var/lib/napcat-gaoji";
-      account = "3580515978";
-      reverseWebsocketUrl = "ws://${cfg.host}:${toString cfg.port}/onebot/v11/ws";
-      reverseWebsocketTokenFile = "${runtimeDir}/onebot-token";
-      webuiPort = 6100;
-      healthCheck = {
-        enable = true;
-        metricsFile = "${config.my.telemetry.textfileDir}/gaoji-qq.prom";
-      };
-      passwordLogin = {
-        enable = true;
-        passwordFile = "/var/lib/gaoji-qq-login-secret/password";
-      };
     };
     runtimePackages = [pkgs.ffmpeg-headless];
     environment = {
@@ -140,6 +121,7 @@ in {
   systemd.tmpfiles.rules = lib.optionals cfg.enable [
     "d /data/services/gaoji 0750 kenneth users -"
     "d /data/services/gaoji/media 0750 kenneth users -"
+    "r ${config.my.telemetry.textfileDir}/gaoji-qq.prom - - - -"
   ];
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = lib.optionals cfg.enable [cfg.port];
 }

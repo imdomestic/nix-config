@@ -35,7 +35,6 @@
 
     externalModules = [
       # inputs.headplane.nixosModules.headplane
-      inputs.max.nixosModules.max
       inputs.qq-bot.nixosModules.gaoji
       inputs.qq-bot.nixosModules.cluster-control
       inputs.qq-bot.nixosModules.cluster-worker

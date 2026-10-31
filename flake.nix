@@ -107,9 +107,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # The Haskell max, for the NapCat module h610 and tank's gaoji still
-    # use; main is the Rust rewrite since 2026-10-31.
-    max.url = "github:HCHogan/max/haskell-base";
     # Max, the Rust rewrite, on tank as maxx.
     maxx.url = "github:HCHogan/max";
 

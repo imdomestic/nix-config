@@ -54,7 +54,7 @@ in {
         sopsFile = ../../secrets/gaoji/account-auth.yaml;
         key = "onebot_access_token";
         mode = "0400";
-        restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service" ++ ["gaoji-napcat.service"];
+        restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service";
       };
       "gaoji/onebot_secret" = {
         sopsFile = ../../secrets/gaoji/account-auth.yaml;

@@ -764,6 +764,7 @@ in {
   services.gaoji = {
     enable = true;
     runBot = false;
+    oneBot.enable = false;
     # Keep existing data during the service rename; see docs/decisions.md#gaoji-rename.
     stateDirectory = "qq-deepseek-bot";
     cacheDirectory = "qq-deepseek-bot";
@@ -805,36 +806,6 @@ in {
       maxDurationMinutes = 60;
       timeoutSeconds = 1800;
     };
-    napcat = {
-      # The sole Gaoji QQ session now lives on tank.
-      enable = false;
-      backend = "native";
-      nativePackage = config.services.max.napcat.package.napcat;
-      # Retain the former image pin for an explicit, backed-up rollback only.
-      image = "mlikiowa/napcat-docker@sha256:41b1a8e10953065f4796ab19c0c8760cd3175376be976c5480710d29a77357ee";
-      containerName = "napcat-chat-bot";
-      dataDirectory = "/var/lib/napcat-chat-bot";
-      account = "3580515978";
-      reverseWebsocketUrl = "ws://${gaojiBotHost}:18080/onebot/v11/ws";
-      reverseWebsocketTokenFile = config.sops.secrets."gaoji/onebot_access_token".path;
-      webuiPort = 6100;
-      healthCheck = {
-        enable = true;
-        metricsFile = "${config.my.telemetry.textfileDir}/gaoji-qq.prom";
-      };
-      passwordLogin = {
-        enable = false;
-        passwordFile = "/var/lib/gaoji-qq-login-secret/password";
-        notification = {
-          enable = false;
-          webuiConfigFile = "/var/lib/max/napcat/config/webui.json";
-          webuiPort = config.services.max.napcat.webuiPort;
-          account = config.services.max.napcat.qq;
-          groupId = "611798505";
-          userId = "3526452465";
-        };
-      };
-    };
   };
 
   my.monitoring.extraScrapeConfigs = [
@@ -869,43 +840,13 @@ in {
       name = "gaoji";
       rules = [
         {
-          alert = "GaojiQQOffline";
-          expr = ''gaoji_qq_online == 0 and (time() - gaoji_qq_health_checked_timestamp_seconds < 120)'';
-          "for" = "2m";
-          labels.severity = "critical";
-          annotations = {
-            summary = "高级 QQ 账号离线，进程运行不代表能收发消息";
-            description = "查看 GaojiQQLoginRequired；需要登录时用机器人账号扫码。连接故障会有限重试，禁止循环清除登录数据。";
-          };
-        }
-        {
-          alert = "GaojiQQLoginRequired";
-          expr = ''gaoji_qq_login_required == 1 and (time() - gaoji_qq_health_checked_timestamp_seconds < 120)'';
-          "for" = "1m";
-          labels.severity = "warning";
-          annotations = {
-            summary = "高级 QQ 登录已失效，需要手机扫码";
-            description = "自动重启不能恢复被 QQ 撤销的登录凭证；请打开 NapCat 完成扫码。";
-          };
-        }
-        {
-          alert = "GaojiQQHealthStale";
-          expr = ''absent(gaoji_qq_health_checked_timestamp_seconds) or (time() - gaoji_qq_health_checked_timestamp_seconds > 120)'';
-          "for" = "2m";
-          labels.severity = "warning";
-          annotations = {
-            summary = "高级 QQ 在线检查停止更新";
-            description = "检查 gaoji-qq-health.timer/service；旧的在线状态不能证明当前 QQ 可用。";
-          };
-        }
-        {
           alert = "GaojiMetricsUnavailable";
           expr = ''up{job="gaoji"} == 0'';
           "for" = "2m";
           labels.severity = "critical";
           annotations = {
             summary = "Gaoji metrics endpoint is unavailable";
-            description = "Prometheus cannot scrape the Gaoji process on h610.";
+            description = "Prometheus cannot scrape the Gaoji process on tank.";
           };
         }
         {
