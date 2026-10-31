@@ -215,8 +215,10 @@ names a fixed release URL in a `Link: rel="immutable"` header, and
 The flake packages the prebuilt binary; `inputs.nixpkgs.follows` links it
 against this repo's glibc and pam.
 
-`system/modules/rex-login-server.nix`, listed in the `modules` of tank and
-taipan, imports the flake's NixOS module and runs `rex login-server` as root.
+`system/modules/rex-login-server.nix`, loaded by the server profile and on
+wherever the host has a `tsName` (every tailnet server: encore, gizmo, h310,
+h610, r2s, r5s, r6s, rpi4, seraph, taipan, tank, tokyo), imports the flake's
+NixOS module and runs `rex login-server` as root.
 It listens on `tailnet://:7297` (opened on `tailscale0`), asks the host's
 tailscaled who each caller is, and starts or reuses a Rex server for the
 matching operating system account, as that account. Every account in the
@@ -233,9 +235,20 @@ entry, and its ssh guard in `/etc/ssh/ssh_config` for every account. On
 logind hosts an account's server is that person's ordinary personal server,
 so `rex` in an ssh shell on tank shows the same sessions as the app.
 
-Deployed to tank and taipan on 2026-10-31. From praxic, `rex -S
-http://<host>.inner.imdomestic.com:7297 whoami` reported `hank@imdomestic.com
-… acting as hank`, and asking for `linwhite@`, `kenneth@` or `root@` was
-refused with 403. The other people's logins and the Mac and iOS apps were not
-tried. The snapshot server reports API revision 0, while the Mac app's server
-(build 1651) supports 0 to 7.
+Deployed to all twelve on 2026-10-31; each change was Rex alone, with no
+kernel change. From praxic, `rex -S http://<host>.inner.imdomestic.com:7297
+whoami` reported `hank@imdomestic.com … acting as hank` on every host where
+hank has an account. seraph, which has only linwhite, answered "not in the
+account policy", and asking for `linwhite@`, `kenneth@` or `root@` on tank
+was refused with 403. Hank's iPhone and Rex Beta 1651 on praxic show
+terminals. linwhite's Mac app reached his own account on tank and started his
+shell, but sent nothing on the terminal data connection, as iOS build 1577 did
+([iOS data handshake](incidents.md#rex-ios-data-handshake)). That is an old
+client, fixed by updating the app.
+
+Systems for this were built on tank, r6s and taipan and pushed with
+`nix copy --no-check-sigs --to ssh-ng://root@<host>`. Without the flag the
+host refuses the builder's unsigned paths. From praxic, r2s is reachable only
+through the h610 DERP relay, and Tailscale SSH times out there. Its routers
+were activated from r6s with `switch-to-configuration test`, checked over the
+tailnet, then made the boot default.
