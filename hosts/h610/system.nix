@@ -430,9 +430,8 @@ in {
   };
 
   systemd.tmpfiles.rules =
-    ["d /var/lib/coturn 0750 root turnserver -"]
-    ++ lib.optional (!config.services.gaoji.napcat.enable)
-    "r ${config.my.telemetry.textfileDir}/gaoji-qq.prom - - - -";
+    ["d /var/lib/coturn 0750 root turnserver -"
+     "r ${config.my.telemetry.textfileDir}/gaoji-qq.prom - - - -"];
 
   services.dnsmasq.enable = false;
   services.resolved = {
@@ -764,7 +763,6 @@ in {
   services.gaoji = {
     enable = true;
     runBot = false;
-    oneBot.enable = false;
     # Keep existing data during the service rename; see docs/decisions.md#gaoji-rename.
     stateDirectory = "qq-deepseek-bot";
     cacheDirectory = "qq-deepseek-bot";
@@ -782,11 +780,6 @@ in {
       FORWARDED_ALLOW_IPS = "127.0.0.1";
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
-      AI_PROMETHEUS_URL = "http://h610.inner.imdomestic.com:9009";
-      AI_ALERTMANAGER_URL = "http://h610.inner.imdomestic.com:9093";
-      AI_ALERT_NOTIFY_ENABLED = "false";
-      AI_ALERT_NOTIFY_GROUP_ID = "611798505";
-      AI_ALERT_NOTIFY_CHECK_SECONDS = "30";
       AI_SEMANTIC_ENABLED = "true";
       AI_EMBEDDING_BASE_URL = "http://${config.my.host.tsName}:11434/v1";
       AI_EMBEDDING_API_KEY = "ollama-local";
@@ -798,14 +791,7 @@ in {
     runtimePackages = [pkgs.ffmpeg-headless];
     sandbox.enable = false;
     sandbox.nixCacheVolume = "kennethbot-nix-v2";
-    browser.enable = true;
-    videoDeep = {
-      enable = true;
-      frameCount = 12;
-      maxDownloadMB = 1024;
-      maxDurationMinutes = 60;
-      timeoutSeconds = 1800;
-    };
+
   };
 
   my.monitoring.extraScrapeConfigs = [
@@ -961,8 +947,6 @@ in {
       AI_SUBAGENT_TIMEOUT_SECONDS=1800
       AI_SUBAGENT_PROFILES_JSON={}
       AI_ADMIN_ENABLED=true
-      ONEBOT_ACCESS_TOKEN=${config.sops.placeholder."gaoji/onebot_access_token"}
-      ONEBOT_SECRET=${config.sops.placeholder."gaoji/onebot_secret"}
       AI_ADMIN_USER_IDS=3526452465
       AI_SANDBOX_ENABLED=true
       AI_SANDBOX_ALLOWED_USERS=

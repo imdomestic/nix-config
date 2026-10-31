@@ -2213,11 +2213,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1793386620,
-        "narHash": "sha256-483kDVhaLaG7UL+QLYDzAykNxTtnsBYDetMDYDmEGOQ=",
+        "lastModified": 1793451257,
+        "narHash": "sha256-5qXRtINjzRSIkMfulm7Ef3UgyI3KJqdsMAIDgpPNZ/w=",
         "owner": "zty20040403",
         "repo": "gaojibot",
-        "rev": "9247fdc506eb00476e4a076e021e2112c8154fdd",
+        "rev": "fe2fed09440312b82b51714caf638b7e685c5056",
         "type": "github"
       },
       "original": {

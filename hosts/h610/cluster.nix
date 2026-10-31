@@ -50,18 +50,6 @@ in {
         mode = "0400";
         restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service";
       };
-      "gaoji/onebot_access_token" = {
-        sopsFile = ../../secrets/gaoji/account-auth.yaml;
-        key = "onebot_access_token";
-        mode = "0400";
-        restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service";
-      };
-      "gaoji/onebot_secret" = {
-        sopsFile = ../../secrets/gaoji/account-auth.yaml;
-        key = "onebot_secret";
-        mode = "0400";
-        restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service";
-      };
       "kennethbot/worker_token" = {
         sopsFile = ../../secrets/gaoji/worker-h610.yaml;
         key = "worker_token";
@@ -134,14 +122,6 @@ in {
     cpuMillis = 2000;
     memoryBytes = 2 * 1024 * 1024 * 1024;
     concurrency = 2;
-  };
-
-  services.gaoji.cluster = {
-    enable = true;
-    controlUrl = "http://${host.tsName}:${toString config.services.gaoji-cluster-control.port}";
-    tokenFile = config.sops.secrets."kennethbot/cluster_control_token".path;
-    allowedGroups = [611798505 650536599];
-    logAllowedGroups = [];
   };
 
   networking.firewall.interfaces.tailscale0.allowedTCPPorts = [

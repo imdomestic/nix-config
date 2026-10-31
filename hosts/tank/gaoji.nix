@@ -18,7 +18,6 @@ in {
   # Bot, QQ transport and KVM workspaces run together on tank.
   services.gaoji = {
     enable = true;
-    oneBot.enable = false;
     qqOfficial = {
       enable = true;
       appIdFile = "${runtimeDir}/qq-official/app-id";
@@ -39,14 +38,11 @@ in {
       origin = "https://gaoji.inner.imdomestic.com";
       botId = "3580515978";
     };
-    cluster = {
-      enable = true;
-      localControlService = false;
-      controlUrl = let
+    opsRead = {
+      baseUrl = let
         p = config.my.fleet.placements.gaoji-control;
       in "http://${p.tsName}:${toString p.port}";
       tokenFile = "${runtimeDir}/fleet-token";
-      allowedGroups = [611798505 650536599];
     };
     sandbox = {
       enable = true;
@@ -58,22 +54,12 @@ in {
       vmRoot = "/data/services/gaoji/vms";
     };
     sandbox.nixCacheVolume = "gaoji-tank-nix-v1";
-    browser.enable = true;
-    videoDeep = {
-      enable = true;
-      frameCount = 12;
-      maxDownloadMB = 1024;
-      maxDurationMinutes = 60;
-      timeoutSeconds = 1800;
-    };
+    voiceAsr.enable = true;
     runtimePackages = [pkgs.ffmpeg-headless];
     environment = {
       FORWARDED_ALLOW_IPS = "100.64.0.3";
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
-      AI_PROMETHEUS_URL = "http://tank.inner.imdomestic.com:9009";
-      AI_ALERTMANAGER_URL = "http://tank.inner.imdomestic.com:9093";
-      AI_ALERT_NOTIFY_ENABLED = "false";
       AI_SEMANTIC_ENABLED = "true";
       AI_EMBEDDING_BASE_URL = "http://h610.inner.imdomestic.com:11434/v1";
       AI_EMBEDDING_API_KEY = "ollama-local";
