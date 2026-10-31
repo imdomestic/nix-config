@@ -7,7 +7,7 @@
   cliproxy = import ../../../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
   pricing = import ./pricing.nix;
   ccExtensions = pkgs.callPackage ../../../../pkgs/pi-cc-extensions {};
-  mathExtension = pkgs.callPackage ../../../../pkgs/pi-math {};
+  betterRender = pkgs.callPackage ../../../../pkgs/pi-better-render {};
   free = {
     input = 0;
     output = 0;
@@ -69,14 +69,21 @@ in {
       ${lib.escapeShellArg (builtins.toJSON {
       enableEditorPrefix = false;
       enableCustomFooter = false;
+      enableMarkdownEnhance = false;
     })}
   '';
 
-  # Keep the local editor/footer; see docs/decisions.md#pi-cc-extensions.
-  home.file.".pi/agent/extensions/pi-cc-extensions".source = "${ccExtensions}/extensions";
-  # Absolute imports let Pi resolve dependencies beside each package in the store.
-  home.file.".pi/agent/extensions/pi-math.ts".text = ''
-    export { default } from "${mathExtension}/src/index.ts";
+  # Shared lifecycle keeps CC tools and rich replies composable across reloads.
+  home.file.".pi/agent/extensions/pi-render.ts".text = ''
+    import cc from "${ccExtensions}/extensions/index.ts";
+    import better from "${betterRender}/src/index.ts";
+    import { installRenderers } from "${./render.ts}";
+
+    export default function (pi) {
+      process.env.PI_BETTER_RENDER_MERMAID_INSTALL ??= "0";
+      process.env.PI_BETTER_RENDER_FONT_DOWNLOAD ??= "0";
+      installRenderers(pi, cc, better);
+    }
   '';
   home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";
   home.file.".pi/agent/themes/cc-light.json".source = "${ccExtensions}/themes/cc-light.json";

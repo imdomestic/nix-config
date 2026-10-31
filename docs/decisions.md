@@ -11,6 +11,35 @@
 
 ---
 
+## 2026-10-31 · Pi 正文交给 better-render，工具卡保留 CC 风格 {#pi-better-render}
+
+Hank 的 Pi 使用固定版本 `pi-better-render` 0.4.0，负责流式 Markdown、代码块、
+表格、Mermaid 和公式图片。`pi-cc-extensions` 1.0.8 继续负责 Claude 风格工具卡、
+edit/write diff 和思考预览；个人输入框、状态栏保持原样。
+CC 的 `enableMarkdownEnhance` 设为 `false`，避免两套 Mermaid 转换叠加。
+
+移除 Pi 的 `pi-math.ts` 扩展入口，不再让两套公式渲染同时介入。
+**`pkgs/pi-math/` 不删**：`pkgs/claude-inline-media/` 仍复用它的 MathJax / Resvg，
+由 `home/hank/modules/claude-code/default.nix` 引入；删包会破坏 Claude 的媒体功能。
+2026-10-20 的旧配置记录保留在 [原决策](#pi-inline-markdown)。
+
+`pkgs/pi-better-render/` 固定 npm 源码及 lockfile，使用发布包内的 MathJax 4 bundle，
+并打包 `beautiful-mermaid` 1.1.3；默认关闭运行时 npm 安装与字体下载。
+图片继续走 Kitty 协议；不支持图片的终端回退到字符公式，不保证 tmux 图片显示。
+
+两套扩展由 `.pi/agent/extensions/pi-render.ts` 统一加载。
+`home/hank/modules/pi/render.ts` 明确初始化及栈式卸载顺序，避免 `/reload` 后留下
+旧的 assistant 补丁，具体复现见 [事故记录](incidents.md#pi-renderer-lifecycle)。
+`/better-render status` 检查状态，`/better-render off` 临时切回原生正文；
+`/ccstyle` 仍控制工具样式，不必随正文渲染一起关闭。
+
+验证：`bash scripts/check-pi-render.sh` 在独立临时 agent 目录中用当前 Pi 做离线
+组合测试，检查真实 PNG、内置 Mermaid、工具卡、思考显示切换、`on` / `compact`、
+窄屏重绘、正文开关、消息原文及两轮卸载/重载，不调用模型、不激活 home。
+Home Manager 配置须另行求值；真正启用需 `just hm praxic hank` 后 `/reload`。
+
+---
+
 ## 2026-10-25 · home 按文件名组装,没有注册表 {#home-by-file-name}
 
 `flake.modules.homeManager`、`users.<account>.{module,dev,gui}`、主机账户条目的

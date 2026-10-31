@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-10-31 · Pi 正文与 CC 思考补丁需要栈式卸载 {#pi-renderer-lifecycle}
+
+将 `pi-better-render` 0.4.0 与 `pi-cc-extensions` 1.0.8 组合时，第一轮离线测试
+已能显示工具卡、正文和行内公式，但 `session_shutdown` 后
+`AssistantMessageComponent.prototype.updateContent` 没有恢复原函数。
+better 包装 assistant 组件，CC 的 compact-thinking 与 compact-mode 也包装同一方法；
+各层只在自己拥有当前原型时恢复。按注册顺序正向卸载，内层发现外层仍在便跳过，
+随后外层却把已停用的内层函数重新放回原型。
+
+**误导点：工具组件与正文组件不同，不等于两套插件互不重叠。** CC 还有思考与
+compact 消息重组；能生成 PNG、能渲染一次，也不证明 `/reload` 能正确收尾。
+仅把 better 的启动放到 CC 之后仍不够，CC 内部的两层 assistant 包装也要逆序释放。
+
+`home/hank/modules/pi/render.ts` 在注册期保留 better 的卸载钩子，延迟它的启动到
+CC 初始化与零延迟刷新之后；收集 CC 的卸载钩子并逆序执行。
+这样先去掉 better，再拆 compact-mode，最后拆 compact-thinking。
+没有修改任何消息原文，也没有改 CC 的工具卡实现。
+
+`bash scripts/check-pi-render.sh` 在 Pi 1.4.0 的真实宿主模块中重复两轮测试：
+实际 PNG、离线 Mermaid、思考显示/折叠、100→42→100 列、正文开关、CC 模式切换，
+以及 assistant 原型和工具 call/result renderer 的恢复均通过。
+测试使用模拟 TUI，不代表当前 Rex 窗口已经完成视觉验收；也未激活 Home Manager。
+
 ## 2026-10-30 · QQ 数据库复制在丢包时反复从同一段 WAL 重传 {#qq-ha-wal-reconnect-loop}
 
 21 点多 tank 与 h610 的 Tailscale 直连短测丢包 20–25%，SSH、控制 API 和
