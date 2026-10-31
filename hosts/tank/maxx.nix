@@ -100,6 +100,10 @@ in {
             base_url = cliproxy.baseUrl;
             protocol = "chat";
             api_key_file = secret "cliproxy-api-key";
+            # Argon thinks without a word for up to ~110 s on calls that
+            # then answer; at maxx's default 120 s, 27 calls in two days were
+            # cut off and started over (2026-10-31). Flash's longest is ~60 s.
+            stream_idle_timeout_secs = 240;
             models = {
               "gemini-3.8-flash-high" = {
                 context_window = cliproxy.gemini.context;
