@@ -232,3 +232,10 @@ The module also puts `rex` in the system profile, its `xterm-rex` terminfo
 entry, and its ssh guard in `/etc/ssh/ssh_config` for every account. On
 logind hosts an account's server is that person's ordinary personal server,
 so `rex` in an ssh shell on tank shows the same sessions as the app.
+
+Deployed to tank and taipan on 2026-10-31. From praxic, `rex -S
+http://<host>.inner.imdomestic.com:7297 whoami` reported `hank@imdomestic.com
+… acting as hank`, and asking for `linwhite@`, `kenneth@` or `root@` was
+refused with 403. The other people's logins and the Mac and iOS apps were not
+tried. The snapshot server reports API revision 0, while the Mac app's server
+(build 1651) supports 0 to 7.
