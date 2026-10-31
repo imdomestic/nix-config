@@ -65,6 +65,12 @@
 
     llm-agents.url = "github:numtide/llm-agents.nix";
 
+    # Rex 的 Linux alpha,snapshot 频道;flake.lock 记的是服务器给出的定版 URL。
+    rex = {
+      url = "https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     nix-flatpak.url = "github:gmodena/nix-flatpak/v0.7.0";
 
     wayland-scroll-factor = {

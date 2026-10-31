@@ -204,3 +204,31 @@ The Mac must be awake, Hank logged in, and the Rex server running. Logs are in
 launchctl print gui/$(id -u)/org.nix-community.home.rex-tailnet-relay
 launchctl kickstart -k gui/$(id -u)/org.nix-community.home.rex-tailnet-relay
 ```
+
+## Login server on Linux {#login-server}
+
+Superlogical invited Hank to the Rex Linux alpha on 2026-10-31. The `rex` flake
+input follows the snapshot channel
+(`https://pkgs.superlogical.com/rex/nix/snapshot.tar.gz`). The package host
+names a fixed release URL in a `Link: rel="immutable"` header, and
+`flake.lock` records that URL, so `just upp rex` moves to the newest snapshot.
+The flake packages the prebuilt binary; `inputs.nixpkgs.follows` links it
+against this repo's glibc and pam.
+
+`system/modules/rex-login-server.nix`, listed in the `modules` of tank and
+taipan, imports the flake's NixOS module and runs `rex login-server` as root.
+It listens on `tailnet://:7297` (opened on `tailscale0`), asks the host's
+tailscaled who each caller is, and starts or reuses a Rex server for the
+matching operating system account, as that account. Every account in the
+host's registry entry is listed in `/etc/rex/accounts.jsonc`, reachable only
+by the headscale login of the same name (`tailscale:<account>@imdomestic.com`),
+which is also that login's default account. Each person therefore sees only
+their own sessions, without naming an account:
+`http://tank.inner.imdomestic.com:7297`. A login with no account of its name
+on the host, such as `max`, is refused. Giving someone access to another host
+means adding their account to its `users` in `host.nix`.
+
+The module also puts `rex` in the system profile, its `xterm-rex` terminfo
+entry, and its ssh guard in `/etc/ssh/ssh_config` for every account. On
+logind hosts an account's server is that person's ordinary personal server,
+so `rex` in an ssh shell on tank shows the same sessions as the app.

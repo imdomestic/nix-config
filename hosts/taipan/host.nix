@@ -27,6 +27,7 @@
 
     modules = [
       ./desktop.nix
+      ../../system/modules/rex-login-server.nix
     ];
 
     externalModules = [

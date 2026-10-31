@@ -23,6 +23,7 @@
       ./gaoji-web.nix
       ./maxx.nix
       ../../system/modules/gaoji-worker.nix
+      ../../system/modules/rex-login-server.nix
     ];
 
     externalModules = [
