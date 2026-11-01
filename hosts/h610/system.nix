@@ -429,9 +429,10 @@ in {
     };
   };
 
-  systemd.tmpfiles.rules =
-    ["d /var/lib/coturn 0750 root turnserver -"
-     "r ${config.my.telemetry.textfileDir}/gaoji-qq.prom - - - -"];
+  systemd.tmpfiles.rules = [
+    "d /var/lib/coturn 0750 root turnserver -"
+    "r ${config.my.telemetry.textfileDir}/gaoji-qq.prom - - - -"
+  ];
 
   services.dnsmasq.enable = false;
   services.resolved = {
@@ -791,7 +792,6 @@ in {
     runtimePackages = [pkgs.ffmpeg-headless];
     sandbox.enable = false;
     sandbox.nixCacheVolume = "kennethbot-nix-v2";
-
   };
 
   my.monitoring.extraScrapeConfigs = [
@@ -1050,7 +1050,7 @@ in {
   services.headscale = {
     enable = true;
     # nixpkgs 26.05 still has 0.28.0; pin upstream 0.29.4 for the incremental-map fix.
-    package = pkgs.headscale.overrideAttrs (old: {
+    package = pkgs.headscale.overrideAttrs (_old: {
       version = "0.29.4";
       src = pkgs.fetchFromGitHub {
         owner = "juanfont";

@@ -17,4 +17,7 @@
 
   # 运营网络镜像的 tag（minecraft/ 的内容哈希），CI 推镜像时用，见 minecraft/image-tag.nix。
   flake.mcImageTag = import ../../minecraft/image-tag.nix;
+
+  # `nix fmt` / `just fmt`;CI 用同一个版本查格式。
+  flake.formatter = inputs.nixpkgs.lib.genAttrs config.systems (system: inputs.nixpkgs.legacyPackages.${system}.alejandra);
 }

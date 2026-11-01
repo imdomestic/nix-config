@@ -181,6 +181,7 @@ tier (`config.my.home.tier`).
 | `ciMatrix` | the CI host list, derived by rule from the registry |
 | `packages` | the few local builds pushed to `imdomestic.cachix.org` |
 | `sopsConfig` | the rendered `.sops.yaml` (`flake/secrets.nix`) |
+| `formatter` | alejandra, for `nix fmt` / `just fmt` |
 | `hosts` | the evaluated registry |
 
 ## Common tasks
@@ -330,6 +331,8 @@ misled you** — the wrong first guess is usually more valuable than the fix.
 
 ```sh
 just check                # nix flake check (with mirror substituters)
+just fmt                  # format every .nix file (alejandra)
+just lint                 # alejandra --check + deadnix, as CI runs them
 just switch <host>        # nixos-rebuild switch   — system only, no homes
 just darwin <host>        # darwin-rebuild switch  — system only, no homes
 just home / home-dry      # home-manager switch for this machine's own account
@@ -349,6 +352,8 @@ commit message. Do not run `switch` on the user's behalf unless asked.
 
 Before claiming a change works, at minimum make sure evaluation passes
 (`just check`, or an `nix eval` / `--dry-run` of the affected configuration).
+Before pushing, `just lint`: CI fails on an unformatted file or on code
+deadnix finds unused. An argument that has to stay unused is named `_name`.
 A change meant to be behaviour-neutral (a move, a refactor) is proven by
 comparing the drvPath of every output against the previous commit
 (`nix eval --raw "git+file://$PWD?rev=<old>#<attr>.drvPath"` vs the working
@@ -497,7 +502,7 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   x86_64-linux runs on `ubuntu-latest`, aarch64-linux on native
   `ubuntu-24.04-arm`, darwin on `macos-latest`. A new host joins CI on its own;
   never hand-copy a host list into the workflow. It also fails if `.sops.yaml`
-  drifts from `flake/secrets.nix`.
+  drifts from `flake/secrets.nix`, or if `just lint` would.
 - `.github/workflows/cachix.yml` builds the flake's `packages` output and pushes
   it to `imdomestic.cachix.org`.
 - `.github/workflows/update-llm-agents.yml` bumps the `llm-agents` input every

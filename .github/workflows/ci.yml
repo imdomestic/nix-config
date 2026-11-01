@@ -1,6 +1,6 @@
 # 四个 job:
 #
-#   flake-check           整个 flake 求值一遍 + 求值警告门禁 + inventory 概览
+#   flake-check           整个 flake 求值一遍 + 求值警告门禁 + 格式和 deadnix + inventory 概览
 #   ci-matrix             从 flake 的 `ciMatrix` 输出读出要检查哪些 host
 #   check-configurations  每台 host 一个 --dry-run + 自己那份 deploy schema,
 #                         顺便量出闭包体积;矩阵由 ci-matrix 喂进来
@@ -187,6 +187,21 @@ jobs:
           nix eval --raw .#sopsConfig > /tmp/sops.yaml
           if ! diff -u .sops.yaml /tmp/sops.yaml; then
             echo "::error::.sops.yaml 和 flake/secrets.nix 生成的不一致,跑 just sops-config"
+            exit 1
+          fi
+
+      # 和本地 `just lint` 是同两条命令,版本都跟 flake 的 nixpkgs 走。
+      - name: 格式(alejandra)
+        run: |
+          if ! nix fmt -- --check .; then
+            echo "::error::有文件没按 alejandra 格式化,跑 just fmt"
+            exit 1
+          fi
+
+      - name: 死代码(deadnix)
+        run: |
+          if ! nix run --inputs-from . nixpkgs#deadnix -- -L --fail .; then
+            echo "::error::deadnix 找到没用到的绑定;不用的参数改成 _ 开头"
             exit 1
           fi
 

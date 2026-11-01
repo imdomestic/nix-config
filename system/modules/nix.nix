@@ -15,7 +15,7 @@
       inputs.nur.overlays.default
       inputs.nix-minecraft.overlay
       # inputs.headplane.overlays.default
-      (final: prev: {
+      (_final: prev: {
         # `prev.stdenv.hostPlatform.system`,不是 `prev.system`:后者是 nixpkgs
         # 的旧别名,26.05 起求值时会打
         #   evaluation warning: 'system' has been renamed to/replaced by

@@ -42,6 +42,16 @@ hm-dry host user:
 check:
   nix flake check --option substituters '{{substituters}}'
 
+# Format every .nix file with the flake's alejandra.
+fmt:
+  nix fmt -- .
+
+# The same checks CI runs. deadnix's -L skips unused names in `{pkgs, ...}:`
+# heads; unused let bindings and lambda arguments still fail.
+lint:
+  nix fmt -- --check .
+  nix run --inputs-from . nixpkgs#deadnix -- -L --fail .
+
 check-trace:
   nix --show-trace flake check --option substituters '{{substituters}}'
 
