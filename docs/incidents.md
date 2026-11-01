@@ -4,6 +4,39 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-02 · Gaoji 自动接管后受控切回 tank {#gaoji-tank-failback-20261102}
+
+发布 Bot 的追加要求拒绝反馈修复后，只读验收发现 h610 是实际主库、tank 是副本。
+owner 确认预期仍是 tank 主库，核查后明确授权立即受控切回。
+
+monitor 历史显示，11-01 20:26:21 HKT 判定 tank 不健康，设置 tank draining、
+h610 prepare_promotion；随后 tank 被降级，h610 接管。20:40:52 tank 已重新追平为
+secondary。首选优先级仍是 tank=100 / h610=50，但恢复不会自动 failback，故 h610
+继续提供写入。这早于 Bot 在 11-02 00:09 的部署；未据此确认运营商或数据库的底层根因。
+
+**误导点：旧交接中的“tank 为主库”和首选优先级都不是当前运行角色。**
+Bot ready 也只证明它连到了可写节点，不证明那个节点是 tank。应同时核对 monitor、
+两边的 `pg_is_in_recovery()` 和 WAL receiver 来源，而不是改文档来掩盖期望与现状的偏离。
+
+受控切回前，两节点 health=1、上报新鲜，tank 连续两次复制延迟为 0。
+在当前可写的 h610 上保存 PostgreSQL 17 备份，路径
+`/var/lib/qq-bot-postgres-backups/tank-failback-20261101T170122Z/`；归档
+95,544,784 字节、0600，pg_restore 目录检查通过，所在盘剩余 171 GiB。
+
+01:03:16–01:03:22 在 h610 只执行一次 `qq-bot-postgres-prefer-tank`，退出码 0。
+CLI 曾打印 get_nodes 的 group 参数为空的查询错误，但 monitor 实际已完成状态转换；
+没有据此重放切换。最终 SQL 确认 tank 可写、h610 只读，monitor 均为对应目标状态，
+h610 的 receiver 从 tank streaming。此前 owner 授权的临时
+`replication-quorum=false` 保持在 h610，tank 不等待其同步提交；没有修改优先级、
+网络、keeper 参数或恢复同步要求。
+
+QQ 的旧账号租约在切换后失效。`OfficialRuntime._run` 在 LeaseLost 后等待恢复信号，
+不会自行重试；15 秒内三次检查仍为 503 / lease_unavailable。确认无活动后台任务后，
+仅于 01:06 重启 Gaoji 重新获取租约，不修改运行时代码。之后三次健康检查均为 ready，
+tank 上可观察到应用连接和有效账号 advisory lock；h610 复制多次追平，连续写入采样
+仍可出现几十字节瞬时差。Bot 版本、Nix 系统闭包与数据库 0077 均未改变。
+这不是一次真实 QQ 客户端消息验收，也不代表异步复制的既有数据风险已消除。
+
 ## 2026-11-01 · Pi 富 diff 的 Shiki 升级覆盖自定义语法配色 {#pi-diff-theme-override}
 
 Hank 的 Evergarden / Kanso 主题已经覆盖 Pi 的全部颜色角色，普通 Markdown
