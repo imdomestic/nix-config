@@ -35,6 +35,9 @@ in
       hash = "sha512-f25RCxUyWCxYfJI4rlErVQpnW4H5iEnrbAtRBpTcAI2iOFZt4lwDWFgQjGAy6VbIJP36RpNyXHSuPpguQkelZg==";
     };
 
+    # Keep diff syntax on Pi's palette; docs/incidents.md#pi-diff-theme-override.
+    patches = [./pi-theme-diff.patch];
+
     postPatch = ''
       cp ${writeText "package.json" (builtins.toJSON package)} package.json
       cp ${./package-lock.json} package-lock.json

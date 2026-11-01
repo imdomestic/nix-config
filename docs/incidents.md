@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-01 · Pi 富 diff 的 Shiki 升级覆盖自定义语法配色 {#pi-diff-theme-override}
+
+Hank 的 Evergarden / Kanso 主题已经覆盖 Pi 的全部颜色角色，普通 Markdown
+代码块也能使用 `syntax*`，但工具卡里 diff 的代码前景仍像 GitHub 主题。
+`pi-cc-extensions` 1.0.8 的富 diff 先以 Pi 的 `highlightCode` 同步打底，随后
+用 Shiki 异步替换；默认 `resolveShikiTheme` 只按底色选择 `github-dark` /
+`github-light`，不会读取 Pi 的自定义语法颜色。
+
+**误导点：主题 JSON、普通代码块以及 diff 首帧颜色正确，不代表富 diff 的最终
+高亮正确。** 增删底色走 Pi 主题，代码前景却有独立的异步路径。另一个遗漏是
+Pi 1.4 的扩展名表没有 `.nix`，虽然其高亮器支持 Nix，diff 仍会退回无高亮文本。
+
+`pkgs/pi-cc-extensions/pi-theme-diff.patch` 让默认 diff / 工具代码块保留 Pi
+的同步高亮，仅显式设置 `DIFF_THEME` 时才使用 Shiki；同时补上 `.nix` 识别。
+没有更改 diff 底色、行内差异、布局、输入框或任何工具执行逻辑。
+
+`bash scripts/check-pi-diff.sh` 对全部九套主题测试真彩色与 256 色，覆盖 edit、
+write 新建/覆盖、Nix、分栏/统一布局、窄屏换行、重绘、已有工具卡切换主题、
+大文本和未知语言回退，以及显式 Shiki 覆盖。旧包在默认路径发起 6 次 Shiki
+请求，回归断言失败；补丁包不再发起默认 Shiki 请求，所有检查通过。
+测试失败须显式 `process.exit(1)`：仅设置 `process.exitCode` 会被 RPC 的
+`ctx.shutdown()` 正常退出覆盖。测试未激活任何 home，也不等于 Rex 视觉验收。
+
 ## 2026-11-01 · 悉尼到 tank 时快时卡:没有直连,中转落在 h610 的 DERP {#sydney-tank-peer-relay}
 
 praxic(悉尼,在 rpi4 后面)到 tank 的 SSH 时快时卡。`tailscale status` 里 tank 是
