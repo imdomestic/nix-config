@@ -93,7 +93,7 @@ in {
       # xray 入站(3444/3445/54322/54324)和 derper 的 HTTPS(8443)。
       allowedTCPPorts = [3444 3445 54322 54324 8443];
       # derper 的 STUN(3478)、wireguard 中心节点(50722)和 tailscale peer
-      # relay(40000)。云厂商的防火墙要另外放行。
+      # relay(40000)。云厂商防火墙那层也得放行这几个端口。
       allowedUDPPorts = [3478 50722 40000];
     };
     networkmanager.enable = false;

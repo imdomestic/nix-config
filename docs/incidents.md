@@ -34,7 +34,20 @@ h610 的 headscale policy 加一条 `tailscale.com/cap/relay` grant,只给 hank 
 的设备。peer relay 排在 DERP 前面,grant 给所有人的话,国内两端都打不通的那几对
 (desktop-glr3hee、gaoji)也会被拉去东京绕一圈。只给一端就够:magicsock 按
 `cap/relay-target` 筛自己能用的 relay,收到 `CallMeMaybeVia` 的一端只检查对方的版本。
-云厂商的防火墙要另外放行 UDP 40000。tokyo 的带宽只有约 30 Mbit/s,大文件不适合走它。
+tokyo 的带宽只有约 30 Mbit/s,大文件不适合走它。
+
+结果(15:25 CST):Mac 到 tank 走 `peer-relay 10.0.0.1:40000`(经 rpi4 的 wg0 进
+tokyo),tank 那端走 tokyo 的公网 IPv4。云厂商防火墙那边 UDP 40000 本来就通。
+
+| Mac → tank | 平均 | 最大 | 标准差 | 丢包 | SSH 建连 |
+|---|---|---|---|---|---|
+| 之前(DERP h610) | 773 ms | 3956 ms | 793 ms | 0%(被 TCP 藏起来了) | 3.9–4.8 s |
+| 之后(peer relay) | 175 ms | 360 ms | 18 ms | 10.8% | 1.7–2.5 s |
+
+丢包全在 tokyo↔tank 那段:Mac → tokyo 0%;同一时刻 tank → tokyo 的 IPv4 ICMP 丢 8%,
+tank → gizmo 丢 12%,而 tank 到 tokyo 的 tailnet 直连那会儿换到了 IPv6,0% 丢包但
+RTT 190 ms。移动到日本的 IPv4 本身在丢,不只是 UDP。tokyo 上 42 个 relay 会话每个都有
+一端在悉尼,国内两端的没有。
 
 误导点:
 
