@@ -48,7 +48,8 @@ export default function (pi: ExtensionAPI) {
       };
       installPrompt(api);
       const startPrompt = handlers.session_start;
-      installStatusline(api);
+      let clock = 1_000;
+      installStatusline(api, { showTokenRate: true, now: () => clock });
       const startStatusline = handlers.session_start;
       await startPrompt({}, ctx);
       await startStatusline({}, ctx);
@@ -151,6 +152,76 @@ export default function (pi: ExtensionAPI) {
         console.error(`${name}: fixed gray-white editor, cursor/geometry, themed footer and context states passed (${host.ui.theme.getColorMode()})`);
       }
       assert.equal(entriesReads, 1, "Context/theme changes must not rescan session cost every frame");
+      const footerText = () => stripTerminalSequences(footer.render(300)[0]);
+      const startTurn = () => handlers.turn_start({ type: "turn_start", turnIndex: 0, timestamp: clock }, ctx);
+      const finishMessage = (output: unknown, stopReason = "stop", role = "assistant") => handlers.message_end({
+        type: "message_end", message: { role, stopReason, usage: { output, input: 999_999, cacheRead: 999_999, cacheWrite: 999_999 } },
+      }, ctx);
+      assert(!footerText().includes("tok/s"), "No rate should be invented from historical usage without timing");
+      startTurn();
+      assert(footerText().includes("$4.00 | avg … tok/s"));
+      clock = 4_000;
+      finishMessage(99_999, "stop", "toolResult");
+      assert(footerText().includes("avg … tok/s"), "Tool-owned usage must not count as assistant output");
+      finishMessage(120);
+      assert(footerText().includes("$4.00 | avg 40 tok/s"), "Rate must use actual output tokens, not input/cache counts");
+      for (const name of names) {
+        initTheme(name);
+        assert(footer.render(300)[0].includes(host.ui.theme.fg("text", "40")), `${name}: rate must follow the current theme`);
+      }
+      clock = 44_000;
+      handlers.agent_end({}, ctx);
+      assert(footerText().includes("avg 40 tok/s"), "Idle/tool time must not dilute the completed reply's rate");
+      startTurn();
+      clock = 45_000;
+      finishMessage(50);
+      assert(footerText().includes("avg 50 tok/s"), "Each model reply must have an independent rate");
+      handlers.model_select({}, ctx);
+      assert(!footerText().includes("tok/s"), "Changing models must not keep the previous model's rate");
+      for (const stopReason of ["error", "aborted"]) {
+        startTurn();
+        clock += 1_000;
+        finishMessage(1, stopReason);
+        assert(!footerText().includes("tok/s"), "Failed replies may contain placeholder usage, not a real final token count");
+      }
+      for (const output of [undefined, 0, -1, NaN, Infinity]) {
+        startTurn();
+        clock += 1_000;
+        finishMessage(output);
+        assert(!footerText().includes("tok/s"), "Missing/invalid output usage must not become a fake rate");
+      }
+      startTurn();
+      finishMessage(10);
+      assert(!footerText().includes("tok/s"), "Zero elapsed time must not produce Infinity");
+      startTurn();
+      handlers.agent_end({}, ctx);
+      assert(!footerText().includes("tok/s"), "An aborted run without message_end must clear the pending rate");
+      ctx.mode = "rpc";
+      startTurn();
+      ctx.mode = "tui";
+      assert(!footerText().includes("tok/s"), "RPC events must not start a terminal rate meter");
+      startTurn();
+      handlers.session_shutdown({}, ctx);
+      assert(!footerText().includes("tok/s"), "Reload/session replacement must clear timing state");
+      assert.equal(entriesReads, 1, "Rate events must not repeatedly scan recorded usage");
+      for (const options of [{}, { showTokenRate: false }]) {
+        const disabledHandlers: Record<string, any> = {};
+        let disabledFooterFactory: any;
+        const disabledCtx = {
+          ...ctx,
+          sessionManager: { ...ctx.sessionManager, getEntries: () => entries },
+          ui: { ...ctx.ui, setFooter(factory: any) { disabledFooterFactory = factory; } },
+        };
+        installStatusline({ ...api, on(event: string, handler: any) { disabledHandlers[event] = handler; } }, {
+          ...options, now: () => { throw new Error("Disabled token-rate meter must not collect timing"); },
+        });
+        assert.deepEqual(Object.keys(disabledHandlers), ["session_start"], "tok/s must remain off by default and with an explicit false option");
+        disabledHandlers.session_start({}, disabledCtx);
+        const disabledFooter = disabledFooterFactory(tui, host.ui.theme, { ...footerData, onBranchChange: () => () => {} });
+        assert(!stripTerminalSequences(disabledFooter.render(300)[0]).includes("tok/s"));
+        disabledFooter.dispose();
+      }
+      console.error("tok/s: disabled defaults, exact output usage, frozen/per-reply averages, themes, cancellation and missing-data cases passed");
       const beforeRender = renders;
       branchChanged();
       assert.equal(renders, beforeRender + 1);

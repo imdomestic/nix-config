@@ -109,7 +109,12 @@ in {
     export { default } from "${magicContext}/dist/index.js";
   '';
   home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
-  home.file.".pi/agent/extensions/statusline.ts".source = ./statusline.ts;
+  home.file.".pi/agent/extensions/statusline.ts".text = ''
+    import statusline from "${./statusline.ts}";
+    export default function (pi) {
+      statusline(pi, ${builtins.toJSON {showTokenRate = false;}});
+    }
+  '';
 
   home.file.".pi/agent/models.json".text = builtins.toJSON {
     providers = {

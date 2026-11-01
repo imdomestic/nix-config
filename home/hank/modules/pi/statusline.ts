@@ -18,12 +18,57 @@ function shortCwd(cwd: string): string {
   return clean(parts.length <= 4 ? path : `…/${parts.slice(-3).join("/")}`);
 }
 
-export default function (pi: ExtensionAPI) {
+type StatuslineOptions = { showTokenRate?: boolean; now?: () => number };
+
+export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
+  const { showTokenRate = false, now = () => performance.now() } = options;
+  let requestStartedAt: number | undefined;
+  let tokensPerSecond: number | undefined;
+  let refresh: (() => void) | undefined;
+
+  const resetRate = () => {
+    requestStartedAt = undefined;
+    tokensPerSecond = undefined;
+    refresh?.();
+  };
+  if (showTokenRate) {
+    pi.on("turn_start", (_event, ctx) => {
+      if (ctx.mode !== "tui") return;
+      requestStartedAt = now();
+      tokensPerSecond = undefined;
+      refresh?.();
+    });
+    pi.on("message_end", (event, ctx) => {
+      if (ctx.mode !== "tui" || event.message.role !== "assistant" || requestStartedAt === undefined) return;
+      const elapsedMs = now() - requestStartedAt;
+      const output = event.message.usage?.output;
+      const failed = event.message.stopReason === "error" || event.message.stopReason === "aborted";
+      // Provider output only; freeze before tool execution and never divide by idle time.
+      const rate = !failed && typeof output === "number" && Number.isFinite(output) && output > 0 && elapsedMs > 0
+        ? output / (elapsedMs / 1_000) : undefined;
+      tokensPerSecond = typeof rate === "number" && Number.isFinite(rate) ? rate : undefined;
+      requestStartedAt = undefined;
+      refresh?.();
+    });
+    pi.on("agent_end", () => {
+      requestStartedAt = undefined;
+      refresh?.();
+    });
+    pi.on("model_select", resetRate);
+    pi.on("session_shutdown", () => {
+      requestStartedAt = undefined;
+      tokensPerSecond = undefined;
+      refresh = undefined;
+    });
+  }
   pi.on("session_start", (_event, ctx) => {
+    resetRate();
     if (ctx.mode !== "tui") return;
 
     ctx.ui.setFooter((tui, theme, footerData) => {
-      const unsubscribe = footerData.onBranchChange(() => tui.requestRender());
+      const requestRender = () => tui.requestRender();
+      refresh = requestRender;
+      const unsubscribe = footerData.onBranchChange(requestRender);
       let costKey = "";
       let cost = 0;
 
@@ -48,7 +93,10 @@ export default function (pi: ExtensionAPI) {
       }
 
       return {
-        dispose: unsubscribe,
+        dispose() {
+          unsubscribe();
+          if (refresh === requestRender) refresh = undefined;
+        },
         invalidate() {},
         render(width: number): string[] {
           const groups = [theme.fg("mdLink", shortCwd(ctx.cwd))];
@@ -73,6 +121,12 @@ export default function (pi: ExtensionAPI) {
             context += ` ${theme.fg(color, `(${percent.toFixed(1).replace(/\.0$/, "")}%)`)}`;
           }
           groups.push(model, context, `${theme.fg("dim", "$")}${theme.fg("text", sessionCost().toFixed(2))}`);
+          if (showTokenRate && requestStartedAt !== undefined) {
+            groups.push(theme.fg("dim", "avg … tok/s"));
+          } else if (showTokenRate && tokensPerSecond !== undefined) {
+            const rate = tokensPerSecond.toFixed(1).replace(/\.0$/, "");
+            groups.push(`${theme.fg("dim", "avg")} ${theme.fg("text", rate)} ${theme.fg("dim", "tok/s")}`);
+          }
 
           const separator = ` ${theme.fg("dim", "|")} `;
           const lines = [truncateToWidth(groups.join(separator), width)];
