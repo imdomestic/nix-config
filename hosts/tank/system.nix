@@ -20,35 +20,32 @@ in {
     ../../system/modules/keyd
     ../../system/modules/monitoring
     ../../system/modules/qq-bot-postgres-ha.nix
-    ../../system/modules/cliproxy
     # ../../system/modules/minecraft/wuxi.nix
     # ../../system/modules/dae
   ];
 
-  # 把 ChatGPT/Gemini 订阅包成 OpenAI 兼容 API。只绑 tailscale 地址 —— 见模块里
-  # bindAddress 的说明,公网上不该有这个监听。
+  # cliproxy 2026-11-02 搬到了 gizmo(docs/decisions.md#cliproxy-on-gizmo)。这里
+  # 只剩一个 TCP 转发,给还没重新部署 home 的机器和不归本仓库管的客户端,它们还
+  # 写着 tank:8317。gizmo 的日志分不出谁是经这里转的(来源都是 100.64.0.4),
+  # 要看 tank 上 `ss -tn sport = :8317`;一直没有连接了,这段就可以删。
   #
-  # 2026-10-14 从 h610 搬过来:最大的调用方是本机的 Max,而 tank(移动)到
-  # h610(电信)这一跳每晚 21–22 点丢包 40–55%,Max 的回复跟着慢到十几二十分钟。
-  # 见 docs/incidents.md#max-evening-cross-carrier。出境走网关 r5s 的 dae。
-  # h610 上留了个转发,没跟着改配置的客户端照旧连 h610:8317。
-  services.cliproxy = {
-    enable = true;
-    bindAddress = config.my.host.tsName;
-    rewind = {
-      enable = true;
-      apiKeyFile = config.sops.secrets."rewind/api_key".path;
+  # 写死地址加 FreeBind,理由同 h610 上的那个转发:开机时 tailscale 地址可能还
+  # 不存在,而公网上不该有这个端口。
+  systemd.sockets.cliproxy-forward = {
+    wantedBy = ["sockets.target"];
+    listenStreams = ["100.64.0.4:8317"];
+    socketConfig.FreeBind = true;
+  };
+  systemd.services.cliproxy-forward = {
+    description = "Forward the old tank cliproxy port to gizmo";
+    serviceConfig = {
+      # gizmo 的 tailnet 地址。cliproxy 只听 IPv4,写名字的话解析出 IPv6 就连不上。
+      ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 100.64.0.16:8317";
+      DynamicUser = true;
+      NoNewPrivileges = true;
+      ProtectSystem = "strict";
+      ProtectHome = true;
     };
-  };
-  my.tailscale.bindServices = ["cliproxy"];
-  # 管理口令和 Max 读的是同一个值,tank 上只留 tank-max.yaml 这一份。
-  sops.secrets."cliproxy/management_key" = {
-    sopsFile = ../../secrets/hosts/tank-max.yaml;
-    key = "cliproxy-management-key";
-  };
-  sops.secrets."rewind/api_key" = {
-    owner = "cliproxy";
-    restartUnits = ["cliproxy.service"];
   };
 
   # 监控的第一份。**开关不在这里** —— my.monitoring.enable 默认读 registry 里
@@ -360,7 +357,7 @@ in {
         # 局域网文件目录(nginx 的 tank.local)。
         br-lan.allowedTCPPorts = [80];
         # tank.local、NFS(exports 给的是 tailnet 地址)、k3s API、
-        # matrix(h610 的 nginx 经 tailnet 反代)、cliproxy、ollama、
+        # matrix(h610 的 nginx 经 tailnet 反代)、cliproxy 的转发、ollama、
         # gaoji bot(h610 的 nginx / napcat 来连)。
         tailscale0.allowedTCPPorts = [80 2049 6443 8008 8317 11434 18080];
         # k3s 的 node-ip 在 wg0 上;luckperms 的 postgres(pg_hba 放了

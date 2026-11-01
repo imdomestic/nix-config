@@ -136,7 +136,7 @@ in {
                 context_window = cliproxy.gpt.context;
                 max_output = cliproxy.gpt.output;
               };
-              # Rewind's, through the plugin on tank's cliproxy.
+              # Rewind's, through cliproxy's Rewind plugin.
               "rewind/gpt-6-astra" = {
                 context_window = cliproxy.rewind.context;
                 max_output = cliproxy.rewind.output;

@@ -5,7 +5,7 @@ plugin owns Rewind authentication and declares native Responses input and
 output. CLIProxyAPI still owns client authentication, credential selection,
 protocol translation for other client formats, and usage collection.
 
-The fleet enables it on tank through `services.cliproxy.rewind`. Its model is
+The fleet enables it on gizmo through `services.cliproxy.rewind`. Its model is
 `rewind/gpt-6-astra`, kept separate from the existing unprefixed Codex models.
 The upstream controls what this alias resolves to; the plugin preserves the
 upstream response's `model` field.
@@ -20,7 +20,7 @@ instead of this plugin.
 The `cliproxy.service` pre-start step installs a credential descriptor at
 `/var/lib/cli-proxy-api/auths/rewind.json`. It contains paths, not a provider
 key. The raw key is encrypted under `rewind/api_key` in
-`secrets/hosts/tank.yaml`, installed at `/run/secrets/rewind/api_key` for the
+`secrets/hosts/gizmo.yaml`, installed at `/run/secrets/rewind/api_key` for the
 `cliproxy` user. Key changes restart the service.
 
 The device's P-256 private key is created once at
@@ -86,8 +86,8 @@ not the gateway's OS. See [the Linux authentication investigation](incidents.md#
 Build the plugin through the host configuration:
 
 ```sh
-nix build .#nixosConfigurations.tank.config.services.cliproxy.rewind.package
-just check-sops tank
+nix build .#nixosConfigurations.gizmo.config.services.cliproxy.rewind.package
+just check-sops gizmo
 ```
 
 The package runs Go tests covering ES256 proof validation, exact request-body

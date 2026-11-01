@@ -91,10 +91,10 @@ in {
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
-  # cliproxy 2026-10-14 搬到了 tank(见 tank/system.nix)。这里只剩一个 TCP 转发,
-  # 让手机、别人的机器这类不归本仓库管、还写着 h610:8317 的客户端照旧能用。
-  # 本仓库里的客户端都已直连 tank;等 tank 上 cliproxy 的日志里不再有
-  # 100.64.0.3 的来源,这段就可以删。
+  # cliproxy 2026-10-14 搬到了 tank,11-02 又搬到 gizmo(见 gizmo/system.nix)。
+  # 这里只剩一个 TCP 转发,让手机、别人的机器这类不归本仓库管、还写着 h610:8317
+  # 的客户端照旧能用。tank 的日志里最后一次见到 100.64.0.3 是 10-23;等 gizmo 上
+  # cliproxy 的日志里也一直没有它,这段就可以删。
   #
   # 写死 100.64.0.3 加 FreeBind:socket 开机就要 bind,那时 tailscale 地址可能
   # 还不存在。不监听通配地址,公网上不该有这个端口(理由同 modules/cliproxy 的
@@ -105,10 +105,10 @@ in {
     socketConfig.FreeBind = true;
   };
   systemd.services.cliproxy-forward = {
-    description = "Forward the old h610 cliproxy port to tank";
+    description = "Forward the old h610 cliproxy port to gizmo";
     serviceConfig = {
-      # tank 的 tailnet 地址。cliproxy 只听 IPv4,写名字的话解析出 IPv6 就连不上。
-      ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 100.64.0.4:8317";
+      # gizmo 的 tailnet 地址。cliproxy 只听 IPv4,写名字的话解析出 IPv6 就连不上。
+      ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 100.64.0.16:8317";
       DynamicUser = true;
       NoNewPrivileges = true;
       ProtectSystem = "strict";

@@ -7,7 +7,25 @@
   imports = [
     ../../system/modules/keyd
     ../../system/modules/vlmcsd
+    ../../system/modules/cliproxy
   ];
+
+  # 上游请求本来就从这台出境;放在这里,国内的调用方只跨一次境,海外的不再绕进
+  # 国内。见 docs/decisions.md#cliproxy-on-gizmo。只绑 tailscale 地址,理由见
+  # 模块里 bindAddress 的说明。
+  services.cliproxy = {
+    enable = true;
+    bindAddress = config.my.host.tsName;
+    rewind = {
+      enable = true;
+      apiKeyFile = config.sops.secrets."rewind/api_key".path;
+    };
+  };
+  my.tailscale.bindServices = ["cliproxy"];
+  sops.secrets."rewind/api_key" = {
+    owner = "cliproxy";
+    restartUnits = ["cliproxy.service"];
+  };
 
   security.acme = {
     acceptTerms = true;

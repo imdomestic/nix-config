@@ -48,6 +48,8 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts = [cfg.port];
+
     # 服务端和 OpenCode 共用同一份调用密钥，轮换时只需改一个文件。
     sops.secrets."cliproxy/api_key".sopsFile = ../../../secrets/clients/cliproxy.yaml;
 
@@ -182,8 +184,8 @@ in {
     # 登录辅助。设备码流程不需要回调端口、不需要浏览器、不需要 SSH 隧道 ——
     # 它打印一个 URL 和一段码,你在任意一台有浏览器的机器上开那个 URL 输码即可。
     # 上游文档主推的是 `-no-browser` + `ssh -L 1455:...` 那套,那套在这里更麻烦:
-    # 它会去 api.ipify.org 猜公网 IP 来拼 ssh 命令,而这台机器经代理出去,
-    # 猜出来的是日本出口的地址,拼出来的 ssh 命令是错的。
+    # 它会去 api.ipify.org 猜公网 IP 来拼 ssh 命令,而跑它的机器公网上连不进来
+    # (gizmo 只能走 tailscale),拼出来的 ssh 命令是错的。
     environment.systemPackages = [
       (pkgs.writeShellScriptBin "cliproxy-login" ''
         set -euo pipefail

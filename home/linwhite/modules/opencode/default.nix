@@ -162,7 +162,7 @@ in {
       instructions = ["${shellStrategy}/shell_strategy.md"];
       provider.cliproxy = {
         npm = "@ai-sdk/openai";
-        name = "CLIProxy (tank)";
+        name = "CLIProxy (${config.my.fleet.placements.cliproxy.host})";
         options = {
           baseURL = cliproxy.baseUrl;
           apiKey = "{file:${config.sops.secrets."cliproxy/api_key".path}}";

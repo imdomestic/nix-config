@@ -33,9 +33,9 @@ in {
       # 这种小 ARM 盒子上去 —— 而 home 是 deploy 时在**目标机**上编的
       # (deploy 走 --remote-build)。不缓存的话那几台要现编一遍。
       tmux-agent-sidebar = agentSidebar nixos.rpi4;
+      cliproxy-rewind = nixos.gizmo.config.services.cliproxy.rewind.package;
     };
     x86_64-linux = {
-      cliproxy-rewind = nixos.tank.config.services.cliproxy.rewind.package;
       bonsai-convert-env = nixos.seraph.pkgs.callPackage ../../pkgs/bonsai-convert-env {};
       vfio-igd-rom = nixos."268v".config.my.windowsVM.igdROM;
       # 在 taipan 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。

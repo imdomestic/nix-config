@@ -11,6 +11,41 @@
 
 ---
 
+## 2026-11-02 · cliproxy 在出境点 gizmo 上,不在 tank {#cliproxy-on-gizmo}
+
+cliproxy 的上游(OpenAI、Google)本来就从 gizmo 出境:tank 经网关 r5s 的 dae 走
+`im` 组的反向隧道,隧道的 bridge 端就是 gizmo,有时还先经 h610 的 portal,多跨
+一次移动↔电信。放在 tank 上时,海外的调用方(悉尼的 praxic,kenneth 和 linwhite
+的 Mac)要先进国内再出去,跨两次境;放在 gizmo 上,国内的调用方跨一次,海外的
+不跨。
+
+调用量(tank 上 cliproxy 3 天的日志):tank 本机(Max、gaoji)4673 次,praxic
+609,aegis 178,gizmo 159,alex 119。最大的调用方还在 tank,所以先比了 tank 到
+gizmo 的两条路,北京时间 11-01 23:00 前后(一天里最差的时段)从 tank 测:
+
+| | tailscale 直连 gizmo(IPv6) | r5s 的隧道 |
+|---|---|---|
+| ping 丢包 | 15–21% | — |
+| 新连接上一个来回,p50 / p90 / 最大 | 0.15 / 1.15 / 2.17 s | 0.50 / 1.05 / 1.94 s |
+| 其中超过 1 秒 | 6/40 | 5/40 |
+| 下载 185 KB | 约 1.2 s | 约 2.0 s(含 TLS 握手) |
+| 已建好的连接上传 400 KB | 中位数约 0.7 s,最长 2.35 s | 0.2–2.6 s |
+
+两条路过的是同一段移动 → 日本,tailscale 不比隧道差。
+
+搬的时候整个 `/var/lib/cli-proxy-api` 从 tank 拷过来:`auths/` 里的 OAuth 凭据,
+和 `rewind/device.json`(Rewind 的设备身份,换一个要管理员重新批准)。拷之前先
+停 tank 上的服务:两份同时跑会各自续期同一个 refresh token,一份续上,另一份就
+作废。tank 上的旧目录没删,但 gizmo 续期之后里面的 token 就过期了,要搬回去得
+从 gizmo 再拷一次。tank:8317 和 h610:8317 各留一个转发到 gizmo。
+
+误导点:
+
+- 第一轮上传用 `ssh root@gizmo 'cat > /dev/null'` 测,8 次里 3 次卡了 10–54 秒,
+  看着像 tailscale 这条路不能用。卡的是每次新建 ssh 会话的握手;复用同一条连接
+  (ControlMaster)之后,传输本身 0.35–2.35 秒。
+- ping 丢 20% 不等于 TCP 跑不动:下载方向的发送端 gizmo 用 bbr,几乎不受影响。
+
 ## 2026-11-01 · Pi 输入区中性，状态栏随主题 {#pi-input-status-colors}
 
 Hank 的 Pi 输入文字、上下边框和 `❯` 固定为中性灰白 `#c5c5c5`，不跟随

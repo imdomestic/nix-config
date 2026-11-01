@@ -82,7 +82,7 @@ creation_rules:
           - age1svatkwy2klm39twkpv7rxfteampuzkyu3ccxtjzpmuz2kq3d6sus8l3hg4 # linwhite@seraph
           - age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7 # linwhite (personal)
           - age1m70ml5ff2cxswwqy8vz8al9ptjd4sfqmmk7mufem9gejgk5t34tqp7v7zr # host h610
-          - age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs # host tank
+          - age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq # host gizmo
   - path_regex: 'secrets/clients/kube-tank\.yaml$'
     key_groups:
       - age:

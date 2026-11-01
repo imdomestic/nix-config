@@ -158,7 +158,7 @@ in {
         ];
       };
       cliproxy = {
-        name = "CLIProxy (tank)";
+        name = "CLIProxy (${config.my.fleet.placements.cliproxy.host})";
         inherit (cliproxy) baseUrl;
         api = "openai-responses";
         # `!` 前缀让 pi 每次请求时执行命令取 key，明文不进 store。

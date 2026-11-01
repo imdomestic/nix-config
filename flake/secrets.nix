@@ -51,8 +51,8 @@
       (rule "secrets/hosts/tank-max\\.yaml$" (readersOf "tank"))
       # 网关的 API key:用它的人,加上网关自己。
       (rule "secrets/clients/bonsai\\.yaml$" (readersOf config.placements.bonsai-ninfer.host))
-      # 每个人都用 cliproxy;系统里读它的是 h610 的 gaoji profile 和 tank 的 max。
-      (rule "secrets/clients/cliproxy\\.yaml$" (everyone ++ map host ["h610" "tank"]))
+      # 每个人都用 cliproxy;系统里读它的是 h610 的 gaoji profile 和网关自己。
+      (rule "secrets/clients/cliproxy\\.yaml$" (everyone ++ map host (lib.unique ["h610" config.placements.cliproxy.host])))
       # tank 集群的 cluster-admin token,只给 hank 自己的机器(home/hank/modules/kube)。
       (rule "secrets/clients/kube-tank\\.yaml$" (keysOf "hank"))
       (rule "secrets/gaoji/(account-auth|control)\\.yaml$" (admins ++ [(host gaojiControl)]))
