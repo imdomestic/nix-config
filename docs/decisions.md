@@ -11,6 +11,18 @@
 
 ---
 
+## 2026-11-01 · Pi 输入区中性，状态栏随主题 {#pi-input-status-colors}
+
+Hank 的 Pi 输入文字、上下边框和 `❯` 固定为中性灰白 `#c5c5c5`，不跟随
+对话主题、推理档位或 Bash 模式变色；背景仍由终端提供。只在自定义
+`PromptPrefixEditor` 的渲染层着色，不改输入内容、光标、鼠标几何或发送文本。
+
+状态栏保留 Claude 风格的分组，但不再复制它的独立 ANSI 配色：路径、分支、
+模型、上下文、费用和分隔符都使用当前 Pi 主题的语义颜色。
+模型与费用之间的 `ctx 已用/上限 (百分比)` 来自 `ctx.getContextUsage()` 的
+当前上下文估计，不是历史 token 总和；压缩后未知的用量显示 `?`，不伪装成零。
+完整会话费用仍独立按记录统计并缓存。验证入口是 `scripts/check-pi-ui.sh`。
+
 ## 2026-10-31 · Pi 的上下文压缩交给 Magic Context {#pi-magic-context}
 
 Hank 的 dev 档 Pi 保留 `@cortexkit/pi-magic-context` 0.49.33 的包和配置，
