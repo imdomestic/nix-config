@@ -39,6 +39,16 @@ gizmo 的两条路,北京时间 11-01 23:00 前后(一天里最差的时段)从 
 作废。tank 上的旧目录没删,但 gizmo 续期之后里面的 token 就过期了,要搬回去得
 从 gizmo 再拷一次。tank:8317 和 h610:8317 各留一个转发到 gizmo。
 
+切换后(北京时间 23:35 前后):
+
+- 从 tank 测,Codex、Gemini、Rewind 都通;Rewind 用的是拷过来的设备身份,不用
+  重新批准。Rewind 只收 Responses 格式,拿 chat completions 测它会 500,而且这
+  一下会让这份凭据进冷却,之后的 Responses 请求也回 503 `auth_unavailable`,
+  重启 cliproxy 才清掉。
+- 从悉尼的 praxic 测,直连 gizmo 和经 tank 转发都是一次 1.9–2.7 s。praxic 到
+  gizmo 走公网直连,270 ms(热点那条线去日本绕远);tailscale 有直连就不会用
+  tokyo 的 peer relay。所以海外这边延迟没变好,省掉的是国内那段晚上的丢包。
+
 误导点:
 
 - 第一轮上传用 `ssh root@gizmo 'cat > /dev/null'` 测,8 次里 3 次卡了 10–54 秒,
