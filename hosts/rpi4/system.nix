@@ -97,6 +97,7 @@ in {
 
   my.captivePortal = {
     enable = true;
+    interval = "10s";
     interface = "enp1s0u2";
     host = "iglu.authentication.technology";
     credentialsFile = config.sops.templates."captive-portal.env".path;
