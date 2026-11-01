@@ -22,6 +22,8 @@ in {
     ./modules/flat-white/vicinae.nix
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
     ./modules/nixvim
+    #import form others
+    ./../hank/modules/pi/default.nix
   ];
 
   # 与 shell 导出的 XDG_CONFIG_HOME 一致，尤其是 macOS 上的 lazygit。
