@@ -1,5 +1,16 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-02 · 后台追加要求拒绝反馈已部署
+
+- PR #70 已合并，Bot 固定到 `9bb6c4b4777e40e242d7d3f5abf4cf4298c45eac`；部署配置为 `9f75ce25`。只修复 Codex 拒绝追加要求后吞掉错误的问题，不修改凭据校验或 RPC 断线行为。
+- 仅切换 tank 的 Gaoji：20 个 NixOS 配置求值通过，闭包差异只有 gaojibot，内核不变，dry-activate 仅列出 `gaoji.service` 停止/启动。h610 的控制服务及数据库角色未切换，未激活 Home Manager。
+- 切换前确认没有 queued/running 后台任务。PostgreSQL 17.11 完整备份位于 `/data/services/gaoji/backups/steer-rejection-20261101T160655Z/`，归档 95,545,448 字节、权限 0600，pg_restore 列出的归档目录可读。数据库仍为 `0077_retired_features`，本次没有新增迁移。
+- 运行包为 `/nix/store/439pl8mcfgdk34hy03smbs7ni09ly121-gaojibot-0.20.0`；系统与启动 profile 均为 `/nix/store/7i8yp5q0ggwbl87v0i06xjgbfr7qcr9b-nixos-system-tank-26.05.20261020.cd4ea8d`。官方健康接口返回 `healthy=true / ready`，VM、数据库、Worker 和 Maxx 服务均 active。
+- 在部署包的 Python 环境中，以本地假 RPC 答复验证拒绝会明确抛错；原有凭据代码与部署前逐字一致。未在真实群里人为触发 Codex 拒绝，也不把该包级检查当作客户端已收到失败通知。
+- 回滚前系统为 `/nix/store/j956zgbmp4dn2wxsjymzi7i8wbggzbh1-nixos-system-tank-26.05.20261020.cd4ea8d`；本次未执行回滚或恢复数据库。两份 tank 配置 checkout 已同步到已推送的部署配置。
+
+## 历史接入记录
+
 2026-10-30：qq-bot 固定到 `9247fdc506eb00476e4a076e021e2112c8154fdd`，包含轻量化方案 S1–S8、发送器健康状态修正及前台进度提示要求。tank 运行 Bot 和会话 VM，PostgreSQL 主库保持在 tank，h610 运行配套控制服务。
 
 每个官方会话复用工作区；空闲两小时停机，三十天未使用清理。全局允许八台运行中的沙盒，每个 owner 一台；导出上限 100 MiB。发布前使用服务用户及其 libvirt session 预装会话基础镜像，避免首次文件任务安装依赖。
