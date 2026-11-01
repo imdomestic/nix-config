@@ -25,7 +25,15 @@ in {
 
   # Host traffic is direct; Xray entries retain the Japan and Sydney reverse tunnels.
   services.tailscale.useRoutingFeatures = "server";
-  services.tailscale.extraSetFlags = ["--advertise-exit-node"];
+  services.tailscale.extraSetFlags = [
+    "--advertise-exit-node"
+    # 悉尼的设备和 tank 这类移动大内网打不了洞,中转默认落在 h610 的 DERP,
+    # 走的是丢包的悉尼↔电信那段。这台到两边都干净,当 peer relay;谁能用它由
+    # h610 的 headscale policy 里那条 grant 决定。见 docs/incidents.md#sydney-tank-peer-relay。
+    "--relay-server-port=40000"
+    # eth0 在云厂商的 1:1 NAT 后面(10.7.4.42),本机看不到公网地址。
+    "--relay-server-static-endpoints=43.130.229.141:40000"
+  ];
 
   sops.secrets =
     {
@@ -84,8 +92,9 @@ in {
       checkReversePath = false;
       # xray 入站(3444/3445/54322/54324)和 derper 的 HTTPS(8443)。
       allowedTCPPorts = [3444 3445 54322 54324 8443];
-      # derper 的 STUN(3478)和 wireguard 中心节点(50722)。
-      allowedUDPPorts = [3478 50722];
+      # derper 的 STUN(3478)、wireguard 中心节点(50722)和 tailscale peer
+      # relay(40000)。云厂商的防火墙要另外放行。
+      allowedUDPPorts = [3478 50722 40000];
     };
     networkmanager.enable = false;
     useNetworkd = true;

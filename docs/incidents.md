@@ -4,6 +4,44 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-01 · 悉尼到 tank 时快时卡:没有直连,中转落在 h610 的 DERP {#sydney-tank-peer-relay}
+
+praxic(悉尼,在 rpi4 后面)到 tank 的 SSH 时快时卡。`tailscale status` 里 tank 是
+`relay "h610"`,反过来 tank 看 praxic 是 `relay "syd"`。taipan、rpi4、terciopelo 到
+tank、r5s、r2s 也一样。
+
+没有直连的原因:tank 在移动的大内网后面,netcheck 报 `MappingVariesByDestIP: true`
+(硬 NAT),到境外没有能用的 IPv6;praxic 隔着 rpi4 和公寓 hotspot 两层 NAT,也没有
+IPv6。tank 的 wg0(10.0.0.66)开机 7 天 RX 是 0、从没握手过,10.0.0.x 这条也走不通。
+
+实测(14:00 CST,也就是悉尼 17:00):
+
+| 起点 → 终点 | 路径 | 丢包 | RTT |
+|---|---|---|---|
+| Mac → tank | DERP h610 | 0% | 平均 773 ms,最大 3956 ms |
+| Mac → h610 | 直连电信 IPv4 | 15–20% | 315–358 ms |
+| Mac → tokyo | 直连(经 rpi4 的 wg0) | 0% | 105 ms |
+| tank → tokyo | 直连 UDP | 2.5% | 68 ms |
+| tank → h610 | 移动↔电信 | 7.5% | 17 ms |
+
+h610 Prometheus 里 rpi4 → tank(同一个公寓)从 09-27 有数据起,日中位数就一直在
+300–560 ms。按小时看,只有 AEDT 05–11 点能贴着 255 ms 的底,下午到凌晨 2 点涨到
+400–670 ms。tokyo → tank 全天中位数 67–78 ms,但 AEDT 23–03 点(国内晚高峰)丢包
+10–13%。
+
+处理:tokyo 开 peer relay(UDP 40000,公网端点显式写上,因为 eth0 在 1:1 NAT 后面),
+h610 的 headscale policy 加一条 `tailscale.com/cap/relay` grant,只给 hank 常驻悉尼
+的设备。peer relay 排在 DERP 前面,grant 给所有人的话,国内两端都打不通的那几对
+(desktop-glr3hee、gaoji)也会被拉去东京绕一圈。只给一端就够:magicsock 按
+`cap/relay-target` 筛自己能用的 relay,收到 `CallMeMaybeVia` 的一端只检查对方的版本。
+云厂商的防火墙要另外放行 UDP 40000。tokyo 的带宽只有约 30 Mbit/s,大文件不适合走它。
+
+误导点:
+
+- 「最近不稳」听上去像是回归,其实五周的数据一直这样,变的只是时段。
+- 走 DERP 的 ping 0% 丢包不说明链路好。DERP 跑在 TCP 上,丢包被重传成了几秒的延迟;
+  同一时刻直连 h610 的 UDP 丢了 20%。
+
 ## 2026-10-31 · Gaoji 主备丢包导致同步提交等待 {#gaoji-temporary-async-replica}
 
 统一上线 Gaoji 改造时，tank 与 h610 的链路持续丢包，Bot 的数据库写入停在

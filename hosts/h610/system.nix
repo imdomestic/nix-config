@@ -10,6 +10,22 @@
   # lanRoutes,两边同源。加一台路由只改 registry,ACL 和 autoApprovers 自动
   # 跟上,不会重演 ci.yml 那种"名单漂了三台没人发现"。
   lanRoutes = lib.unique (lib.concatMap (h: h.lanRoutes) (lib.attrValues config.my.fleet.hosts));
+  # 能用 tokyo 当 peer relay 的设备:hank 常驻悉尼的那些(home DERP 是 syd)。
+  # 只需要发起分配的一端有 grant,所以国内两台之间打不通的(desktop-glr3hee、
+  # gaoji 这些)不会被拉去东京绕一圈,继续走 h610 的 DERP。
+  # 见 docs/incidents.md#sydney-tank-peer-relay。
+  tsRelayClients = {
+    praxic = "100.64.0.9";
+    m1elite = "100.64.0.1";
+    taipan = "100.64.0.33";
+    taipan-windows = "100.64.0.2";
+    wsl = "100.64.0.14";
+    "268v" = "100.64.0.40";
+    rpi4 = "100.64.0.7";
+    terciopelo = "100.64.0.22";
+    krait = "100.64.0.21";
+    redmi-note-12-turbo = "100.64.0.38";
+  };
   matrixUpstream = "http://matrix-tailnet";
   gaojiBotHost =
     if config.services.gaoji.runBot
@@ -1107,6 +1123,21 @@ in {
             action = "accept";
             src = ["group:imdomestic"];
             dst = map (route: "${route}:*") lanRoutes;
+          }
+        ];
+
+        # 别名 → 节点地址,只给下面的 grant 用。
+        hosts =
+          {tokyo-relay = "100.64.0.41/32";}
+          // lib.mapAttrs (_: ip: "${ip}/32") tsRelayClients;
+
+        # src 能在 dst 上分配 peer relay 端点;对端不需要 grant。relay 本身由
+        # tokyo 的 `--relay-server-port` 打开。
+        grants = [
+          {
+            src = lib.attrNames tsRelayClients;
+            dst = ["tokyo-relay"];
+            app."tailscale.com/cap/relay" = [{}];
           }
         ];
 
