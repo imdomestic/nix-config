@@ -68,12 +68,6 @@ in {
           effort = "high";
         };
         intent.model = "h610/qwen3.5-4b-q4_k_m";
-        # Summarizes the groups that have /historian on; without it
-        # nothing is summarized.
-        historian = {
-          model = "cliproxy-responses/gpt-5.6-luna";
-          effort = "high";
-        };
         # Tidies each memory file Max wrote in the day, at 05:00.
         dreamer = {
           model = "cliproxy/gemini-3.8-flash-high";
