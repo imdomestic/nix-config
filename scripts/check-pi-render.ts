@@ -1,6 +1,8 @@
 // Run as an offline Pi extension; see docs/decisions.md#pi-better-render.
 import assert from "node:assert/strict";
-import { AssistantMessageComponent, ToolExecutionComponent, UserMessageComponent, getMarkdownTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { EventEmitter } from "node:events";
+import { join } from "node:path";
+import { AssistantMessageComponent, createAgentSession, DefaultResourceLoader, SessionManager, SettingsManager, ToolExecutionComponent, UserMessageComponent, getAgentDir, getMarkdownTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Container, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import { installRenderers } from "../home/hank/modules/pi/render.ts";
 
@@ -9,7 +11,8 @@ export default function (pi: ExtensionAPI) {
     try {
       const better = process.env.PI_RENDER_PACKAGE;
       const cc = process.env.PI_CC_RENDER_PACKAGE;
-      assert(better && cc, "Set PI_RENDER_PACKAGE and PI_CC_RENDER_PACKAGE to the Nix package paths");
+      const subagents = process.env.PI_SUBAGENTS_PACKAGE;
+      assert(better && cc && subagents, "Set PI_RENDER_PACKAGE, PI_CC_RENDER_PACKAGE and PI_SUBAGENTS_PACKAGE to the Nix package paths");
       process.env.PI_BETTER_RENDER_IMAGES = "placeholder";
       process.env.PI_BETTER_RENDER_MERMAID_INSTALL = "0";
       process.env.PI_BETTER_RENDER_FONT_DOWNLOAD = "0";
@@ -23,7 +26,8 @@ export default function (pi: ExtensionAPI) {
       const { default: ccStyle, getCompactThinkingConfig } = await import(`${cc}/extensions/renderer/index.ts`);
       const { installCompactThinking } = await import(`${cc}/extensions/feature/compact-thinking.ts`);
       const { config, updateConfig } = await import(`${cc}/extensions/config/config.ts`);
-      updateConfig({ mode: "on", enableMarkdownEnhance: false });
+      const { default: tintinSubagents } = await import(`${subagents}/src/index.ts`);
+      updateConfig({ mode: "on", enableMarkdownEnhance: false, excludeRenderers: ["Agent", "SubagentWorkflow", "get_subagent_result", "steer_subagent"] });
 
       loadMathJaxSync();
       const raster = rasterize({ tex: String.raw`\frac{-b+\sqrt{b^2-4ac}}{2a}`, display: true, color: "#cdd6f4", cellWidth: 10, cellHeight: 20, maxColumns: 80, maxRows: 20 });
@@ -76,6 +80,9 @@ export default function (pi: ExtensionAPI) {
       for (let generation = 0; generation < 2; generation++) {
         const handlers = new Map<string, Array<(event: any, ctx: any) => any>>();
         const commands = new Map<string, any>();
+        const tools = new Map<string, any>();
+        const flags = new Map<string, any>();
+        const bus = new EventEmitter();
         const notifications: string[] = [];
         const tui: any = new Container();
         Object.assign(tui, { mode: "fullscreen", terminal: { write() {}, columns: 100, rows: 30 }, requestRender() {}, handleInput() {}, handleViewportInput() {} });
@@ -84,9 +91,11 @@ export default function (pi: ExtensionAPI) {
           setWidget(_key: string, factory: any) { if (typeof factory === "function") factory(tui, host.ui.theme); },
           setStatus() {}, getToolsExpanded: () => false,
           notify(text: string, level: string) { if (level === "error") notifications.push(text); },
-          onTerminalInput: () => () => {},
+          onTerminalInput: () => () => {}, addAutocompleteProvider() {}, getEditorText: () => "",
+          setFooter() { throw new Error("Subagents must not replace the existing statusline"); },
+          setEditorComponent() { throw new Error("Subagents must not replace the existing editor"); },
         };
-        const ctx: any = { mode: "tui", hasUI: true, ui, cwd: "/tmp", sessionManager: { getBranch: () => [], getEntries: () => [] }, isIdle: () => true };
+        const ctx: any = { mode: "tui", hasUI: true, ui, cwd: "/tmp", sessionManager: { getBranch: () => [], getEntries: () => [], getSessionId: () => "render-check" }, isIdle: () => true, isProjectTrusted: () => false };
         const api: any = {
           on(event: string, handler: any) {
             const list = handlers.get(event) ?? [];
@@ -95,13 +104,20 @@ export default function (pi: ExtensionAPI) {
             return () => {};
           },
           registerCommand(name: string, command: any) { commands.set(name, command); },
-          registerTool() {}, getAllTools: () => [], getActiveTools: () => [], appendEntry() {},
+          registerTool(definition: any) { tools.set(definition.name, definition); },
+          getAllTools: () => [...tools.values()], getActiveTools: () => [...tools.keys()], setActiveTools() {}, appendEntry() {},
+          registerMessageRenderer() {}, registerEntryRenderer() {},
+          registerFlag(name: string, flag: any) { flags.set(name, flag); }, getFlag: (name: string) => flags.get(name)?.default,
+          events: { on(name: string, handler: any) { bus.on(name, handler); return () => bus.off(name, handler); }, emit: (name: string, data: any) => bus.emit(name, data) },
         };
         const emit = async (event: string, payload: any = {}) => {
           for (const handler of [...(handlers.get(event) ?? [])]) await handler(payload, ctx);
         };
 
         installRenderers(api, (pi) => ccStyle(pi, undefined, installCompactThinking(pi, getCompactThinkingConfig())), betterRender);
+        tintinSubagents(api);
+        assert(commands.has("agents"));
+        assert(tools.has("SubagentWorkflow"));
         await emit("session_start");
         await new Promise((resolve) => setTimeout(resolve, 20));
         const toolRender = ToolExecutionComponent.prototype.render;
@@ -153,6 +169,37 @@ export default function (pi: ExtensionAPI) {
         }
         const tool: any = new ToolExecutionComponent("bash", "test-call", { command: "printf test" }, { showImages: false });
         assert(tool.render(100).some((line: string) => line.includes("printf test")), "CC bash card disappeared");
+        for (const name of ["Agent", "SubagentWorkflow", "get_subagent_result", "steer_subagent"]) {
+          const definition = tools.get(name);
+          const component: any = new ToolExecutionComponent(name, `check-${name}`, {}, { showImages: false }, definition, tui);
+          if (definition.renderCall) assert.equal(component.getCallRenderer(), definition.renderCall, `${name} lost its native call renderer`);
+          if (definition.renderResult) assert.equal(component.getResultRenderer(), definition.renderResult, `${name} lost its native result renderer`);
+        }
+        assert(tools.get("SubagentWorkflow").renderCall({ name: "test" }, host.ui.theme).render(80).some((line: string) => stripTerminalSequences(line).includes("SubagentWorkflow")));
+        const liveAssistant = AssistantMessageComponent.prototype.updateContent;
+        const liveUser = UserMessageComponent.prototype.render;
+        const { runInChildSessionContext } = await import(`${subagents}/src/child-context.js`);
+        const childLoader = new DefaultResourceLoader({
+          cwd: "/tmp", agentDir: getAgentDir(), noExtensions: true,
+          noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
+          additionalExtensionPaths: [join(getAgentDir(), "extensions/pi-render.ts")],
+        });
+        await runInChildSessionContext(() => childLoader.reload());
+        assert.deepEqual(childLoader.getExtensions().errors, []);
+        const { session: child } = await runInChildSessionContext(() => createAgentSession({
+          cwd: "/tmp", agentDir: getAgentDir(), modelRuntime: (host.modelRegistry as any).runtime,
+          sessionManager: SessionManager.inMemory("/tmp"), settingsManager: SettingsManager.inMemory({}), resourceLoader: childLoader,
+        }));
+        try {
+          await child.bindExtensions({ onError: (error) => { throw error; } });
+          assert.equal(AssistantMessageComponent.prototype.updateContent, liveAssistant, "A child factory replaced the parent's assistant renderer");
+          await child.extensionRunner?.emit({ type: "session_shutdown", reason: "quit" });
+          assert.equal(AssistantMessageComponent.prototype.updateContent, liveAssistant, "A child shutdown removed the parent's rich Markdown patch");
+          assert.equal(UserMessageComponent.prototype.render, liveUser, "A child changed the parent's user-message patch");
+          assert.equal(ToolExecutionComponent.prototype.render, toolRender, "A child changed the parent's CC tool renderer");
+        } finally {
+          child.dispose();
+        }
         await commands.get("better-render").handler("off", ctx);
         const plain: any = new AssistantMessageComponent(message as any, true, getMarkdownTheme(), "Thinking...", 0);
         assert(!plain.contentContainer.children.some((child: any) => child instanceof RichMarkdown));
@@ -178,6 +225,7 @@ export default function (pi: ExtensionAPI) {
         assert.equal(UserMessageComponent.prototype.render, originalUser, "User prefix patch leaked across reload");
         assert.equal(ToolExecutionComponent.prototype.getCallRenderer, originalToolCall, "CC call renderer leaked across reload");
         assert.equal(ToolExecutionComponent.prototype.getResultRenderer, originalToolResult, "CC result renderer leaked across reload");
+        assert.equal((globalThis as any)[Symbol.for("pi-subagents:manager")], undefined, "Subagent manager leaked across reload");
         ctx.mode = "rpc";
         await emit("session_start");
         assert.equal(UserMessageComponent.prototype.render, originalUser, "RPC mode installed a terminal-only prefix");

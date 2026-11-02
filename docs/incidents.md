@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-02 · Pi 子代理退出卸载主窗口的正文渲染 {#pi-subagent-renderer-lifecycle}
+
+加入 `@tintinweb/pi-subagents` 0.22.1 后，离线真实 SDK 子会话能完成任务，
+但组合测试发现子会话退出会删除主窗口的 better-render patch。插件通过 SDK
+在同一进程创建无界面会话；它们会重新发现 `pi-render.ts`，并共享组件原型。
+`installRenderers` 本来只在 TUI 初始化 better-render，却无条件注册它的
+`session_shutdown`，所以没有安装补丁的子会话也能调用 `removePatch()`。
+
+**误导点：上下文隔离和独立会话不是独立进程；加载成功、原生 read 成功，也不能
+证明主窗口的全局渲染不会被子会话生命周期影响。** 另一个不可靠尝试是在入口
+直接查询子代理包的 AsyncLocalStorage 标记：扩展加载器可能创建另一份模块实例，
+此处的标记无法保证与派发侧共享，测试仍然失败。
+
+`home/hank/modules/pi/render.ts` 现在只在 TUI 上执行 CC 事件处理和两套渲染的
+退出逻辑。否则 CC 的无界面初始化还会延迟注册 write override，子会话提前退出
+后触发 stale extension ctx 异常。没有改动工具执行、模型或消息原文。
+
+`bash scripts/check-pi-render.sh` 使用 Home Manager 实际生成的入口，在主窗口
+补丁生效时创建并关闭真实 SDK 子会话，断言 assistant、user 和工具渲染原型均
+不变，并连续执行两轮初始化/卸载。修复前稳定复现卸载和 stale-ctx 两类失败，
+修复后通过。`bash scripts/check-pi-subagents.sh` 另验真实 SDK 任务、后台、
+用量去重、工作流 worker 与取消；都不调用外部模型、不激活 home。
+
 ## 2026-11-02 · Gaoji 自动接管后受控切回 tank {#gaoji-tank-failback-20261102}
 
 发布 Bot 的追加要求拒绝反馈修复后，只读验收发现 h610 是实际主库、tank 是副本。

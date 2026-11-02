@@ -11,6 +11,18 @@
 
 ---
 
+## 2026-11-02 · Pi 子代理与工作流用 tintinweb，同一套界面不再叠加编排器 {#pi-tintin-subagents}
+
+Hank 的 Pi 加入固定版本 `@tintinweb/pi-subagents` 0.22.1，提供 Agent、后台
+结果与 steering、FleetView 和 SubagentWorkflow；不再叠加另一套动态工作流插件。
+Nix 只打包发布源码和运行时依赖，SDK 与 typebox 由 Pi 宿主提供，不另装一份。
+
+保留个人输入框、状态栏及 better-render，CC 对这四个工具让出专用渲染器。
+普通前台/后台代理池各 2，关闭定时任务，开启用量上报及费用显示；工作流仍使用
+上游独立并发池，不把普通池上限宣传成全局预算。配置、用法、权限和验证见
+[Pi 子代理](pi-subagents.md)。同进程子会话退出误卸载主窗口渲染的回归见
+[事故记录](incidents.md#pi-subagent-renderer-lifecycle)。
+
 ## 2026-11-02 · Pi 只加紧凑 Git 状态，不换整套 TUI {#pi-git-status}
 
 保留 Hank 的中性灰白输入框和单行状态栏，不用 `pi-open-tui` 接管界面。

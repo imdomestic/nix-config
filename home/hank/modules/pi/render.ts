@@ -39,6 +39,12 @@ export function installRenderers(pi: ExtensionAPI, cc: RendererExtension, better
   better({
     ...pi,
     on(event, handler) {
+      if (event === "session_shutdown") {
+        // SDK children share prototypes; docs/incidents.md#pi-subagent-renderer-lifecycle.
+        return pi.on(event, (event, ctx) => {
+          if (ctx.mode === "tui") return handler(event, ctx);
+        });
+      }
       if (event !== "session_start") return pi.on(event, handler);
       starts.push(handler);
       return () => {
@@ -51,7 +57,11 @@ export function installRenderers(pi: ExtensionAPI, cc: RendererExtension, better
   cc({
     ...pi,
     on(event, handler) {
-      if (event !== "session_shutdown") return pi.on(event, handler);
+      if (event !== "session_shutdown") {
+        return pi.on(event, (event, ctx) => {
+          if (ctx.mode === "tui") return handler(event, ctx);
+        });
+      }
       stops.push(handler);
       return () => {
         const index = stops.indexOf(handler);
@@ -65,6 +75,7 @@ export function installRenderers(pi: ExtensionAPI, cc: RendererExtension, better
     for (const handler of starts) await handler(event, ctx);
   });
   pi.on("session_shutdown", async (event, ctx) => {
+    if (ctx.mode !== "tui") return;
     try {
       for (const handler of [...stops].reverse()) await handler(event, ctx);
     } finally {

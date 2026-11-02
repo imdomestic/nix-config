@@ -11,6 +11,8 @@
   betterRender = pkgs.callPackage ../../../../pkgs/pi-better-render {};
   magicContext = pkgs.callPackage ../../../../pkgs/pi-magic-context {};
   magicContextSettings = import ./magic-context-settings.nix;
+  subagents = pkgs.callPackage ../../../../pkgs/pi-tintin-subagents {};
+  subagentsSettings = import ./subagents-settings.nix;
   free = {
     input = 0;
     output = 0;
@@ -75,7 +77,12 @@ in {
       enableEditorPrefix = false;
       enableCustomFooter = false;
       enableMarkdownEnhance = false;
+      # Keep the subagent plugin's live progress and workflow cards.
+      excludeRenderers = ["Agent" "SubagentWorkflow" "get_subagent_result" "steer_subagent"];
     })}
+    run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
+      ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/subagents.json"} \
+      ${lib.escapeShellArg (builtins.toJSON subagentsSettings)}
     run ${pkgs.nodejs}/bin/node ${../../../../scripts/merge-jsonc-settings.mjs} \
       ${lib.escapeShellArg "${config.xdg.configHome}/cortexkit/magic-context.jsonc"} \
       ${lib.escapeShellArg (builtins.toJSON magicContextSettings)} \
@@ -107,6 +114,9 @@ in {
   home.file.".pi/agent/themes/kanso-zen.json".text = builtins.toJSON themes.kanso-zen;
   home.file.".pi/agent/extensions/magic-context.ts".text = ''
     export { default } from "${magicContext}/dist/index.js";
+  '';
+  home.file.".pi/agent/extensions/tintin-subagents.ts".text = ''
+    export { default } from "${subagents}/src/index.ts";
   '';
   home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
   home.file.".pi/agent/extensions/statusline.ts".text = ''
