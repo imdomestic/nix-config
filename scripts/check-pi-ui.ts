@@ -1,10 +1,178 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { CustomEditor, getSelectListTheme, initTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { CURSOR_MARKER, foregroundAnsi, getTerminalColorMode, parseColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import installPrompt from "../home/hank/modules/pi/prompt-prefix.ts";
-import installStatusline from "../home/hank/modules/pi/statusline.ts";
+import installStatusline, { parseGitStatus, readGitStatus } from "../home/hank/modules/pi/statusline.ts";
+
+const settleGit = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+async function checkGitRefresh(theme: any): Promise<void> {
+  const handlers: Record<string, any> = {};
+  const probes: Array<{ signal?: AbortSignal; resolve: (status: ReturnType<typeof parseGitStatus> | undefined) => void }> = [];
+  let factory: any;
+  let branchChanged!: () => void;
+  let branch = "main";
+  let renders = 0;
+  let unsubscribed = 0;
+  const api: any = { on(event: string, handler: any) { handlers[event] = handler; }, getThinkingLevel: () => "off" };
+  const ctx: any = {
+    mode: "tui", cwd: "/tmp/project", getContextUsage: () => undefined,
+    sessionManager: { getSessionId: () => "git-test", getEntryCount: () => 0, getLeafId: () => null, getEntries: () => [] },
+    ui: { setFooter(next: any) { factory = next; } },
+  };
+  installStatusline(api, {
+    readGitStatus: (cwd, signal) => {
+      assert.equal(cwd, ctx.cwd);
+      return new Promise((resolve) => probes.push({ signal, resolve }));
+    },
+  });
+  handlers.session_start({}, ctx);
+  let poll!: () => void;
+  const originalSetInterval = globalThis.setInterval;
+  globalThis.setInterval = ((callback: () => void, delay: number) => {
+    assert.equal(delay, 5_000);
+    poll = callback;
+    return originalSetInterval(callback, delay);
+  }) as any;
+  let footer: any;
+  try {
+    footer = factory({ requestRender() { renders++; } }, theme, {
+      onBranchChange(callback: () => void) { branchChanged = callback; return () => { unsubscribed++; }; },
+      getGitBranch: () => branch, getExtensionStatuses: () => new Map(),
+    });
+  } finally {
+    globalThis.setInterval = originalSetInterval;
+  }
+  const text = () => stripTerminalSequences(footer.render(300)[0]);
+  try {
+    assert.equal(probes.length, 1, "Mount must request one asynchronous snapshot");
+    for (let i = 0; i < 3; i++) handlers.tool_execution_end({}, ctx);
+    assert.equal(probes.length, 1, "Parallel tool completions must not start parallel probes");
+    probes[0].resolve(parseGitStatus("# branch.head main\0? stale\0"));
+    await settleGit();
+    assert.equal(probes.length, 2, "A burst needs only one follow-up probe");
+    assert(!text().includes("?1"), "Superseded snapshots must not be displayed");
+    probes[1].resolve(parseGitStatus("# branch.head main\0? one\0? two\0"));
+    await settleGit();
+    assert(text().includes("main [?2] |"));
+
+    poll();
+    assert.equal(probes.length, 3, "Polling must detect changes made outside Pi");
+    ctx.mode = "rpc";
+    handlers.tool_execution_end({}, ctx);
+    ctx.mode = "tui";
+    for (let i = 0; i < 100; i++) footer.render(42);
+    probes[2].resolve(undefined);
+    await settleGit();
+    assert.equal(probes.length, 3, "RPC events and repaints must not schedule Git probes");
+    assert(text().includes("main |"), "A failed probe must remove stale status without breaking the footer");
+
+    branch = "other";
+    branchChanged();
+    assert.equal(probes.length, 4);
+    assert(text().includes("other |"));
+    const beforeShutdown = renders;
+    handlers.session_shutdown({}, ctx);
+    assert(probes[3].signal?.aborted, "Shutdown must cancel the pending subprocess");
+    probes[3].resolve(parseGitStatus("# branch.head other\0? late\0"));
+    await settleGit();
+    assert.equal(renders, beforeShutdown, "Late results must not repaint a disposed footer");
+    poll();
+    handlers.tool_execution_end({}, ctx);
+    assert.equal(probes.length, 4, "Disposed polling and tool handlers must not start more probes");
+  } finally {
+    footer.dispose();
+  }
+  assert.equal(unsubscribed, 1, "Shutdown and footer disposal must be idempotent");
+  console.error("Git refresh: async snapshots, coalesced tool bursts, polling, RPC guards, failures and shutdown cleanup passed");
+}
+
+async function checkGitStatus(pi: ExtensionAPI): Promise<void> {
+  const synthetic = parseGitStatus([
+    "# branch.head main", "# branch.ab +2 -3", "# stash 4",
+    "1 MT N... staged-and-modified", "1 .D N... deleted", "u UU N... conflict",
+    "2 RM N... renamed", "? original\n# stash 99", "? untracked\n1 M. fake",
+  ].join("\0") + "\0");
+  assert.deepEqual(synthetic, { branch: "main", conflicted: 1, staged: 2, modified: 2, renamed: 1, deleted: 1, untracked: 1, stashed: 4, ahead: 2, behind: 3 });
+
+  const root = mkdtempSync(join(tmpdir(), "pi-git-status-"));
+  const cwd = join(root, "repo");
+  mkdirSync(cwd);
+  const git = async (...args: string[]) => {
+    const result = await pi.exec("git", ["-c", "core.hooksPath=/dev/null", "-c", "commit.gpgsign=false", "-c", "core.fsmonitor=false", ...args], { cwd, timeout: 5_000 });
+    assert.equal(result.code, 0, `git ${args.join(" ")}: ${result.stderr}`);
+    return result.stdout.trim();
+  };
+  try {
+    await git("init", "-b", "main");
+    await git("config", "user.name", "Pi UI test");
+    await git("config", "user.email", "pi-test@example.invalid");
+    for (const name of ["modified", "staged", "deleted", "? original\nname"]) writeFileSync(join(cwd, name), `${name}\n`);
+    await git("add", ".");
+    await git("commit", "-m", "base");
+    const base = await git("rev-parse", "HEAD");
+    await git("branch", "upstream");
+    await git("branch", "--set-upstream-to=upstream", "main");
+    const clean = await readGitStatus(cwd);
+    assert(clean);
+    assert.equal(clean.branch, "main");
+    assert(Object.entries(clean).every(([key, value]) => key === "branch" || value === 0));
+
+    writeFileSync(join(cwd, "modified"), "worktree change\n");
+    writeFileSync(join(cwd, "staged"), "index change\n");
+    await git("add", "staged");
+    renameSync(join(cwd, "? original\nname"), join(cwd, "renamed"));
+    await git("add", "--", "? original\nname", "renamed");
+    rmSync(join(cwd, "deleted"));
+    writeFileSync(join(cwd, "untracked\n1 M. fake"), "untracked\n");
+    const dirty = await readGitStatus(cwd);
+    assert(dirty);
+    assert.equal(dirty.staged, 2);
+    assert.equal(dirty.modified, 1);
+    assert.equal(dirty.renamed, 1);
+    assert.equal(dirty.deleted, 1);
+    assert.equal(dirty.untracked, 1);
+    await git("stash", "push", "--include-untracked", "-m", "test stash");
+    assert.equal((await readGitStatus(cwd))?.stashed, 1);
+    await git("stash", "drop");
+
+    await git("commit", "--allow-empty", "-m", "ahead");
+    assert.equal((await readGitStatus(cwd))?.ahead, 1);
+    await git("switch", "upstream");
+    await git("commit", "--allow-empty", "-m", "behind one");
+    await git("commit", "--allow-empty", "-m", "behind two");
+    await git("switch", "main");
+    const diverged = await readGitStatus(cwd);
+    assert.equal(diverged?.ahead, 1);
+    assert.equal(diverged?.behind, 2);
+
+    writeFileSync(join(cwd, "modified"), "main side\n");
+    await git("add", "modified");
+    await git("commit", "-m", "main change");
+    await git("switch", "upstream");
+    writeFileSync(join(cwd, "modified"), "upstream side\n");
+    await git("add", "modified");
+    await git("commit", "-m", "upstream change");
+    await git("switch", "main");
+    const merge = await pi.exec("git", ["-c", "core.hooksPath=/dev/null", "merge", "upstream"], { cwd, timeout: 5_000 });
+    assert.equal(merge.code, 1, "Fixture must produce a merge conflict");
+    const conflicted = await readGitStatus(cwd);
+    assert.equal(conflicted?.conflicted, 1);
+    assert.equal(conflicted?.staged, 0, "Conflicts must not count as ordinary staged files");
+    assert.equal(conflicted?.modified, 0);
+    await git("merge", "--abort");
+    await git("switch", "--detach", base);
+    assert.equal((await readGitStatus(cwd))?.branch, "HEAD");
+    assert.equal(await readGitStatus(root), undefined, "Non-repositories must quietly omit status");
+    assert.equal(await readGitStatus(cwd, AbortSignal.abort()), undefined, "Cancelled probes must quietly stop");
+    console.error("Git status: NUL paths, staged/worktree changes, renames, deletions, stash, divergence, conflicts and detached HEAD passed");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+}
 
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, host) => {
@@ -49,12 +217,18 @@ export default function (pi: ExtensionAPI) {
       installPrompt(api);
       const startPrompt = handlers.session_start;
       let clock = 1_000;
-      installStatusline(api, { showTokenRate: true, now: () => clock });
+      let gitReads = 0;
+      let gitSnapshot = parseGitStatus(["# branch.head main", "# branch.ab +1 -2", "1 M. staged", "1 M. staged-again", "1 .M modified", "? one", "? two", "? three", ""].join("\0"));
+      installStatusline(api, {
+        showTokenRate: true, now: () => clock,
+        readGitStatus: async () => { gitReads++; return gitSnapshot; },
+      });
       const startStatusline = handlers.session_start;
       await startPrompt({}, ctx);
       await startStatusline({}, ctx);
       assert.equal(editorFactory, undefined, "RPC must not install a terminal editor");
       assert.equal(footerFactory, undefined, "RPC must not install a terminal footer");
+      assert.equal(gitReads, 0, "RPC must not start Git probes");
       ctx.mode = "tui";
       await startPrompt({}, ctx);
       await startStatusline({}, ctx);
@@ -81,6 +255,7 @@ export default function (pi: ExtensionAPI) {
         getExtensionStatuses: () => new Map([["z", "second\nstatus"], ["a", "first\tstatus"]]),
       };
       const footer = footerFactory(tui, host.ui.theme, footerData);
+      await settleGit();
       let previousFooter: string | undefined;
       let previousPalette: string | undefined;
 
@@ -127,7 +302,10 @@ export default function (pi: ExtensionAPI) {
         usage = { tokens: 38_400, contextWindow: 128_000, percent: 30 };
         const lines = footer.render(300);
         const output = stripTerminalSequences(lines[0]);
-        assert(output.includes("model-test xhigh | ctx 38.4k/128k (30%) | $4.00"), output);
+        assert(output.includes("main [+2 !1 ?3 ↑1 ↓2] | model-test xhigh | ctx 38.4k/128k (30%) | $4.00"), output);
+        for (const [marker, color] of [["+2", "success"], ["!1", "warning"], ["?3", "muted"], ["↑1", "success"], ["↓2", "warning"]]) {
+          assert(lines[0].includes(host.ui.theme.fg(color as any, marker)), `${name}: Git status must follow the theme`);
+        }
         assert.equal(stripTerminalSequences(lines[1]), "first status second status");
         assert(lines[0].includes(host.ui.theme.fg("accent", "model-test")));
         assert(lines[0].includes(host.ui.theme.fg("mdLink", "/tmp/project")));
@@ -152,7 +330,16 @@ export default function (pi: ExtensionAPI) {
         console.error(`${name}: fixed gray-white editor, cursor/geometry, themed footer and context states passed (${host.ui.theme.getColorMode()})`);
       }
       assert.equal(entriesReads, 1, "Context/theme changes must not rescan session cost every frame");
+      assert.equal(gitReads, 1, "Repaints must not invoke Git");
       const footerText = () => stripTerminalSequences(footer.render(300)[0]);
+      gitSnapshot = parseGitStatus("# branch.head main\0");
+      handlers.tool_execution_end({}, ctx);
+      await settleGit();
+      assert(footerText().includes("main | model-test"), "Clean repositories must not show brackets");
+      gitSnapshot = parseGitStatus("# branch.head other\0? file\0");
+      handlers.tool_execution_end({}, ctx);
+      await settleGit();
+      assert(footerText().includes("main | model-test"), "Do not show an old snapshot beside a different branch");
       const startTurn = () => handlers.turn_start({ type: "turn_start", turnIndex: 0, timestamp: clock }, ctx);
       const finishMessage = (output: unknown, stopReason = "stop", role = "assistant") => handlers.message_end({
         type: "message_end", message: { role, stopReason, usage: { output, input: 999_999, cacheRead: 999_999, cacheWrite: 999_999 } },
@@ -213,9 +400,10 @@ export default function (pi: ExtensionAPI) {
           ui: { ...ctx.ui, setFooter(factory: any) { disabledFooterFactory = factory; } },
         };
         installStatusline({ ...api, on(event: string, handler: any) { disabledHandlers[event] = handler; } }, {
-          ...options, now: () => { throw new Error("Disabled token-rate meter must not collect timing"); },
+          ...options, readGitStatus: async () => undefined,
+          now: () => { throw new Error("Disabled token-rate meter must not collect timing"); },
         });
-        assert.deepEqual(Object.keys(disabledHandlers), ["session_start"], "tok/s must remain off by default and with an explicit false option");
+        assert.deepEqual(Object.keys(disabledHandlers).sort(), ["session_shutdown", "session_start", "tool_execution_end"], "tok/s must not register timing handlers when disabled");
         disabledHandlers.session_start({}, disabledCtx);
         const disabledFooter = disabledFooterFactory(tui, host.ui.theme, { ...footerData, onBranchChange: () => () => {} });
         assert(!stripTerminalSequences(disabledFooter.render(300)[0]).includes("tok/s"));
@@ -226,7 +414,11 @@ export default function (pi: ExtensionAPI) {
       branchChanged();
       assert.equal(renders, beforeRender + 1);
       footer.dispose();
-      assert.equal(disposed, 1);
+      await settleGit();
+      assert.equal(renders, beforeRender + 1, "Disposal must prevent late probe results from repainting");
+      assert.equal(disposed, 1, "Shutdown and disposal must unsubscribe only once");
+      await checkGitRefresh(host.ui.theme);
+      await checkGitStatus(pi);
       let submitted = "";
       editor.onSubmit = (text: string) => { submitted = text; };
       editor.setText("message");

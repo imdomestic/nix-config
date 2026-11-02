@@ -11,6 +11,18 @@
 
 ---
 
+## 2026-11-02 · Pi 只加紧凑 Git 状态，不换整套 TUI {#pi-git-status}
+
+保留 Hank 的中性灰白输入框和单行状态栏，不用 `pi-open-tui` 接管界面。
+分支后只在有状态时追加 `[+2 !1 ?3 ↑1]`：`+` 已暂存、`!` 未暂存修改、
+`?` 未跟踪、`»` 重命名、`✘` 删除、`=` 冲突、`$` stash、`↑`/`↓` 领先/落后。
+计数按文件（stash 和提交数除外），使用当前 Pi 主题颜色；干净时不显示括号。
+
+`home/hank/modules/pi/statusline.ts` 异步读 NUL 分隔的 Git porcelain v2，
+工具执行结束和分支变化时刷新，另每 5 秒检查手动修改；不在渲染路径跑 Git，
+不自动 fetch。查询限时 2 秒，失败时隐藏旧状态，卸载时停止轮询并取消查询。
+`bash scripts/check-pi-ui.sh` 覆盖真实临时仓库、刷新生命周期和九套主题的两种色彩模式。
+
 ## 2026-11-02 · cliproxy 在出境点 gizmo 上,不在 tank {#cliproxy-on-gizmo}
 
 cliproxy 的上游(OpenAI、Google)本来就从 gizmo 出境:tank 经网关 r5s 的 dae 走

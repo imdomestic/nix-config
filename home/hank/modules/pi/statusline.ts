@@ -1,4 +1,6 @@
+import { execFile } from "node:child_process";
 import { homedir } from "node:os";
+import { promisify } from "node:util";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 
@@ -18,13 +20,81 @@ function shortCwd(cwd: string): string {
   return clean(parts.length <= 4 ? path : `…/${parts.slice(-3).join("/")}`);
 }
 
-type StatuslineOptions = { showTokenRate?: boolean; now?: () => number };
+const gitMarkers = [
+  ["conflicted", "=", "error"],
+  ["staged", "+", "success"],
+  ["modified", "!", "warning"],
+  ["renamed", "»", "warning"],
+  ["deleted", "✘", "error"],
+  ["untracked", "?", "muted"],
+  ["stashed", "$", "dim"],
+  ["ahead", "↑", "success"],
+  ["behind", "↓", "warning"],
+] as const;
+
+type GitStatus = { branch?: string } & Record<typeof gitMarkers[number][0], number>;
+
+export function parseGitStatus(output: string): GitStatus {
+  const status: GitStatus = { conflicted: 0, staged: 0, modified: 0, renamed: 0, deleted: 0, untracked: 0, stashed: 0, ahead: 0, behind: 0 };
+  // NUL-delimited porcelain keeps whitespace/control characters in filenames out of the parser.
+  const records = output.split("\0");
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    if (record.startsWith("# branch.head ")) {
+      const head = record.slice(14);
+      status.branch = head === "(detached)" ? "HEAD" : head;
+    } else if (record.startsWith("# branch.ab ")) {
+      const counts = /^# branch\.ab \+(\d+) -(\d+)$/.exec(record);
+      if (counts) [status.ahead, status.behind] = counts.slice(1).map(Number);
+    } else if (record.startsWith("# stash ")) {
+      status.stashed = Number(record.slice(8)) || 0;
+    } else if (record.startsWith("? ")) {
+      status.untracked++;
+    } else if (record.startsWith("u ")) {
+      status.conflicted++;
+    } else if (record.startsWith("1 ") || record.startsWith("2 ")) {
+      const [index, worktree] = record.slice(2, 4);
+      if (index !== ".") status.staged++;
+      if (worktree === "M" || worktree === "T") status.modified++;
+      if (index === "R" || worktree === "R") status.renamed++;
+      if (index === "D" || worktree === "D") status.deleted++;
+      if (record.startsWith("2 ")) i++; // Rename/copy records have a second, original-path field.
+    }
+  }
+  return status;
+}
+
+const execFileAsync = promisify(execFile);
+export async function readGitStatus(cwd: string, signal?: AbortSignal): Promise<GitStatus | undefined> {
+  try {
+    const { stdout } = await execFileAsync("git", ["--no-optional-locks", "status", "--porcelain=v2", "--branch", "--show-stash", "-z"], {
+      cwd, signal, timeout: 2_000, maxBuffer: 1024 * 1024, encoding: "utf8",
+    });
+    return parseGitStatus(stdout);
+  } catch {
+    return undefined;
+  }
+}
+
+type StatuslineOptions = { showTokenRate?: boolean; now?: () => number; readGitStatus?: typeof readGitStatus };
 
 export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
-  const { showTokenRate = false, now = () => performance.now() } = options;
+  const { showTokenRate = false, now = () => performance.now(), readGitStatus: readGit = readGitStatus } = options;
   let requestStartedAt: number | undefined;
   let tokensPerSecond: number | undefined;
   let refresh: (() => void) | undefined;
+  let refreshGit: (() => void) | undefined;
+  let stopGit: (() => void) | undefined;
+
+  pi.on("tool_execution_end", (_event, ctx) => {
+    if (ctx.mode === "tui") refreshGit?.();
+  });
+  pi.on("session_shutdown", () => {
+    stopGit?.();
+    requestStartedAt = undefined;
+    tokensPerSecond = undefined;
+    refresh = undefined;
+  });
 
   const resetRate = () => {
     requestStartedAt = undefined;
@@ -55,20 +125,58 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
       refresh?.();
     });
     pi.on("model_select", resetRate);
-    pi.on("session_shutdown", () => {
-      requestStartedAt = undefined;
-      tokensPerSecond = undefined;
-      refresh = undefined;
-    });
   }
   pi.on("session_start", (_event, ctx) => {
     resetRate();
     if (ctx.mode !== "tui") return;
 
     ctx.ui.setFooter((tui, theme, footerData) => {
+      stopGit?.();
       const requestRender = () => tui.requestRender();
       refresh = requestRender;
-      const unsubscribe = footerData.onBranchChange(requestRender);
+      const controller = new AbortController();
+      let git: GitStatus | undefined;
+      let disposed = false;
+      let dirty = false;
+      let pending: Promise<void> | undefined;
+      const updateGit = () => {
+        dirty = true;
+        if (pending) return;
+        pending = (async () => {
+          // Coalesce tool bursts; if another refresh arrives, discard the older snapshot.
+          while (dirty && !disposed) {
+            dirty = false;
+            const next = await readGit(ctx.cwd, controller.signal).catch(() => undefined);
+            if (disposed) return;
+            if (dirty) continue;
+            git = next;
+            requestRender();
+          }
+        })().finally(() => {
+          pending = undefined;
+          if (dirty && !disposed) updateGit();
+        });
+      };
+      refreshGit = updateGit;
+      const unsubscribe = footerData.onBranchChange(() => {
+        git = undefined;
+        updateGit();
+        requestRender();
+      });
+      // Also catch manual shell/editor changes without querying Git on every repaint.
+      const timer = setInterval(updateGit, 5_000);
+      timer.unref();
+      const cleanupGit = () => {
+        if (disposed) return;
+        disposed = true;
+        clearInterval(timer);
+        controller.abort();
+        unsubscribe();
+        if (refreshGit === updateGit) refreshGit = undefined;
+        if (stopGit === cleanupGit) stopGit = undefined;
+      };
+      stopGit = cleanupGit;
+      updateGit();
       let costKey = "";
       let cost = 0;
 
@@ -94,14 +202,21 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
 
       return {
         dispose() {
-          unsubscribe();
+          cleanupGit();
           if (refresh === requestRender) refresh = undefined;
         },
         invalidate() {},
         render(width: number): string[] {
           const groups = [theme.fg("mdLink", shortCwd(ctx.cwd))];
-          const branch = footerData.getGitBranch();
-          if (branch) groups.push(theme.fg("success", `\ue0a0 ${clean(branch)}`));
+          const branch = footerData.getGitBranch() ?? git?.branch;
+          if (branch) {
+            const snapshot = git?.branch === branch ? git : undefined;
+            const markers = snapshot
+              ? gitMarkers.filter(([key]) => snapshot[key] > 0).map(([key, symbol, color]) => theme.fg(color, `${symbol}${snapshot[key]}`))
+              : [];
+            const status = markers.length ? ` ${theme.fg("dim", "[")}${markers.join(" ")}${theme.fg("dim", "]")}` : "";
+            groups.push(theme.fg("success", `\ue0a0 ${clean(branch)}`) + status);
+          }
 
           let model = theme.fg("accent", clean(ctx.model?.id ?? "no-model"));
           if (ctx.model?.reasoning) model += ` ${theme.fg("dim", pi.getThinkingLevel())}`;
