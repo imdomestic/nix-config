@@ -30,12 +30,9 @@ async function checkGitRefresh(theme: any): Promise<void> {
     },
   });
   handlers.session_start({}, ctx);
-  let poll!: () => void;
   const originalSetInterval = globalThis.setInterval;
-  globalThis.setInterval = ((callback: () => void, delay: number) => {
-    assert.equal(delay, 5_000);
-    poll = callback;
-    return originalSetInterval(callback, delay);
+  globalThis.setInterval = (() => {
+    throw new Error("Git status must not install a polling timer");
   }) as any;
   let footer: any;
   try {
@@ -49,7 +46,7 @@ async function checkGitRefresh(theme: any): Promise<void> {
   const text = () => stripTerminalSequences(footer.render(300)[0]);
   try {
     assert.equal(probes.length, 1, "Mount must request one asynchronous snapshot");
-    for (let i = 0; i < 3; i++) handlers.tool_execution_end({}, ctx);
+    for (const toolName of ["edit", "write", "bash", "powershell"]) handlers.tool_execution_end({ toolName }, ctx);
     assert.equal(probes.length, 1, "Parallel tool completions must not start parallel probes");
     probes[0].resolve(parseGitStatus("# branch.head main\0? stale\0"));
     await settleGit();
@@ -59,10 +56,14 @@ async function checkGitRefresh(theme: any): Promise<void> {
     await settleGit();
     assert(text().includes("main [?2] |"));
 
-    poll();
-    assert.equal(probes.length, 3, "Polling must detect changes made outside Pi");
+    for (const toolName of ["read", "grep", "find", "ls", "mcp__docs__search"]) handlers.tool_execution_end({ toolName }, ctx);
+    await settleGit();
+    assert.equal(probes.length, 2, "Read-only tools and idle time must not schedule Git probes");
+    handlers.before_agent_start({}, ctx);
+    assert.equal(probes.length, 3, "A new task must pick up changes made outside Pi");
     ctx.mode = "rpc";
-    handlers.tool_execution_end({}, ctx);
+    handlers.before_agent_start({}, ctx);
+    handlers.tool_execution_end({ toolName: "write" }, ctx);
     ctx.mode = "tui";
     for (let i = 0; i < 100; i++) footer.render(42);
     probes[2].resolve(undefined);
@@ -80,14 +81,14 @@ async function checkGitRefresh(theme: any): Promise<void> {
     probes[3].resolve(parseGitStatus("# branch.head other\0? late\0"));
     await settleGit();
     assert.equal(renders, beforeShutdown, "Late results must not repaint a disposed footer");
-    poll();
-    handlers.tool_execution_end({}, ctx);
-    assert.equal(probes.length, 4, "Disposed polling and tool handlers must not start more probes");
+    handlers.before_agent_start({}, ctx);
+    handlers.tool_execution_end({ toolName: "bash" }, ctx);
+    assert.equal(probes.length, 4, "Disposed task and tool handlers must not start more probes");
   } finally {
     footer.dispose();
   }
   assert.equal(unsubscribed, 1, "Shutdown and footer disposal must be idempotent");
-  console.error("Git refresh: async snapshots, coalesced tool bursts, polling, RPC guards, failures and shutdown cleanup passed");
+  console.error("Git refresh: no polling, new tasks, mutating-tool filtering, coalesced bursts, RPC guards, failures and shutdown cleanup passed");
 }
 
 async function checkGitStatus(pi: ExtensionAPI): Promise<void> {
@@ -333,11 +334,11 @@ export default function (pi: ExtensionAPI) {
       assert.equal(gitReads, 1, "Repaints must not invoke Git");
       const footerText = () => stripTerminalSequences(footer.render(300)[0]);
       gitSnapshot = parseGitStatus("# branch.head main\0");
-      handlers.tool_execution_end({}, ctx);
+      handlers.tool_execution_end({ toolName: "write" }, ctx);
       await settleGit();
       assert(footerText().includes("main | model-test"), "Clean repositories must not show brackets");
       gitSnapshot = parseGitStatus("# branch.head other\0? file\0");
-      handlers.tool_execution_end({}, ctx);
+      handlers.tool_execution_end({ toolName: "bash" }, ctx);
       await settleGit();
       assert(footerText().includes("main | model-test"), "Do not show an old snapshot beside a different branch");
       const startTurn = () => handlers.turn_start({ type: "turn_start", turnIndex: 0, timestamp: clock }, ctx);
@@ -403,7 +404,7 @@ export default function (pi: ExtensionAPI) {
           ...options, readGitStatus: async () => undefined,
           now: () => { throw new Error("Disabled token-rate meter must not collect timing"); },
         });
-        assert.deepEqual(Object.keys(disabledHandlers).sort(), ["session_shutdown", "session_start", "tool_execution_end"], "tok/s must not register timing handlers when disabled");
+        assert.deepEqual(Object.keys(disabledHandlers).sort(), ["before_agent_start", "session_shutdown", "session_start", "tool_execution_end"], "tok/s must not register timing handlers when disabled");
         disabledHandlers.session_start({}, disabledCtx);
         const disabledFooter = disabledFooterFactory(tui, host.ui.theme, { ...footerData, onBranchChange: () => () => {} });
         assert(!stripTerminalSequences(disabledFooter.render(300)[0]).includes("tok/s"));

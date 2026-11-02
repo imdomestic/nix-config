@@ -86,8 +86,12 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
   let refreshGit: (() => void) | undefined;
   let stopGit: (() => void) | undefined;
 
-  pi.on("tool_execution_end", (_event, ctx) => {
+  pi.on("before_agent_start", (_event, ctx) => {
     if (ctx.mode === "tui") refreshGit?.();
+  });
+  const mutatingTools = new Set(["edit", "write", "bash", "powershell"]);
+  pi.on("tool_execution_end", (event, ctx) => {
+    if (ctx.mode === "tui" && mutatingTools.has(event.toolName)) refreshGit?.();
   });
   pi.on("session_shutdown", () => {
     stopGit?.();
@@ -163,13 +167,10 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
         updateGit();
         requestRender();
       });
-      // Also catch manual shell/editor changes without querying Git on every repaint.
-      const timer = setInterval(updateGit, 5_000);
-      timer.unref();
+      // No idle polling; external changes are picked up at the next task. See docs/decisions.md#pi-git-status.
       const cleanupGit = () => {
         if (disposed) return;
         disposed = true;
-        clearInterval(timer);
         controller.abort();
         unsubscribe();
         if (refreshGit === updateGit) refreshGit = undefined;
