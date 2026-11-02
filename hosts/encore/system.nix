@@ -126,10 +126,9 @@ in {
         workstation = true;
       };
     };
-    # GNOME 使用 Intel 核显，将独立显卡留给计算任务。
+    # GNOME 优先用 Intel 渲染，但不能忽略 NVIDIA：HDMI 接在独显上。
     udev.extraRules = ''
       SUBSYSTEM=="drm", KERNEL=="card[0-9]*|renderD[0-9]*", ATTRS{vendor}=="0x8086", ATTRS{device}=="0x46a6", TAG+="mutter-device-preferred-primary"
-      SUBSYSTEM=="drm", KERNEL=="card[0-9]*|renderD[0-9]*", ATTRS{vendor}=="0x10de", ATTRS{device}=="0x2520", TAG+="mutter-device-ignore"
     '';
   };
   systemd.sleep.settings.Sleep = {
