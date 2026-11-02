@@ -12,7 +12,6 @@
     ../modules/kube
     ../modules/lazygit
     ../modules/codex
-    ../modules/opencode
     ../modules/pi
   ];
 
