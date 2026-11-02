@@ -164,19 +164,29 @@ in {
         # `!` 前缀让 pi 每次请求时执行命令取 key，明文不进 store。
         apiKey = "!${pkgs.coreutils}/bin/cat ${config.sops.secrets."cliproxy/api_key".path}";
         models = let
-          # Rewind 的 id 带前缀,推理档位和估价跟着它的上游别名 `base` 走。
-          gpt = limits: id: base: {
-            inherit id;
-            reasoning = true;
-            thinkingLevelMap = gptLevels base;
-            input = ["text" "image"];
-            contextWindow = limits.context;
-            maxTokens = limits.output;
-            cost = pricing.${base};
-          };
+          # Rewind 的已知型号跟随上游别名估价；动态 chat 别名不猜费用和推理能力。
+          gpt = limits: id: base: let
+            chatAlias = base == "gpt-chat-latest";
+          in
+            {
+              inherit id;
+              reasoning = !chatAlias;
+              input =
+                if chatAlias
+                then ["text"]
+                else ["text" "image"];
+              contextWindow = limits.context;
+              maxTokens = limits.output;
+              cost =
+                if chatAlias
+                then free
+                else pricing.${base};
+            }
+            // lib.optionalAttrs (!chatAlias) {thinkingLevelMap = gptLevels base;}
+            // lib.optionalAttrs chatAlias {name = "Rewind GPT Chat Latest · 费用未估算";};
         in
           map (id: gpt cliproxy.gpt id id) cliproxy.gpt.ids
-          ++ lib.mapAttrsToList (gpt cliproxy.rewind) cliproxy.rewind.models
+          ++ lib.mapAttrsToList (id: gpt (cliproxy.rewind.modelLimits.${id} or cliproxy.rewind) id) cliproxy.rewind.models
           ++ lib.mapAttrsToList (id: model: {
             inherit id;
             inherit (model) name;

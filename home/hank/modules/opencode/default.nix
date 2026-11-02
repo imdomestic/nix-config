@@ -170,17 +170,20 @@ in {
         models = let
           gpt = limits: model: {
             name = model;
-            reasoning = true;
+            reasoning = model != "rewind/gpt-chat-latest";
             tool_call = true;
             limit = {inherit (limits) context input output;};
             modalities = {
-              input = ["text" "image"];
+              input =
+                if model == "rewind/gpt-chat-latest"
+                then ["text"]
+                else ["text" "image"];
               output = ["text"];
             };
           };
         in
           lib.genAttrs cliproxy.gpt.ids (gpt cliproxy.gpt)
-          // lib.genAttrs (lib.attrNames cliproxy.rewind.models) (gpt cliproxy.rewind)
+          // lib.genAttrs (lib.attrNames cliproxy.rewind.models) (id: gpt (cliproxy.rewind.modelLimits.${id} or cliproxy.rewind) id)
           // lib.mapAttrs (_: model: {
             inherit (model) name;
             reasoning = true;

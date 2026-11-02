@@ -40,11 +40,13 @@ Pi 的 token 费用字段。未额外估算搜索、工具、区域溢价或 Fas
 
 CLIProxy 的 `gemini-3-flash` 按公开的 `gemini-3-flash-preview` 估价，
 `gemini-3.8-flash-high` 按 `gemini-3.8-flash` 估价；这是对应公开型号的估算，
-并非 Antigravity 订阅的计费规则。`rewind/gpt-6-astra` 经 Rewind 插件
-（`docs/rewind.md`）请求上游的 `gpt-6-astra` 别名，按 `gpt-6-astra` 估价；
-别名实际解析到哪个模型由 Rewind 决定，2026-10-29 tank 日志里响应的 `model`
-都是 `gpt-6.1-sol-1`。当前 Pi 模型仅声明文本和图片输入，
-因此 Gemini 采用文本/图片价格。
+并非 Antigravity 订阅的计费规则。Rewind 插件的七个具名 GPT 别名
+（`docs/rewind.md`）按去掉 `rewind/` 前缀后的同名公开型号估价；
+别名实际解析到哪个模型由 Rewind 决定，2026-10-29 tank 日志里
+`rewind/gpt-6-astra` 响应的 `model` 都是 `gpt-6.1-sol-1`。
+`rewind/gpt-chat-latest` 没有固定的底层型号或已核实价格，Pi 标注「费用未估算」，
+费用字段暂为零，**不代表 Rewind 免费**。当前 Pi 的 Gemini 模型仅声明文本和
+图片输入，因此 Gemini 采用文本/图片价格。
 
 Gemini 3.8 Flash 使用截至 **2026-12-31** 的引入价；Google 公布的
 2027-01-01 起价格为输入 1.50、缓存读取 0.15、输出 7.50，届时应更新配置。

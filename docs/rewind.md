@@ -5,10 +5,46 @@ plugin owns Rewind authentication and declares native Responses input and
 output. CLIProxyAPI still owns client authentication, credential selection,
 protocol translation for other client formats, and usage collection.
 
-The fleet enables it on gizmo through `services.cliproxy.rewind`. Its model is
-`rewind/gpt-6-astra`, kept separate from the existing unprefixed Codex models.
-The upstream controls what this alias resolves to; the plugin preserves the
-upstream response's `model` field.
+The fleet enables it on gizmo through `services.cliproxy.rewind`. Its models
+use the `rewind/` prefix, kept separate from the existing unprefixed Codex
+models. The upstream controls what each alias resolves to; the plugin
+preserves the upstream response's `model` field.
+
+## Models and clients
+
+The authenticated upstream `/v1/models` list was checked on 2026-11-02. The
+plugin registers and accepts these eight aliases from one shared allowlist:
+
+- `rewind/gpt-5.6-luna`
+- `rewind/gpt-5.6-sol`
+- `rewind/gpt-5.6-terra`
+- `rewind/gpt-6-astra`
+- `rewind/gpt-6-luna`
+- `rewind/gpt-6-sol`
+- `rewind/gpt-6.1-sol`
+- `rewind/gpt-chat-latest`
+
+The executor strips only the `rewind/` prefix and forwards the selected alias
+unchanged. Unknown IDs remain rejected. Model discovery is a checked-in
+snapshot, not a startup network request; a listed model has not necessarily
+been tested for generation.
+
+The upstream list reports IDs and ownership, not limits or reasoning levels.
+The plugin retains Astra's existing metadata (1,050,000 context, 96,000 output,
+`low` through `xhigh`) and does not guess metadata for the new aliases.
+
+Hank's Pi and OpenCode consume `lib/cliproxy-models.nix`. The named GPT aliases
+use the existing same-name GPT client settings, with Rewind's 96,000 output
+budget. Pi estimates their costs from the same-name public GPT price, not a
+confirmed Rewind bill. `gpt-chat-latest` has no pinned underlying model: clients
+use a conservative 128,000 context / 16,384 output budget, text input, and no
+reasoning controls. Its Pi name marks the cost as unestimated; zero cost
+fields mean no estimate, **not** a promise that the service is free.
+
+The server plugin and client settings have separate activation paths. Deploy
+gizmo's system through its configured builder to load the plugin; activate
+Hank's Home Manager configuration on each client to update Pi and OpenCode.
+Neither activation is performed merely by editing these files.
 
 ## Configuration and state
 
@@ -90,11 +126,12 @@ nix build .#nixosConfigurations.gizmo.config.services.cliproxy.rewind.package
 just check-sops gizmo
 ```
 
-The package runs Go tests covering ES256 proof validation, exact request-body
-binding, concurrent renewal, expiry, key rotation, persistent device identity,
-pending device approval, error redaction, fragmented Responses SSE, reasoning
-events, tool calls and truncated output. Run `go test -race ./...` from the
-package directory for the concurrency check.
+The package runs Go tests covering registration of all eight models, raw and
+prefixed alias forwarding, invalid-model rejection, ES256 proof validation,
+exact request-body binding, concurrent renewal, expiry, key rotation,
+persistent device identity, pending device approval, error redaction,
+fragmented Responses SSE, reasoning events, tool calls and truncated output.
+Run `go test -race ./...` from the package directory for the concurrency check.
 
 For end-to-end validation, use a temporary CLIProxyAPI instance with this
 plugin and a Rewind credential descriptor. Check `/v1/models`, a streamed

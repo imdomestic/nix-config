@@ -65,12 +65,41 @@ func authData(raw []byte, id, file string, c credential) any {
 		"StorageJSON": raw, "Metadata": map[string]string{"type": "rewind"}, "NextRefreshAfter": time.Now().Add(24 * time.Hour)}
 }
 
+// Upstream /v1/models IDs; registration and execution share this allowlist.
+var rewindModels = []struct{ id, name string }{
+	{"gpt-5.6-luna", "Rewind GPT-5.6 Luna"},
+	{"gpt-5.6-sol", "Rewind GPT-5.6 Sol"},
+	{"gpt-5.6-terra", "Rewind GPT-5.6 Terra"},
+	{"gpt-6-astra", "Rewind GPT-6 Astra"},
+	{"gpt-6-luna", "Rewind GPT-6 Luna"},
+	{"gpt-6-sol", "Rewind GPT-6 Sol"},
+	{"gpt-6.1-sol", "Rewind GPT-6.1 Sol"},
+	{"gpt-chat-latest", "Rewind GPT Chat Latest"},
+}
+
+func supportsModel(id string) bool {
+	for _, model := range rewindModels {
+		if model.id == id {
+			return true
+		}
+	}
+	return false
+}
+
 func modelResponse(enabled bool) any {
 	models := []any{}
 	if enabled {
-		models = append(models, map[string]any{"ID": "gpt-6-astra", "Object": "model", "OwnedBy": "rewind", "DisplayName": "Rewind GPT-6 Astra",
-			"ContextLength": 1050000, "MaxCompletionTokens": 96000, "SupportedGenerationMethods": []string{"chat"},
-			"Thinking": map[string]any{"Levels": []string{"low", "medium", "high", "xhigh"}}})
+		for _, model := range rewindModels {
+			info := map[string]any{"ID": model.id, "Object": "model", "OwnedBy": "rewind", "DisplayName": model.name,
+				"SupportedGenerationMethods": []string{"chat"}}
+			// Preserve Astra's metadata; upstream does not report other aliases' limits.
+			if model.id == "gpt-6-astra" {
+				info["ContextLength"] = 1050000
+				info["MaxCompletionTokens"] = 96000
+				info["Thinking"] = map[string]any{"Levels": []string{"low", "medium", "high", "xhigh"}}
+			}
+			models = append(models, info)
+		}
 	}
 	return map[string]any{"Provider": "rewind", "Models": models}
 }
@@ -78,7 +107,7 @@ func modelResponse(enabled bool) any {
 func dispatch(method string, raw []byte) (any, *problem) {
 	switch method {
 	case "plugin.register", "plugin.reconfigure":
-		return map[string]any{"schema_version": 6, "metadata": map[string]any{"Name": "rewind", "Version": "0.1.1", "Author": "imdomestic", "GitHubRepository": "https://github.com/imdomestic/nix-config", "ConfigFields": []any{}},
+		return map[string]any{"schema_version": 6, "metadata": map[string]any{"Name": "rewind", "Version": "0.1.2", "Author": "imdomestic", "GitHubRepository": "https://github.com/imdomestic/nix-config", "ConfigFields": []any{}},
 			"capabilities": map[string]any{"model_provider": true, "auth_provider": true, "executor": true, "executor_model_scope": "both",
 				"executor_input_formats": []string{"responses"}, "executor_output_formats": []string{"responses"}}}, nil
 	case "plugin.quiesce", "plugin.shutdown":
@@ -181,34 +210,43 @@ type upstreamStream struct {
 	bytes                   int
 }
 
-func openExecution(req executorRequest) (*upstreamStream, *problem) {
+func prepareExecution(req executorRequest) (credential, []byte, *problem) {
+	var empty credential
 	if req.SourceFormat != "openai-response" && req.SourceFormat != "responses" {
-		return nil, fail(400, "invalid_request", "Rewind requires Responses input")
+		return empty, nil, fail(400, "invalid_request", "Rewind requires Responses input")
 	}
 	if req.Alt != "" {
-		return nil, fail(400, "not_supported", "Rewind does not expose this alternate endpoint")
+		return empty, nil, fail(400, "not_supported", "Rewind does not expose this alternate endpoint")
 	}
 	model := strings.TrimPrefix(req.Model, "rewind/")
-	if model != "gpt-6-astra" {
-		return nil, fail(404, "model_not_found", "Unknown Rewind model")
+	if !supportsModel(model) {
+		return empty, nil, fail(404, "model_not_found", "Unknown Rewind model")
 	}
 	if len(req.Payload) > 32<<20 {
-		return nil, fail(413, "invalid_request_error", "Rewind input is too large")
+		return empty, nil, fail(413, "invalid_request_error", "Rewind input is too large")
 	}
 	c, e := parseCredential(req.StorageJSON)
 	if e != nil {
-		return nil, e
+		return empty, nil, e
 	}
 	var body map[string]json.RawMessage
 	if json.Unmarshal(req.Payload, &body) != nil || body == nil {
-		return nil, fail(400, "invalid_request_error", "Invalid Responses payload")
+		return empty, nil, fail(400, "invalid_request_error", "Invalid Responses payload")
 	}
 	body["model"], _ = json.Marshal(model)
 	body["store"] = json.RawMessage("false")
 	body["stream"] = json.RawMessage("true")
 	data, err := json.Marshal(body)
 	if err != nil {
-		return nil, fail(400, "invalid_request_error", "Invalid Responses payload")
+		return empty, nil, fail(400, "invalid_request_error", "Invalid Responses payload")
+	}
+	return c, data, nil
+}
+
+func openExecution(req executorRequest) (*upstreamStream, *problem) {
+	c, data, e := prepareExecution(req)
+	if e != nil {
+		return nil, e
 	}
 	client := getClient(c)
 	headers, e := client.headers(rewindOrigin+"/v1/responses", data)

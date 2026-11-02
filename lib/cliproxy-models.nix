@@ -20,12 +20,26 @@
       "gpt-5.5"
     ];
   };
-  # cliproxy 的 Rewind 插件(docs/rewind.md):键是 CLIProxy 上的 id,值是插件发给
-  # 上游的别名(gpt.ids 里的同名模型)。输出上限照插件在 /v1/models 声明的 96000。
+  # Rewind 的显式前缀隔离 Codex；别名和客户端限额见 docs/rewind.md。
   rewind = {
     inherit (gpt) context input;
     output = 96000;
-    models."rewind/gpt-6-astra" = "gpt-6-astra";
+    models = {
+      "rewind/gpt-5.6-luna" = "gpt-5.6-luna";
+      "rewind/gpt-5.6-sol" = "gpt-5.6-sol";
+      "rewind/gpt-5.6-terra" = "gpt-5.6-terra";
+      "rewind/gpt-6-astra" = "gpt-6-astra";
+      "rewind/gpt-6-luna" = "gpt-6-luna";
+      "rewind/gpt-6-sol" = "gpt-6-sol";
+      "rewind/gpt-6.1-sol" = "gpt-6.1-sol";
+      "rewind/gpt-chat-latest" = "gpt-chat-latest";
+    };
+    # 未公布上限的动态别名用保守客户端预算，不代表上游能力。
+    modelLimits."rewind/gpt-chat-latest" = {
+      context = 128000;
+      input = 111616;
+      output = 16384;
+    };
   };
   gemini = {
     context = 1048576;
