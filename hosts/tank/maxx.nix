@@ -103,8 +103,8 @@ in {
                 context_window = cliproxy.gemini.context;
                 max_output = cliproxy.gemini.models."gemini-3.8-flash-high".output;
               };
-              # Vertex AI, on the GCP trial's credit.
-              "vertex/gemini-4-argon".context_window = 1048576;
+              # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
+              "vertex/gemini-4-argon".context_window = 262144;
             };
           };
           # The same cliproxy and key; GPT's reasoning only round-trips
