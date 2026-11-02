@@ -24,7 +24,7 @@ in {
     enable = true;
     settings = {
       user.name = "Hank Hogan";
-      user.email = "ysh2291939848@outlook.com";
+      user.email = "hankchogan@gmail.com";
       push.autoSetupRemote = true;
       gpg.format = "ssh";
       user.signingkey = "~/.ssh/id_ed25519.pub";
