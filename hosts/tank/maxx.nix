@@ -105,6 +105,7 @@ in {
               };
               # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
               "vertex/gemini-4-argon".context_window = 262144;
+              "vertex-c820/gemini-4-argon".context_window = 262144;
             };
           };
           # The same cliproxy and key; GPT's reasoning only round-trips
