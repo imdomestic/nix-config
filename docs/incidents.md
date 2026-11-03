@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-04 · Pi 子代理启动时 FleetView 停止刷新 {#pi-fleet-startup-race}
+
+把 statusline 移到 FleetView 上方后，用户报告底部只剩 `1 running agent`，
+`main` 与子代理列表消失，输入框上方却仍有 Agents 进度树。后者也是 tintin
+插件自己的后台进度视图，不是 CC 的工具渲染器抢占。
+
+`@tintinweb/pi-subagents` 0.22.1 的 FleetList 只列出已有 `session` 的任务。
+真实 SDK 启动先创建 running/queued 记录，再异步建立 session；启动回调先调用
+`fleet.ensureTimer()` 和 `fleet.update()`，但 update 看到列表为空就停掉定时器。
+等 session 建立后无人再次刷新，FleetView 一直不注册。原有状态栏调整没有改动
+这条启动逻辑，但静态预览与布局测试的记录一开始就有 session，漏掉了这个窗口。
+
+**误导点：上方进度树与下方计数都在刷新，不代表 FleetView 自己也仍在刷新。**
+最初怀疑渲染插件或新 footer 布局抢占；隔离的真实 Pi TUI、确定性离线 provider
+和真实 SDK 子代理复现出相同症状，才确认与模型网络请求、CC 渲染器无关。
+
+`pkgs/pi-tintin-subagents/fleet-session-start.patch` 在存在尚未建立 session 的
+顶层 running/queued 任务时保留 200 ms 刷新，不提前展示无法打开的任务行；
+禁用、空闲、启动失败与退出时仍停掉定时器。没有改 statusline、缩进或空行布局。
+`scripts/check-pi-subagents.ts` 新增假时钟回归：旧包稳定失败，补丁后通过；覆盖
+延迟建立 session、禁用/重启用、无 session 即失败以及卸载。真实 TUI 的同一
+离线 SDK 启动场景也确认恢复 `main / Agent` 列表与方向键选择。
+
 ## 2026-11-03 · QQ 在数据库接管后暂停且未自动重获租约 {#gaoji-qq-lease-outage-20261103}
 
 用户报告 QQ Bot 不回消息。19:45 HKT 检查时 Gaoji 仍 active，内存充足且没有

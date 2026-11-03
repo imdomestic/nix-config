@@ -48,14 +48,24 @@ async function checkFleetFooter(pkg: string, theme: any): Promise<void> {
     readGitStatus: async () => undefined,
   });
   handlers.session_start({}, ctx);
-  const record = { id: "probe", type: "Plan", description: "中文🙂 layout probe", session: {}, status: "running", startedAt: Date.now() };
+  const record = { id: "probe", type: "Plan", description: "中文🙂 layout probe", session: undefined as any, status: "running", startedAt: Date.now() };
   let records = [record];
   const fleet = new FleetList({ listAgents: () => records }, new Map());
   const render = (width = 200) => [...widgets.values()].flatMap(widget => widget.render(width));
   const plain = () => render().map(stripTerminalSequences);
+  const originalSetInterval = globalThis.setInterval;
+  const originalClearInterval = globalThis.clearInterval;
+  let tick: (() => void) | undefined;
+  globalThis.setInterval = ((callback: () => void) => { tick = callback; return 1; }) as any;
+  globalThis.clearInterval = (() => { tick = undefined; }) as any;
   try {
     fleet.setUICtx(ctx.ui);
+    fleet.ensureTimer();
     fleet.update();
+    assert.deepEqual([...widgets.keys()], ["statusline"], "A child without a session must not become an unopenable fleet row");
+    assert(tick, "FleetView must keep refreshing while an asynchronous child session starts");
+    record.session = {};
+    tick();
     assert.deepEqual([...widgets.keys()], ["statusline", "fleet"], "Mount order must be statusline then FleetView");
     assert.deepEqual(footer.render(200), [], "The native footer must not duplicate statusline content");
     assert(plain()[0].startsWith("/tmp/project |"));
@@ -88,15 +98,30 @@ async function checkFleetFooter(pkg: string, theme: any): Promise<void> {
     fleet.setWorkflowSource(() => [], () => {});
     fleet.update();
     assert.equal(plain().length, 1, "An idle session must keep only the statusline");
+    assert(!tick, "An idle session must not keep polling");
+    records = [{ ...record, session: undefined }];
+    fleet.update();
+    assert(tick, "A pending child must restart polling even without an existing timer");
+    fleet.setEnabled(false);
+    assert(!tick, "Disabling FleetView must stop polling even during child startup");
+    fleet.setEnabled(true);
+    assert(tick, "Re-enabling FleetView must resume watching the pending child");
+    records[0].status = "error";
+    tick();
+    assert(!tick, "A child that fails before session creation must not leave a timer behind");
+    assert.equal(plain().length, 1);
     assert(listening);
   } finally {
     fleet.dispose();
     handlers.session_shutdown({}, ctx);
     footer.dispose();
+    globalThis.setInterval = originalSetInterval;
+    globalThis.clearInterval = originalClearInterval;
   }
+  assert(!tick, "Disposal must stop the fleet refresh timer");
   assert(!listening, "Disposal must release the fleet input listener");
   assert.equal(widgets.size, 0, "Disposal must remove both widgets");
-  console.error("Fleet footer: statusline-first, no spacers, preserved indent/navigation, workflows, widths, re-enable and cleanup passed");
+  console.error("Fleet footer: async child startup, statusline-first, no spacers, preserved indent/navigation, workflows, widths, re-enable and cleanup passed");
 }
 
 export default function (pi: ExtensionAPI) {

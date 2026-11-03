@@ -1,0 +1,17 @@
+--- a/src/ui/fleet-list.ts
++++ b/src/ui/fleet-list.ts
+@@ -217,7 +217,13 @@
+         this.widgetRegistered = false;
+         this.tui = undefined;
+       }
+-      if (this.timer) { clearInterval(this.timer); this.timer = undefined; }
++      // A running/queued record precedes its async session; keep watching for it.
++      // See docs/incidents.md#pi-fleet-startup-race in nix-config.
++      const awaitingSession = this.enabled && this.manager.listAgents().some(a =>
++        isTopLevelAgent(a) && !a.session && (a.status === "running" || a.status === "queued")
++      );
++      if (awaitingSession) this.ensureTimer();
++      else if (this.timer) { clearInterval(this.timer); this.timer = undefined; }
+       this.active = false;
+       this.selectedIndex = 0;
+       return;
