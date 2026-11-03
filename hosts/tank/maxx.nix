@@ -58,10 +58,14 @@ in {
     vm.enable = true;
     settings = {
       # Each VM's size, up from maxx's default of 2 vCPUs and 4 GiB
-      # (2026-10-31).
+      # (2026-10-31). Up to 12 chats' VMs stay on for the programs Max
+      # keeps in them, up from 4, which were taken (2026-11-03): friends
+      # use Max as a personal agent in private chats, and maxx trims idle
+      # VMs' caches, so a kept VM that idles stays small.
       vm = {
         cpus = 8;
         memory_mib = 16384;
+        kept = 12;
       };
       owners_file = secret "owners";
       llm = {
