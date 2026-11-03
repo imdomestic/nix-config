@@ -10,8 +10,10 @@
 }: let
   cliproxy = import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
   # owners: `qq:<user_openid>` per line, from the private chat's endpoint.
-  # github-token: maxxagent's classic token, public_repo only.
-  secretNames = ["qq-app-id" "qq-app-secret" "owners" "github-token"];
+  # github-token: maxxagent's classic token, public_repo only;
+  # github-git-auth: base64 of x-access-token:<the same token>, the basic
+  # auth git's HTTPS takes. Change both together.
+  secretNames = ["qq-app-id" "qq-app-secret" "owners" "github-token" "github-git-auth"];
   secret = name: config.sops.secrets."maxx/${name}".path;
 in {
   sops.secrets =
@@ -167,12 +169,31 @@ in {
         app_secret_file = secret "qq-app-secret";
       };
       search.api_key_file = secret "exa-api-key";
-      # Max's own GitHub account, for github and github_push; its commits
-      # in the VMs are by it too.
+      # Max's own GitHub account: its commits in the VMs are by it. Max
+      # calls GitHub through the APIs below, and judges for itself what to
+      # do there.
       github = {
         login = "maxxagent";
         user_id = 350365311;
-        token_file = secret "github-token";
+      };
+      api = {
+        github = {
+          base_url = "https://api.github.com";
+          secret_file = secret "github-token";
+          headers = {
+            Authorization = "Bearer {secret}";
+            Accept = "application/vnd.github+json";
+            X-GitHub-Api-Version = "2022-11-28";
+            User-Agent = "maxxagent";
+          };
+          about = "你的 GitHub 账号 maxxagent 的 REST API（token 是 classic 的，只有 public_repo）：读 PR、review、CI，fork（POST /repos/{owner}/{repo}/forks），开 PR（POST /repos/{owner}/{repo}/pulls，head 写 maxxagent:分支），之后改、关、评论。PR 只在群友要你开时开，描述末尾用一行英文说明是 AI 应群友要求开的；GitHub 会封看着像刷屏的账号。";
+        };
+        github-git = {
+          base_url = "https://github.com";
+          secret_file = secret "github-git-auth";
+          headers.Authorization = "Basic {secret}";
+          about = "git 的 HTTPS，带着 maxxagent 的认证：推到你的仓库或 fork 用 git push http://127.0.0.1:7777/api/github-git/maxxagent/仓库.git 分支；clone、fetch 公开仓库直接用 https://github.com。";
+        };
       };
       # The sticker library's vectors: bge-m3 on h610's Ollama, the model
       # the Haskell max's vectors were made with.
