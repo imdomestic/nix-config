@@ -73,7 +73,12 @@ in {
           model = "cliproxy/gemini-3.8-flash-high";
           effort = "high";
         };
-        intent.model = "h610/qwen3.5-4b-q4_k_m";
+        # low thinks a few dozen tokens before the verdict, well inside the
+        # 300 maxx gives it.
+        intent = {
+          model = "cliproxy/opencode/deepseek-v4.1-flash";
+          effort = "low";
+        };
         # Tidies each memory file Max wrote in the day, at 05:00.
         dreamer = {
           model = "cliproxy/gemini-3.8-flash-high";
