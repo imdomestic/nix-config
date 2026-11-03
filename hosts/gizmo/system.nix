@@ -36,8 +36,19 @@
     "/" = {
       device = "/dev/disk/by-label/NIXOS";
       fsType = "ext4";
+      options = ["noatime" "commit=60"];
     };
   };
+
+  # 保护 eMMC 颗粒：日志存内存 tmpfs，彻底消除 journald 频繁刷盘磨损
+  services.journald.extraConfig = ''
+    Storage=volatile
+    RuntimeMaxUse=128M
+  '';
+
+  # 抑制高频计时任务在 journal 中反复刷 session scope 启停审计
+  systemd.services.tailscale-path-metrics.serviceConfig.LogLevelMax = "warning";
+  systemd.services.tailscale-device-rtt.serviceConfig.LogLevelMax = "warning";
 
   hardware.firmware = [
     pkgs.linux-firmware
@@ -350,7 +361,10 @@
       hosts = ["h610" "sh" "r5s" "r6s" "r2s"];
     in
       builtins.toJSON {
-        log.loglevel = "warning";
+        log = {
+          loglevel = "warning";
+          access = "none";
+        };
 
         reverse.bridges =
           map (h: {
