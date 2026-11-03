@@ -31,6 +31,14 @@ in {
   imports = [./modules/opencode/local-bonsai.nix];
 
   programs.aerospace.settings = {
+    # 新建窗口和 AeroSpace 启动时恢复的 Rex 窗口都归到工作区 2。
+    "on-window-detected" = lib.mkBefore [
+      {
+        "if".app-id = "com.superlogical.rex";
+        run = "move-node-to-workspace 2";
+      }
+    ];
+
     # 显示器 pattern 是正则;没有其他显示器匹配时 AeroSpace 自己回落到现有显示器。
     "workspace-to-monitor-force-assignment" = builtins.listToAttrs (map (ws: {
       name = ws;
