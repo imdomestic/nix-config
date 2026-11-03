@@ -1,5 +1,5 @@
 # CLIProxy 的对话模型，opencode 与 pi 共用这一份。
-# 两边都走 Responses API，保留推理与工具调用。
+# GPT 走 Responses；OpenCode Go 走 Chat Completions，保留推理与工具调用。
 # 地址由 placements.cliproxy(flake/placements.nix)算出，max 和 h610 的
 # gaoji profile 也从这里取。
 {placement}: rec {
@@ -39,6 +39,24 @@
       context = 128000;
       input = 111616;
       output = 16384;
+    };
+  };
+  opencode = {
+    baseUrl = "https://opencode.ai/inference/go/openai/v1";
+    models = {
+      "deepseek-v4.1-flash" = {
+        name = "DeepSeek V4.1 Flash (OpenCode Go)";
+        context = 1000000;
+        output = 384000;
+        modalities = ["text" "image"];
+        efforts = ["low" "high" "max"];
+      };
+      "mimo-v2.6-flash" = {
+        name = "MiMo V2.6 Flash (OpenCode Go)";
+        context = 1048576;
+        output = 131072;
+        modalities = ["text" "image" "video" "audio"];
+      };
     };
   };
   gemini = {

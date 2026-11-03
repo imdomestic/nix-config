@@ -69,6 +69,18 @@ in {
     cacheRead = 0.5;
     cacheWrite = 0;
   };
+  "opencode/deepseek-v4.1-flash" = {
+    input = 0.15;
+    output = 0.6;
+    cacheRead = 0.003;
+    cacheWrite = 0;
+  };
+  "opencode/mimo-v2.6-flash" = {
+    input = 0.14;
+    output = 0.28;
+    cacheRead = 0.0028;
+    cacheWrite = 0;
+  };
   "gemini-3-flash" = gemini {
     input = 0.5;
     output = 3;

@@ -207,7 +207,30 @@ in {
             maxTokens = model.output;
             cost = pricing.${id};
           })
-          cliproxy.gemini.models;
+          cliproxy.gemini.models
+          ++ lib.mapAttrsToList (id: model: {
+            id = "opencode/${id}";
+            inherit (model) name;
+            api = "openai-completions";
+            reasoning = true;
+            thinkingLevelMap = lib.genAttrs ["off" "minimal" "low" "medium" "high" "xhigh" "max"] (level:
+              if lib.elem level (model.efforts or ["high"])
+              then level
+              else null);
+            input = ["text" "image"];
+            contextWindow = model.context;
+            maxTokens = model.output;
+            cost = pricing."opencode/${id}";
+            compat = {
+              supportsReasoningEffort = model ? efforts;
+              thinkingFormat = "openai";
+              requiresReasoningContentOnAssistantMessages = true;
+              # CLIProxy expands this session into Go's x-opencode-session.
+              sendSessionAffinityHeaders = true;
+              sessionAffinityFormat = "openrouter";
+            };
+          })
+          cliproxy.opencode.models;
       };
     };
   };

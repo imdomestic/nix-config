@@ -45,6 +45,12 @@ in {
       default = 8317;
       description = "上游默认端口。";
     };
+
+    settings = lib.mkOption {
+      type = (pkgs.formats.yaml {}).type;
+      default = {};
+      description = "Additional CLIProxyAPI settings, rendered with SOPS placeholders at activation.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -63,8 +69,8 @@ in {
     };
     users.groups.cliproxy = {};
 
-    # 整份 config.yaml 由 sops 渲染:里面唯一的秘密是 api-keys,而 store 是
-    # world-readable。owner 给服务用户,因为进程要读它。
+    # 调用密钥和上游 key 都只在激活时由 sops 渲染,不进 world-readable store。
+    # owner 给服务用户,因为进程要读它。
     sops.templates."cli-proxy-api.yaml" = {
       owner = "cliproxy";
       restartUnits = ["cliproxy.service"];
@@ -125,6 +131,8 @@ in {
         ''}
 
         debug: false
+
+        ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: value: "${builtins.toJSON name}: ${builtins.toJSON value}") cfg.settings)}
       '';
     };
 

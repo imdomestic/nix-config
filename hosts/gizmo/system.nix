@@ -2,8 +2,11 @@
   inputs,
   pkgs,
   config,
+  lib,
   ...
-}: {
+}: let
+  cliproxy = import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
+in {
   imports = [
     ../../system/modules/keyd
     ../../system/modules/vlmcsd
@@ -16,6 +19,30 @@
   services.cliproxy = {
     enable = true;
     bindAddress = config.my.host.tsName;
+    settings.openai-compatibility = [
+      {
+        name = "opencode-go";
+        prefix = "opencode";
+        base-url = cliproxy.opencode.baseUrl;
+        api-key-entries = [{api-key = config.sops.placeholder."cliproxy/opencode_api_key";}];
+        headers = {
+          User-Agent = "CLIProxyAPI-OpenCode-Go/1.0";
+          # Derive a conversation ID when clients omit one; never share a fixed session.
+          x-opencode-session = "$CPA-SESSION-ID";
+        };
+        models = lib.mapAttrsToList (id: model:
+          {
+            name = id;
+            alias = id;
+            display-name = model.name;
+            max-context-length = model.context;
+            input-modalities = model.modalities;
+            output-modalities = ["text"];
+          }
+          // lib.optionalAttrs (model ? efforts) {thinking.levels = model.efforts;})
+        cliproxy.opencode.models;
+      }
+    ];
     rewind = {
       enable = true;
       apiKeyFile = config.sops.secrets."rewind/api_key".path;
@@ -23,6 +50,10 @@
   };
   my.tailscale.bindServices = ["cliproxy"];
   sops.secrets."rewind/api_key" = {
+    owner = "cliproxy";
+    restartUnits = ["cliproxy.service"];
+  };
+  sops.secrets."cliproxy/opencode_api_key" = {
     owner = "cliproxy";
     restartUnits = ["cliproxy.service"];
   };
@@ -112,7 +143,7 @@
       "console=tty0"
       "earlycon=uart8250,mmio32,0xfe660000"
       "pcie_aspm=off" # 关闭 PCIe 节能
-      "panic=10"      # Panic 时保留现场 10 秒供日志和网络处理，随后自动重启
+      "panic=10" # Panic 时保留现场 10 秒供日志和网络处理，随后自动重启
     ];
     kernel.sysctl = {
       "kernel.panic_on_oops" = 1;

@@ -104,24 +104,30 @@ in {
             # then answer; at maxx's default 120 s, 27 calls in two days were
             # cut off and started over (2026-10-31). Flash's longest is ~60 s.
             stream_idle_timeout_secs = 240;
-            # All three watch videos, for max.video: each told a test clip's
-            # colours, timing and tones apart (2026-11-03).
-            models = {
-              "gemini-3.8-flash-high" = {
-                context_window = cliproxy.gemini.context;
-                max_output = cliproxy.gemini.models."gemini-3.8-flash-high".output;
-                video = true;
-              };
-              # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
-              "vertex/gemini-4-argon" = {
-                context_window = 262144;
-                video = true;
-              };
-              "vertex-c820/gemini-4-argon" = {
-                context_window = 262144;
-                video = true;
-              };
-            };
+            models =
+              {
+                # These Gemini endpoints passed max.video's clip test (2026-11-03).
+                "gemini-3.8-flash-high" = {
+                  context_window = cliproxy.gemini.context;
+                  max_output = cliproxy.gemini.models."gemini-3.8-flash-high".output;
+                  video = true;
+                };
+                # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
+                "vertex/gemini-4-argon" = {
+                  context_window = 262144;
+                  video = true;
+                };
+                "vertex-c820/gemini-4-argon" = {
+                  context_window = 262144;
+                  video = true;
+                };
+              }
+              // lib.mapAttrs' (id: model:
+                lib.nameValuePair "opencode/${id}" {
+                  context_window = model.context;
+                  max_output = model.output;
+                })
+              cliproxy.opencode.models;
           };
           # The same cliproxy and key; GPT's reasoning only round-trips
           # through Responses.
@@ -166,9 +172,7 @@ in {
             models."deepseek-v4-flash-vision-exp".context_window = 131072;
           };
           # Not here, as of 2026-10-29: grok-4.5 (its relay answers 403
-          # "Task APIs are private during staging deployment"), and
-          # opencode's kimi-k3, kimi-k2.7-code and minimax-m3 (the key has
-          # expired, and opencode now wants an x-opencode-session header).
+          # "Task APIs are private during staging deployment").
           h610 = {
             base_url = "http://h610.inner.imdomestic.com:11435/v1";
             protocol = "chat";
