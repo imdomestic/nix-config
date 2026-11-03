@@ -358,8 +358,8 @@ in {
         br-lan.allowedTCPPorts = [80];
         # tank.local、NFS(exports 给的是 tailnet 地址)、k3s API、
         # matrix(h610 的 nginx 经 tailnet 反代)、cliproxy 的转发、ollama、
-        # gaoji bot(h610 的 nginx / napcat 来连)。
-        tailscale0.allowedTCPPorts = [80 2049 6443 8008 8317 11434 18080];
+        # gaoji bot(h610 的 nginx / napcat 来连)、journal-remote 接收端。
+        tailscale0.allowedTCPPorts = [80 2049 6443 8008 8317 11434 18080 19532];
         # k3s 的 node-ip 在 wg0 上;luckperms 的 postgres(pg_hba 放了
         # 10.0.0.0/24);tokyo DNAT 过来的 cs2。
         wg0 = {
@@ -773,6 +773,14 @@ in {
 
   systemd.settings.Manager.RebootWatchdogSec = 60;
   systemd.settings.Manager.RuntimeWatchdogSec = 60;
+
+  # 接收来自全 fleet(如 gizmo 等低功耗单板)的远程 systemd journal 日志，按主机归档在 14T 存储上
+  services.journald.remote = {
+    enable = true;
+    listen = "http";
+    port = 19532;
+    settings.Remote.SplitMode = "host";
+  };
 
   system.stateVersion = "24.11"; # Did you read the comment?
 }

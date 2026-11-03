@@ -40,11 +40,31 @@
     };
   };
 
-  # 保护 eMMC 颗粒：日志存内存 tmpfs，彻底消除 journald 频繁刷盘磨损
+  # 保护 eMMC 颗粒 + 本地重启诊断：
+  # 日常流水账全量通过 systemd-journal-upload 实时推送到 tank (14T 存储)；
+  # 本地 eMMC 仅持久化 notice/warning/err 关键事件，且 5 分钟批量落盘一次，两端互为备份且零刷盘磨损。
   services.journald.extraConfig = ''
-    Storage=volatile
-    RuntimeMaxUse=128M
+    Storage=persistent
+    MaxLevelStore=notice
+    SyncIntervalSec=5m
+    SystemMaxUse=100M
   '';
+
+  # 方案 3：实时流式推送日志到中央 tank 存储服务器(14T 大空间)
+  services.journald.upload = {
+    enable = true;
+    settings.Upload = {
+      URL = "http://tank.inner.imdomestic.com:19532";
+      NetworkTimeoutSec = "30s";
+    };
+  };
+  systemd.services.systemd-journal-upload = {
+    after = ["tailscaled.service"];
+    wants = ["tailscaled.service"];
+  };
+
+  # 方案 2：启用 systemd-pstore 自动归档内核崩溃堆栈
+  systemd.services.systemd-pstore.enable = true;
 
   # 抑制高频计时任务在 journal 中反复刷 session scope 启停审计
   systemd.services.tailscale-path-metrics.serviceConfig.LogLevelMax = "warning";
@@ -92,8 +112,11 @@
       "console=tty0"
       "earlycon=uart8250,mmio32,0xfe660000"
       "pcie_aspm=off" # 关闭 PCIe 节能
+      "panic=10"      # Panic 时保留现场 10 秒供日志和网络处理，随后自动重启
     ];
     kernel.sysctl = {
+      "kernel.panic_on_oops" = 1;
+      "kernel.panic" = 10;
       "net.ipv4.ip_forward" = 1;
       "net.ipv6.conf.all.forwarding" = 1;
       "net.core.default_qdisc" = "fq";
