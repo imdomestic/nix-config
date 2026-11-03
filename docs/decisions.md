@@ -13,8 +13,9 @@
 
 ## 2026-11-03 · home 自动同步只在自己编得动的机器上,没有中央构建机 {#home-sync}
 
-h310、h610、tank、taipan、seraph、encore 每小时自己从 GitHub 解析 main,在本机
-构建并激活每个账户的 home(`system/modules/home-sync.nix`)。其余机器不自动同步:
+h310、h610、tank、taipan、seraph、encore 和 r6s(小盒子们的构建机)每小时自己从
+GitHub 解析 main,在本机构建并激活每个账户的 home(`system/modules/home-sync.nix`)。
+其余机器不自动同步:
 
 - r2s、r5s、gizmo、rpi4、tokyo 连求值都不该在本机做
   (`docs/incidents.md#arm-boxes-oom-on-local-build`),home 继续走 deploy-rs。

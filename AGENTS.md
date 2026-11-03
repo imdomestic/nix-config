@@ -287,7 +287,7 @@ adds no home-manager module at all.
   `just switch` — a system switch does not build homes at all. Never tell the
   user a rebuild will pick up an edit under `home/`.
 - On the hosts that list `system/modules/home-sync.nix` (h310, h610, tank,
-  taipan, seraph, encore) a push to main **is** the home deploy: within about
+  taipan, seraph, encore, r6s) a push to main **is** the home deploy: within about
   an hour each builds and activates every account's home from main (see
   "Deploys").
 - Conversely, a system-level change does not need a home eval to prove it works,
