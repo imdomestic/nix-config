@@ -1,5 +1,14 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-03 · 故障接管后恢复 QQ 与 tank 主库
+
+- 11-02 21:23 HKT monitor 再次判定 tank 不健康并提升 h610；QQ 在数据库错误后暂停，次日仍为 503 / lease_unavailable。数据库池已恢复不代表 QQ 租约会自行恢复。
+- owner 授权恢复 QQ 并切回 tank。先在 h610 保存 `/var/lib/qq-bot-postgres-backups/qq-outage-failback-20261103T114936Z/`，归档 95,736,482 字节、0600，pg_restore 目录检查通过；tank 连续两次回放延迟为 0 后，19:50:22–19:51:21 执行一次 `qq-bot-postgres-prefer-tank`。
+- 最终 monitor 与两节点 SQL 均确认 tank primary / 可写、h610 secondary / 只读并从 tank streaming。h610 保持 `replication-quorum=false`，仍是临时异步复制；本次未修改策略或优先级。
+- 19:52 第一次重启 Gaoji 已取回租约。腾讯拒绝旧 checkpoint（4006），随后新 Identify 在 19:52:08 得到 READY；但进程内的历史 `message_gap` 标记令健康仍报 gateway_unavailable，不能误判为网关一直未连接。
+- 确认无活动后台任务、无执行中回合且新 READY 已持久化后，20:15:51 再重启一次，仅续接新 checkpoint；20:16 起连续检查均为 ready，账号 advisory lock 有效。没有修改业务代码、数据库 schema、系统闭包或消息记录，也未主动向真实群发送测试消息。
+- 旧会话中断期间的消息不保证补齐，重要请求需要重发。自动重获租约和历史缺口与当前健康状态的区分仍待单独修复；详情见 [事故记录](incidents.md#gaoji-qq-lease-outage-20261103)。
+
 ## 2026-11-02 · tank 首选主库已受控恢复
 
 - owner 确认 tank 应为主库并授权立即切回。01:03:16–01:03:22 HKT 在 h610 执行一次 `qq-bot-postgres-prefer-tank`，返回 0；monitor 与两节点实际 SQL 均确认 tank 为 primary / 可写，h610 为 secondary / 只读。

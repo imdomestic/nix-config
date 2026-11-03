@@ -4,6 +4,49 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-03 · QQ 在数据库接管后暂停且未自动重获租约 {#gaoji-qq-lease-outage-20261103}
+
+用户报告 QQ Bot 不回消息。19:45 HKT 检查时 Gaoji 仍 active，内存充足且没有
+systemd failed 单元，但官方健康为 503 / lease_unavailable。h610 已是实际主库，
+tank 为健康且追平的 streaming 副本；账号仍 enabled / active，连接池在 h610
+有连接，却没有 `gaoji-qq-official-lease` 会话。没有活动后台任务或执行中回合。
+
+monitor 与 Bot 日志对上了时间线：11-02 21:23:23 tank 被判为不健康，触发 h610
+接管；21:23:30 Bot 记录 `Official ingress paused: DatabaseError`，21:50 左右
+数据库角色收敛。`OfficialRuntime._run` 在错误后清理租约并等待 `_resume`，没有
+自动重试，故数据库恢复后 QQ 仍暂停。事前 keeper 多次无法上报 monitor，但本次
+未证明底层网络故障的具体来源，不能直接归因运营商。
+
+owner 明确授权恢复 QQ 并切回 tank。先在 h610 保存 PostgreSQL 17 custom 备份：
+`/var/lib/qq-bot-postgres-backups/qq-outage-failback-20261103T114936Z/`，归档
+95,736,482 字节、0600、pg_restore 目录可读，备份盘剩余约 170 GiB。tank 连续
+两次回放延迟为 0；19:50:22–19:51:21 仅执行一次 `qq-bot-postgres-prefer-tank`。
+CLI 再次打印 get_nodes 的 group 空参数诊断，但最终返回 0，实际角色已收敛；
+没有重放。tank 可写、h610 只读并从 tank 复制，h610 的临时 replication-quorum=false
+保持不变，不将异步复制当作零数据风险。
+
+19:51:58 发起第一次 Gaoji 重启，19:52:00 新进程启动。租约恢复，但旧 QQ 会话
+在 19:52:06 被腾讯以 4006 拒绝 Resume；随后重新 Identify，19:52:08 已收到并
+持久化新 READY。健康接口却一直报 503 / gateway_unavailable。
+
+**误导点：active 不等于 QQ 可用，gateway_unavailable 也不等于当前网关断开。**
+`GatewayConnection.message_gap` 在旧会话无法续接时置为 true，并在进程内保留；
+`OfficialObservability` 即便网关 ready 也将这个历史缺口算作 unhealthy。起初把
+503 理解为网关尚未连接，随后以部署源码哈希、gateway ready 指标和持久 READY
+回执纠正。没有用新租约或进程存活替代连接证据。
+
+保留 4006 日志，并告知用户停机期间消息可能无法补齐；确认没有活动任务且新的
+checkpoint 已持久化后，20:15:51 发起第二次 Gaoji 重启。此次直接 Resume 新会话，
+20:16 起三次健康检查为 ready，有效账号 advisory lock 为 1；20:17 复查仍 ready，
+复制多次延迟为 0，写入中单次采样为 192 字节。最终 monitor 为 tank primary /
+h610 secondary 且两节点 health=1，h610 SQL 为 recovery，receiver 来源为 tank。
+
+本次只做运维恢复，共两次 Bot 重启，不修改 Bot 代码或 schema 0077；系统仍为
+`/nix/store/cndn0j2lx59w648q7g9rx0h8wi89zv3m-nixos-system-tank-26.05.20261020.cd4ea8d`，
+运行包仍为 `/nix/store/9s1rfli0s4n3d6j284yirjgzi51823db-gaojibot-0.20.0`。
+未主动发真实群消息验收，也没有恢复历史消息缺口。后续需独立修复瞬时存储故障
+后的安全重获租约、区分当前连接健康与历史缺口，以及调查反复触发接管的基础设施原因。
+
 ## 2026-11-03 · aegis 睡眠后 SMB 会话失效与挂载路径漂移 {#smb-fixed-mountpoint}
 
 用户报告 encore、seraph 经常从 Finder 消失。两者通过 Tailscale 访问；aegis
