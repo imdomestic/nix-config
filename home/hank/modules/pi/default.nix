@@ -116,15 +116,15 @@ in {
     export { default } from "${magicContext}/dist/index.js";
   '';
   home.file.".pi/agent/extensions/tintin-subagents.ts".text = ''
-    export { default } from "${subagents}/src/index.ts";
-  '';
-  home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
-  home.file.".pi/agent/extensions/statusline.ts".text = ''
     import statusline from "${./statusline.ts}";
+    import subagents from "${subagents}/src/index.ts";
     export default function (pi) {
+      // Below-editor widgets retain registration order: statusline, then FleetView.
       statusline(pi, ${builtins.toJSON {showTokenRate = false;}});
+      subagents(pi);
     }
   '';
+  home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
 
   home.file.".pi/agent/models.json".text = builtins.toJSON {
     providers = {

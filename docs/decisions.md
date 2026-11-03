@@ -11,6 +11,16 @@
 
 ---
 
+## 2026-11-03 · Pi 状态栏在子代理列表上方，不留纵向空行 {#pi-fleet-footer}
+
+Hank 的底部顺序固定为输入框 → statusline → 操作提示 → main / 子代理列表。
+不改 Pi 本体：statusline 仍从自定义 footer 取得分支与扩展状态，但实际渲染为
+`belowEditor` widget；同一个扩展入口先注册 statusline，再注册 subagents，保证顺序。
+`pkgs/pi-tintin-subagents/compact-fleet.patch` 只删除 FleetView 的提示后与列表末尾
+两行空白，保留每行两格缩进和全部导航逻辑。原生 footer 不重复显示状态栏。
+`scripts/check-pi-ui.sh` 与 `scripts/check-pi-subagents.sh` 覆盖主题、宽度、布局、
+方向键选择、工作流、禁用后重启用和卸载；不需要系统重建。
+
 ## 2026-11-03 · home 自动同步只在自己编得动的机器上,没有中央构建机 {#home-sync}
 
 h310、h610、tank、taipan、seraph、encore 和 r6s(小盒子们的构建机)每小时自己从

@@ -1,0 +1,19 @@
+--- a/src/ui/fleet-list.ts
++++ b/src/ui/fleet-list.ts
+@@ -481,7 +481,6 @@
+       : "esc to interrupt · ← for agents · ↓ to manage";
+     const lines: string[] = [];
+     lines.push(truncateToWidth("  " + theme.fg("dim", hint), width));
+-    lines.push("");
+     lines.push(truncateToWidth(`  ${this.bullet(0, sel, theme)} main`, width));
+ 
+     // Window the rows so the selected one stays visible.
+@@ -501,8 +500,6 @@
+       );
+     }
+     if (hiddenBelow > 0) lines.push(rightAlign("", theme.fg("dim", `↓ ${hiddenBelow} more`), width));
+-    // pi stacks below-editor widgets directly on its footer with no spacer (#351).
+-    lines.push("");
+ 
+     return lines;
+   }

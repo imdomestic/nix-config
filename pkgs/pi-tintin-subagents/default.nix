@@ -32,6 +32,8 @@ in
       hash = "sha512-Z/8o9VtRhkpe0vgeX5I5YVnNWWHg4Obm8SxDiyQQ4ypwoyuMQrA6vn8xcCwZ20y5mYQh4mdjId5Asd/rpJKFUQ==";
     };
 
+    patches = [./compact-fleet.patch];
+
     postPatch = ''
       cp ${writeText "package.json" (builtins.toJSON package)} package.json
       cp ${./package-lock.json} package-lock.json

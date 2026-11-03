@@ -9,6 +9,20 @@ import installStatusline, { parseGitStatus, readGitStatus } from "../home/hank/m
 
 const settleGit = () => new Promise<void>((resolve) => setImmediate(resolve));
 
+function mountStatusline(factory: any, ctx: any, tui: any, theme: any, footerData: any): any {
+  let widget: any;
+  ctx.ui.setWidget = (key: string, create: any, options: any) => {
+    assert.equal(key, "statusline");
+    widget?.dispose?.();
+    if (create) assert.equal(options?.placement, "belowEditor");
+    widget = create?.(tui, theme);
+  };
+  const footer = factory(tui, theme, footerData);
+  assert.deepEqual(footer.render(100), [], "The native footer must not duplicate the below-editor statusline");
+  assert(widget, "The statusline must mount as a below-editor widget");
+  return { ...widget, dispose: () => footer.dispose() };
+}
+
 async function checkGitRefresh(theme: any): Promise<void> {
   const handlers: Record<string, any> = {};
   const probes: Array<{ signal?: AbortSignal; resolve: (status: ReturnType<typeof parseGitStatus> | undefined) => void }> = [];
@@ -36,7 +50,7 @@ async function checkGitRefresh(theme: any): Promise<void> {
   }) as any;
   let footer: any;
   try {
-    footer = factory({ requestRender() { renders++; } }, theme, {
+    footer = mountStatusline(factory, ctx, { requestRender() { renders++; } }, theme, {
       onBranchChange(callback: () => void) { branchChanged = callback; return () => { unsubscribed++; }; },
       getGitBranch: () => branch, getExtensionStatuses: () => new Map(),
     });
@@ -255,7 +269,7 @@ export default function (pi: ExtensionAPI) {
         getGitBranch: () => "main",
         getExtensionStatuses: () => new Map([["z", "second\nstatus"], ["a", "first\tstatus"]]),
       };
-      const footer = footerFactory(tui, host.ui.theme, footerData);
+      const footer = mountStatusline(footerFactory, ctx, tui, host.ui.theme, footerData);
       await settleGit();
       let previousFooter: string | undefined;
       let previousPalette: string | undefined;
@@ -406,7 +420,7 @@ export default function (pi: ExtensionAPI) {
         });
         assert.deepEqual(Object.keys(disabledHandlers).sort(), ["before_agent_start", "session_shutdown", "session_start", "tool_execution_end"], "tok/s must not register timing handlers when disabled");
         disabledHandlers.session_start({}, disabledCtx);
-        const disabledFooter = disabledFooterFactory(tui, host.ui.theme, { ...footerData, onBranchChange: () => () => {} });
+        const disabledFooter = mountStatusline(disabledFooterFactory, disabledCtx, tui, host.ui.theme, { ...footerData, onBranchChange: () => () => {} });
         assert(!stripTerminalSequences(disabledFooter.render(300)[0]).includes("tok/s"));
         disabledFooter.dispose();
       }

@@ -201,7 +201,8 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
         return cost;
       }
 
-      return {
+      // Register before FleetView so the statusline sits directly below the editor.
+      ctx.ui.setWidget("statusline", () => ({
         dispose() {
           cleanupGit();
           if (refresh === requestRender) refresh = undefined;
@@ -252,6 +253,12 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
           if (statuses.length) lines.push(truncateToWidth(statuses.map((text) => theme.fg("muted", text)).join(" "), width));
           return lines;
         },
+      }), { placement: "belowEditor" });
+      // Keep the footer data provider, but render its content in the widget above FleetView.
+      return {
+        render: () => [],
+        invalidate() {},
+        dispose() { ctx.ui.setWidget("statusline", undefined); },
       };
     });
   });

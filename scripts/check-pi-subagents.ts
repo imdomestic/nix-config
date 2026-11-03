@@ -4,6 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { createAssistantMessageEventStream, getCurrentTools } from "@earendil-works/pi-ai";
 import { createAgentSession, DefaultResourceLoader, getAgentDir, SessionManager, SettingsManager, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
+import installStatusline from "../home/hank/modules/pi/statusline.ts";
 
 const pause = () => new Promise<void>((resolve) => setTimeout(resolve, 10));
 async function until(check: () => boolean, label: string) {
@@ -12,6 +14,89 @@ async function until(check: () => boolean, label: string) {
     assert(performance.now() < deadline, `Timed out: ${label}`);
     await pause();
   }
+}
+
+async function checkFleetFooter(pkg: string, theme: any): Promise<void> {
+  const { FleetList } = await import(join(pkg, "src/ui/fleet-list.ts"));
+  const widgets = new Map<string, any>();
+  const handlers: Record<string, any> = {};
+  const tui: any = { mode: "fullscreen", requestRender() {} };
+  let footer: any;
+  let listening = false;
+  const ctx: any = {
+    mode: "tui", cwd: "/tmp/project", getContextUsage: () => undefined,
+    sessionManager: { getSessionId: () => "fleet-test", getEntryCount: () => 0, getLeafId: () => null, getEntries: () => [] },
+    ui: {
+      setWidget(key: string, create: any, options: any) {
+        widgets.get(key)?.dispose?.();
+        widgets.delete(key);
+        if (create) {
+          assert.equal(options?.placement, "belowEditor");
+          widgets.set(key, create(tui, theme));
+        }
+      },
+      setFooter(create: any) {
+        footer = create(tui, theme, {
+          onBranchChange: () => () => {}, getGitBranch: () => "main", getExtensionStatuses: () => new Map(),
+        });
+      },
+      onTerminalInput() { listening = true; return () => { listening = false; }; },
+      getEditorText: () => "",
+    },
+  };
+  installStatusline({ on(event: string, handler: any) { handlers[event] = handler; }, getThinkingLevel: () => "off" } as any, {
+    readGitStatus: async () => undefined,
+  });
+  handlers.session_start({}, ctx);
+  const record = { id: "probe", type: "Plan", description: "中文🙂 layout probe", session: {}, status: "running", startedAt: Date.now() };
+  let records = [record];
+  const fleet = new FleetList({ listAgents: () => records }, new Map());
+  const render = (width = 200) => [...widgets.values()].flatMap(widget => widget.render(width));
+  const plain = () => render().map(stripTerminalSequences);
+  try {
+    fleet.setUICtx(ctx.ui);
+    fleet.update();
+    assert.deepEqual([...widgets.keys()], ["statusline", "fleet"], "Mount order must be statusline then FleetView");
+    assert.deepEqual(footer.render(200), [], "The native footer must not duplicate statusline content");
+    assert(plain()[0].startsWith("/tmp/project |"));
+    assert(plain()[1].startsWith("  esc to interrupt"));
+    assert.equal(plain()[2], "  ● main");
+    assert(plain()[3].startsWith("  ○ Agent  中文🙂 layout probe"), JSON.stringify(plain()));
+    assert.equal(plain().length, 4, "No blank rows between statusline, hints, main and subagents");
+    for (const mode of ["fullscreen", "regular"]) {
+      tui.mode = mode;
+      for (const width of [1, 12, 42, 100, 200]) {
+        assert(render(width).every(line => visibleWidth(line) <= width), `${mode}: layout exceeded ${width} columns`);
+        assert(render(width).every(line => stripTerminalSequences(line).trim()), `${mode}: blank fleet row at width ${width}`);
+      }
+    }
+    assert.deepEqual(fleet.handleKey("\x1b[B"), { consume: true });
+    assert(plain()[1].startsWith("  ↑↓ select"));
+    assert.deepEqual(fleet.handleKey("\x1b[B"), { consume: true });
+    assert.equal(plain()[2], "  ○ main");
+    assert(plain()[3].startsWith("  ● Agent"), "Selection must keep the two-space indent");
+    assert.deepEqual(fleet.handleKey("\x1b"), { consume: true });
+    assert.equal(plain()[2], "  ● main");
+    fleet.setWorkflowSource(() => [{ id: "workflow-probe", name: "layout-workflow", status: "running", doneCount: 0, totalCount: 1, startedAt: Date.now(), tokens: 0 }], () => {});
+    assert(plain()[3].startsWith("  ○ workflow  layout-workflow"));
+    assert(plain()[4].startsWith("  ○ Agent"));
+    fleet.setEnabled(false);
+    assert.deepEqual([...widgets.keys()], ["statusline"]);
+    fleet.setEnabled(true);
+    assert.deepEqual([...widgets.keys()], ["statusline", "fleet"]);
+    records = [];
+    fleet.setWorkflowSource(() => [], () => {});
+    fleet.update();
+    assert.equal(plain().length, 1, "An idle session must keep only the statusline");
+    assert(listening);
+  } finally {
+    fleet.dispose();
+    handlers.session_shutdown({}, ctx);
+    footer.dispose();
+  }
+  assert(!listening, "Disposal must release the fleet input listener");
+  assert.equal(widgets.size, 0, "Disposal must remove both widgets");
+  console.error("Fleet footer: statusline-first, no spacers, preserved indent/navigation, workflows, widths, re-enable and cleanup passed");
 }
 
 export default function (pi: ExtensionAPI) {
@@ -70,6 +155,7 @@ export default function (pi: ExtensionAPI) {
       for (const peer of ["@earendil-works/pi-coding-agent", "@earendil-works/pi-ai", "@earendil-works/pi-tui", "typebox"]) {
         assert(!existsSync(join(pkg, "node_modules", peer)), "The package must use Pi's host SDK, not bundle another copy");
       }
+      await checkFleetFooter(pkg, host.ui.theme);
       const { default: subagents } = await import(join(agentDir, "extensions/tintin-subagents.ts"));
       const model = host.modelRegistry.find("subagents-test", "rewind/probe");
       assert(model);
