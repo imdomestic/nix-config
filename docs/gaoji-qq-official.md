@@ -1,5 +1,15 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-04 · 后台任务续接修复已部署
+
+- PR #72 以 merge commit 合并，Bot 固定到 `130e7f232b02aa59422522ed6e0a9dca825911fe`，部署配置 `c893d090`。前台每轮获取当前会话、当前用户的任务快照；追问查状态、补充向原任务插话，已有活动任务默认拒绝重复新建，明确独立工作才允许并行。没有新增迁移，数据库仍为 `0077_retired_features`。
+- 20 个 NixOS 配置求值、lint、构建通过；内核不变。运行系统落后于共享主线的 Maxx 意图判断配置（`72a23b31`），dry-activate 明确会同时重启 Maxx。owner 追加授权后，03:15:38–03:15:47 HKT 正式切换，只重启 Gaoji / Maxx 各一次；数据库节点、Gaoji VM 和 Worker 的 PID 与启动时间不变，未手动激活 Home Manager。
+- 部署前 QQ 已再次为 `503 / lease_unavailable`，monitor 与两节点 SQL 均确认 **h610 primary、tank secondary**。发布未切换主备、未调整优先级或复制策略：tank priority=100 / quorum=true，h610 priority=50 / quorum=false。03:16 验收时 tank 从 h610 streaming，回放差为 0；这是现场角色，不代表已恢复 tank 首选主库。
+- 切换前确认无 queued/running 后台任务、无 prepared/executing QQ 回合。当前主库 h610 的 PostgreSQL 17 完整备份在 `/var/lib/qq-bot-postgres-backups/followups-20261103T174801Z/`：归档 95,812,103 字节、0600，目录检查可读（非恢复演练）。tank 的 runtime.env、原系统与启动 profile 路径保存在 `/data/services/gaoji/backups/followups-20261103T174801Z/`，均未下载到本地或提交仓库。
+- 新包 `/nix/store/rk46jxs9b31266h6rdj4s3x8v64iv6zs-gaojibot-0.20.0`；运行系统与启动 profile 均为 `/nix/store/zm4lhv5z2mfm4326vcgy3cwcn8x69rn5-nixos-system-tank-26.05.20261020.cd4ea8d`，与已推送配置求值一致。原运行系统为 `/nix/store/cndn0j2lx59w648q7g9rx0h8wi89zv3m-nixos-system-tank-26.05.20261020.cd4ea8d`，原启动 profile 是其 deploy-rs activatable 包装，未执行回滚。
+- QQ 连续三次 `200 / ready`，之后复查仍 ready，主库有一个官方租约会话；Maxx 网关 `resumed=true`。七个变更的运行文件 SHA-256 与合并提交一致；使用部署包的真实 Python 环境、假任务数据且无 DB/网络/凭据执行检查，确认默认防重复、独立任务参数、任务快照和数据转义规则生效。未向真实 QQ 注入测试消息，不能以此代替真实模型“做网页 → 查进度 → 加按钮 → 独立新任务”对话验收。
+- PR 与合并后的 Python / Nix / 密钥扫描 CI 均通过；Windows credential ACL 仍为主线已知失败，未混入修复。QQ 故障后自动重获租约、HA 链路波动以及并行任务产物强制隔离仍未解决，本次仅随部署恢复了 QQ。
+
 ## 2026-11-03 · 故障接管后恢复 QQ 与 tank 主库
 
 - 11-02 21:23 HKT monitor 再次判定 tank 不健康并提升 h610；QQ 在数据库错误后暂停，次日仍为 503 / lease_unavailable。数据库池已恢复不代表 QQ 租约会自行恢复。
