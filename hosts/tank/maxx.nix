@@ -100,14 +100,23 @@ in {
             # then answer; at maxx's default 120 s, 27 calls in two days were
             # cut off and started over (2026-10-31). Flash's longest is ~60 s.
             stream_idle_timeout_secs = 240;
+            # All three watch videos, for max.video: each told a test clip's
+            # colours, timing and tones apart (2026-11-03).
             models = {
               "gemini-3.8-flash-high" = {
                 context_window = cliproxy.gemini.context;
                 max_output = cliproxy.gemini.models."gemini-3.8-flash-high".output;
+                video = true;
               };
               # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
-              "vertex/gemini-4-argon".context_window = 262144;
-              "vertex-c820/gemini-4-argon".context_window = 262144;
+              "vertex/gemini-4-argon" = {
+                context_window = 262144;
+                video = true;
+              };
+              "vertex-c820/gemini-4-argon" = {
+                context_window = 262144;
+                video = true;
+              };
             };
           };
           # The same cliproxy and key; GPT's reasoning only round-trips
