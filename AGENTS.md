@@ -286,6 +286,10 @@ adds no home-manager module at all.
 - A home change is verified with `just hm-dry <host> <user>`, **not** with
   `just switch` — a system switch does not build homes at all. Never tell the
   user a rebuild will pick up an edit under `home/`.
+- On the hosts that list `system/modules/home-sync.nix` (h310, h610, tank,
+  taipan, seraph, encore) a push to main **is** the home deploy: within about
+  an hour each builds and activates every account's home from main (see
+  "Deploys").
 - Conversely, a system-level change does not need a home eval to prove it works,
   and a broken home does not break its host's system eval.
 - The two sides meet in exactly three places: `config.my.host`,
@@ -489,6 +493,18 @@ nix eval --json .#deploy.nodes --apply builtins.attrNames
   user via `sudo -H -u <user>` (the `-H` keeps `$HOME` right) with
   `HOME_MANAGER_BACKUP_EXT=backup`, so a file a home takes over for the first
   time is moved to `<name>.backup` instead of failing the activation.
+- **Homes on hosts that can build them sync themselves.** A host that lists
+  `system/modules/home-sync.nix` in its `modules` runs `home-sync.timer`:
+  hourly, as root, it resolves main with `git ls-remote`, builds
+  `github:imdomestic/nix-config/<rev>#homeConfigurations."hosts/<host>/<account>".activationPackage`
+  for each account and activates it as that account, the same way the
+  `home-<user>` profiles do, keeping the last 10 generations. Someone else
+  switching a home by hand (`just hm`, `deploy-home` from a working tree) holds
+  that account rather than being overwritten, until main builds to the same
+  generation or `sudo home-sync resume <account>`. `sudo home-sync` shows
+  every account's state, `home-sync run --dry-run` what a run would do; a step
+  failing three runs in a row fails the unit (SystemdUnitFailed). Which hosts
+  and why: `docs/decisions.md#home-sync`.
 
 Max operates these targets through ordinary SSH as the full-sudo `max` account,
 using its own Tailscale client. The bot runs on `tank` as `max-service`.

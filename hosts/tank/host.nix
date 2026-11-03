@@ -17,6 +17,7 @@
     sshUser = "root";
 
     modules = [
+      ../../system/modules/home-sync.nix
       ./k3s.nix
       ./vex-archive.nix
       ./gaoji.nix

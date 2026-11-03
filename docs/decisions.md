@@ -11,6 +11,24 @@
 
 ---
 
+## 2026-11-03 · home 自动同步只在自己编得动的机器上,没有中央构建机 {#home-sync}
+
+h310、h610、tank、taipan、seraph、encore 每小时自己从 GitHub 解析 main,在本机
+构建并激活每个账户的 home(`system/modules/home-sync.nix`)。其余机器不自动同步:
+
+- r2s、r5s、gizmo、rpi4、tokyo 连求值都不该在本机做
+  (`docs/incidents.md#arm-boxes-oom-on-local-build`),home 继续走 deploy-rs。
+- Mac、WSL、没有 tsName 的台式机和三台 `kind = "home"` 也不在内:先在 SSH 够得着、
+  坏了有告警的机器上跑稳。
+- 想过「tank 集中构建全部 home,各机只拉 store path 激活」:客户端不求值,小机器和
+  国内机器都能覆盖。没做,因为它要一台常开的 darwin 构建机、tailnet 上的二进制缓存
+  和一份发布清单,而眼下要同步的只有这几台本来就编得动的机器。
+- 门禁只有「在本机编得过」。llm-agents 机器人用 `GITHUB_TOKEN` 推送,不触发
+  ci.yml;等 CI 绿灯,它的提交就永远同步不下来。
+
+实测(h310,4 核 / 7 GB):root 无 GitHub 密钥也能求值 home(私有 input 只有 system
+模块用);单个 home 求值 15 s、峰值 600 MB,四个账户 dry-run 共 1.5 min、峰值 1 GB。
+
 ## 2026-11-02 · Pi 子代理与工作流用 tintinweb，同一套界面不再叠加编排器 {#pi-tintin-subagents}
 
 Hank 的 Pi 加入固定版本 `@tintinweb/pi-subagents` 0.22.1，提供 Agent、后台

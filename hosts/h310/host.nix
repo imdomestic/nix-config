@@ -17,6 +17,7 @@
     maxTier = "interactive";
 
     modules = [
+      ../../system/modules/home-sync.nix
       ../../system/modules/gaoji-worker.nix
     ];
 
