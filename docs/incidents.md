@@ -4,6 +4,61 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-03 · aegis 睡眠后 SMB 会话失效与挂载路径漂移 {#smb-fixed-mountpoint}
+
+用户报告 encore、seraph 经常从 Finder 消失。两者通过 Tailscale 访问；aegis
+每 60 秒运行 `scripts/mount-linwhite-smb.py`，凭据取自用户钥匙串。
+
+**已确认的断线链路（本机与服务器均为 JST）：**
+
+- 11-03 14:54:06 是后台 DarkWake，14:54:08 再次睡眠；14:54:21 开始重连 seraph。
+- 14:58:17 再次 DarkWake。14:58:18 Tailscale `IPNExtension` 报
+  `Rebind; defIf="", ips=[]`；14:58:21 的 en0 只有链路本地 IPv6，
+  `v4=false v6=false`，DERP 报 `no route to host` / `rebind-no-localaddr`。
+- 14:58:25 才重新取得 en0 的 IPv4。14:58:29 起 SMB 多次 negotiate 成功，
+  但旧会话恢复没有完成；14:58:57 记录 `No session key for signing`，随后 seraph
+  的旧会话被判为 `is dead`。14:59:02 又进入睡眠，14:59:29 encore 旧会话也被判死。
+- 两台服务器该时段的 Samba journal 没有启停记录，`NRestarts=0`；encore
+  的服务自 10-23 01:34:42 运行，seraph 自 11-01 22:28:23 运行。
+
+这至少确认一次「睡眠中断底层网络、后台唤醒时网络不完整、SMB 会话恢复失败」；
+不是 Finder 单纯隐藏图标，也不能据此声称所有历史断线均是同一原因。negotiate
+成功不等于会话认证恢复成功；尚未用抓包/加详细服务端会话日志定位恢复失败的
+协议内部原因。不调整签名、多通道、睡眠策略或服务器网络来掩盖证据不足。
+
+**路径漂移是另一处确定的代码缺陷。** `/Volumes/seraph-linwhite` 在 10-28
+11:06 留下当前用户拥有、权限 0111 的本地目录；不是挂载点。实际共享挂在
+`/Volumes/seraph-linwhite-1`，而 `~/Servers/seraph` 仍指向原路径。现有历史记录
+无法确定是谁最初留下目录，只读检查也未绕过权限去断言它为空。
+
+旧代码把 NetFS 的 mountpath 传为 NULL，让系统自动选名，然后又断言结果必须是
+不带后缀的固定路径。它只检查预期目录，不按共享身份扫描挂载表；所以已成功挂到
+`-1` 时仍反复尝试挂载并报 EEXIST。11-02 检查时累计 seraph 有 3007 次 ETIMEDOUT、
+1915 次 EEXIST、64 次路径不符，日志没有时间戳，无法还原每次先后。
+
+**误导点：** `mount`、`smbutil statshares` 有记录、对挂载根目录 `stat` 成功，
+都不能证明目录 I/O 可用；本次后续只读检查中 encore 的 TCP 445 一度可达，
+但目录枚举超过 8 秒。Samba 无自动重启只能排除对应时段的自动重启，不是排除
+所有服务端问题的证据。把快捷入口改指向 `-1` 也只是绕过症状，不会恢复原路径。
+
+修复：nix-darwin 激活时仅创建缺失的固定挂载目录，不 chmod 已挂载卷；用户脚本
+识别共享身份并用 NetFS `kNetFSMountAtMountDirKey=true` 明确挂在原路径。目录必须
+由当前用户拥有、不是符号链接、不可被他人写入、且为空；只为检查/复用修复
+NetFS 遗留的 0111 权限，发现非空时恢复原权限。不删除目录，不隐藏本地文件。
+已挂到后缀路径、外来卷占用或快捷入口冲突均停下报错，不自动卸载迁移。
+
+恢复前等待共享消失满 60 秒、两次 TCP 445 检查间隔 3 秒；仍登记的旧挂载只做
+有超时的目录访问检查，失败就等待系统重连，不强卸载。用户进程以每共享 flock
+互斥，NetFS 子进程 45 秒超时后视为结果未知，下轮先重新扫描，避免盲目重挂。
+日志按状态变化输出时间戳，本地状态文件保留最近检查时间；凭据仍只取自钥匙串。
+
+验证：`scripts/test-mount-linwhite-smb.py` 的 27 个离线回归测试通过；全部 24 个
+NixOS / nix-darwin toplevel drvPath 求值通过；全部 363 个 git 跟踪的 Nix 文件
+格式及 deadnix 通过。`just lint` 被本机忽略的 `.work/` 历史工作树格式问题拦住，
+不修改那些文件。
+尚未激活、迁移现有 `-1` 卷，未做真实断网/睡眠复现或文件写入测试；不能把这些
+离线测试说成已验证 macOS 实际重挂。后续操作见 `docs/linwhite-file-sharing.md`。
+
 ## 2026-11-02 · Pi 子代理退出卸载主窗口的正文渲染 {#pi-subagent-renderer-lifecycle}
 
 加入 `@tintinweb/pi-subagents` 0.22.1 后，离线真实 SDK 子会话能完成任务，

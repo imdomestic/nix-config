@@ -14,6 +14,14 @@ in {
       message = "linwhite 的 SMB 挂载需要 linwhite 用户 LaunchAgent。";
     }
   ];
+  # Fixed mount directories must survive unmounts; /Volumes itself is root-owned.
+  system.activationScripts.postActivation.text = lib.concatMapStringsSep "\n" (host: ''
+    if /bin/mkdir /Volumes/${host}-linwhite 2>/dev/null; then
+      /usr/sbin/chown linwhite:staff /Volumes/${host}-linwhite
+      /bin/chmod 0700 /Volumes/${host}-linwhite
+    fi
+  '') ["seraph" "encore"];
+
   launchd.user.agents = lib.genAttrs ["seraph" "encore"] (host: {
     serviceConfig = {
       Label = "org.nixos.linwhite-smb-${host}";

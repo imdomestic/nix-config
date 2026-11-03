@@ -34,6 +34,59 @@ deploy .#encore.system --remote-build --temp-path /home/linwhite/.config/nix-con
 如果 aegis 的 Tailscale 节点身份更换导致 IPv4 地址变化，需要同步更新白名单及
 nftables 规则。
 
+## aegis 自动挂载与固定路径
+
+客户端配置为 `system/modules/linwhite-smb/darwin.nix`，属于 **aegis 系统闭包**，
+不是 Home Manager。用户 LaunchAgent 每 60 秒检查一次：
+
+| 共享 | 固定挂载点 | 固定快捷入口 |
+| --- | --- | --- |
+| encore | `/Volumes/encore-linwhite` | `~/Servers/encore` |
+| seraph | `/Volumes/seraph-linwhite` | `~/Servers/seraph` |
+
+系统激活只创建缺失的挂载目录，交给 linwhite 所有；不会改动已存在/已挂载目录。
+脚本通过钥匙串取凭据、禁止认证弹窗，用 NetFS 指定原挂载点；不使用自动选名，
+也不把快捷入口自动改指向 `-1`。已登记的同一共享无论在什么路径都先识别，
+避免重复挂载；短时断网、旧会话重连期间保留原入口，不强制卸载。
+
+- 网络未恢复：检查 DNS/TCP 445；未就绪就等待下一轮。
+- 挂载仍登记但目录不可访问：`waiting-session`，等待 macOS 自身重连。
+  **不会自动修复永久卡住的旧挂载**，以免破坏打开的文件。
+- 挂载已消失：先留 60 秒给系统重连，再检查两次网络可达性并重挂原路径。
+- 原路径被非空本地目录、其他卷或符号链接占用：报错，保留现状；不删除文件。
+- 同一共享已挂在 `-1` 等其他路径：报错，要求关闭文件后人工迁回；不制造第二个挂载。
+
+日志：`~/Library/Logs/linwhite-smb-{encore,seraph}.log`，仅状态变化时输出时间戳。
+最近检查时间和状态在 `~/Library/Application Support/linwhite-smb/<host>.json`。
+该目录的 lock 文件用于每共享互斥；不要删除仍在运行进程持有的 lock 文件。
+
+### 首次切换新版与现有后缀卷的迁移
+
+2026-11-03 提交时仅完成代码和离线验证，**未激活，seraph 仍挂在 `-1`**。
+首次上线需另行安排操作窗口：
+
+1. 关闭共享上的文件、终端工作目录及使用它们的程序；确认没有待保存数据。
+2. 暂停 seraph 的旧代理，避免迁移过程中它继续使用自动选名逻辑：
+   `launchctl bootout gui/$(id -u)/org.nixos.linwhite-smb-seraph`。
+3. 从 Finder 正常推出 seraph 的现有卷。若提示正在使用或推出失败，先排查占用，
+   **不使用强制卸载**，也不删除 `/Volumes` 下的目录。
+4. 按 `AGENTS.md` 做 freshness check 后，用 `just darwin aegis` 激活客户端系统配置。
+   确认两个 LaunchAgent 已加载；若未加载，先用对应 plist 执行 `launchctl bootstrap`，
+   不同时启动旧脚本。服务器配置无需改动，也不需要 home 激活。
+5. 观察日志及 `mount`：最多等待两个正常检查周期，再确认固定路径、目录读取与
+   `~/Servers/` 入口；使用临时文件完成写入、读取、删除验证。
+6. 经用户确认后测试短时断网和睡眠唤醒；验收没有新后缀卷、原路径恢复、日志能
+   区分网络未就绪与旧会话未恢复。若旧挂载永久卡住，先关闭文件再正常推出。
+
+仅检查逻辑、不接触挂载或钥匙串的回归测试：
+
+```sh
+python3 scripts/test-mount-linwhite-smb.py
+nix eval --raw .#darwinConfigurations.aegis.config.system.build.toplevel.drvPath
+```
+
+根因、时间线与验证边界：`docs/incidents.md#smb-fixed-mountpoint`。
+
 ## 验证（2026-10-06）
 
 全部 20 个 NixOS 配置与 4 个 nix-darwin 配置求值通过。
