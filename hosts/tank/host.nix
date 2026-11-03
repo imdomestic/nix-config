@@ -37,7 +37,7 @@
       hank = {};
       # 她自己的 zsh 里有 `ls = "eza --icons"`,所以需要 interactive。
       fendada = {};
-      linwhite = {};
+      linwhite.ageKey = "age1w9pj7r7ul6zgnh7jre7uk8a4mmdzd0538m74uhk06zw4kz4thcwsvcuntw";
       kenneth = {};
       genisys = {};
     };
