@@ -73,8 +73,8 @@ in {
           model = "cliproxy/gemini-3.8-flash-high";
           effort = "high";
         };
-        # low thinks a few dozen tokens before the verdict, well inside the
-        # 300 maxx gives it.
+        # low thinks ~100 tokens before the verdict, up to ~280; maxx gives
+        # it 1000 (at 300, one call in eight was cut off, 2026-11-04).
         intent = {
           model = "cliproxy/opencode/deepseek-v4.1-flash";
           effort = "low";
