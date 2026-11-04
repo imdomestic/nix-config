@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-04 · Rewind App 的额度接口不在官网通用 Key Usage 中 {#rewind-app-balance}
+
+查 Rewind 剩余额度时，先从官网 `/key-usage` 的前端发现
+`GET https://rewind-science.com/v1/usage`。gizmo 的生产 Rewind key 在这里返回
+401 `INVALID_API_KEY`；在模型入口 `rewind-api.apiwharf.com` 查同一路径则是 404。
+这只能证明查错了接口，不能证明用于设备会话的 key 已失效。
+
+**误导点：官网和桌面端都叫 Rewind，但普通平台 API key 与设备会话的鉴权边界
+不同。** 官网代码不是桌面端额度协议的证据。下载官方 1.0.15 macOS 包，只读
+挂载、静态检查客户端资源后，`ApiKeyClient.quota()` 明确调用
+`GET https://rewind-api.apiwharf.com/api/v1/rewind/usage`，使用短期 `model_token`
+和绑定 GET、URL、nonce、token 与空请求体的 ES256 DPoP proof，而不是直接
+`Bearer <原始 key>`。
+
+返回 `rewind.quota.v1`、USD 十进制字符串、`available_usd` 和最多七种限制窗口。
+App 校验响应后展示剩余金额，默认每 60 秒刷新、请求超时 15 秒；打开额度窗口
+和每轮结束也刷新。网络失败保留并标记旧数据，鉴权失败清空。
+
+配置采用插件内独立的只读监听，与模型请求共用设备身份、会话和续期锁，避免
+另起服务重复交换会话。Pi 只拿已有网关调用密钥读取白名单余额字段，不拿
+Rewind 原始 key、设备私钥或 CLIProxy 管理密钥；状态栏不再以估算会话成本冒充
+实际余额。接口和部署边界见 `docs/rewind.md#balance-in-pi`。
+
 ## 2026-11-04 · Pi 子代理启动时 FleetView 停止刷新 {#pi-fleet-startup-race}
 
 把 statusline 移到 FleetView 上方后，用户报告底部只剩 `1 running agent`，

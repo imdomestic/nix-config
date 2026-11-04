@@ -5,6 +5,7 @@
   ...
 }: let
   cliproxy = import ../../../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
+  balancePlacement = config.my.fleet.placements.rewind-balance;
   pricing = import ./pricing.nix;
   themes = import ./themes.nix;
   ccExtensions = pkgs.callPackage ../../../../pkgs/pi-cc-extensions {};
@@ -13,7 +14,7 @@
   subagentsSettings = import ./subagents-settings.nix;
   extensionSource = lib.fileset.toSource {
     root = ./.;
-    fileset = lib.fileset.unions [./bootstrap.ts ./prompt-prefix.ts ./render.ts ./statusline.ts];
+    fileset = lib.fileset.unions [./bootstrap.ts ./prompt-prefix.ts ./render.ts ./statusline.ts ./balance.ts];
   };
   free = {
     input = 0;
@@ -103,7 +104,13 @@ in {
     import subagents from "${subagents}/src/index.ts";
 
     export default function (pi) {
-      bootstrap(pi, { cc, better, subagents }, ${builtins.toJSON {showTokenRate = false;}});
+      bootstrap(pi, { cc, better, subagents }, ${builtins.toJSON {
+      showTokenRate = false;
+      balance = {
+        url = "http://${balancePlacement.tsName}:${toString balancePlacement.port}/rewind/balance";
+        apiKeyFile = config.sops.secrets."cliproxy/api_key".path;
+      };
+    }});
     }
   '';
   home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -21,7 +22,7 @@ import (
 )
 
 const rewindOrigin = "https://rewind-api.apiwharf.com"
-const appVersion = "1.0.8"
+const appVersion = "1.0.15"
 
 var clientVersionPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$`)
 
@@ -56,6 +57,7 @@ type sessionClient struct {
 	credential credential
 	private    *ecdsa.PrivateKey
 	public     jwk
+	deviceHash [sha256.Size]byte
 	key        string
 	session    session
 	origin     string
@@ -87,11 +89,27 @@ func uuid() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-func (c *sessionClient) device() *problem {
-	if c.private != nil {
-		return nil
+func readBoundedFile(path string, limit int64) ([]byte, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
 	}
-	raw, err := os.ReadFile(c.credential.DeviceFile)
+	defer file.Close()
+	raw, err := io.ReadAll(io.LimitReader(file, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(raw)) > limit {
+		return nil, fmt.Errorf("file too large")
+	}
+	return raw, nil
+}
+
+func (c *sessionClient) device(allowCreate bool) *problem {
+	raw, err := readBoundedFile(c.credential.DeviceFile, 64<<10)
+	if os.IsNotExist(err) && !allowCreate {
+		return fail(503, "rewind_device_unavailable", "Rewind device key file unavailable")
+	}
 	if os.IsNotExist(err) {
 		key, e := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if e != nil {
@@ -122,11 +140,15 @@ func (c *sessionClient) device() *problem {
 		if e = os.Link(tmp.Name(), c.credential.DeviceFile); e != nil && !os.IsExist(e) {
 			return fail(500, "rewind_device", "Cannot save Rewind device key")
 		}
-		raw, err = os.ReadFile(c.credential.DeviceFile)
+		raw, err = readBoundedFile(c.credential.DeviceFile, 64<<10)
 	}
-	info, e := os.Stat(c.credential.DeviceFile)
-	if err != nil || e != nil || info.Mode().Perm()&0077 != 0 {
+	info, statErr := os.Stat(c.credential.DeviceFile)
+	if err != nil || statErr != nil || info.Mode().Perm()&0077 != 0 {
 		return fail(500, "rewind_device", "Rewind device key must be readable only by its owner")
+	}
+	hash := sha256.Sum256(raw)
+	if c.private != nil && hash == c.deviceHash {
+		return nil
 	}
 	var stored struct {
 		PKCS8 string `json:"pkcs8"`
@@ -148,6 +170,9 @@ func (c *sessionClient) device() *problem {
 	}
 	c.private = key
 	c.public = jwk{"EC", "P-256", base64.RawURLEncoding.EncodeToString(key.X.FillBytes(make([]byte, 32))), base64.RawURLEncoding.EncodeToString(key.Y.FillBytes(make([]byte, 32)))}
+	c.deviceHash = hash
+	c.key = ""
+	c.session = session{}
 	return nil
 }
 
@@ -197,8 +222,8 @@ func upstreamProblem(status int, headers http.Header, raw []byte) *problem {
 	return fail(502, "rewind_upstream", "Rewind upstream unavailable")
 }
 
-func (c *sessionClient) jsonRequest(path string, body []byte, headers http.Header, out any) *problem {
-	req, err := http.NewRequest(http.MethodPost, c.origin+path, bytes.NewReader(body))
+func (c *sessionClient) jsonRequest(ctx context.Context, path string, body []byte, headers http.Header, out any) *problem {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.origin+path, bytes.NewReader(body))
 	if err != nil {
 		return fail(500, "rewind_auth", "Invalid Rewind endpoint")
 	}
@@ -227,34 +252,46 @@ func (c *sessionClient) jsonRequest(path string, body []byte, headers http.Heade
 }
 
 func (c *sessionClient) headers(url string, body []byte) (http.Header, *problem) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	headers, err := c.requestHeaders(ctx, http.MethodPost, url, body, true)
+	if err != nil {
+		return nil, err
+	}
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Accept", "text/event-stream")
+	return headers, nil
+}
+
+func (c *sessionClient) requestHeaders(ctx context.Context, method, url string, body []byte, allowCreateDevice bool) (http.Header, *problem) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	raw, err := os.ReadFile(c.credential.APIKeyFile)
+	raw, err := readBoundedFile(c.credential.APIKeyFile, 8<<10)
 	key := strings.TrimSpace(string(raw))
 	if err != nil || key == "" || strings.ContainsAny(key, " \t\r\n") {
 		return nil, fail(503, "rewind_key_unavailable", "Rewind API key file unavailable")
 	}
-	if err := c.device(); err != nil {
+	if err := c.device(allowCreateDevice); err != nil {
 		return nil, err
 	}
 	if key != c.key || c.session.ExpiresAt <= c.now().Unix()+30 {
 		var challenge struct {
 			Nonce string `json:"nonce"`
 		}
-		body, _ := json.Marshal(map[string]any{"jwk": c.public})
-		if err := c.jsonRequest("/api/v1/rewind/challenge", body, nil, &challenge); err != nil {
+		challengeBody, _ := json.Marshal(map[string]any{"jwk": c.public})
+		if err := c.jsonRequest(ctx, "/api/v1/rewind/challenge", challengeBody, nil, &challenge); err != nil {
 			return nil, err
 		}
 		if len(challenge.Nonce) != 43 {
 			return nil, fail(502, "rewind_auth_unavailable", "Invalid Rewind challenge")
 		}
-		body, _ = json.Marshal(map[string]string{"nonce": challenge.Nonce, "platform": clientPlatform, "app_version": appVersion})
-		proof, e := c.proof(key, challenge.Nonce, c.origin+"/api/v1/rewind/sessions", "POST", body)
+		sessionBody, _ := json.Marshal(map[string]string{"nonce": challenge.Nonce, "platform": clientPlatform, "app_version": appVersion})
+		proof, e := c.proof(key, challenge.Nonce, c.origin+"/api/v1/rewind/sessions", http.MethodPost, sessionBody)
 		if e != nil {
 			return nil, e
 		}
 		var s session
-		if e := c.jsonRequest("/api/v1/rewind/sessions", body, http.Header{"Authorization": {"Bearer " + key}, "Dpop": {proof}}, &s); e != nil {
+		if e := c.jsonRequest(ctx, "/api/v1/rewind/sessions", sessionBody, http.Header{"Authorization": {"Bearer " + key}, "Dpop": {proof}}, &s); e != nil {
 			return nil, e
 		}
 		if s.Status == "pending" {
@@ -266,11 +303,11 @@ func (c *sessionClient) headers(url string, body []byte) (http.Header, *problem)
 		}
 		c.key, c.session = key, s
 	}
-	proof, e := c.proof(c.session.ModelToken, c.session.Nonce, url, "POST", body)
+	proof, e := c.proof(c.session.ModelToken, c.session.Nonce, url, method, body)
 	if e != nil {
 		return nil, e
 	}
-	return http.Header{"Authorization": {"DPoP " + c.session.ModelToken}, "Dpop": {proof}, "Content-Type": {"application/json"}, "Accept": {"text/event-stream"}, "Accept-Encoding": {"identity"}}, nil
+	return http.Header{"Authorization": {"DPoP " + c.session.ModelToken}, "Dpop": {proof}, "Accept-Encoding": {"identity"}}, nil
 }
 
 func (c *sessionClient) invalidate() { c.mu.Lock(); c.session = session{}; c.mu.Unlock() }

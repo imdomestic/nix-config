@@ -45,6 +45,7 @@ in {
     ];
     rewind = {
       enable = true;
+      balance.enable = true;
       apiKeyFile = config.sops.secrets."rewind/api_key".path;
     };
   };

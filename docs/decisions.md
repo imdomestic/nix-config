@@ -11,6 +11,16 @@
 
 ---
 
+## 2026-11-04 · Pi 状态栏显示剩余额度，不显示估算会话成本 {#pi-balance-status}
+
+Hank 的 statusline 不再累计展示 `usage.cost.total`：它按客户端价格表估算会话
+支出，不是上游账户余额，Rewind 型号沿用公开 GPT 价格时也不是实际账单。
+只有带 `rewind/` 前缀的 CLIProxy 模型显示从专用接口取得的有限剩余额度；其他
+模型、无限额和失败查询不占位，也不回退成 `$0`。已确认的零余额仍显示。
+
+余额鉴权留在 gizmo 的 Rewind 插件内，与模型请求共享设备会话；Pi 只用已有
+网关调用密钥读取缓存后的白名单字段。接口与边界见 `docs/rewind.md#balance-in-pi`。
+
 ## 2026-11-04 · Pi 只保留下方 FleetView，移除 Magic Context {#pi-bootstrap}
 
 Hank 的 Pi 由单个 `hank-pi.ts` 入口调用 `home/hank/modules/pi/bootstrap.ts`：

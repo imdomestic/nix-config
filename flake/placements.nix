@@ -10,6 +10,10 @@
       host = "gizmo";
       port = 8317;
     };
+    rewind-balance = {
+      host = "gizmo";
+      port = 8318;
+    };
     # gaoji 集群控制面(hosts/h610/cluster.nix),worker 和 tank 上的 bot 连它。
     gaoji-control = {
       host = "h610";

@@ -23,7 +23,14 @@ nix eval --raw --impure --expr '
   let
     flake = builtins.getFlake (toString ./.);
     pkgs = flake.inputs.nixpkgs.legacyPackages.${builtins.currentSystem};
-    module = import ./home/hank/modules/pi { config = {}; inherit pkgs; inherit (pkgs) lib; };
+    module = import ./home/hank/modules/pi {
+      config = {
+        my.fleet.placements.rewind-balance = { tsName = "balance.invalid"; port = 8318; };
+        sops.secrets."cliproxy/api_key".path = "/nonexistent/pi-test-client-key";
+      };
+      inherit pkgs;
+      inherit (pkgs) lib;
+    };
     extensions = builtins.filter (name: pkgs.lib.hasPrefix ".pi/agent/extensions/" name) (builtins.attrNames module.home.file);
   in assert extensions == [ ".pi/agent/extensions/hank-pi.ts" ];
     module.home.file.".pi/agent/extensions/hank-pi.ts".text

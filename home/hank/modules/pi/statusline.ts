@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { promisify } from "node:util";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
+import { formatBalance, readBalance, type BalanceConfig, type BalanceReader } from "./balance.ts";
 
 // Claude-style grouping, with Pi's theme and context estimate; docs/decisions.md#pi-input-status-colors.
 const clean = (text: string) => text.replace(/[\x00-\x1f\x7f]/g, " ");
@@ -76,15 +77,40 @@ export async function readGitStatus(cwd: string, signal?: AbortSignal): Promise<
   }
 }
 
-type StatuslineOptions = { showTokenRate?: boolean; now?: () => number; readGitStatus?: typeof readGitStatus };
+export type StatuslineOptions = {
+  showTokenRate?: boolean;
+  balance?: BalanceConfig;
+  now?: () => number;
+  readGitStatus?: typeof readGitStatus;
+  readBalance?: BalanceReader;
+  scheduleBalanceRefresh?: (callback: () => void) => () => void;
+};
+
+const balanceModel = (model: { provider?: string; id?: string } | undefined) =>
+  model?.provider === "cliproxy" && model.id?.startsWith("rewind/") === true;
+const balanceIdentity = (model: { provider?: string; id?: string } | undefined) => `${model?.provider ?? ""}\0${model?.id ?? ""}`;
 
 export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
-  const { showTokenRate = false, now = () => performance.now(), readGitStatus: readGit = readGitStatus } = options;
+  const {
+    showTokenRate = false,
+    balance: balanceConfig,
+    now = () => performance.now(),
+    readGitStatus: readGit = readGitStatus,
+    readBalance: readAccountBalance = readBalance,
+    scheduleBalanceRefresh = (callback) => {
+      const timer = setInterval(callback, 60_000);
+      timer.unref?.();
+      return () => clearInterval(timer);
+    },
+  } = options;
   let requestStartedAt: number | undefined;
   let tokensPerSecond: number | undefined;
   let refresh: (() => void) | undefined;
   let refreshGit: (() => void) | undefined;
   let stopGit: (() => void) | undefined;
+  let refreshBalance: (() => void) | undefined;
+  let switchBalance: ((model: { provider?: string; id?: string } | undefined) => void) | undefined;
+  let stopBalance: (() => void) | undefined;
 
   pi.on("before_agent_start", (_event, ctx) => {
     if (ctx.mode === "tui") refreshGit?.();
@@ -95,6 +121,7 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
   });
   pi.on("session_shutdown", () => {
     stopGit?.();
+    stopBalance?.();
     requestStartedAt = undefined;
     tokensPerSecond = undefined;
     refresh = undefined;
@@ -124,11 +151,19 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
       requestStartedAt = undefined;
       refresh?.();
     });
-    pi.on("agent_end", () => {
-      requestStartedAt = undefined;
-      refresh?.();
+  }
+  if (showTokenRate || balanceConfig) {
+    pi.on("agent_end", (_event, ctx) => {
+      if (showTokenRate) {
+        requestStartedAt = undefined;
+        refresh?.();
+      }
+      if (ctx.mode === "tui") refreshBalance?.();
     });
-    pi.on("model_select", resetRate);
+    pi.on("model_select", (event, ctx) => {
+      if (showTokenRate) resetRate();
+      if (ctx.mode === "tui") switchBalance?.(event.model);
+    });
   }
   pi.on("session_start", (_event, ctx) => {
     resetRate();
@@ -136,6 +171,7 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
 
     ctx.ui.setFooter((tui, theme, footerData) => {
       stopGit?.();
+      stopBalance?.();
       const requestRender = () => tui.requestRender();
       refresh = requestRender;
       const controller = new AbortController();
@@ -178,33 +214,80 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
       };
       stopGit = cleanupGit;
       updateGit();
-      let costKey = "";
-      let cost = 0;
 
-      function sessionCost(): number {
-        const manager = ctx.sessionManager;
-        const key = `${manager.getSessionId()}:${manager.getEntryCount()}:${manager.getLeafId()}`;
-        if (key === costKey) return cost;
-        costKey = key;
-        cost = 0;
+      let balance: string | undefined;
+      let balanceGeneration = 0;
+      let balanceRequest: { generation: number; identity: string; controller: AbortController } | undefined;
+      let balanceDirty = false;
+      let balanceDisposed = false;
+      let clearBalanceTimer: (() => void) | undefined;
+      let selectedModel: { provider?: string; id?: string } | undefined = ctx.model;
 
-        // Count all recorded spend, including compacted turns and tool-owned model calls.
-        for (const entry of manager.getEntries()) {
-          const usage = entry.type === "message"
-            ? entry.message.role === "assistant" || entry.message.role === "toolResult"
-              ? entry.message.usage
-              : undefined
-            : "usage" in entry ? entry.usage : undefined;
-          const amount = usage?.cost?.total;
-          if (typeof amount === "number" && Number.isFinite(amount) && amount >= 0) cost += amount;
+      const startBalanceRequest = () => {
+        if (!balanceConfig || balanceDisposed || !balanceModel(selectedModel)) return;
+        if (balanceRequest?.generation === balanceGeneration) {
+          balanceDirty = true;
+          return;
         }
-        return cost;
-      }
+        balanceDirty = false;
+        const generation = balanceGeneration;
+        const identity = balanceIdentity(selectedModel);
+        const controller = new AbortController();
+        const request = { generation, identity, controller };
+        balanceRequest = request;
+        void readAccountBalance(balanceConfig, controller.signal).catch(() => undefined).then((snapshot) => {
+          if (balanceDisposed || balanceGeneration !== generation || balanceIdentity(selectedModel) !== identity
+            || balanceRequest !== request || balanceDirty) return;
+          const next = snapshot ? formatBalance(snapshot.availableUsd) : undefined;
+          if (balance !== next) {
+            balance = next;
+            requestRender();
+          }
+        }).finally(() => {
+          if (balanceRequest !== request) return;
+          balanceRequest = undefined;
+          if (balanceDirty && !balanceDisposed) startBalanceRequest();
+        });
+      };
+      const selectBalanceModel = (model: { provider?: string; id?: string } | undefined) => {
+        balanceGeneration++;
+        selectedModel = model;
+        balanceDirty = false;
+        balanceRequest?.controller.abort();
+        balanceRequest = undefined;
+        clearBalanceTimer?.();
+        clearBalanceTimer = undefined;
+        if (balance !== undefined) {
+          balance = undefined;
+          requestRender();
+        }
+        if (!balanceConfig || !balanceModel(model) || balanceDisposed) return;
+        clearBalanceTimer = scheduleBalanceRefresh(startBalanceRequest);
+        startBalanceRequest();
+      };
+      const cleanupBalance = () => {
+        if (balanceDisposed) return;
+        balanceDisposed = true;
+        balanceGeneration++;
+        balanceRequest?.controller.abort();
+        balanceRequest = undefined;
+        balanceDirty = false;
+        clearBalanceTimer?.();
+        clearBalanceTimer = undefined;
+        if (refreshBalance === startBalanceRequest) refreshBalance = undefined;
+        if (switchBalance === selectBalanceModel) switchBalance = undefined;
+        if (stopBalance === cleanupBalance) stopBalance = undefined;
+      };
+      refreshBalance = startBalanceRequest;
+      switchBalance = selectBalanceModel;
+      stopBalance = cleanupBalance;
+      selectBalanceModel(ctx.model);
 
       // Register before FleetView so the statusline sits directly below the editor.
       ctx.ui.setWidget("statusline", () => ({
         dispose() {
           cleanupGit();
+          cleanupBalance();
           if (refresh === requestRender) refresh = undefined;
         },
         invalidate() {},
@@ -237,13 +320,14 @@ export default function (pi: ExtensionAPI, options: StatuslineOptions = {}) {
             const color = percent >= 90 ? "error" : percent >= 70 ? "warning" : "success";
             context += ` ${theme.fg(color, `(${percent.toFixed(1).replace(/\.0$/, "")}%)`)}`;
           }
-          groups.push(model, context, `${theme.fg("dim", "$")}${theme.fg("text", sessionCost().toFixed(2))}`);
+          groups.push(model, context);
           if (showTokenRate && requestStartedAt !== undefined) {
             groups.push(theme.fg("dim", "avg … tok/s"));
           } else if (showTokenRate && tokensPerSecond !== undefined) {
             const rate = tokensPerSecond.toFixed(1).replace(/\.0$/, "");
             groups.push(`${theme.fg("dim", "avg")} ${theme.fg("text", rate)} ${theme.fg("dim", "tok/s")}`);
           }
+          if (balance !== undefined) groups.push(`${theme.fg("dim", "bal")} ${theme.fg("text", balance)}`);
 
           const separator = ` ${theme.fg("dim", "|")} `;
           const lines = [truncateToWidth(groups.join(separator), width)];

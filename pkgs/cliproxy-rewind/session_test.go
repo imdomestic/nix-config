@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-func verifyProof(t *testing.T, proof, token, nonce, url string, body []byte) map[string]any {
+func verifyProof(t *testing.T, proof, token, nonce, method, url string, body []byte) map[string]any {
 	t.Helper()
 	parts := strings.Split(proof, ".")
 	if len(parts) != 3 {
@@ -43,7 +43,7 @@ func verifyProof(t *testing.T, proof, token, nonce, url string, body []byte) map
 	if json.Unmarshal(decode(parts[1]), &claims) != nil {
 		t.Fatal("invalid claims")
 	}
-	if claims["ath"] != digest([]byte(token)) || claims["nonce"] != nonce || claims["htu"] != url || claims["htm"] != "POST" || claims["rqh"] != digest(body) {
+	if claims["ath"] != digest([]byte(token)) || claims["nonce"] != nonce || claims["htu"] != url || claims["htm"] != method || claims["rqh"] != digest(body) {
 		t.Fatal("proof not bound to this exact request")
 	}
 	key := ecdsa.PublicKey{Curve: elliptic.P256(), X: new(big.Int).SetBytes(decode(header.JWK.X)), Y: new(big.Int).SetBytes(decode(header.JWK.Y))}
@@ -86,10 +86,10 @@ func TestSessionProofRenewalAndConcurrentCalls(t *testing.T) {
 			if json.Unmarshal(raw, &login) != nil || login.Platform != "darwin" {
 				t.Error("unsupported Rewind session platform")
 			}
-			if login.AppVersion != "1.0.8" {
+			if login.AppVersion != "1.0.15" {
 				t.Error("outdated Rewind client protocol")
 			}
-			verifyProof(t, r.Header.Get("DPoP"), strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), nonce, server.URL+r.URL.Path, raw)
+			verifyProof(t, r.Header.Get("DPoP"), strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), nonce, http.MethodPost, server.URL+r.URL.Path, raw)
 			thumb, _ := json.Marshal(map[string]string{"crv": public.Crv, "kty": public.Kty, "x": public.X, "y": public.Y})
 			_ = json.NewEncoder(w).Encode(session{Status: "verified", ModelToken: token, Nonce: nonce, ExpiresAt: clock.Load() + 300, Thumbprint: digest(thumb), AppVersion: appVersion})
 		default:
@@ -109,7 +109,7 @@ func TestSessionProofRenewalAndConcurrentCalls(t *testing.T) {
 				t.Error(e)
 				return
 			}
-			claims := verifyProof(t, h.Get("DPoP"), token, nonce, rewindOrigin+"/v1/responses", body)
+			claims := verifyProof(t, h.Get("DPoP"), token, nonce, http.MethodPost, rewindOrigin+"/v1/responses", body)
 			if _, loaded := ids.LoadOrStore(claims["jti"], true); loaded {
 				t.Error("reused request proof")
 			}
@@ -148,10 +148,10 @@ func TestUpdateRequiredVersionHint(t *testing.T) {
 	for _, tc := range []struct {
 		raw, want string
 	}{
-		{`{"error":{"code":"REWIND_UPDATE_REQUIRED","minimum_version":"1.0.9","message":"private token"}}`, "Rewind requires a newer client protocol (current 1.0.8); minimum 1.0.9"},
-		{`{"error":{"minimum_version":"private token"}}`, "Rewind requires a newer client protocol (current 1.0.8)"},
-		{`{"error":{"minimum_version":"1.0.9\nprivate token"}}`, "Rewind requires a newer client protocol (current 1.0.8)"},
-		{`not JSON`, "Rewind requires a newer client protocol (current 1.0.8)"},
+		{`{"error":{"code":"REWIND_UPDATE_REQUIRED","minimum_version":"1.0.16","message":"private token"}}`, "Rewind requires a newer client protocol (current 1.0.15); minimum 1.0.16"},
+		{`{"error":{"minimum_version":"private token"}}`, "Rewind requires a newer client protocol (current 1.0.15)"},
+		{`{"error":{"minimum_version":"1.0.16\nprivate token"}}`, "Rewind requires a newer client protocol (current 1.0.15)"},
+		{`not JSON`, "Rewind requires a newer client protocol (current 1.0.15)"},
 	} {
 		p := upstreamProblem(426, nil, []byte(tc.raw))
 		if p.HTTPStatus != 426 || p.Code != "rewind_update_required" || p.Message != tc.want {

@@ -6,6 +6,7 @@ import { CustomEditor, getSelectListTheme, initTheme, type ExtensionAPI } from "
 import { CURSOR_MARKER, foregroundAnsi, getTerminalColorMode, parseColor, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
 import installPrompt from "../home/hank/modules/pi/prompt-prefix.ts";
 import installStatusline, { parseGitStatus, readGitStatus } from "../home/hank/modules/pi/statusline.ts";
+import { createBalanceReader, formatBalance, parseBalanceResponse, type BalanceSnapshot } from "../home/hank/modules/pi/balance.ts";
 
 const settleGit = () => new Promise<void>((resolve) => setImmediate(resolve));
 
@@ -189,6 +190,176 @@ async function checkGitStatus(pi: ExtensionAPI): Promise<void> {
   }
 }
 
+function balancePayload(available_usd: string | null, exhausted = available_usd !== null && !/[1-9]/.test(available_usd)) {
+  return { schema: "rewind.balance.v1", currency: "USD", available_usd, exhausted, as_of: "2026-11-08T12:34:56.123Z" };
+}
+
+async function checkBalanceReader(): Promise<void> {
+  assert.equal(formatBalance(null), undefined);
+  assert.equal(formatBalance("0"), "$0.00");
+  assert.equal(formatBalance("0.00000001"), "<$0.01");
+  assert.equal(formatBalance("0.00999999"), "<$0.01");
+  assert.equal(formatBalance("0.01"), "$0.01");
+  assert.equal(formatBalance("12.345"), "$12.35");
+  assert.equal(formatBalance("999999999999.99999999"), "$1000000000000.00");
+  assert(parseBalanceResponse(balancePayload("12.34")));
+  assert(parseBalanceResponse({ ...balancePayload("1"), as_of: "2026-11-08T20:34:56+08:00" }));
+  for (const payload of [
+    null, [], {},
+    { ...balancePayload("1"), schema: "other" },
+    { ...balancePayload("1"), currency: "EUR" },
+    { ...balancePayload("1"), available_usd: -1 },
+    balancePayload("-1"), balancePayload("1234567890123"), balancePayload("1.123456789"),
+    { ...balancePayload("0"), exhausted: false }, { ...balancePayload("1"), exhausted: true },
+    { ...balancePayload(null), exhausted: true },
+    { ...balancePayload("1"), as_of: "not-a-date" },
+    { ...balancePayload("1"), as_of: "2026-02-30T12:00:00Z" },
+  ]) assert.equal(parseBalanceResponse(payload), undefined, `Malformed balance accepted: ${JSON.stringify(payload)}`);
+
+  let fetches = 0;
+  let seenAuthorization = "";
+  const reader = createBalanceReader({
+    readFile: async (path, options) => {
+      assert.equal(path, "/run/secret/client-key");
+      assert(!options.signal?.aborted);
+      return "client-api-key\n";
+    },
+    fetch: (async (_url: URL, init: RequestInit) => {
+      fetches++;
+      assert.equal(init.method, "GET");
+      assert.equal(init.redirect, "manual");
+      seenAuthorization = new Headers(init.headers).get("authorization") ?? "";
+      return new Response(JSON.stringify(balancePayload("12.34")), { status: 200, headers: { "content-type": "application/json" } });
+    }) as typeof fetch,
+  });
+  const config = { url: "http://gizmo:8318/rewind/balance", apiKeyFile: "/run/secret/client-key" };
+  assert.equal((await reader(config))?.availableUsd, "12.34");
+  assert.equal(fetches, 1);
+  assert.equal(seenAuthorization, "Bearer client-api-key");
+
+  const responseReader = (response: Response) => createBalanceReader({
+    readFile: async () => "key",
+    fetch: (async () => response) as typeof fetch,
+  })(config);
+  assert.equal(await responseReader(new Response("redirect", { status: 302, headers: { location: "https://example.invalid" } })), undefined);
+  assert.equal(await responseReader(new Response("x", { status: 500 })), undefined);
+  assert.equal(await responseReader(new Response("not-json", { status: 200 })), undefined);
+  assert.equal(await responseReader(new Response(JSON.stringify(balancePayload("1")), { status: 200, headers: { "content-length": "999999" } })), undefined);
+  assert.equal(await createBalanceReader({ readFile: async () => "key", fetch: (async () => {
+    return new Response("x".repeat(32), { status: 200 });
+  }) as typeof fetch, maxBytes: 16 })(config), undefined);
+  assert.equal(await createBalanceReader({ readFile: async () => "key", fetch: (async () => {
+    throw new Error("offline");
+  }) as typeof fetch })(config), undefined);
+  console.error("Balance reader: auth-file use, strict schema/money/time validation, bounded bodies, redirects, errors and formatting passed");
+}
+
+async function checkBalanceStatusline(theme: any): Promise<void> {
+  const handlers: Record<string, any> = {};
+  const probes: Array<{ signal?: AbortSignal; resolve: (snapshot: BalanceSnapshot | undefined) => void }> = [];
+  const timers: Array<{ callback: () => void; cleared: boolean }> = [];
+  let factory: any;
+  let renders = 0;
+  let reads = 0;
+  const api: any = { on(event: string, handler: any) { handlers[event] = handler; }, getThinkingLevel: () => "off" };
+  const rewind = { provider: "cliproxy", id: "rewind/claude", contextWindow: 128_000 };
+  const ctx: any = {
+    mode: "rpc", cwd: "/tmp/project", model: rewind, getContextUsage: () => undefined,
+    sessionManager: { getEntries() { throw new Error("Balance rendering must not read session history"); } },
+    ui: { setFooter(next: any) { factory = next; } },
+  };
+  installStatusline(api, {
+    balance: { url: "http://gizmo:8318/rewind/balance", apiKeyFile: "/run/secret/client-key" },
+    readGitStatus: async () => undefined,
+    readBalance: (_config, signal) => {
+      reads++;
+      return new Promise((resolve) => probes.push({ signal, resolve }));
+    },
+    scheduleBalanceRefresh: (callback) => {
+      const timer = { callback, cleared: false };
+      timers.push(timer);
+      return () => { timer.cleared = true; };
+    },
+  });
+  assert.deepEqual(Object.keys(handlers).sort(), ["agent_end", "before_agent_start", "model_select", "session_shutdown", "session_start", "tool_execution_end"],
+    "Balance-only mode must register one composed lifecycle handler per event and no timing handlers");
+  handlers.session_start({}, ctx);
+  handlers.agent_end({}, ctx);
+  handlers.model_select({ model: rewind }, ctx);
+  assert.equal(reads, 0, "RPC sessions/events must not read balance");
+
+  ctx.mode = "tui";
+  handlers.session_start({}, ctx);
+  const footer = mountStatusline(factory, ctx, { requestRender() { renders++; } }, theme, {
+    onBranchChange: () => () => {}, getGitBranch: () => undefined, getExtensionStatuses: () => new Map(),
+  });
+  const text = () => stripTerminalSequences(footer.render(300)[0]);
+  assert.equal(reads, 1, "Mounting an applicable model must read once");
+  for (let i = 0; i < 100; i++) footer.render(i % 2 ? 1 : 42);
+  assert.equal(reads, 1, "Rendering and narrow widths must not read balance");
+  probes[0].resolve(parseBalanceResponse(balancePayload("12.34")));
+  await settleGit();
+  assert(text().endsWith("bal $12.34"), text());
+  assert(footer.render(300)[0].includes(theme.fg("text", "$12.34")), "Balance must follow the current theme");
+  for (const width of [1, 5, 12, 42]) assert(footer.render(width).every((line: string) => visibleWidth(line) <= width));
+
+  timers.at(-1)?.callback();
+  assert.equal(reads, 2, "Periodic refresh must run while applicable");
+  handlers.agent_end({}, ctx);
+  handlers.agent_end({}, ctx);
+  assert.equal(reads, 2, "Task-end bursts must coalesce behind the pending request");
+  probes[1].resolve(parseBalanceResponse(balancePayload("0")));
+  await settleGit();
+  assert.equal(reads, 3, "A coalesced refresh must run once after the pending request");
+  probes[2].resolve(parseBalanceResponse(balancePayload("999999999999.99999999")));
+  await settleGit();
+  assert(text().endsWith("bal $1000000000000.00"), text());
+
+  timers.at(-1)?.callback();
+  assert.equal(reads, 4);
+  probes[3].resolve(parseBalanceResponse(balancePayload("0")));
+  await settleGit();
+  assert(text().endsWith("bal $0.00"), "Explicit zero balance must be displayed");
+  timers.at(-1)?.callback();
+  assert.equal(reads, 5);
+  const stale = probes[4];
+  ctx.model = { provider: "cliproxy", id: "other/model" };
+  handlers.model_select({ model: ctx.model }, ctx);
+  assert(stale.signal?.aborted, "Model switches must abort pending reads");
+  assert(!text().includes("bal "), "A model switch must clear balance immediately");
+  assert.equal(reads, 5, "Non-Rewind CLIProxy models must not read balance");
+  ctx.model = { provider: "ninfer", id: "rewind/claude" };
+  handlers.model_select({ model: ctx.model }, ctx);
+  assert.equal(reads, 5, "Non-CLIProxy providers must not read balance");
+  ctx.model = rewind;
+  handlers.model_select({ model: rewind }, ctx);
+  assert.equal(reads, 6);
+  stale.resolve(parseBalanceResponse(balancePayload("88")));
+  probes[5].resolve(parseBalanceResponse(balancePayload("0.00000001")));
+  await settleGit();
+  assert(text().endsWith("bal <$0.01"), "A->B->A stale responses must not overwrite the current generation");
+
+  timers.at(-1)?.callback();
+  probes[6].resolve(undefined);
+  await settleGit();
+  assert(!text().includes("bal "), "Errors must omit balance rather than preserve/fake a value");
+  timers.at(-1)?.callback();
+  probes[7].resolve(parseBalanceResponse(balancePayload(null)));
+  await settleGit();
+  assert(!text().includes("bal "), "An unbounded account balance must be omitted");
+  timers.at(-1)?.callback();
+  const shutdown = probes[8];
+  const beforeShutdown = renders;
+  handlers.session_shutdown({}, ctx);
+  assert(shutdown.signal?.aborted, "Shutdown must abort the balance request");
+  assert(timers.every((timer) => timer.cleared), "Model switches and shutdown must clear periodic timers");
+  shutdown.resolve(parseBalanceResponse(balancePayload("44")));
+  await settleGit();
+  assert.equal(renders, beforeShutdown, "Late balance results must not repaint after shutdown");
+  footer.dispose();
+  console.error("Balance statusline: applicability, mount/task/periodic refresh, coalescing, generation guards, null/error omission and cleanup passed");
+}
+
 export default function (pi: ExtensionAPI) {
   pi.on("session_start", async (_event, host) => {
     try {
@@ -317,7 +488,8 @@ export default function (pi: ExtensionAPI) {
         usage = { tokens: 38_400, contextWindow: 128_000, percent: 30 };
         const lines = footer.render(300);
         const output = stripTerminalSequences(lines[0]);
-        assert(output.includes("main [+2 !1 ?3 ↑1 ↓2] | model-test xhigh | ctx 38.4k/128k (30%) | $4.00"), output);
+        assert(output.includes("main [+2 !1 ?3 ↑1 ↓2] | model-test xhigh | ctx 38.4k/128k (30%)"), output);
+        assert(!output.includes("$4.00"), "Historical session cost must be removed from the statusline");
         for (const [marker, color] of [["+2", "success"], ["!1", "warning"], ["?3", "muted"], ["↑1", "success"], ["↓2", "warning"]]) {
           assert(lines[0].includes(host.ui.theme.fg(color as any, marker)), `${name}: Git status must follow the theme`);
         }
@@ -325,7 +497,6 @@ export default function (pi: ExtensionAPI) {
         assert(lines[0].includes(host.ui.theme.fg("accent", "model-test")));
         assert(lines[0].includes(host.ui.theme.fg("mdLink", "/tmp/project")));
         assert(lines[0].includes(host.ui.theme.fg("dim", "|")));
-        assert(lines[0].includes(host.ui.theme.fg("text", "4.00")));
         assert(lines[1].includes(host.ui.theme.fg("muted", "first status")));
         const palette = ["accent", "mdLink", "text", "dim", "success", "muted"].map((token) => host.ui.theme.getFgAnsi(token as any)).join("");
         if (previousFooter && palette !== previousPalette) assert.notEqual(lines[0], previousFooter, "Footer retained the previous theme's ANSI colors");
@@ -338,13 +509,13 @@ export default function (pi: ExtensionAPI) {
           assert(colored.includes(host.ui.theme.fg(color, `(${percent}%)`)));
         }
         usage = { tokens: null, contextWindow: 128_000, percent: null };
-        assert(stripTerminalSequences(footer.render(300)[0]).includes("ctx ?/128k | $4.00"));
+        assert(stripTerminalSequences(footer.render(300)[0]).endsWith("ctx ?/128k"));
         usage = { tokens: 1_024_000, contextWindow: 1_280_000, percent: null };
         assert(stripTerminalSequences(footer.render(300)[0]).includes("ctx 1.02M/1.28M (80%)"));
         for (const width of [1, 12, 42, 100]) assert(footer.render(width).every((line: string) => visibleWidth(line) <= width));
         console.error(`${name}: fixed gray-white editor, cursor/geometry, themed footer and context states passed (${host.ui.theme.getColorMode()})`);
       }
-      assert.equal(entriesReads, 1, "Context/theme changes must not rescan session cost every frame");
+      assert.equal(entriesReads, 0, "Statusline rendering must never scan historical session usage");
       assert.equal(gitReads, 1, "Repaints must not invoke Git");
       const footerText = () => stripTerminalSequences(footer.render(300)[0]);
       gitSnapshot = parseGitStatus("# branch.head main\0");
@@ -361,12 +532,12 @@ export default function (pi: ExtensionAPI) {
       }, ctx);
       assert(!footerText().includes("tok/s"), "No rate should be invented from historical usage without timing");
       startTurn();
-      assert(footerText().includes("$4.00 | avg … tok/s"));
+      assert(footerText().endsWith("avg … tok/s"));
       clock = 4_000;
       finishMessage(99_999, "stop", "toolResult");
       assert(footerText().includes("avg … tok/s"), "Tool-owned usage must not count as assistant output");
       finishMessage(120);
-      assert(footerText().includes("$4.00 | avg 40 tok/s"), "Rate must use actual output tokens, not input/cache counts");
+      assert(footerText().endsWith("avg 40 tok/s"), "Rate must use actual output tokens, not input/cache counts");
       for (const name of names) {
         initTheme(name);
         assert(footer.render(300)[0].includes(host.ui.theme.fg("text", "40")), `${name}: rate must follow the current theme`);
@@ -405,7 +576,7 @@ export default function (pi: ExtensionAPI) {
       startTurn();
       handlers.session_shutdown({}, ctx);
       assert(!footerText().includes("tok/s"), "Reload/session replacement must clear timing state");
-      assert.equal(entriesReads, 1, "Rate events must not repeatedly scan recorded usage");
+      assert.equal(entriesReads, 0, "Rate events must not scan recorded usage");
       for (const options of [{}, { showTokenRate: false }]) {
         const disabledHandlers: Record<string, any> = {};
         let disabledFooterFactory: any;
@@ -434,6 +605,8 @@ export default function (pi: ExtensionAPI) {
       assert.equal(disposed, 1, "Shutdown and disposal must unsubscribe only once");
       await checkGitRefresh(host.ui.theme);
       await checkGitStatus(pi);
+      await checkBalanceReader();
+      await checkBalanceStatusline(host.ui.theme);
       let submitted = "";
       editor.onSubmit = (text: string) => { submitted = text; };
       editor.setText("message");

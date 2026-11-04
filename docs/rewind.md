@@ -73,6 +73,32 @@ activation is enabled later, the module adds `Wants` and `After` for
 authentication outage affects Rewind calls rather than delaying startup of
 the other model providers.
 
+## Balance in Pi
+
+Hank's Pi statusline shows remaining Rewind balance instead of estimated session
+cost. Only `cliproxy` models with the `rewind/` prefix query it; other models,
+unlimited balances, and failed queries omit the field. A confirmed zero remains
+`bal $0.00`, not an omitted or fabricated value.
+
+The plugin also listens on the tailnet-only `rewind-balance` placement (currently
+gizmo:8318), in the same `cliproxy.service` process. `GET /rewind/balance` accepts
+the existing **client** API key, never the management key. It permits no other
+path, query string, request body, or upstream URL. The generated configuration
+contains only credential file paths; the Rewind key and device private key stay
+on gizmo.
+
+Balance requests reuse the model executor's device session and renewal lock.
+The upstream is `GET /api/v1/rewind/usage`, signed with the short-lived model
+token and a GET-specific DPoP proof. This is not the website's ordinary
+`/v1/usage` endpoint; the investigation is in
+`docs/incidents.md#rewind-app-balance`.
+
+The relay validates the upstream quota envelope, returns only schema, currency,
+`available_usd`, `exhausted`, and `as_of`, and caches successful responses for
+60 seconds. Pi refreshes while a Rewind model is selected and after tasks;
+switching models or closing the session cancels the pending UI request. Neither
+network failures nor historical usage are converted to a zero balance.
+
 ## Responses behavior
 
 Use the existing CLIProxyAPI URL and client API key:
@@ -105,7 +131,7 @@ upstream remains active, with a five-minute idle timeout. Truncated streams
 are failures. Authentication, quota and HTTP errors have bounded, sanitized
 messages rather than forwarding arbitrary upstream error text.
 
-Rewind currently negotiates the 1.0.8 client protocol. HTTP 426 means this
+Rewind currently negotiates the 1.0.15 client protocol. HTTP 426 means this
 protocol version needs reviewing against a newer official client; the error
 includes the current version and, when supplied, a validated minimum version.
 The upstream URL and protocol version live in `session.go`. A successful
