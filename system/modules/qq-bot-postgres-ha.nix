@@ -458,136 +458,145 @@
 
     print("pg_auto_failover monitor authentication is ready.")
   '';
-  bootstrapScript = pkgs.writeText "qq-bot-postgres-bootstrap.py" ''
-    import pathlib
-    import re
-    import sys
-    import time
+  bootstrapScript = pkgs.writeTextFile {
+    name = "qq-bot-postgres-bootstrap.py";
+    checkPhase = ''
+      ${pkgs.python3}/bin/python -c 'import sys; compile(open(sys.argv[1]).read(), sys.argv[1], "exec")' "$out"
+    '';
+    text = ''
+      import pathlib
+      import re
+      import sys
+      import time
 
-    import psycopg
-    from psycopg import sql
+      import psycopg
+      from psycopg import sql
 
 
-    password_path = pathlib.Path(sys.argv[1])
-    ha_password_path = pathlib.Path(sys.argv[2])
-    port = int(sys.argv[3])
-    password = password_path.read_text(encoding="utf-8").strip()
-    ha_password = ha_password_path.read_text(encoding="utf-8").strip()
-    if not password:
-        raise RuntimeError("qq_bot PostgreSQL password is empty")
-    if re.fullmatch(r"[A-Fa-f0-9]{64}", ha_password) is None:
-        raise RuntimeError(
-            "The PostgreSQL HA password must be a 64-character hexadecimal secret"
-        )
-
-    connection = None
-    for _ in range(180):
-        try:
-            connection = psycopg.connect(
-                dbname="postgres",
-                user="postgres",
-                host="${nodeSocketDir}",
-                port=port,
-                autocommit=True,
-                connect_timeout=2,
-            )
-            break
-        except psycopg.OperationalError:
-            time.sleep(1)
-    if connection is None:
-        raise RuntimeError("local PostgreSQL node did not become ready")
-
-    with connection:
-        if connection.execute("SELECT pg_is_in_recovery()").fetchone()[0]:
-            print("Local node is a standby; application bootstrap is already replicated.")
-            raise SystemExit(0)
-
-        ${lib.optionalString manualMode ''
-      if connection.execute(
-          "SELECT 1 FROM pg_replication_slots WHERE slot_name = %s",
-          ("${cfg.manual.replicationSlot}",),
-      ).fetchone() is None:
-          connection.execute(
-              "SELECT pg_create_physical_replication_slot(%s)",
-              ("${cfg.manual.replicationSlot}",),
+      password_path = pathlib.Path(sys.argv[1])
+      ha_password_path = pathlib.Path(sys.argv[2])
+      port = int(sys.argv[3])
+      password = password_path.read_text(encoding="utf-8").strip()
+      ha_password = ha_password_path.read_text(encoding="utf-8").strip()
+      if not password:
+          raise RuntimeError("qq_bot PostgreSQL password is empty")
+      if re.fullmatch(r"[A-Fa-f0-9]{64}", ha_password) is None:
+          raise RuntimeError(
+              "The PostgreSQL HA password must be a 64-character hexadecimal secret"
           )
-    ''}
-        role_exists = connection.execute(
-            "SELECT 1 FROM pg_roles WHERE rolname = 'qq_bot'"
-        ).fetchone()
-        operation = "ALTER" if role_exists else "CREATE"
-        connection.execute(
-            sql.SQL("{} ROLE {} LOGIN PASSWORD {}").format(
-                sql.SQL(operation),
-                sql.Identifier("qq_bot"),
-                sql.Literal(password),
-            )
-        )
-        connection.execute(
-            "ALTER ROLE qq_bot NOSUPERUSER NOCREATEDB NOCREATEROLE "
-            "NOREPLICATION LOGIN"
-        )
 
-        replication_role_exists = connection.execute(
-            "SELECT 1 FROM pg_roles WHERE rolname = 'pgautofailover_replicator'"
-        ).fetchone()
-        if not replication_role_exists:
-            raise RuntimeError("pgautofailover_replicator role is missing")
-        connection.execute(
-            sql.SQL("ALTER ROLE {} PASSWORD {}").format(
-                sql.Identifier("pgautofailover_replicator"),
-                sql.Literal(ha_password),
-            )
-        )
+      connection = None
+      for _ in range(180):
+          try:
+              connection = psycopg.connect(
+                  dbname="postgres",
+                  user="postgres",
+                  host="${nodeSocketDir}",
+                  port=port,
+                  autocommit=True,
+                  connect_timeout=2,
+              )
+              break
+          except psycopg.OperationalError:
+              time.sleep(1)
+      if connection is None:
+          raise RuntimeError("local PostgreSQL node did not become ready")
 
-        health_role_exists = connection.execute(
-            "SELECT 1 FROM pg_roles WHERE rolname = 'pgautofailover_monitor'"
-        ).fetchone()
-        if not health_role_exists:
-            raise RuntimeError("pgautofailover_monitor role is missing")
-        # pg_auto_failover 2.2 hard-codes this restricted health-check
-        # credential in both its client and role creation code.
-        connection.execute(
-            "ALTER ROLE pgautofailover_monitor "
-            "PASSWORD 'pgautofailover_monitor'"
-        )
+      with connection:
+          if connection.execute("SELECT pg_is_in_recovery()").fetchone()[0]:
+              print("Local node is a standby; application bootstrap is already replicated.")
+              raise SystemExit(0)
 
-        internal_verifiers = connection.execute(
-            "SELECT rolname, rolpassword FROM pg_authid "
-            "WHERE rolname IN "
-            "('pgautofailover_monitor', 'pgautofailover_replicator')"
-        ).fetchall()
-        if len(internal_verifiers) != 2 or any(
-            verifier is None or not verifier.startswith("SCRAM-SHA-256$")
-            for _, verifier in internal_verifiers
-        ):
-            raise RuntimeError("pg_auto_failover roles do not have SCRAM verifiers")
+          if ${
+        if manualMode
+        then "True"
+        else "False"
+      }:
+              if connection.execute(
+                  "SELECT 1 FROM pg_replication_slots WHERE slot_name = %s",
+                  ("${cfg.manual.replicationSlot}",),
+              ).fetchone() is None:
+                  connection.execute(
+                      "SELECT pg_create_physical_replication_slot(%s)",
+                      ("${cfg.manual.replicationSlot}",),
+                  )
+          role_exists = connection.execute(
+              "SELECT 1 FROM pg_roles WHERE rolname = 'qq_bot'"
+          ).fetchone()
+          operation = "ALTER" if role_exists else "CREATE"
+          connection.execute(
+              sql.SQL("{} ROLE {} LOGIN PASSWORD {}").format(
+                  sql.SQL(operation),
+                  sql.Identifier("qq_bot"),
+                  sql.Literal(password),
+              )
+          )
+          connection.execute(
+              "ALTER ROLE qq_bot NOSUPERUSER NOCREATEDB NOCREATEROLE "
+              "NOREPLICATION LOGIN"
+          )
 
-        database_exists = connection.execute(
-            "SELECT 1 FROM pg_database WHERE datname = 'qq_bot'"
-        ).fetchone()
-        if not database_exists:
-            connection.execute("CREATE DATABASE qq_bot OWNER qq_bot")
-        else:
-            connection.execute("ALTER DATABASE qq_bot OWNER TO qq_bot")
+          replication_role_exists = connection.execute(
+              "SELECT 1 FROM pg_roles WHERE rolname = 'pgautofailover_replicator'"
+          ).fetchone()
+          if not replication_role_exists:
+              raise RuntimeError("pgautofailover_replicator role is missing")
+          connection.execute(
+              sql.SQL("ALTER ROLE {} PASSWORD {}").format(
+                  sql.Identifier("pgautofailover_replicator"),
+                  sql.Literal(ha_password),
+              )
+          )
 
-    with psycopg.connect(
-        dbname="qq_bot",
-        user="postgres",
-        host="${nodeSocketDir}",
-        port=port,
-        autocommit=True,
-    ) as application_connection:
-        application_connection.execute("CREATE EXTENSION IF NOT EXISTS vector")
-        application_connection.execute(
-            "CREATE SCHEMA IF NOT EXISTS qq_bot AUTHORIZATION qq_bot"
-        )
-        application_connection.execute(
-            "ALTER SCHEMA qq_bot OWNER TO qq_bot"
-        )
+          health_role_exists = connection.execute(
+              "SELECT 1 FROM pg_roles WHERE rolname = 'pgautofailover_monitor'"
+          ).fetchone()
+          if not health_role_exists:
+              raise RuntimeError("pgautofailover_monitor role is missing")
+          # pg_auto_failover 2.2 hard-codes this restricted health-check
+          # credential in both its client and role creation code.
+          connection.execute(
+              "ALTER ROLE pgautofailover_monitor "
+              "PASSWORD 'pgautofailover_monitor'"
+          )
 
-    print("qq_bot role, database, schema, and pgvector are ready.")
-  '';
+          internal_verifiers = connection.execute(
+              "SELECT rolname, rolpassword FROM pg_authid "
+              "WHERE rolname IN "
+              "('pgautofailover_monitor', 'pgautofailover_replicator')"
+          ).fetchall()
+          if len(internal_verifiers) != 2 or any(
+              verifier is None or not verifier.startswith("SCRAM-SHA-256$")
+              for _, verifier in internal_verifiers
+          ):
+              raise RuntimeError("pg_auto_failover roles do not have SCRAM verifiers")
+
+          database_exists = connection.execute(
+              "SELECT 1 FROM pg_database WHERE datname = 'qq_bot'"
+          ).fetchone()
+          if not database_exists:
+              connection.execute("CREATE DATABASE qq_bot OWNER qq_bot")
+          else:
+              connection.execute("ALTER DATABASE qq_bot OWNER TO qq_bot")
+
+      with psycopg.connect(
+          dbname="qq_bot",
+          user="postgres",
+          host="${nodeSocketDir}",
+          port=port,
+          autocommit=True,
+      ) as application_connection:
+          application_connection.execute("CREATE EXTENSION IF NOT EXISTS vector")
+          application_connection.execute(
+              "CREATE SCHEMA IF NOT EXISTS qq_bot AUTHORIZATION qq_bot"
+          )
+          application_connection.execute(
+              "ALTER SCHEMA qq_bot OWNER TO qq_bot"
+          )
+
+      print("qq_bot role, database, schema, and pgvector are ready.")
+    '';
+  };
 
   backup = pkgs.writeShellApplication {
     name = "qq-bot-postgres-backup";
