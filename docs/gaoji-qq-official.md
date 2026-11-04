@@ -15,6 +15,7 @@
 - QQ 不可用、指标无法采集、历史消息缺口三条规则实际从两边 `/api/v1/rules` 读取为 `health=ok`，不是只看配置存在。`scripts/test-gaoji-alerts.py` 的五类合成指标场景经 promtool 通过。Alertmanager 尚无外部通知接收器，此处只保证监测与规则生效，不声称已向人发送告警。旧 `extraRules` 多 JSON 拼接导致其他既有组未加载的问题未在此轮全局修改。
 - h610 切换前逻辑备份 `/var/lib/qq-bot-postgres-backups/fixed-primary-20261104/qq_bot-before-fixed-primary.dump`（95,434,054 字节，0600）；同目录 `physical/` 保存压缩物理备份（base.tar.gz 223,346,547 字节）和 manifest。tank 上对应物理备份在 `/data/backup/postgresql/qq-bot-ha/fixed-primary-20261104/physical/`；旧未完成 rewind 目录保留为 `/data/lib/qq-bot-postgres-ha/17.pre-manual-20261104-partial-rewind`，**不可当作可启动备份**。两机 root-only `/root/gaoji-fixed-primary-20261104/` 保留迁移前配置与证据，不提交凭据。
 - 22:48–22:49 在新主库另做 `qq_bot-20261104T144825Z.dump`（93,771,882 字节），并实际恢复至隔离 PostgreSQL；`qq-bot-postgres-restore-check.service` 验证 revision 0077 成功。备份、恢复检查、健康检查 timers 均 active。
+- 正式配置检出已同步：tank 的 `/home/hank/.config/nix-config`、`/home/kenneth/.config/nix-config` 及 h610 的 `/home/hank/.config/nix-config`。另发现 tank `/home/kenneth/services/nix-config` 停在 `1c5f84aa`，与共享 main 大幅分叉（非 shallow）；仅安全尝试 fast-forward，失败后保留原提交，未强行 reset/rebase。该旧目录不可用于当前部署，未来仍须按 AGENTS.md 核对远端和实际系统闭包。
 - 边界：运营商丢包未被“修好”，只是 Bot 主数据库不再依赖这条跨网路径；h610 复制/控制/向量服务仍可能受影响。异步灾备不是零 RPO，tank 真故障需要人工隔离和切换。先前自动接管的未同步尾部与停机期间 QQ 消息不能仅凭当前追平宣称已补回，重要请求应重发；禁止盲目回滚到会恢复旧 HA 控制器的 generation。
 
 ## 2026-11-04 · 后台任务续接修复已部署
