@@ -837,11 +837,17 @@ in {
       ];
     }
   ];
+  services.prometheus.ruleFiles = [
+    (pkgs.writeText "gaoji-readiness.rules" (builtins.toJSON {
+      groups = [
+        {
+          name = "gaoji-readiness";
+          rules = import ../../system/modules/monitoring/gaoji-rules.nix;
+        }
+      ];
+    }))
+  ];
   my.monitoring.extraRules = [
-    {
-      name = "gaoji-readiness";
-      rules = import ../../system/modules/monitoring/gaoji-rules.nix;
-    }
     {
       name = "gaoji";
       rules = [

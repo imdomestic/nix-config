@@ -117,11 +117,17 @@ in {
       ];
     }
   ];
-  my.monitoring.extraRules = lib.optionals cfg.enable [
-    {
-      name = "gaoji-readiness";
-      rules = import ../../system/modules/monitoring/gaoji-rules.nix;
-    }
+  # Keep a complete rule document in its own file; concatenated JSON documents
+  # in services.prometheus.rules silently discard later groups.
+  services.prometheus.ruleFiles = lib.optionals cfg.enable [
+    (pkgs.writeText "gaoji-readiness.rules" (builtins.toJSON {
+      groups = [
+        {
+          name = "gaoji-readiness";
+          rules = import ../../system/modules/monitoring/gaoji-rules.nix;
+        }
+      ];
+    }))
   ];
 
   systemd.tmpfiles.rules = lib.optionals cfg.enable [

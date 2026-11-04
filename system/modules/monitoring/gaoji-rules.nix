@@ -1,5 +1,15 @@
 [
   {
+    alert = "GaojiOfficialMetricsUnavailable";
+    expr = ''up{job="gaoji"} == 0'';
+    "for" = "2m";
+    labels.severity = "critical";
+    annotations = {
+      summary = "Gaoji QQ readiness metrics cannot be read";
+      description = "A missing scrape is not evidence of a healthy QQ transport. Check the Bot process, HTTP listener and monitoring path.";
+    };
+  }
+  {
     alert = "GaojiOfficialUnavailable";
     expr = ''gaoji_qq_official_healthy{job="gaoji"} == 0'';
     "for" = "2m";
