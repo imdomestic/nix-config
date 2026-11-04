@@ -73,6 +73,16 @@ in {
       compaction.enabled = true;
     })}
     run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
+      ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/mcp.json"} \
+      ${lib.escapeShellArg (builtins.toJSON {
+      mcpServers.exa = {
+        url = "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa";
+        enabled = true;
+        exposure = "direct";
+        description = "Search the web and fetch page contents with Exa.";
+      };
+    })}
+    run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/pi-cc-extensions.json"} \
       ${lib.escapeShellArg (builtins.toJSON {
       enableEditorPrefix = false;
