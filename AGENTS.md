@@ -578,6 +578,8 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   `nix.custom.conf`, so use the `extra-*` forms. A plain `trusted-public-keys`,
   `substituters` or `trusted-users` replaces rather than merges, dropping
   `cache.nixos.org-1`, `cache.flakehub.com` or `root` respectively.
+  Determinate's own `nixosVmBasedLinuxBuilder` writes those plain forms itself;
+  `system/modules/nix-settings.nix` forces them empty.
 - **system-manager imports only nixpkgs' `config/nix.nix`.** `nix.settings`
   exists there; `nix.registry`, `nixPath`, `channel` and `distributedBuilds` do
   not — hence `nix.nix` (full) vs `nix-settings.nix` (portable). It also cannot

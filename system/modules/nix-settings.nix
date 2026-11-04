@@ -67,5 +67,18 @@ in {
         };
       }
     )
+    # Determinate's own VM builder writes exactly those plain forms (with Nix's
+    # defaults as values). They sort after the extra-* lines, and Nix applies the
+    # file in order, so they would leave only cache.nixos.org and FlakeHub as
+    # caches and root as the only trusted user. The defaults hold without them.
+    ++ lib.optional (options ? determinateNix.nixosVmBasedLinuxBuilder) (
+      lib.mkIf (config.determinateNix.enable && config.determinateNix.nixosVmBasedLinuxBuilder.enable) {
+        determinateNix.customSettings = {
+          substituters = lib.mkForce [];
+          trusted-public-keys = lib.mkForce [];
+          trusted-users = lib.mkForce [];
+        };
+      }
+    )
   );
 }
