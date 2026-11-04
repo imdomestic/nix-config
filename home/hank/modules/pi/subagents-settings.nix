@@ -4,4 +4,6 @@
   schedulingEnabled = false;
   reportUsage = true;
   showCost = true;
+  fleetView = true;
+  widgetMode = "off";
 }

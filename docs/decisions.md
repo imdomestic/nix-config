@@ -11,6 +11,20 @@
 
 ---
 
+## 2026-11-04 · Pi 只保留下方 FleetView，移除 Magic Context {#pi-bootstrap}
+
+Hank 的 Pi 由单个 `hank-pi.ts` 入口调用 `home/hank/modules/pi/bootstrap.ts`：
+装配渲染适配器、输入框、statusline，再注册 subagents，不再用不同入口文件的
+发现顺序表达依赖。CC 与 better-render 的安装/清理边界仍由 `render.ts` 管理。
+`widgetMode = "off"` 关闭上方 Agents 树及重复计数，`fleetView = true` 保留下方
+列表；沿用无空行、两格缩进与异步 session 启动修复。
+
+删除 Magic Context 的加载入口、配置声明、包、lockfile、专用测试及只供它使用的
+JSONC 合并脚本。它虽已禁用，仍有模块加载、启动内存和 profiler 开关轮询开销，
+不再为将来可能启用而常驻。原生 `compaction.enabled = true`；不删除用户已有的
+`~/.config/cortexkit/` 或 `~/.local/share/cortexkit/magic-context/` 数据。
+渲染测试现在直接加载生成入口并启动真实离线子代理，验证只挂载下方列表和两轮清理。
+
 ## 2026-11-03 · Pi 状态栏在子代理列表上方，不留纵向空行 {#pi-fleet-footer}
 
 Hank 的底部顺序固定为输入框 → statusline → 操作提示 → main / 子代理列表。
@@ -132,6 +146,8 @@ Hank 的 Pi 输入文字、上下边框和 `❯` 固定为中性灰白 `#c5c5c5`
 验证入口是 `scripts/check-pi-ui.sh`。
 
 ## 2026-10-31 · Pi 的上下文压缩交给 Magic Context {#pi-magic-context}
+
+2026-11-04 已移除，以下为当时的配置；见 [当前决策](#pi-bootstrap)。
 
 Hank 的 dev 档 Pi 保留 `@cortexkit/pi-magic-context` 0.49.33 的包和配置，
 目前暂时关闭（`magic-context-settings.nix` 的 `enabled = false`）。

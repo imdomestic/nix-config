@@ -227,6 +227,8 @@ export default function (pi: ExtensionAPI) {
           assert.equal(loadedSettings?.maxConcurrent, 2);
           assert.equal(loadedSettings?.maxConcurrentForeground, 2);
           assert.equal(loadedSettings?.reportUsage, true);
+          assert.equal(loadedSettings?.fleetView, true);
+          assert.equal(loadedSettings?.widgetMode, "off");
           const manager = (globalThis as any)[managerKey];
           assert(manager && !manager.hasRunning());
 

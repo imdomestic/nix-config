@@ -2,13 +2,16 @@
 
 Hank 的 dev 档 Pi 安装 `@tintinweb/pi-subagents` 0.22.1，源码、依赖和版本由
 `pkgs/pi-tintin-subagents/` 固定；Home Manager 通过
-`home/hank/modules/pi/default.nix` 添加扩展入口，不运行 `pi install` 或自动更新。
-Kenneth、Linwhite 的 home 不受影响。
+`home/hank/modules/pi/default.nix` 只生成 `hank-pi.ts` 一个扩展入口，由
+`bootstrap.ts` 显式装配 CC、better-render、输入框、statusline 和子代理，不依赖
+扩展文件名字排序。不运行 `pi install` 或自动更新，Kenneth、Linwhite 的 home 不受影响。
 
 ## 使用
 
 Home Manager 激活后，在 Pi 中 `/reload`。`/agents` 打开管理菜单，能查看代理
-类型、运行中的会话、工作流和设置；运行中的代理也显示在 FleetView 中。
+类型、运行中的会话、工作流和设置；运行中的代理显示在输入框下方的 FleetView 中。
+上方 Agents 树与重复的 running-agent 计数关闭；下方保持 statusline → 提示 →
+main / 子代理的紧凑顺序，两格缩进与方向键导航不变。
 
 可以直接用自然语言：
 
@@ -45,6 +48,8 @@ Explore/Plan 使用独立的只读提示词，不继承整个仓库指令。Plan
 | `schedulingEnabled` | false | 不提供定时代理，不加载或启动计划任务 |
 | `reportUsage` | true | 子代理用量进入主会话工具用量统计，现有状态栏费用可以计入 |
 | `showCost` | true | 代理卡片和列表显示 Pi 按配置单价估算的费用 |
+| `fleetView` | true | 保留下方可导航的 main / 子代理列表 |
+| `widgetMode` | `off` | 关闭上方 Agents 树及其重复状态计数 |
 
 后台费用通过后续工具结果上报，可能晚于代理完成时刻；不是账单实时余额。
 子代理费用不会被算成主会话的上下文占用。模型没有价格数据时仍按现有配置计零。
@@ -88,8 +93,9 @@ nix eval --raw '.#homeConfigurations."hosts/praxic/hank".activationPackage.drvPa
 
 子代理测试使用当前 Nix Pi 的真实 SDK 会话和离线确定性 provider，覆盖原生 read、
 只读工具范围、会话续跑、后台通知、用量去重、工作流 worker、取消和两轮加载清理。
-渲染测试同时加载 CC、better-render 和子代理扩展，并创建真实 SDK 子会话，检查
-工具卡归属、主窗口补丁不被子会话退出清掉、公式、Markdown 与 reload 清理。
+渲染测试加载 Home Manager 实际生成的完整 bootstrap 入口，启动真实离线后台
+子代理，检查输入框与 footer 单一归属、只有下方 FleetView、异步启动后的挂载顺序、
+无 Magic Context 工具、主窗口补丁不被子会话退出清掉、公式、Markdown 与 reload 清理。
 不调用付费模型、不激活 home；不能替代 Rex 中的实际键盘、鼠标及网络服务验收。
 
 上游：[tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents)。

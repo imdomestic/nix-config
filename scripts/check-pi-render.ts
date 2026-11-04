@@ -2,11 +2,40 @@
 import assert from "node:assert/strict";
 import { EventEmitter } from "node:events";
 import { join } from "node:path";
+import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { AssistantMessageComponent, createAgentSession, DefaultResourceLoader, SessionManager, SettingsManager, ToolExecutionComponent, UserMessageComponent, getAgentDir, getMarkdownTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Container, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
-import { installRenderers } from "../home/hank/modules/pi/render.ts";
+
+const until = async (check: () => boolean, label: string) => {
+  const deadline = performance.now() + 10_000;
+  while (!check()) {
+    assert(performance.now() < deadline, `Timed out: ${label}`);
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+};
 
 export default function (pi: ExtensionAPI) {
+  pi.registerProvider("pi-render-test", {
+    api: "openai-completions", apiKey: "offline-test", baseUrl: "http://127.0.0.1:1",
+    models: [{ id: "probe", name: "Offline render probe", reasoning: false, input: ["text"], contextWindow: 128_000, maxTokens: 100, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }],
+    streamSimple(model: any, _transcript: any, options: any) {
+      const stream = createAssistantMessageEventStream();
+      const message: any = {
+        role: "assistant", api: model.api, provider: model.provider, model: model.id, timestamp: Date.now(), content: [], stopReason: "pending",
+        usage: { input: 1, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 1, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+      };
+      stream.push({ type: "start", partial: message });
+      const abort = () => {
+        message.stopReason = "aborted";
+        message.errorMessage = "Offline probe stopped";
+        stream.push({ type: "error", reason: "aborted", error: message });
+        stream.end();
+      };
+      if (options?.signal?.aborted) abort();
+      else options?.signal?.addEventListener("abort", abort, { once: true });
+      return stream;
+    },
+  } as any);
   pi.on("session_start", async (_event, host) => {
     try {
       const better = process.env.PI_RENDER_PACKAGE;
@@ -18,16 +47,13 @@ export default function (pi: ExtensionAPI) {
       process.env.PI_BETTER_RENDER_FONT_DOWNLOAD = "0";
       process.env.PI_BETTER_RENDER_TEX = "off";
 
-      const { default: betterRender } = await import(`${better}/src/index.ts`);
+      const { default: installPi } = await import(join(getAgentDir(), "extensions/hank-pi.ts"));
       const { RichMarkdown } = await import(`${better}/src/render/rich-markdown.ts`);
       const { loadMathJaxSync, rasterize } = await import(`${better}/src/math/mathjax.ts`);
       const { imageMode, installFrameHook, registerImage, placeholderRows, forgetImages } = await import(`${better}/src/math/kitty.ts`);
       const { loadMermaid } = await import(`${better}/src/render/mermaid.ts`);
-      const { default: ccStyle, getCompactThinkingConfig } = await import(`${cc}/extensions/renderer/index.ts`);
-      const { installCompactThinking } = await import(`${cc}/extensions/feature/compact-thinking.ts`);
       const { config, updateConfig } = await import(`${cc}/extensions/config/config.ts`);
-      const { default: tintinSubagents } = await import(`${subagents}/src/index.ts`);
-      updateConfig({ mode: "on", enableMarkdownEnhance: false, excludeRenderers: ["Agent", "SubagentWorkflow", "get_subagent_result", "steer_subagent"] });
+      updateConfig({ mode: "on" });
 
       loadMathJaxSync();
       const raster = rasterize({ tex: String.raw`\frac{-b+\sqrt{b^2-4ac}}{2a}`, display: true, color: "#cdd6f4", cellWidth: 10, cellHeight: 20, maxColumns: 80, maxRows: 20 });
@@ -86,17 +112,35 @@ export default function (pi: ExtensionAPI) {
         const notifications: string[] = [];
         const tui: any = new Container();
         Object.assign(tui, { mode: "fullscreen", terminal: { write() {}, columns: 100, rows: 30 }, requestRender() {}, handleInput() {}, handleViewportInput() {} });
+        const widgets = new Map<string, { component: any; placement: string }>();
+        const statuses = new Map<string, string>();
+        let footer: any;
+        let editorFactory: any;
+        let footerMounts = 0;
+        let editorMounts = 0;
         const ui: any = {
+          ...host.ui,
           theme: host.ui.theme,
-          setWidget(_key: string, factory: any) { if (typeof factory === "function") factory(tui, host.ui.theme); },
-          setStatus() {}, getToolsExpanded: () => false,
+          setWidget(key: string, factory: any, options: any) {
+            assert(key !== "agents" || factory === undefined, "The upper Agents tree must remain disabled");
+            widgets.get(key)?.component.dispose?.();
+            widgets.delete(key);
+            if (typeof factory === "function") widgets.set(key, { component: factory(tui, host.ui.theme), placement: options?.placement ?? "aboveEditor" });
+          },
+          setStatus(key: string, text: string | undefined) { text === undefined ? statuses.delete(key) : statuses.set(key, text); },
+          getToolsExpanded: () => false,
           notify(text: string, level: string) { if (level === "error") notifications.push(text); },
           onTerminalInput: () => () => {}, addAutocompleteProvider() {}, getEditorText: () => "",
-          setFooter() { throw new Error("Subagents must not replace the existing statusline"); },
-          setEditorComponent() { throw new Error("Subagents must not replace the existing editor"); },
+          setFooter(factory: any) {
+            footerMounts++;
+            footer?.dispose?.();
+            footer = factory?.(tui, host.ui.theme, { onBranchChange: () => () => {}, getGitBranch: () => "main", getExtensionStatuses: () => statuses });
+          },
+          setEditorComponent(factory: any) { editorMounts++; editorFactory = factory; },
         };
-        const ctx: any = { mode: "tui", hasUI: true, ui, cwd: "/tmp", sessionManager: { getBranch: () => [], getEntries: () => [], getSessionId: () => "render-check" }, isIdle: () => true, isProjectTrusted: () => false };
+        const ctx: any = { ...host, mode: "tui", hasUI: true, ui, cwd: "/tmp", getContextUsage: () => undefined, sessionManager: SessionManager.inMemory("/tmp"), isIdle: () => true, isProjectTrusted: () => false };
         const api: any = {
+          ...pi,
           on(event: string, handler: any) {
             const list = handlers.get(event) ?? [];
             list.push(handler);
@@ -105,7 +149,8 @@ export default function (pi: ExtensionAPI) {
           },
           registerCommand(name: string, command: any) { commands.set(name, command); },
           registerTool(definition: any) { tools.set(definition.name, definition); },
-          getAllTools: () => [...tools.values()], getActiveTools: () => [...tools.keys()], setActiveTools() {}, appendEntry() {},
+          getAllTools: () => [...tools.values()], getActiveTools: () => [...tools.keys()], setActiveTools() {}, appendEntry() {}, sendMessage() {},
+          registerShortcut() {}, getThinkingLevel: () => "off",
           registerMessageRenderer() {}, registerEntryRenderer() {},
           registerFlag(name: string, flag: any) { flags.set(name, flag); }, getFlag: (name: string) => flags.get(name)?.default,
           events: { on(name: string, handler: any) { bus.on(name, handler); return () => bus.off(name, handler); }, emit: (name: string, data: any) => bus.emit(name, data) },
@@ -114,12 +159,36 @@ export default function (pi: ExtensionAPI) {
           for (const handler of [...(handlers.get(event) ?? [])]) await handler(payload, ctx);
         };
 
-        installRenderers(api, (pi) => ccStyle(pi, undefined, installCompactThinking(pi, getCompactThinkingConfig())), betterRender);
-        tintinSubagents(api);
+        installPi(api);
         assert(commands.has("agents"));
         assert(tools.has("SubagentWorkflow"));
+        assert(![...commands.keys()].some(name => name.startsWith("ctx-")), "Magic Context commands must not be loaded");
+        assert(![...tools.keys()].some(name => name.startsWith("ctx_")), "Magic Context tools must not be loaded");
         await emit("session_start");
         await new Promise((resolve) => setTimeout(resolve, 20));
+        assert.equal(footerMounts, 1, "Only the local statusline may own the footer");
+        assert.equal(editorMounts, 1, "Only the local prompt may own the editor");
+        assert.equal(typeof editorFactory, "function");
+        assert.deepEqual(footer.render(100), []);
+        assert(widgets.has("statusline"));
+        const managerKey = Symbol.for("pi-subagents:manager");
+        const manager = (globalThis as any)[managerKey];
+        assert(manager);
+        const started = await tools.get("Agent").execute("render-background", {
+          subagent_type: "general-purpose", model: "pi-render-test/probe", prompt: "Wait for offline cancellation", description: "Bootstrap FleetView probe", run_in_background: true,
+        }, new AbortController().signal, () => {}, ctx);
+        const record = manager.getRecord(started.details.agentId);
+        await until(() => record?.session?.isStreaming && widgets.has("fleet"), "real background child and FleetView");
+        assert.equal((globalThis as any)[managerKey], manager, "The combined child bootstrap must not replace the parent manager");
+        assert.deepEqual([...widgets].filter(([, widget]) => widget.placement === "belowEditor").map(([key]) => key), ["statusline", "fleet"]);
+        assert(!widgets.has("agents"));
+        assert(!statuses.has("subagents"), "The redundant running-agent status must stay hidden with the upper tree");
+        const fleetLines = widgets.get("fleet")!.component.render(100).map(stripTerminalSequences);
+        assert.equal(fleetLines[1], "  ● main");
+        assert(fleetLines[2].startsWith("  ○ Agent"));
+        assert(fleetLines.every((line: string) => line.trim()), "FleetView must not add blank rows");
+        await record.session.abort();
+        await manager.waitForAll();
         const toolRender = ToolExecutionComponent.prototype.render;
         assert.notEqual(toolRender, originalTool, "CC must retain its tool renderer");
 
@@ -182,7 +251,7 @@ export default function (pi: ExtensionAPI) {
         const childLoader = new DefaultResourceLoader({
           cwd: "/tmp", agentDir: getAgentDir(), noExtensions: true,
           noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true,
-          additionalExtensionPaths: [join(getAgentDir(), "extensions/pi-render.ts")],
+          additionalExtensionPaths: [join(getAgentDir(), "extensions/hank-pi.ts")],
         });
         await runInChildSessionContext(() => childLoader.reload());
         assert.deepEqual(childLoader.getExtensions().errors, []);
@@ -221,6 +290,8 @@ export default function (pi: ExtensionAPI) {
         assert.equal(JSON.stringify(message), saved, "Rendering changed the stored message");
         assert.deepEqual(notifications, []);
         await emit("session_shutdown");
+        footer.dispose();
+        assert.equal(widgets.size, 0, "All bootstrap widgets must be removed on shutdown");
         assert.equal(AssistantMessageComponent.prototype.updateContent, originalAssistant, "Assistant patch leaked across reload");
         assert.equal(UserMessageComponent.prototype.render, originalUser, "User prefix patch leaked across reload");
         assert.equal(ToolExecutionComponent.prototype.getCallRenderer, originalToolCall, "CC call renderer leaked across reload");
@@ -229,8 +300,10 @@ export default function (pi: ExtensionAPI) {
         ctx.mode = "rpc";
         await emit("session_start");
         assert.equal(UserMessageComponent.prototype.render, originalUser, "RPC mode installed a terminal-only prefix");
+        assert.equal(editorMounts, 1, "RPC must not mount the editor");
+        assert.equal(footerMounts, 1, "RPC must not mount the footer");
         await emit("session_shutdown");
-        console.error(`generation ${generation + 1}: user prompt prefix, CC tools, thinking visibility, inline math, Markdown, resize, toggle and cleanup passed`);
+        console.error(`generation ${generation + 1}: actual bootstrap, single editor/footer, FleetView-only real child, CC tools, inline math, Markdown, resize, toggle and cleanup passed`);
       }
       assert.equal(config.enableMarkdownEnhance, false);
       console.error("Pi renderer checks passed (offline; no model request or home activation)");

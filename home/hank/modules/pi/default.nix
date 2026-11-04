@@ -9,10 +9,12 @@
   themes = import ./themes.nix;
   ccExtensions = pkgs.callPackage ../../../../pkgs/pi-cc-extensions {};
   betterRender = pkgs.callPackage ../../../../pkgs/pi-better-render {};
-  magicContext = pkgs.callPackage ../../../../pkgs/pi-magic-context {};
-  magicContextSettings = import ./magic-context-settings.nix;
   subagents = pkgs.callPackage ../../../../pkgs/pi-tintin-subagents {};
   subagentsSettings = import ./subagents-settings.nix;
+  extensionSource = lib.fileset.toSource {
+    root = ./.;
+    fileset = lib.fileset.unions [./bootstrap.ts ./prompt-prefix.ts ./render.ts ./statusline.ts];
+  };
   free = {
     input = 0;
     output = 0;
@@ -68,8 +70,7 @@ in {
       ${lib.escapeShellArg (builtins.toJSON {
       showHardwareCursor = true;
       terminal.images = "kitty";
-      # Keep exactly one compaction owner; docs/decisions.md#pi-magic-context.
-      compaction.enabled = !magicContextSettings.enabled;
+      compaction.enabled = true;
     })}
     run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/pi-cc-extensions.json"} \
@@ -83,22 +84,16 @@ in {
     run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/subagents.json"} \
       ${lib.escapeShellArg (builtins.toJSON subagentsSettings)}
-    run ${pkgs.nodejs}/bin/node ${../../../../scripts/merge-jsonc-settings.mjs} \
-      ${lib.escapeShellArg "${config.xdg.configHome}/cortexkit/magic-context.jsonc"} \
-      ${lib.escapeShellArg (builtins.toJSON magicContextSettings)} \
-      ${magicContext}/node_modules/comment-json
   '';
 
-  # Shared lifecycle keeps CC tools and rich replies composable across reloads.
-  home.file.".pi/agent/extensions/pi-render.ts".text = ''
+  home.file.".pi/agent/extensions/hank-pi.ts".text = ''
+    import bootstrap from "${extensionSource}/bootstrap.ts";
     import cc from "${ccExtensions}/extensions/index.ts";
     import better from "${betterRender}/src/index.ts";
-    import { installRenderers } from "${./render.ts}";
+    import subagents from "${subagents}/src/index.ts";
 
     export default function (pi) {
-      process.env.PI_BETTER_RENDER_MERMAID_INSTALL ??= "0";
-      process.env.PI_BETTER_RENDER_FONT_DOWNLOAD ??= "0";
-      installRenderers(pi, cc, better);
+      bootstrap(pi, { cc, better, subagents }, ${builtins.toJSON {showTokenRate = false;}});
     }
   '';
   home.file.".pi/agent/themes/cc-dark.json".source = "${ccExtensions}/themes/cc-dark.json";
@@ -112,20 +107,6 @@ in {
   home.file.".pi/agent/themes/kanso-mist.json".text = builtins.toJSON themes.kanso-mist;
   home.file.".pi/agent/themes/kanso-pearl.json".text = builtins.toJSON themes.kanso-pearl;
   home.file.".pi/agent/themes/kanso-zen.json".text = builtins.toJSON themes.kanso-zen;
-  home.file.".pi/agent/extensions/magic-context.ts".text = ''
-    export { default } from "${magicContext}/dist/index.js";
-  '';
-  home.file.".pi/agent/extensions/tintin-subagents.ts".text = ''
-    import statusline from "${./statusline.ts}";
-    import subagents from "${subagents}/src/index.ts";
-    export default function (pi) {
-      // Below-editor widgets retain registration order: statusline, then FleetView.
-      statusline(pi, ${builtins.toJSON {showTokenRate = false;}});
-      subagents(pi);
-    }
-  '';
-  home.file.".pi/agent/extensions/prompt-prefix.ts".source = ./prompt-prefix.ts;
-
   home.file.".pi/agent/models.json".text = builtins.toJSON {
     providers = {
       ninfer = {
