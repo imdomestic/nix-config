@@ -78,8 +78,8 @@ in {
     content = ''
       HOST=${cfg.host}
       PORT=${toString cfg.port}
-      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@tank.inner.imdomestic.com:55432,h610.inner.imdomestic.com:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
-      AI_POSTGRES_NODE_NAMES=tank,h610
+      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@tank.inner.imdomestic.com:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
+      AI_POSTGRES_NODE_NAMES=tank
       AI_POSTGRES_POOL_MAX_SIZE=24
       AI_MEDIA_ROOT=/data/services/gaoji/media
       AI_ARCHIVE_ROOT=/data/services/kennethbot-archive
@@ -103,6 +103,26 @@ in {
       ReadWritePaths = ["/data/services/gaoji" "/data/services/kennethbot-archive"];
     };
   };
+
+  my.monitoring.extraScrapeConfigs = lib.optionals cfg.enable [
+    {
+      job_name = "gaoji";
+      metrics_path = "/metrics";
+      scrape_interval = "15s";
+      static_configs = [
+        {
+          targets = ["${cfg.host}:${toString cfg.port}"];
+          labels.instance = config.my.host.name;
+        }
+      ];
+    }
+  ];
+  my.monitoring.extraRules = lib.optionals cfg.enable [
+    {
+      name = "gaoji-readiness";
+      rules = import ../../system/modules/monitoring/gaoji-rules.nix;
+    }
+  ];
 
   systemd.tmpfiles.rules = lib.optionals cfg.enable [
     "d /data/services/gaoji 0750 kenneth users -"

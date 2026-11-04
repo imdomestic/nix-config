@@ -839,6 +839,10 @@ in {
   ];
   my.monitoring.extraRules = [
     {
+      name = "gaoji-readiness";
+      rules = import ../../system/modules/monitoring/gaoji-rules.nix;
+    }
+    {
       name = "gaoji";
       rules = [
         {
@@ -890,15 +894,16 @@ in {
     }
   ];
 
-  # The monitor remains on h610; tank is the preferred writable data node.
-  # h610 retains a bounded hot replica for failover.
+  # Fixed tank primary, asynchronous h610 disaster-recovery copy.
+  # See docs/decisions.md#qq-fixed-primary.
   services.qq-bot-postgres-ha = {
     enable = true;
+    failoverMode = "manual";
     preferredNodeName = "tank";
     access.applicationClientAddresses = ["100.64.0.3/32" "100.64.0.4/32"];
     passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
     haPasswordFile = config.sops.secrets."qq_bot/ha_password".path;
-    monitor.enable = true;
+    monitor.enable = false;
     node = {
       enable = true;
       name = "h610";
@@ -929,13 +934,13 @@ in {
       "gaoji.service"
     ];
     content = ''
-      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@h610.inner.imdomestic.com:55432,tank.inner.imdomestic.com:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
+      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@tank.inner.imdomestic.com:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
       AI_POSTGRES_SCHEMA=qq_bot
       AI_POSTGRES_POOL_MIN_SIZE=1
       AI_POSTGRES_POOL_MAX_SIZE=10
       AI_POSTGRES_POOL_TIMEOUT_SECONDS=10
       AI_POSTGRES_HEALTH_CHECK_INTERVAL_SECONDS=5
-      AI_POSTGRES_NODE_NAMES=h610,tank
+      AI_POSTGRES_NODE_NAMES=tank
       AI_ALLOW_LEGACY_SQLITE=false
       AI_DISABLED_GROUPS=
       AI_PROACTIVE_INTEREST_THRESHOLD=98

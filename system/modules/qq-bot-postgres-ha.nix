@@ -7,6 +7,12 @@
   inherit (lib) mkEnableOption mkIf mkOption types;
   cfg = config.services.qq-bot-postgres-ha;
   hosts = config.my.fleet.hosts;
+  manualMode = cfg.failoverMode == "manual";
+  manualPrimary = cfg.node.name == cfg.preferredNodeName;
+  manualRole =
+    if manualPrimary
+    then "primary"
+    else "standby";
 
   pgAutoFailover = pkgs.postgresql17Packages.pg_auto_failover.overrideAttrs (old: {
     patches =
@@ -314,6 +320,92 @@
     '';
   };
 
+  # Fixed roles do not run a keeper; see docs/decisions.md#qq-fixed-primary.
+  manualPrepare = pkgs.writeShellApplication {
+    name = "qq-bot-postgres-manual-prepare";
+    runtimeInputs = [postgres pkgs.coreutils pkgs.gnugrep pkgs.iproute2];
+    text = ''
+      set -euo pipefail
+      umask 0077
+      data=${lib.escapeShellArg cfg.node.dataDir}
+      ${pkgs.bash}/bin/bash ${./qq-bot-postgres-manual-role-check.sh} "$data" ${manualRole}
+      ${waitForAddress cfg.node.hostname}
+      ha_password="$(tr -d '\r\n' < ${lib.escapeShellArg haPasswordFile})"
+      if ! printf '%s' "$ha_password" | grep -Eq '^[A-Fa-f0-9]{64}$'; then
+        echo "Invalid replication secret format." >&2
+        exit 1
+      fi
+      pgpass=${lib.escapeShellArg "${cfg.node.stateDir}/.pgpass"}
+      {
+        ${lib.concatMapStringsSep "\n" (peer: ''
+          printf '%s:%s:*:pgautofailover_replicator:%s\n' \
+            ${lib.escapeShellArg peer} ${toString cfg.node.port} "$ha_password"
+        '')
+        cfg.peerNames}
+      } > "$pgpass"
+      chmod 0600 "$pgpass"
+      install -m 0600 ${nodePostgresConfig} ${lib.escapeShellArg nodeRuntimeConfig}
+      include="include '${nodeRuntimeConfig}'"
+      if ! grep -Fqx "$include" "$data/postgresql.conf"; then
+        printf '\n%s\n' "$include" >> "$data/postgresql.conf"
+      fi
+    '';
+  };
+  manualCommand = lib.concatMapStringsSep " " lib.escapeShellArg (
+    [
+      "${postgres}/bin/postgres"
+      "-D"
+      cfg.node.dataDir
+      "-c"
+      "port=${toString cfg.node.port}"
+      "-c"
+      "listen_addresses=${cfg.node.hostname}"
+      "-c"
+      "unix_socket_directories=${nodeSocketDir}"
+      "-c"
+      "hba_file=${nodeHba}"
+      "-c"
+      "synchronous_standby_names="
+    ]
+    ++ lib.optionals (!manualPrimary) [
+      "-c"
+      "primary_slot_name=${cfg.manual.replicationSlot}"
+      "-c"
+      (lib.concatStringsSep " " [
+        "primary_conninfo=host=${hosts.${cfg.preferredNodeName}.tsName}"
+        "port=${toString cfg.node.port} user=pgautofailover_replicator"
+        "application_name=${cfg.manual.replicationSlot} sslmode=require"
+        "passfile=${cfg.node.stateDir}/.pgpass connect_timeout=10"
+      ])
+    ]
+  );
+  healthCommand = lib.concatMapStringsSep " " lib.escapeShellArg (
+    ["${bootstrapPython}/bin/python"]
+    ++ (
+      if manualMode
+      then [
+        "${./qq-bot-postgres-manual-health.py}"
+        cfg.node.name
+        (toString cfg.node.port)
+        nodeSocketDir
+        nodeHealthPath
+        manualRole
+        cfg.manual.replicationSlot
+        (toString cfg.manual.maximumLagBytes)
+        hosts.${cfg.preferredNodeName}.tsName
+      ]
+      else [
+        "${nodeHealthScript}"
+        cfg.node.name
+        (toString cfg.node.port)
+        cfg.monitor.hostname
+        (toString cfg.monitor.port)
+        nodeHealthPath
+        "${cfg.node.stateDir}/.pgpass"
+      ]
+    )
+  );
+
   bootstrapPython = pkgs.python3.withPackages (pythonPackages: [
     pythonPackages.psycopg
   ]);
@@ -410,6 +502,16 @@
             print("Local node is a standby; application bootstrap is already replicated.")
             raise SystemExit(0)
 
+        ${lib.optionalString manualMode ''
+      if connection.execute(
+          "SELECT 1 FROM pg_replication_slots WHERE slot_name = %s",
+          ("${cfg.manual.replicationSlot}",),
+      ).fetchone() is None:
+          connection.execute(
+              "SELECT pg_create_physical_replication_slot(%s)",
+              ("${cfg.manual.replicationSlot}",),
+          )
+    ''}
         role_exists = connection.execute(
             "SELECT 1 FROM pg_roles WHERE rolname = 'qq_bot'"
         ).fetchone()
@@ -932,13 +1034,7 @@
       install -d -m 0755 -o postgres -g postgres /run/qq-bot-postgres-health
       exec runuser -u postgres -- env \
         PGPASSFILE=${lib.escapeShellArg "${cfg.node.stateDir}/.pgpass"} \
-        ${bootstrapPython}/bin/python ${nodeHealthScript} \
-        ${lib.escapeShellArg cfg.node.name} \
-        ${toString cfg.node.port} \
-        ${lib.escapeShellArg cfg.monitor.hostname} \
-        ${toString cfg.monitor.port} \
-        ${lib.escapeShellArg nodeHealthPath} \
-        ${lib.escapeShellArg "${cfg.node.stateDir}/.pgpass"}
+        ${healthCommand}
     '';
   };
 
@@ -1101,7 +1197,23 @@
   };
 in {
   options.services.qq-bot-postgres-ha = {
-    enable = mkEnableOption "the dedicated highly available QQ bot PostgreSQL cluster";
+    enable = mkEnableOption "the dedicated QQ bot PostgreSQL cluster";
+    failoverMode = mkOption {
+      type = types.enum ["automatic" "manual"];
+      default = "automatic";
+      description = "Manual mode fixes preferredNodeName as primary and runs PostgreSQL without pg_auto_failover keepers.";
+    };
+    manual = {
+      replicationSlot = mkOption {
+        type = types.strMatching "[a-z0-9_]{1,63}";
+        default = "qq_bot_standby";
+      };
+      maximumLagBytes = mkOption {
+        type = types.ints.positive;
+        default = 64 * 1024 * 1024;
+        description = "Replica lag above this value fails the read-only health check; never stops or promotes a database.";
+      };
+    };
     passwordFile = mkOption {
       type = types.nullOr types.str;
       default = null;
@@ -1258,6 +1370,10 @@ in {
 
     assertions = [
       {
+        assertion = !manualMode || (!cfg.monitor.enable && builtins.hasAttr cfg.preferredNodeName hosts);
+        message = "Manual QQ database roles require a known primary host and a disabled HA monitor.";
+      }
+      {
         assertion = cfg.monitor.enable || cfg.node.enable;
         message = "qq-bot-postgres-ha must enable a monitor, a node, or both";
       }
@@ -1340,7 +1456,11 @@ in {
     };
 
     systemd.services.qq-bot-postgres-node = mkIf cfg.node.enable {
-      description = "QQ bot PostgreSQL HA data node (${cfg.node.name})";
+      description = "QQ bot PostgreSQL ${
+        if manualMode
+        then "fixed ${manualRole}"
+        else "HA data node"
+      } (${cfg.node.name})";
       wantedBy = ["multi-user.target"];
       # Package and unit changes are staged by rebuild but PostgreSQL restarts
       # are coordinated explicitly, one replica at a time.
@@ -1355,14 +1475,24 @@ in {
       startLimitIntervalSec = 0;
       path = [pgAutoFailover postgres openssl pkgs.coreutils pkgs.gnugrep pkgs.iproute2];
       environment = nodeEnvironment;
-      preStart = "${lib.getExe nodePrepare} runtime";
+      preStart =
+        if manualMode
+        then lib.getExe manualPrepare
+        else "${lib.getExe nodePrepare} runtime";
       serviceConfig = {
         Type = "simple";
         User = "postgres";
         Group = "postgres";
         RuntimeDirectory = "qq-bot-postgres-node";
         RuntimeDirectoryMode = "0700";
-        ExecStart = "${pgAutoFailover}/bin/pg_autoctl run --pgdata ${cfg.node.dataDir}";
+        ExecStart =
+          if manualMode
+          then manualCommand
+          else "${pgAutoFailover}/bin/pg_autoctl run --pgdata ${cfg.node.dataDir}";
+        KillSignal =
+          if manualMode
+          then "SIGINT"
+          else "SIGTERM";
         Restart = "always";
         RestartSec = "5s";
         # Enrollment and base backup are explicit commands. Routine rebuilds
@@ -1388,7 +1518,7 @@ in {
     };
 
     systemd.services.qq-bot-postgres-health = mkIf cfg.node.enable {
-      description = "Verify the QQ bot PostgreSQL keeper and database agree";
+      description = "Verify the QQ bot PostgreSQL role and replication";
       after = ["qq-bot-postgres-node.service" "network-online.target"];
       # Observe stopped nodes; a timer must not cancel a maintenance stop by starting them.
       wants = ["network-online.target"];
@@ -1402,16 +1532,7 @@ in {
         RuntimeDirectory = "qq-bot-postgres-health";
         RuntimeDirectoryMode = "0755";
         RuntimeDirectoryPreserve = true;
-        ExecStart = lib.concatStringsSep " " [
-          "${bootstrapPython}/bin/python"
-          (lib.escapeShellArg nodeHealthScript)
-          (lib.escapeShellArg cfg.node.name)
-          (toString cfg.node.port)
-          (lib.escapeShellArg cfg.monitor.hostname)
-          (toString cfg.monitor.port)
-          (lib.escapeShellArg nodeHealthPath)
-          (lib.escapeShellArg "${cfg.node.stateDir}/.pgpass")
-        ];
+        ExecStart = healthCommand;
         TimeoutStartSec = "15s";
         NoNewPrivileges = true;
         PrivateDevices = true;
@@ -1437,6 +1558,7 @@ in {
     systemd.services.qq-bot-postgres-bootstrap = mkIf cfg.node.enable {
       description = "Create the QQ bot PostgreSQL role, database, schema, and extensions";
       wantedBy = ["multi-user.target"];
+      unitConfig.ConditionPathExists = "!${nodeFenceMarker}";
       # Apply role/secret changes only after the staged database restart.
       restartIfChanged = false;
       after = ["qq-bot-postgres-node.service" "sops-install-secrets.service"];
@@ -1460,6 +1582,7 @@ in {
 
     systemd.services.qq-bot-postgres-backup = mkIf (cfg.node.enable && cfg.backup.enable) {
       description = "Capacity-aware verified local backup of the QQ bot PostgreSQL database";
+      unitConfig.ConditionPathExists = "!${nodeFenceMarker}";
       after = ["qq-bot-postgres-node.service"];
       requires = ["qq-bot-postgres-node.service"];
       serviceConfig = {
@@ -1528,9 +1651,11 @@ in {
       ++ lib.optionals cfg.node.enable [
         healthLocalTool
         fenceLocalTool
+        restoreCheck
+      ]
+      ++ lib.optionals (cfg.node.enable && !manualMode) [
         enrollLocalTool
         rejoinLocalTool
-        restoreCheck
       ];
   };
 }

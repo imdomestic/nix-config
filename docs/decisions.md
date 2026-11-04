@@ -11,6 +11,16 @@
 
 ---
 
+## 2026-11-04 · Gaoji 固定 tank 主库，不再跨网自动切主 {#qq-fixed-primary}
+
+Owner 明确选择 tank 固定主库、h610 异步灾备、人工确认后切换。两者分别走移动/电信宽带，Tailscale 地址不是同局域网；近三天晚间跨网监控采样丢包约 21–22%，凌晨接近零，同运营商控制组正常。旧 pg_auto_failover 的 20 秒失联判断反复把网络问题变成角色变化；Bot 又因失租约后永久等待而长期停收消息。
+
+应用独立修复安全租约重获（保留 fencing 和暂停边界）；数据库改为 systemd 直接管理 PostgreSQL，禁用 monitor/keeper，固定只读灾备与本地主库，客户端只连接 tank。备库离线不阻塞主库写入，角色检查脚本不允许隐式提升，复制健康检查只告警。原数据目录、TLS/SCRAM、容量约束、备份和人工隔离工具保留。没有“通过提高超时已修好运营商链路”的承诺。
+
+代价明确：tank 真正故障时不再无人值守接管；异步复制可能丢未同步的尾部写入。人工提升必须先证明旧主已隔离、核对 WAL 并接受可能的数据损失，同步修改持久角色和 DSN。流程、迁移/回滚边界与隔离验证见 [固定主库 runbook](runbooks/qq-fixed-primary.md)；上线结果另记 `gaoji-qq-official.md`，此决策不代替部署证据。
+
+**误导过排查的地方：**进程 active 不代表 QQ 可用，数据库恢复不代表旧租约会自动恢复；历史消息缺口不等同当前网关断开。只把候选优先级设成零也不能移除 keeper 的网络分区自停逻辑，所以不采用那种临时改法。
+
 ## 2026-11-04 · praxic 的 Linux 构建走常驻 vz VM，不用 Native Linux Builder {#praxic-linux-builder}
 
 Determinate 的 Native Linux Builder(3.24.0)给每个 derivation 起一台新的

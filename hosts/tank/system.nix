@@ -525,6 +525,7 @@ in {
   # cluster remains independent for Matrix and Minecraft.
   services.qq-bot-postgres-ha = {
     enable = true;
+    failoverMode = "manual";
     access.applicationClientAddresses = ["100.64.0.3/32" "100.64.0.4/32"];
     passwordFile = config.sops.secrets."qq_bot/postgres_password".path;
     haPasswordFile = config.sops.secrets."qq_bot/ha_password".path;
