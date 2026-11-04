@@ -25,7 +25,7 @@ sudo -u postgres psql -h /run/qq-bot-postgres-node -p 55432 -d postgres \
 - tank 应为 `false`；h610 应为 `true`。
 - tank 的 `pg_stat_replication` 应有 `application_name=qq_bot_standby`、`state=streaming`、`sync_state=async`；h610 的 WAL receiver 应连接 tank。
 - health 每 30 秒检查实际角色、复制连接、最近回执及积压（默认 64 MiB）。异常返回失败并保留 `/run/qq-bot-postgres-health/health.json`，**只告警、不停止主库或提升备库**。其失败由现有 SystemdUnitFailed 告警覆盖。
-- Gaoji 自身 `/health/qq-official` 的健康指标另外在 tank 和 h610 采集。当前不可用持续两分钟与历史 message_gap 是两条不同告警；Alertmanager 未配置外部接收器时只在界面显示，不声称通知已送达。
+- Gaoji 自身 `/health/qq-official` 的健康指标另外在 tank 和 h610 采集。当前不可用持续两分钟、指标无法采集、历史 message_gap 是三条不同告警；Alertmanager 未配置外部接收器时只在界面显示，不声称通知已送达。规则放在独立 `services.prometheus.ruleFiles`，必须通过运行中 `/api/v1/rules` 验证已加载且 health=ok；仅通过配置语法检查不够。
 
 ## 初次迁移（维护窗口）
 
@@ -51,9 +51,11 @@ sudo -u postgres psql -h /run/qq-bot-postgres-node -p 55432 -d postgres \
 ## 回滚边界
 
 - Bot 租约恢复补丁无迁移，可独立回滚应用包；不需要恢复数据库。
-- 数据库管理方式不能盲目切旧 Nix generation：旧 generation 会重新启用 monitor/keeper，遗留 HA 状态可能触发不期望的降级或提升。
+- 数据库管理方式不能盲目切旧 Nix generation：迁移前的 generation 会重新启用 monitor/keeper，遗留 HA 状态可能触发不期望的降级或提升。
 - 出现迁移问题时先保持 monitor 和 keeper 停止、Gaoji 停写；优先在已经核验的唯一主库上恢复固定角色 PostgreSQL。需要恢复自动 HA 时，必须重新核对实际角色/时间线与 monitor 状态，再按受控 enroll/rejoin 流程恢复，不能同时启动旧控制器。
 
 ## 隔离测试
 
 `scripts/test-qq-bot-postgres-manual.py` 在非 postgres 的非 root 账号下使用两个临时 PostgreSQL；推荐以 systemd PrivateNetwork/PrivateTmp 运行。实测覆盖复制中断、主库停机超过旧分区超时、角色不自动变化、连接恢复追平、启动护栏和两库重启。测试不会连接生产端口，不依赖真实 QQ 或运营商链路。
+
+`scripts/test-gaoji-alerts.py --rules /nix/store/…-gaoji-readiness.rules --promtool /nix/store/…-prometheus-…-cli/bin/promtool` 对实际生成的规则文件测试正常就绪、租约失败、历史缺口、采集失败、短暂中断后恢复。完全使用合成指标，不触发生产告警或操作真实租约。

@@ -4,6 +4,18 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-04 · 跨网 HA 反复接管，改固定 tank 主库并修复 QQ 自恢复 {#gaoji-fixed-primary-20261104}
+
+移动侧 tank 与电信侧 h610 的晚间公网丢包反复引发数据库断连和 HA 接管。Bot 运行进程仍 active，但 QQ 账号租约丢失后永久等待人工 resume，导致短暂网络故障变成长时间停收消息。owner 授权根治并明确选择固定 tank 主库、h610 异步灾备、人工隔离后切主；不再把跨网监控器当成可靠的节点死亡判据。
+
+第一次受控切回只恢复了现场。新配置还在构建时，旧 HA 于 21:17:46 HKT 再次判 tank 不健康，h610 提升至 timeline 29，tank 开始 `pg_rewind`。进度停滞不等于能直接把原 PGDATA 提升；必须把它当作不完整副本。保存 h610 的逻辑和物理备份，经 gizmo 仅做 SSH 流式中转、分块及整包校验后在 tank 解包；`pg_verifybackup` 通过，再先以无 keeper 的只读临时服务追平。原部分 rewind 目录完整保留但不作为可启动备份。
+
+停止 Bot/控制写入并验证复制差为 0，关闭旧 monitor，持久隔离 h610 并确认干净停库。tank 回放超过旧主最后关闭 checkpoint 后才提升到 timeline 30；两边切换为直接 PostgreSQL 17.11 的 systemd unit，h610 从 tank 异步复制，客户端 DSN 只指向 tank。旧控制器不再运行；固定角色护栏、WAL 容量限制、备份/恢复检查和只读复制告警保留。代价是灾难时人工处置和非零 RPO，不是“修好了运营商”。
+
+Bot PR #73 `d39d040` 安全退避重获租约，保留人工暂停/禁用/防双实例边界；历史 message_gap 不再覆盖实际 ready，仍提示可能漏消息。22:43:54 恢复 Bot，持续 ready；新主备健康，复制追平。新主库另做备份并真实恢复到隔离实例验证 0077，通过。完整备份位置、系统路径、测试与操作证据见 [本次部署记录](gaoji-qq-official.md)，人工灾备/回滚约束见 [runbook](runbooks/qq-fixed-primary.md)。
+
+**这次误导过验证的地方：**隔离 PostgreSQL 演练通过，不代表 Nix 生成的 Python bootstrap 也正确。上线时发现可选多行插值破坏缩进，保持安全单主/暂停业务，修复并增加生成脚本 build-time compile 检查后才继续。Prometheus 配置检查通过也不代表新增规则已加载；既有 extraRules 把多份 JSON 拼在一起，后续文档被忽略，与 [GPU 旧事故](#gpu-rule-files) 相同。此次三条 QQ 告警改成独立 ruleFiles，增加五类 promtool 离线语义测试，并在两台运行中的 `/api/v1/rules` 核对三个组内规则 health=ok；其他既有 extraRules 的全局修复另待处理。不能因 restart 清掉内存缺口标记就说历史消息已补齐。
+
 ## 2026-11-04 · Rewind App 的额度接口不在官网通用 Key Usage 中 {#rewind-app-balance}
 
 查 Rewind 剩余额度时，先从官网 `/key-usage` 的前端发现

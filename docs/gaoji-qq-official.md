@@ -1,5 +1,22 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-04 · 固定 tank 主库与 QQ 租约自动恢复已部署
+
+**当前策略：tank 固定主库、h610 异步只读灾备，故障由人确认后切换。下文历史记录中的 monitor、优先级、`qq-bot-postgres-prefer-tank` 不再适用于当前部署。** 人工切换、隔离与回滚边界见 [固定主库 runbook](runbooks/qq-fixed-primary.md)，取舍见 [决策](decisions.md#qq-fixed-primary)。
+
+- owner 明确授权切回 tank、修复反复掉线，并选择不再跨网自动接管。Bot PR #73 合并为 `d39d0403115d2a19aa4cb18713d38ec28efd3c77`；运行期失租约或临时数据库异常先排空旧资源，再退避重获租约。暂停/禁用/永久配置错误不被自动越过，不抢其他实例的锁。历史消息缺口独立警告，不再把已经 ready 的网关报成离线。
+- 应用全量运行 1,413 项测试，10 项跳过，零失败；隔离测试连续三次终止真实测试库租约连接（一次旧会话失效）后仍可收发。PR 与合并后的 Python、Nix、密钥扫描通过；Windows ACL 仍是既有失败，未混入修复。另用两个私有网络内的 PostgreSQL 演练复制中断 25 秒、主库停机超过旧分区阈值、角色不自动变化、恢复追平及启动护栏。
+- 配置 `18f7dbea` 关闭 keeper/monitor、固定启动角色、DSN 仅指向 tank；`9410a51f` 修复生成 bootstrap 的缩进并添加构建期 Python 编译检查；`2674f165` 将 QQ 告警改为独立规则文件。lint、20 个 NixOS 配置求值及两台系统构建通过，内核不变。部署现场曾因生成脚本缩进失败暂停在安全单主状态，修好并实际执行 bootstrap 后才继续恢复备库与 Bot，没有忽略失败。
+- 迁移前旧 HA 于 **21:17:46 HKT** 再次判 tank 不健康，h610 接管到 timeline 29；tank 的 `pg_rewind` 在跨网坏链路上长时间缓慢推进。重新备份当前 h610 主库，保存原 tank 目录，再用完整、逐块及整包 SHA-256 校验、`pg_verifybackup` 通过的物理副本恢复只读 tank。SSH 临时经 gizmo 流式中转，未修改路由、未在 gizmo 落盘数据库内容。
+- 恢复的 tank 两次确认 replay 差 0、system_identifier 一致后，停 h610 monitor、控制服务和数据库，并保留持久 FENCED。h610 干净关闭的 checkpoint `2A/C7037E50` 已被 tank 回放至 `2A/C7037EC8` 后才提升；tank 进入 timeline 30。随后以直接 PostgreSQL 17.11 的 systemd unit 启动两边，h610 明确 `standby.signal` 并连接 tank 的 `qq_bot_standby` 物理槽。没有在部分 rewind 目录上强行提升，也没有同时启用新旧控制器。
+- **22:43:54 HKT** 恢复新版 Gaoji，22:44 连续三次 `200 / ready`，23 时后复查仍正常。tank 实际可写，h610 只读并从 tank timeline 30 streaming / async；两边健康检查及复制差 0 验证通过。两个正常 unit 的 ExecStart 均为直接 `postgres`，无 pg_autoctl 进程，h610 monitor unit 已不存在，55431 不监听。
+- 运行包 `/nix/store/wnjq1z5004dbnp032z512270yi2fn9ng-gaojibot-0.20.0`，四个修复文件 SHA-256 与合并源码相同；一个实际 QQ 租约会话，数据库仍为 `0077_retired_features`。没有主动中断真实账号租约或伪造真实 QQ 消息来验收，隔离恢复测试不能替代腾讯端到端实聊。
+- 最终 tank 系统/启动 profile 均为 `/nix/store/bi6k8x1ccrcl4gm5s4xhfkyh5m58dsnr-nixos-system-tank-26.05.20261020.cd4ea8d`；h610 均为 `/nix/store/9qm828dm8zw5s7prgrx1dpzhb0ka5r3p-nixos-system-h610-26.05.20261020.cd4ea8d`。本次明确重启数据库、Gaoji、控制服务和监控；VM PID 2640955、Worker PID 4034763、Maxx PID 2392179 保持不变。最后的告警修正 dry-run 只重启两边 Prometheus，复查 Bot 和数据库 PID 均不变。
+- QQ 不可用、指标无法采集、历史消息缺口三条规则实际从两边 `/api/v1/rules` 读取为 `health=ok`，不是只看配置存在。`scripts/test-gaoji-alerts.py` 的五类合成指标场景经 promtool 通过。Alertmanager 尚无外部通知接收器，此处只保证监测与规则生效，不声称已向人发送告警。旧 `extraRules` 多 JSON 拼接导致其他既有组未加载的问题未在此轮全局修改。
+- h610 切换前逻辑备份 `/var/lib/qq-bot-postgres-backups/fixed-primary-20261104/qq_bot-before-fixed-primary.dump`（95,434,054 字节，0600）；同目录 `physical/` 保存压缩物理备份（base.tar.gz 223,346,547 字节）和 manifest。tank 上对应物理备份在 `/data/backup/postgresql/qq-bot-ha/fixed-primary-20261104/physical/`；旧未完成 rewind 目录保留为 `/data/lib/qq-bot-postgres-ha/17.pre-manual-20261104-partial-rewind`，**不可当作可启动备份**。两机 root-only `/root/gaoji-fixed-primary-20261104/` 保留迁移前配置与证据，不提交凭据。
+- 22:48–22:49 在新主库另做 `qq_bot-20261104T144825Z.dump`（93,771,882 字节），并实际恢复至隔离 PostgreSQL；`qq-bot-postgres-restore-check.service` 验证 revision 0077 成功。备份、恢复检查、健康检查 timers 均 active。
+- 边界：运营商丢包未被“修好”，只是 Bot 主数据库不再依赖这条跨网路径；h610 复制/控制/向量服务仍可能受影响。异步灾备不是零 RPO，tank 真故障需要人工隔离和切换。先前自动接管的未同步尾部与停机期间 QQ 消息不能仅凭当前追平宣称已补回，重要请求应重发；禁止盲目回滚到会恢复旧 HA 控制器的 generation。
+
 ## 2026-11-04 · 后台任务续接修复已部署
 
 - PR #72 以 merge commit 合并，Bot 固定到 `130e7f232b02aa59422522ed6e0a9dca825911fe`，部署配置 `c893d090`。前台每轮获取当前会话、当前用户的任务快照；追问查状态、补充向原任务插话，已有活动任务默认拒绝重复新建，明确独立工作才允许并行。没有新增迁移，数据库仍为 `0077_retired_features`。
