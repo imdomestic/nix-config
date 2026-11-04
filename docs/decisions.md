@@ -48,8 +48,18 @@ kvm 构建。Rosetta 跑不了 x86_64 的 KVM,x86_64 的 NixOS 测试仍要真 x
 那几行之后,Nix 按顺序应用,结果只剩 cache.nixos.org 和 FlakeHub,hank 也不再是
 trusted user。`system/modules/nix-settings.nix` 把这三项 mkForce 成空。
 
+切换之后 `nixos-rebuild build --flake .#r6s` 在 `etc-fstab` 上失败:`Native Linux
+Builder is disabled via the Determinate configuration.`。determinate-nixd 只在启动时读
+`/etc/determinate/config.json` 并重写 `/etc/nix/nix.conf`,switch 不会重启它,于是
+nix.conf 里还留着 `external-builders`。daemon 因此认为本机能编 Linux,把
+`preferLocalBuild` 的 derivation(unit、etc 文件这类)派给已经关掉的 native builder;
+普通 derivation 走 build hook,不受影响。重启后那一行就没了。现在
+`system/profiles/darwin.nix` 在 config.json 变了的时候重启它。
+
 **最先误导我的:** 测试 guest 里 `systemd-detect-virt` 输出 `qemu`,看上去像退回了
-TCG 软件模拟。aarch64 上 KVM 下它也报 `qemu`,要直接问 QEMU `info kvm`。
+TCG 软件模拟。aarch64 上 KVM 下它也报 `qemu`,要直接问 QEMU `info kvm`。另外,
+切换前的测试都带着 `--option external-builders '[]'`(为了把构建引到手动起的 VM 上),
+正好把上面这个问题盖住了。
 
 ## 2026-11-04 · Pi 状态栏显示剩余额度，不显示估算会话成本 {#pi-balance-status}
 

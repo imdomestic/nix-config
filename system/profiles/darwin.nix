@@ -2,6 +2,7 @@
   lib,
   pkgs,
   config,
+  options,
   system,
   ...
 }: {
@@ -46,4 +47,23 @@
     KbdInteractiveAuthentication no
     PermitRootLogin prohibit-password
   '';
+
+  # determinate-nixd reads /etc/determinate/config.json, and rewrites
+  # /etc/nix/nix.conf from it, only when it starts; a switch never restarts it.
+  # Turning its Linux builder off kept the external-builders line, and every
+  # preferLocalBuild Linux derivation then failed
+  # (docs/decisions.md#praxic-linux-builder). Restart it when the file changed,
+  # as nix-darwin does for its own nix-daemon.
+  system.activationScripts = lib.mkIf (options ? determinateNix && config.determinateNix.enable) {
+    preActivation.text = ''
+      readlink -f /etc/determinate/config.json > /run/determinate-config.old 2>/dev/null || true
+    '';
+    postActivation.text = ''
+      if [ "$(cat /run/determinate-config.old 2>/dev/null)" != "$(readlink -f /etc/determinate/config.json)" ]; then
+        echo "restarting determinate-nixd for its new config.json..." >&2
+        launchctl kickstart -k system/systems.determinate.nix-daemon
+      fi
+      rm -f /run/determinate-config.old
+    '';
+  };
 }
