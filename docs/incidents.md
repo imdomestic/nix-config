@@ -27,6 +27,22 @@ App 校验响应后展示剩余金额，默认每 60 秒刷新、请求超时 15
 Rewind 原始 key、设备私钥或 CLIProxy 管理密钥；状态栏不再以估算会话成本冒充
 实际余额。接口和部署边界见 `docs/rewind.md#balance-in-pi`。
 
+实现提交 `c329e319`：Go race、离线 Pi UI/FleetView/真实扩展装配回归通过。
+用户报告本机全量 Nix 求值占满资源后立即停止，后续不再跑全量 check/lint，
+只用 `GOMAXPROCS=1`、`-p=1` 运行余额定向测试；补测并修正关闭超时后强制关闭
+已接受连接、等待连接与查询 goroutine 退出，避免动态插件卸载后残留执行。
+
+r6s 在同一提交以 `max-jobs=1`、`cores=2` 构建 gizmo，目标机不编译。闭包仅
+更新 CLIProxy 8.0.52 → 8.0.53、插件 0.1.2 → 0.1.3 和余额配置，内核不变。
+先 `test`，实测缺失/错误密钥为 401、正确调用密钥为 200，8318 只监听
+`100.64.0.16`。首次含会话交换约 10.4 秒，缓存命中约 0.5 秒；上游报告耗尽，
+Rewind 生成对应返回 402，普通 GPT 调用仍返回 200 / `OK`。随后设为系统 profile
+并 `switch`，运行与持久代均为 `/nix/store/bk4bjw1qz24v2v1q5linmipads3qwimk-nixos-system-gizmo-26.05.20261020.cd4ea8d`。
+
+praxic 只构建并激活 Hank 的 standalone home（单任务、单 core），没有重建
+Darwin 系统；已安装的 Pi reader 实际连通。当前 Pi 进程要 `/reload` 才加载
+新状态栏，其他客户端跟随各自的 home 激活/同步，不由 gizmo 系统切换接管。
+
 ## 2026-11-04 · Pi 子代理启动时 FleetView 停止刷新 {#pi-fleet-startup-race}
 
 把 statusline 移到 FleetView 上方后，用户报告底部只剩 `1 running agent`，
