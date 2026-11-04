@@ -1,6 +1,7 @@
 {
   inputs,
   config,
+  pkgs-unstable,
   ...
 }: {
   # Used for backwards compatibility, please read the changelog before changing.
@@ -53,6 +54,28 @@
 
   determinateNix = {
     enable = true;
+
+    # Linux builds go to one long-lived VM over ssh-ng, not to the Native Linux
+    # Builder's 1-vCPU VM per derivation, set up one at a time
+    # (docs/decisions.md#praxic-linux-builder). Enabling it also turns the
+    # native builder off and sets builders-use-substitutes.
+    nixosVmBasedLinuxBuilder = {
+      enable = true;
+      # Virtualization.framework instead of QEMU: x86_64-linux through Rosetta,
+      # and the only way to a guest /dev/kvm. Only nixpkgs-unstable has it.
+      package = pkgs-unstable.darwin.linux-builder-vz;
+      systems = ["aarch64-linux" "x86_64-linux"];
+      supportedFeatures = ["kvm" "nixos-test" "benchmark" "big-parallel"];
+      config.virtualisation = {
+        cores = 8; # also the builder's maxJobs
+        darwin-builder = {
+          memorySize = 16 * 1024; # MiB
+          diskSize = 100 * 1024; # MiB
+        };
+        # Guest at EL2 for a real /dev/kvm, so NixOS tests run on it (M3+).
+        vz.nestedVirtualization = true;
+      };
+    };
 
     # The registry pins and the nix.conf settings both arrive from
     # system/modules/nix-settings.nix, which routes them here rather than to

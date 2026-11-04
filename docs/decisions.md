@@ -11,6 +11,46 @@
 
 ---
 
+## 2026-11-04 · praxic 的 Linux 构建走常驻 vz VM，不用 Native Linux Builder {#praxic-linux-builder}
+
+Determinate 的 Native Linux Builder(3.24.0)给每个 derivation 起一台新的
+1 vCPU VM(host 的 `/nix/store` 经 virtiofs 挂进去),而每次构建的准备阶段在
+determinate-nixd 里**串行**:日志里 `fetch Native Linux Builder guest store paths`
+约 0.9 s,再加约 0.55 s 起 VM,下一个才开始,`max-jobs = 14` 不起作用。每个
+builder 进程还各自连一次 install.determinate.systems。VM 里 `nproc=1` 而
+`NIX_BUILD_CORES=14`,大编译也只有一个核。
+
+现在是 nixpkgs-unstable 的 `darwin.linux-builder-vz`(NixOS/nixpkgs#544193,
+Virtualization.framework 而不是 QEMU),经 `determinateNix.nixosVmBasedLinuxBuilder`
+接入;打开它时 Determinate 模块自己关掉 Native Linux Builder。8 核、16 GiB,
+x86_64-linux 走 Rosetta,`vz.nestedVirtualization` 给 guest 一个真的 `/dev/kvm`
+(要 M3 以上、macOS 15 以上)。nixos-26.05 没有这个包。
+
+当天在 scratch 目录手动起同一个镜像实测(没经过 launchd):
+
+| | 每个小 derivation | gizmo toplevel(31 个待编) |
+|---|---|---|
+| Native Linux Builder | 1.75 s | rex 失败(exit 1,日志为空,没追) |
+| vz VM,经 build hook | 0.66 s | 31.2 s(输入已在 VM;VM 是空的时 147 s) |
+| vz VM,整张图交给 VM 自己的 daemon(`--store ssh-ng://`) | 0.02 s | 27.5 s |
+
+VM 本身 100 个小 derivation 1.7 s 编完,剩下的开销全在 Nix 的 build hook 这一层。
+整个 NixOS system 这种大量小 derivation 的活,直接交给 VM 编(build-host 的方式)更快。
+
+NixOS 测试:嵌套 KVM 能用,构建沙箱里 QEMU 只给 `accel=kvm` 也报
+`kvm support: enabled`。但最小的单机测试开机到 multi-user 要 104 s;同一个测试
+按 aarch64-darwin 跑(`apple-virt`,QEMU 在 macOS 上用 HVF,只有一层)只要
+11.8 s。aarch64 的测试优先在 macOS 上跑,嵌套 KVM 留给只能在 Linux 里做的
+kvm 构建。Rosetta 跑不了 x86_64 的 KVM,x86_64 的 NixOS 测试仍要真 x86 机器。
+
+打开 VM builder 时,模块往 nix.custom.conf 写明文的 `substituters` /
+`trusted-public-keys` / `trusted-users`(值就是 Nix 的默认值)。它们排在 extra-*
+那几行之后,Nix 按顺序应用,结果只剩 cache.nixos.org 和 FlakeHub,hank 也不再是
+trusted user。`system/modules/nix-settings.nix` 把这三项 mkForce 成空。
+
+**最先误导我的:** 测试 guest 里 `systemd-detect-virt` 输出 `qemu`,看上去像退回了
+TCG 软件模拟。aarch64 上 KVM 下它也报 `qemu`,要直接问 QEMU `info kvm`。
+
 ## 2026-11-04 · Pi 状态栏显示剩余额度，不显示估算会话成本 {#pi-balance-status}
 
 Hank 的 statusline 不再累计展示 `usage.cost.total`：它按客户端价格表估算会话
