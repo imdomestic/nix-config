@@ -4,7 +4,7 @@
   pkgs,
   ...
 }: let
-  # Keep Hank's Rex appearance independent of Kenneth's Ghostty overrides.
+  # Keep Rex's font and imported themes independent of Ghostty overrides.
   fonts = ["RecMonoSmCasual Nerd Font Mono" "Menlo" "PingFang SC"];
   zenId = "custom-F26A132B-4D31-47EB-87D9-24AED11165C4";
   pearlId = "custom-26E5B310-00BF-40B2-98BC-0268B1FCC6EF";
@@ -276,7 +276,7 @@ in {
   # Rex 1408 stores appearance in user defaults, separately from init.lua.
   # Migration coverage and remaining differences: docs/rex.md.
   targets.darwin.defaults."com.superlogical.rex" = {
-    "Workspace.darkThemeID" = zenId;
+    "Workspace.darkThemeID" = "neon-arcade";
     "Workspace.lightThemeID" = pearlId;
     "Workspace.terminalFontName" = lib.head fonts;
     "Workspace.terminalFontPointSize" = 15;

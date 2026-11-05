@@ -52,13 +52,19 @@ module. Rex remains separately installed; this module does not install the app.
 
 Kenneth's macOS GUI profile loads its own copy under
 `home/kenneth/modules/rex/`. It uses Hank's Ctrl-b bindings, floating nvim
-copy mode, shell integration and Kanso Zen/Pearl themes. The font is
+copy mode and shell integration. The active dark theme is Rex's built-in
+Neon Arcade; Kanso Zen and Kanso Pearl remain available. The font is
 RecMonoSmCasual Nerd Font Mono at 15 points, with Menlo and PingFang SC
 fallbacks and a bar cursor. These choices are independent of Kenneth's
 Catppuccin/Recursive Ghostty settings. Physical punctuation aliases keep
 copy mode and the other punctuation shortcuts working with Chinese input
 methods, which can otherwise turn `[` into `【` and send the failed prefix
 back to the shell.
+
+Later on 2026-11-05, Kenneth requested more vivid colors. The dark theme
+was changed in Rex Settings to Neon Arcade (`neon-arcade`) and the same
+selection is managed by Kenneth's Home Manager module. The app remains
+in Dark appearance; no server restart is needed for this preference.
 
 On 2026-11-05, Rex 1758 loaded 46 bindings and two custom actions without
 diagnostics. Live checks covered new tabs, splitting, Chinese-input copy
