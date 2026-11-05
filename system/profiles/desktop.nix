@@ -31,4 +31,9 @@
     zsh.enable = lib.mkDefault true;
     nix-ld.enable = lib.mkDefault true;
   };
+
+  environment.sessionVariables = {
+    # 统一 Wayland 下非 GTK 原生应用 (GLFW, Qt, XWayland) 的光标大小，避免部分窗口光标放大
+    XCURSOR_SIZE = "24";
+  };
 }

@@ -14,6 +14,17 @@
 
   home.sessionVariables.NIXOS_OZONE_WL = "1";
 
+  # 统一 Wayland / XWayland / GLFW / Qt 窗口的光标主题和尺寸，避免部分窗口光标意外放大
+  gtk.enable = true;
+  home.pointerCursor = {
+    enable = true;
+    gtk.enable = true;
+    x11.enable = true;
+    package = pkgs.adwaita-icon-theme;
+    name = "Adwaita";
+    size = 24;
+  };
+
   home.packages = with pkgs; [
     iotop
     iftop

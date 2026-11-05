@@ -16,6 +16,12 @@ in {
     ../../system/modules/nerdfonts
   ];
 
+  boot.kernel.sysctl = {
+    # 禁用 Alder Lake 等现代 Intel CPU 上的 split lock 延迟惩罚（默认强制 sleep 10ms），
+    # 解决 Bambu Studio 等含未对齐原子锁的程序在拖动模型/UI 交互时的严重卡顿
+    "kernel.split_lock_mitigate" = 0;
+  };
+
   boot.loader = {
     timeout = 5;
     grub = {
@@ -101,6 +107,7 @@ in {
       user = "linwhite";
     };
     desktopManager.gnome.enable = true;
+    switcherooControl.enable = true;
     pipewire = {
       enable = true;
       alsa.enable = true;
