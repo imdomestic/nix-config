@@ -37,6 +37,14 @@ in {
         owner = "maxx";
         restartUnits = ["maxx.service"];
       };
+      # The Haskell max's Bungie application key, for the read-only
+      # forwarder; its OAuth client id and secret stay unused.
+      "maxx/bungie-api-key" = {
+        sopsFile = ../../secrets/hosts/tank-max.yaml;
+        key = "bungie-api-key";
+        owner = "maxx";
+        restartUnits = ["maxx.service"];
+      };
     }
     # The other providers' keys the Haskell max had, under its profiles'
     # names; one profile's for a provider whose profiles share a key.
@@ -215,6 +223,20 @@ in {
           secret_file = secret "github-git-auth";
           headers.Authorization = "Basic {secret}";
           about = "git 的 HTTPS，带着 maxxagent 的认证：推到你的仓库或 fork 用 git push http://127.0.0.1:7777/api/github-git/maxxagent/仓库.git 分支；clone、fetch 公开仓库直接用 https://github.com。";
+        };
+        # Public reads only: no player logs in, so nothing private and no
+        # moving or equipping items. The two POSTs are searches.
+        bungie = {
+          base_url = "https://www.bungie.net/Platform";
+          secret_file = secret "bungie-api-key";
+          headers.X-API-Key = "{secret}";
+          allow = [
+            "GET /**"
+            "POST /Destiny2/SearchDestinyPlayerByBungieName/**"
+            "POST /User/Search/GlobalName/**"
+          ];
+          per_hour = 1000;
+          about = "Destiny 2 的 Bungie API，只读公开数据：玩家资料和战绩、活动记录、每周的突袭挑战、商人。文档 https://bungie-net.github.io/multi/ 。按名字找玩家用 POST /Destiny2/SearchDestinyPlayerByBungieName/-1/，body 是 {displayName, displayNameCode}。物品和活动的定义在 GET /Destiny2/Manifest/ 给的文件里，那些文件直接从 https://www.bungie.net 下载、不经这里，存进 /work 反复用。玩家没公开的（背包、仓库）看不到，也不能替人移动、装备物品。";
         };
       };
       # The sticker library's vectors: bge-m3 on h610's Ollama, the model
