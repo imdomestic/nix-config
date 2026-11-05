@@ -48,6 +48,32 @@ Use `just hm-dry <host> hank` to review a home generation, and
 `just hm <host> hank` when activating it. A system rebuild does not apply this
 module. Rex remains separately installed; this module does not install the app.
 
+## Kenneth on alex
+
+Kenneth's macOS GUI profile loads its own copy under
+`home/kenneth/modules/rex/`. It uses Hank's Ctrl-b bindings, floating nvim
+copy mode, shell integration and Kanso Zen/Pearl themes. The font is
+RecMonoSmCasual Nerd Font Mono at 15 points, with Menlo and PingFang SC
+fallbacks and a bar cursor. These choices are independent of Kenneth's
+Catppuccin/Recursive Ghostty settings. Physical punctuation aliases keep
+copy mode and the other punctuation shortcuts working with Chinese input
+methods, which can otherwise turn `[` into `【` and send the failed prefix
+back to the shell.
+
+On 2026-11-05, Rex 1758 loaded 46 bindings and two custom actions without
+diagnostics. Live checks covered new tabs, splitting, Chinese-input copy
+mode and return to the original pane; Settings showed both Kanso themes,
+the bar cursor and Option-as-Alt. The home evaluated and `just lint` passed.
+
+The initial activation on alex was scoped to Rex: the Nix-generated
+`init.lua`, CLI link, eleven preferences, custom themes, and the evaluated
+Rex shell hooks appended to the existing generated zshrc. The full home
+generation was retained because switching it also changed unrelated tools.
+Backups and the GC-rooted activation inputs are in
+`~/.local/state/rex-setup/2026-11-05/`. Future full home activations manage
+these settings through Kenneth's module normally. This profile does not
+import Hank's praxic relay or AeroSpace preferences.
+
 ## CLI path
 
 `~/.local/bin/rex` points to the installed server's `Versions/Current` CLI.

@@ -2,5 +2,6 @@
 {
   imports = [
     ../modules/gui/darwin.nix
+    ../modules/rex
   ];
 }
