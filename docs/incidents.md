@@ -4,6 +4,23 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-05 · CLIProxy HTTPS 的 DNS-01 等待与 nginx 原生排序冲突 {#cliproxy-https-dns01-ordering}
+
+给 gizmo 保留 HTTP 8317、另加 tailnet HTTPS 443 时，nginx 要等正式证书签发，
+并在启动前拒绝 ACME 的临时自签证书。初版添加了 nginx `After=acme-order-renew`；
+独立部署前检查发现，当前 nixpkgs 的 nginx 模块在 `enableReload=false` 时原生添加
+反向的 `Before=acme-order-renew`，两边合起来成为启动环。
+
+**误导点：`nix eval` 成功只证明选项能合并，不证明 systemd 的启动图可执行。**
+原生排序是为先启动 nginx 回答 HTTP-01 challenge，不能直接套在不依赖 nginx 的
+Cloudflare DNS-01 上。此主机仅有这个 DNS-01 vhost，清除原生 nginx `before` 边，
+保留签发后的顺序与可信证书校验；生成单元的 `systemd-analyze verify` 随后通过。
+将来若在 gizmo 增加 HTTP-01 vhost，要重新审视这个主机级排序覆盖。
+
+未部署有环的版本；首次正式签发与测试激活成功，随后设置 boot 默认并取消回退
+timer。HTTP/HTTPS、鉴权、SSE、WebSocket 与 fx 真实工具调用证据见
+[上线记录](cliproxy-https.md#2026-11-05-上线验收)。
+
 ## 2026-11-04 · 跨网 HA 反复接管，改固定 tank 主库并修复 QQ 自恢复 {#gaoji-fixed-primary-20261104}
 
 移动侧 tank 与电信侧 h610 的晚间公网丢包反复引发数据库断连和 HA 接管。Bot 运行进程仍 active，但 QQ 账号租约丢失后永久等待人工 resume，导致短暂网络故障变成长时间停收消息。owner 授权根治并明确选择固定 tank 主库、h610 异步灾备、人工隔离后切主；不再把跨网监控器当成可靠的节点死亡判据。

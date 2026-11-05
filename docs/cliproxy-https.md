@@ -54,7 +54,7 @@ nix eval --raw .#nixosConfigurations.gizmo.config.system.build.toplevel.drvPath
 just check-sops gizmo
 just lint
 ssh hank@gizmo 'systemctl status nginx acme-order-renew-gizmo.inner.imdomestic.com --no-pager'
-ssh hank@gizmo 'systemctl list-timers acme-gizmo.inner.imdomestic.com.timer --no-pager'
+ssh hank@gizmo 'systemctl list-timers acme-renew-gizmo.inner.imdomestic.com.timer --no-pager'
 ```
 
 端到端验收须使用正常的 TLS 验证，不能以 `curl -k` 或 ACME ensure 单元成功代替
@@ -63,3 +63,24 @@ Chat Completions/Responses 流式输出，以及公网/LAN 地址上不存在 AP
 
 Gizmo 的系统在 registry 指定的 r6s 上构建，目标机只接收闭包；不要在 gizmo 上
 编译。网络或防火墙变更先测试激活，保留原运行代和回退路径；参见 `AGENTS.md`。
+
+## 2026-11-05 上线验收
+
+实现提交 `38a868f2`。24 个系统配置求值、`just lint`、gizmo 的 SOPS 声明校验和
+生成单元的 `systemd-analyze verify` 通过。r6s 使用 `max-jobs=1`、`cores=2` 构建；
+闭包同时同步仓库已有的 CLIProxy 8.0.53 → 8.0.55，内核仍为同一个 Linux 7.3。
+
+先测试激活，再将已验收的代设为 boot 默认，未重启：运行代和系统 profile 均为
+`/nix/store/b4cf392757pmdns5flr1cj2nbnk1lksd-nixos-system-gizmo-26.05.20261020.cd4ea8d`。
+临时 20 分钟回退 timer 已取消，nginx/cliproxy/tailscaled 正常，failed units 为 0。
+
+HTTP/HTTPS 返回相同的 74 个模型；无密钥访问 HTTPS API 为 401，HTTPS 管理路径
+为 404。HTTPS Chat Completions、HTTPS/HTTP Responses 均返回完整 SSE `OK`；
+认证 WebSocket 升级为 101，无密钥升级为 401。fx 0.0.16 经 HTTPS 实际调用
+`read_file` 并返回临时探针文件内容，不是只验证模型目录。
+
+证书由 Let's Encrypt YE2 签发，域名校验和正常系统信任链验证通过，到期时间为
+2027-02-03 10:27:48 UTC。443、8317、8318 只监听本机 Tailscale IPv4；从本机 Mac
+到 gizmo LAN IPv4 和公网 IPv6 的 443 均不可达。
+
+启动顺序的预检陷阱见 [DNS-01 与 nginx 原生排序](incidents.md#cliproxy-https-dns01-ordering)。
