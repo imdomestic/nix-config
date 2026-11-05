@@ -47,7 +47,7 @@ in {
       "--alias"
       "qwen3.5-4b-q4_k_m"
       "--ctx-size"
-      "131072"
+      "32768"
       "--n-gpu-layers"
       "all"
       "--device"
