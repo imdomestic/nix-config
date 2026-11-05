@@ -7,19 +7,20 @@
     pi-math = pkgs.callPackage ../../../../pkgs/pi-math {};
   };
 
-  palettes = {
-    evergarden-winter = import ../palettes/evergarden-winter.nix;
-    kanso-zen = import ../palettes/kanso-zen.nix;
-  };
+  palettes =
+    (import ../palettes/evergarden.nix)
+    // {
+      kanso-zen = import ../palettes/kanso-zen.nix;
+    };
 
   # 没列的 token(各种 shimmer 等)落回 base 预设。
   mkTheme = pal: let
     r = pal.roles;
   in {
     inherit (pal) name;
-    # base 名里带 dark 时语法高亮是写死的 Monokai,带 ansi 才改用终端 16 色(ghostty 的 kanso)。
-    # 代价是 diff 渲染器在 ansi 下把 RGB 底色降成 256 色,所以下面不设 diff 底色,用它原生的样子。
-    base = "dark-ansi";
+    # ansi 基底让语法高亮跟随终端 16 色；Summer 用浅色,其余用深色。
+    # diff 渲染器在 ansi 下把 RGB 底色降成 256 色,所以下面不设 diff 底色。
+    base = "${pal.appearance or "dark"}-ansi";
     overrides =
       {
         claude = r.accent;
