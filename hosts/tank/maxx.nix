@@ -64,6 +64,16 @@ in {
     # The groups' VMs, where the tools run: 32 at a time, on taps from
     # 10.235.0.0/24.
     vm.enable = true;
+    # SSH fleet operations (2026-11-05): these groups' VMs reach the fleet
+    # with `ssh <host>` as max, through the maxops node of the Haskell max,
+    # whose state was copied to /var/lib/maxx-ops-tailscale. Conversations
+    # by maxx's ids, the groups' numbers being in its database only.
+    vm.operations = {
+      enable = true;
+      conversations = [8 13];
+      loginServer = "https://tailscale.imdomestic.com:8443";
+      domain = "inner.imdomestic.com";
+    };
     settings = {
       # Each VM's size, up from maxx's default of 2 vCPUs and 4 GiB
       # (2026-10-31). Up to 12 chats' VMs stay on for the programs Max
