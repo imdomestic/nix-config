@@ -13,6 +13,7 @@
     };
     maxTier = "interactive";
     buildOn = "r6s";
+    modules = [./cliproxy-https.nix];
 
     users = {
       nix = {};
