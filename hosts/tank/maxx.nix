@@ -105,7 +105,7 @@ in {
         # Says what each new picture and sticker shows; the Haskell max's
         # captioner too.
         caption = {
-          model = "cliproxy/gemini-3.8-flash-high";
+          model = "cliproxy-responses/gpt-5.6-luna";
           effort = "high";
         };
         # Background agents: pi in the groups' VMs, its model calls
