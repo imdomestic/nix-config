@@ -25,6 +25,9 @@ TCC 数据库读取被系统拒绝，因此没有检查到旧授权中实际保�
 首次激活版本 4 后，安装的 app 验签成功，但实际 agent 报 `version=(null) bundle=(null)`。
 launchd 当时通过 `$out/bin/safari-mru` 的符号链接启动，NSBundle 没有识别到 app。
 改为直接启动 `Applications/Safari MRU.app/Contents/MacOS/safari-mru`，CLI 入口也改成 exec 真路径的 binary wrapper。
+修正前后 app 可执行文件的 SHA-256 相同，签名未改变。再次激活后 SIGINFO 确认
+`version=4 bundle=com.imdomestic.safari-mru`，安装副本的 Apple codesign 严格验证通过；
+此时 `permission=no`，已明确交由 owner 重新允许正确的 app，快捷键验收等待该授权。
 
 ## 2026-11-06 · Safari MRU 的 100 ms AX 轮询增加空闲 CPU {#safari-mru-event-driven}
 

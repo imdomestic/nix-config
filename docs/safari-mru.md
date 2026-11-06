@@ -103,3 +103,5 @@ Arc 交互调整在版本 3；版本 2 仍是按每次 Tab 立即激活的旧交
 版本 4 已增加整个 app 的严格签名校验、应用标识检查、Info.plist 篡改拒绝测试及按需状态输出。
 Nix 输出及可写副本均已通过 Apple codesign 严格验证；修改 Info.plist 的副本被拒绝。
 实际按键和 AX 通知验收仍需要启用修复版并完成系统授权。
+修复版 4 已在 praxic 激活；实际 agent 的版本和 bundle 标识均正确，安装副本验签成功。
+当前状态为 `permission=no`，正在等待 owner 重新允许完整签名的 app 后继续验收。
