@@ -4,6 +4,35 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-06 · h610 重启换了公网 IP，tank 重启后 tailscale 一直连旧地址 {#headscale-ip-change-stale-dns}
+
+内核换默认 LTS 的分批重启里，h610 重启后 PPPoE 换了地址（49.76.121.183 → 114.225.151.62），
+ddns-go 17:28:43 就把 `tailscale.imdomestic.com` 更新成功了。tank 18:00 重启进 6.18.57，系统本身
+完全正常，但 tailscaled 一直报 `fetch control key … dial tcp 49.76.121.183:8443: connection timed
+out`，状态 NoState。tank 掉出 tailnet，连带 `nfs-server` 失败（exports 里的
+`h610.inner.imdomestic.com` 要靠 MagicDNS 解析）、`qq-bot-postgres-health` 卡住（到 h610 的复制走
+tailnet）。
+
+- **旧地址从哪来：** 没完全钉死。tank 的 resolved 上游只有 r5s（192.168.20.1）。18:12 前后
+  `resolvectl query --cache=no` 连续 6 次都是旧地址，18:15 起都是新地址。也就是记录改了之后，
+  链路上某一级缓存又撑了至少 45 分钟。r5s 的 resolved 往 ppp0 上移动的 DNS
+  （2409:8020:2000::88/::8）和 MagicDNS 转发，国内运营商 DNS 不守 TTL 是最可能的解释。
+- **tailscaled 自己也缓存：** DNS 恢复以后它还在拨旧地址；18:13 那次重启正好赶在 DNS 恢复前，
+  又缓存了一次旧地址。等解析正确后再 `systemctl restart tailscaled`，一分钟内恢复。Max 用的是
+  独立的 `maxx-ops-tailscaled`，整个过程不受影响。之后 `systemctl restart nfs-server` 也好了。
+
+**误导人的地方：** 重启等待脚本只走 tailnet（`tank.inner…`）去探，15 分钟没回应，我就判断成
+"tank 没起来"，还开始猜固件卡 POST、6.18 早期 panic。另外 initrd 里的救援 sshd
+（192.168.20.50:2222）也不通，看起来像是连 initrd 都没进去。其实 tank 3 分钟就起来了；救援网络
+不通是另一回事：它绑在 `enp5s0`，而这个口上次启动也是 NO-CARRIER，没插线（LAN 走的是 `ens6`）。
+另外从 Mac 上 `dig` 看到的 TTL 是 0，是本机代理改写过的，不能当成 Cloudflare 的真实 TTL。
+**下次先从局域网那一侧看**：r5s 的 `ip neigh`，再 `ssh -J root@r5s.inner.imdomestic.com root@<DHCP 地址>`。
+注意 tank 接受了 r5s 广播的 192.168.20.0/24，tailscale 一起来，tank 到自己局域网的流量就改走
+`tailscale0`（table 52），这条跳板 ssh 会断掉。
+
+**以后：** 分批重启时 h610 放到最后。哪台在 h610 换地址后一小时内重启的，tailscale 起不来就先查
+`resolvectl query --cache=no tailscale.imdomestic.com`，解析对了再重启 tailscaled。
+
 ## 2026-11-06 · Safari MRU 漏签 App bundle，授权失败 {#safari-mru-app-signature}
 
 Owner 升级到 Arc 交互的版本 3 后报告不生效。launchd 确认运行的是版本 3，重启后的新进程仍记录
