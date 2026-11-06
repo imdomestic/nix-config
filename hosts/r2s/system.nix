@@ -257,6 +257,9 @@ in {
     '';
   };
 
+  # The PPPoE login (`user` and `password` lines), read by pppd's `file` below.
+  sops.secrets."pppoe/mobile".restartUnits = ["pppd-mobile.service"];
+
   services.pppd = {
     enable = true;
     peers = {
@@ -265,10 +268,7 @@ in {
         enable = true;
         config = ''
           plugin pppoe.so end0
-          # user "19551998351"
-          # password "837145"
-          user "051002554981"
-          password "741852"
+          file ${config.sops.secrets."pppoe/mobile".path}
 
           # usepeerdns
 

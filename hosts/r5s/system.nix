@@ -288,6 +288,9 @@ in {
     '';
   };
 
+  # The PPPoE login (`user` and `password` lines), read by pppd's `file` below.
+  sops.secrets."pppoe/telecom".restartUnits = ["pppd-telecom.service"];
+
   services.pppd = {
     enable = true;
     peers = {
@@ -296,10 +299,7 @@ in {
         enable = true;
         config = ''
           plugin pppoe.so wan0
-          # user "051002554981"
-          # password "741852"
-          user "15861587760"
-          password "512907"
+          file ${config.sops.secrets."pppoe/telecom".path}
 
           # usepeerdns
 
