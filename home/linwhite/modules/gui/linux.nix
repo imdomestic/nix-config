@@ -66,7 +66,6 @@
           else "sha256-0IXdiTlyJQYeufGUMI9ogSmBjtRFd36XpKChbhPXsOg=";
       };
     })
-    wechat-uos
     sioyek
     upscayl
     sioyek
