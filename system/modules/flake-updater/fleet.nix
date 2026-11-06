@@ -40,4 +40,11 @@ in {
   }) (builtins.removeAttrs flake.homeConfigurations (builtins.filter (n: builtins.substring 0 6 n != "hosts/") (builtins.attrNames flake.homeConfigurations)));
 
   tests = builtins.attrNames (flake.fleetTests.x86_64-linux or {});
+
+  # The same drvPaths without tryEval, for the error message of one that fails.
+  why = {
+    nixos = n: flake.nixosConfigurations.${n}.config.system.build.toplevel.drvPath;
+    darwin = n: flake.darwinConfigurations.${n}.system.drvPath;
+    home = n: flake.homeConfigurations.${n}.activationPackage.drvPath;
+  };
 }

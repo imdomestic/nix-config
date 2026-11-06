@@ -144,6 +144,13 @@ eval_each() {
   cat "$each.json"
 }
 
+# why REV KIND NAME: the error that stops NAME evaluating (fleet.nix's tryEval
+# only says that it does), from the last "error:" on.
+why() {
+  nix eval --impure --raw --expr "(import $fleet_nix \"$(ref "$1")\").why.$2 \"$3\"" 2>&1 >/dev/null |
+    awk '/^ *error: ./ { buf = "" } { buf = buf $0 "\n" } END { printf "%s", buf }' | head -12
+}
+
 # changes A B: every system or home whose drvPath differs between A and B.
 changes() {
   jq -n --slurpfile a "$evals/$1.json" --slurpfile b "$evals/$2.json" '
@@ -256,8 +263,9 @@ gate() {
     ok=
   else
     changes "$base" "$rev" >"$g/changes.json"
-    jq -r '.[] | select(.drv == null and .olddrv != null)
-      | "- \(.kind) `\(.name)` no longer evaluates: \(.error // "see the log")"' "$g/changes.json" >>"$g/problems.md"
+    while read -r kind name; do
+      printf -- '- %s `%s` no longer evaluates:\n\n```\n%s\n```\n' "$kind" "$name" "$(why "$rev" "$kind" "$name")" >>"$g/problems.md"
+    done < <(jq -r '.[] | select(.drv == null and .olddrv != null) | "\(.kind) \(.name)"' "$g/changes.json")
     [[ -s $g/problems.md ]] && ok=
   fi
   if [[ -n $ok ]]; then
