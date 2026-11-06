@@ -1,6 +1,6 @@
 {
-  maxConcurrent = 2;
-  maxConcurrentForeground = 2;
+  maxConcurrent = 100;
+  maxConcurrentForeground = 100;
   schedulingEnabled = false;
   reportUsage = true;
   showCost = true;

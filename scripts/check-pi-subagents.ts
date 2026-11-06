@@ -224,8 +224,8 @@ export default function (pi: ExtensionAPI) {
           assert(commands.has("agents"));
           assert(!("schedule" in tools.get("Agent").parameters.properties));
           const loadedSettings = events.find(e => e.type === "subagents:settings_loaded")?.payload.settings;
-          assert.equal(loadedSettings?.maxConcurrent, 2);
-          assert.equal(loadedSettings?.maxConcurrentForeground, 2);
+          assert.equal(loadedSettings?.maxConcurrent, 100);
+          assert.equal(loadedSettings?.maxConcurrentForeground, 100);
           assert.equal(loadedSettings?.reportUsage, true);
           assert.equal(loadedSettings?.fleetView, true);
           assert.equal(loadedSettings?.widgetMode, "off");
