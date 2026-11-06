@@ -36,6 +36,9 @@ macOS 27 的页面叫 **Device Control and Data Access**，早期版本叫 **辅
 
 程序使用本地 ad-hoc 签名；Nix 升级后若 macOS 不再认可原授权，需要在辅助功能列表中移除旧条目、
 重新添加新的 `Safari MRU.app`。不绕过系统授权。
+版本 4 修复了完整 app bundle 的签名；版本 1–3 只有链接器的 Mach-O 签名。
+升级到版本 4 后，移除旧条目并重新添加 app，再切回 Safari。打包缺陷与验证见
+`docs/incidents.md#safari-mru-app-signature`。
 
 只读检查当前 Safari 窗口的标签识别（不会切标签，也不输出标题或 URL）：
 
@@ -43,6 +46,17 @@ macOS 27 的页面叫 **Device Control and Data Access**，早期版本叫 **辅
 safari-mru --inspect
 tail -n 30 ~/Library/Logs/safari-mru.log
 ```
+
+版本 4 及以后可以让实际运行的 agent 输出当前状态，无需重启或读取 TCC 数据库：
+
+```sh
+launchctl kill SIGINFO gui/$(id -u)/org.nix-community.home.safari-mru
+tail -n 10 ~/Library/Logs/safari-mru.log
+```
+
+`permission` 是这个 agent 本身的 AX 授权结果；Safari 前台且标签可用时 `hotkeys=yes`。
+`keyPresses`、`selectionEvents`、`activationRequests`、`activationErrors` 区分按键、通知与切换请求。
+不记录网页标题、URL 或输入文字。SIGINFO 按需触发，不运行定时器。
 
 暂停：`launchctl bootout gui/$(id -u)/org.nix-community.home.safari-mru`。
 重新启动可重新启用 home，或 `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.nix-community.home.safari-mru.plist`。
@@ -85,3 +99,6 @@ Owner 曾在提交前手动 switch 启用版本 2；随后保存为提交 `13856
 Arc 交互调整在版本 3；版本 2 仍是按每次 Tab 立即激活的旧交互，需更新 home 才能启用版本 3。
 版本 3 已通过 Nix 构建、纯状态测试、Swift 测试脚本类型检查、lint、三个 Mac home 求值与 praxic 的 home dry run。
 自动桌面控制工具当前连接失败，版本 3 的实际键盘与事件验收尚未完成。
+版本 4 已增加整个 app 的严格签名校验、应用标识检查、Info.plist 篡改拒绝测试及按需状态输出。
+Nix 输出及可写副本均已通过 Apple codesign 严格验证；修改 Info.plist 的副本被拒绝。
+实际按键和 AX 通知验收仍需要启用修复版并完成系统授权。

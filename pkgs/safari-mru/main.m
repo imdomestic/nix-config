@@ -53,12 +53,18 @@ static id selectedTab(NSArray *tabs) {
 @property(nonatomic) BOOL sessionInactive;
 @property(nonatomic) NSTimeInterval lastControlRelease;
 @property(nonatomic) EventTime gestureStarted;
+@property(nonatomic, strong) dispatch_source_t statusSignal;
+@property(nonatomic) NSUInteger keyPresses;
+@property(nonatomic) NSUInteger selectionEvents;
+@property(nonatomic) NSUInteger activationRequests;
+@property(nonatomic) NSUInteger activationErrors;
 - (void)refresh;
 - (void)synchronize;
 - (void)accessibilityChanged:(id)element notification:(NSString *)notification;
 - (void)switchBackward:(BOOL)backward timestamp:(EventTime)timestamp;
 - (void)commitGesture;
 - (void)cancelGesture;
+- (void)logStatus;
 @end
 
 static OSStatus hotKeyHandler(EventHandlerCallRef next, EventRef event, void *context) {
@@ -133,6 +139,16 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
     [self unregisterCancelKeys];
 }
 
+- (void)logStatus {
+    NSLog(@"status: version=%@ bundle=%@ permission=%s safariFront=%s tabs=%lu hotkeys=%s gesture=%s keyPresses=%lu selectionEvents=%lu activationRequests=%lu activationErrors=%lu",
+          [NSBundle.mainBundle objectForInfoDictionaryKey:@"CFBundleVersion"], NSBundle.mainBundle.bundleIdentifier,
+          AXIsProcessTrusted() ? "yes" : "no",
+          [NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier isEqual:@"com.apple.Safari"] ? "yes" : "no",
+          (unsigned long)self.tabs.count, _forwardKey && _backwardKey ? "yes" : "no",
+          self.history.cycle ? "yes" : "no", (unsigned long)self.keyPresses,
+          (unsigned long)self.selectionEvents, (unsigned long)self.activationRequests, (unsigned long)self.activationErrors);
+}
+
 - (void)registerKeys {
     if (_forwardKey) return;
     EventHotKeyID key = {.signature = 'SMRU', .id = 1};
@@ -148,6 +164,7 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
         NSLog(@"Cannot register Ctrl+Tab (%d); another shortcut utility may own it", (int)status);
         exit(1);
     }
+    NSLog(@"Safari MRU ready: %lu tabs; Ctrl+Tab registered", (unsigned long)self.tabs.count);
 }
 
 - (void)resetApplication {
@@ -185,6 +202,7 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
     if ([notification isEqual:(__bridge NSString *)kAXValueChangedNotification]) {
         if (![attribute(element, kAXSubroleAttribute) isEqual:@"AXTabButton"] ||
             ![attribute(element, kAXValueAttribute) boolValue]) return;
+        self.selectionEvents++;
         if ([self.tabs containsObject:element]) {
             [self.history observeTabs:self.tabs selected:element];
             if (!self.history.cycle) [self unregisterCancelKeys];
@@ -261,6 +279,10 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
         }
         return;
     }
+    if (self.reportedMissingPermission) {
+        NSLog(@"Accessibility permission granted");
+        self.reportedMissingPermission = NO;
+    }
     if (self.sessionInactive || ![front.bundleIdentifier isEqual:@"com.apple.Safari"]) {
         [self unregisterKeys];
         if (self.modifierMonitor) {
@@ -321,8 +343,12 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
     self.gestureStarted = 0;
     [self unregisterCancelKeys];
     if (!target || [target isEqual:self.history.selected]) return;
+    self.activationRequests++;
     AXError error = AXUIElementPerformAction((__bridge AXUIElementRef)target, kAXPressAction);
-    if (error != kAXErrorSuccess) NSLog(@"Cannot select Safari tab (%d)", error);
+    if (error != kAXErrorSuccess) {
+        self.activationErrors++;
+        NSLog(@"Cannot select Safari tab (%d)", error);
+    }
     // Only the actually selected tab enters MRU, including when AXPress fails.
     [self synchronize];
 }
@@ -333,6 +359,11 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
         [self unregisterKeys];
         return;
     }
+    if (!AXIsProcessTrusted()) {
+        [self refresh];
+        return;
+    }
+    self.keyPresses++;
     [self synchronize];
     if (!self.history.cycle) self.gestureStarted = timestamp;
     id target = [self.history stepBackward:backward];
@@ -377,6 +408,10 @@ int main(int argc, const char *argv[]) {
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
         SafariMRU *controller = [[SafariMRU alloc] init];
+        signal(SIGINFO, SIG_IGN);
+        controller.statusSignal = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGINFO, 0, dispatch_get_main_queue());
+        dispatch_source_set_event_handler(controller.statusSignal, ^{ [controller logStatus]; });
+        dispatch_resume(controller.statusSignal);
         NSArray *workspaceNotifications = @[
             NSWorkspaceDidActivateApplicationNotification,
             NSWorkspaceDidLaunchApplicationNotification,
@@ -402,6 +437,7 @@ int main(int argc, const char *argv[]) {
                 }];
         }
         [controller refresh];
+        [controller logStatus];
         [NSApp run];
     }
     return 0;

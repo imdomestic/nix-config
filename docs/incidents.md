@@ -4,6 +4,24 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-06 · Safari MRU 漏签 App bundle，授权失败 {#safari-mru-app-signature}
+
+Owner 升级到 Arc 交互的版本 3 后报告不生效。launchd 确认运行的是版本 3，重启后的新进程仍记录
+`Waiting for Accessibility permission`，直接失败条件是 `AXIsProcessTrusted()` 返回 false。
+同时对安装的整个 app 做 `codesign --verify --strict`，得到
+`code has no resources but signature indicates they must be present`；签名标识是 `safari-mru`，
+`Info.plist=not bound`，没有 CodeResources。此前只有链接器对 Mach-O 文件的临时签名。
+
+**误导点：进程 running、可执行文件能启动、状态机测试通过，都不能证明整个 app 的签名和权限有效。**
+版本 2、3 的 cdhash 也不同；临时签名的身份随代码变化，旧授权不保证继承。本机没有有效签名证书，
+TCC 数据库读取被系统拒绝，因此没有检查到旧授权中实际保存的匹配规则，不把这一点写成已核实的数据。
+
+版本 4 在 strip/fixup 后给整个 bundle 签名，绑定 `com.imdomestic.safari-mru`、Info.plist 和资源。
+使用固定 revision 的 sigtool bundle 支持，仅覆盖这个包的构建工具；nixpkgs 的 0.1.3 收到 app 目录会崩溃。
+新增 Security.framework 严格校验及 Info.plist 内容变更拒绝测试；Apple codesign 对 Nix 输出及可写副本均验证通过。
+增加按需 SIGINFO 状态日志，报告当前权限、热键及事件计数，没有增加轮询。
+版本 4 仍使用 ad-hoc 签名；跨版本授权保留需要固定证书，完整 bundle 签名只解决本次打包缺陷。
+
 ## 2026-11-06 · Safari MRU 的 100 ms AX 轮询增加空闲 CPU {#safari-mru-event-driven}
 
 `pkgs/safari-mru` 初版只对已经发现的标签订阅 AXValueChanged，用 100 ms 定时器检查选中状态，
