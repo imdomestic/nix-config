@@ -14,7 +14,7 @@ Owner 升级到 Arc 交互的版本 3 后报告不生效。launchd 确认运行�
 
 **误导点：进程 running、可执行文件能启动、状态机测试通过，都不能证明整个 app 的签名和权限有效。**
 版本 2、3 的 cdhash 也不同；临时签名的身份随代码变化，旧授权不保证继承。本机没有有效签名证书，
-TCC 数据库读取被系统拒绝，因此没有检查到旧授权中实际保存的匹配规则，不把这一点写成已核实的数据。
+TCC 数据库读取被系统拒绝，初步排查时还没有旧授权实际匹配规则的证据。
 
 版本 4 在 strip/fixup 后给整个 bundle 签名，绑定 `com.imdomestic.safari-mru`、Info.plist 和资源。
 使用固定 revision 的 sigtool bundle 支持，仅覆盖这个包的构建工具；nixpkgs 的 0.1.3 收到 app 目录会崩溃。
@@ -28,6 +28,20 @@ launchd 当时通过 `$out/bin/safari-mru` 的符号链接启动，NSBundle 没�
 修正前后 app 可执行文件的 SHA-256 相同，签名未改变。再次激活后 SIGINFO 确认
 `version=4 bundle=com.imdomestic.safari-mru`，安装副本的 Apple codesign 严格验证通过；
 此时 `permission=no`，已明确交由 owner 重新允许正确的 app，快捷键验收等待该授权。
+
+Owner 在设置中重新允许后，新进程仍返回 false。临时改为运行用户授权的 Home Manager Apps 副本，
+以及通过 LaunchServices 启动同一副本，均未改变结果；两处可执行文件和签名相同，撤回路径实验。
+随后只针对该 app 采集 `tccd` 的统一日志，确认系统正确归属到 `com.imdomestic.safari-mru`，
+允许记录中的 requirement 是 `cdhash H"b91fbfd78655ff3ac2d34ea5acfa1c771d3e0f14"`，
+而当前 app 的 designated requirement 是 `cdhash H"537b361b8474a4cb66b92f07e66333d67f85f6bc"`；
+匹配旧记录返回 `-67050`。**设置显示允许，不代表记录中的旧代码签名仍匹配当前程序。**
+这项证据来自系统日志，没有绕过 TCC 数据库的访问限制。
+恢复已提交的启动配置，使用 `tccutil reset Accessibility com.imdomestic.safari-mru` 仅清理该 app 的旧授权，
+再由当前签名的 app 经 LaunchServices 调用 `--request-access`，由 owner 完成新授权。
+完成后重新 bootstrap 的实际 launchd 实例确认 `version=4 bundle=com.imdomestic.safari-mru permission=yes`。
+此前的重复开关没有刷新旧规则；此次定向重置后权限恢复。
+随后 Safari 前台识别到 6 个标签并注册热键，实际实例记录 `keyPresses=4 activationRequests=4 activationErrors=0`，
+owner 在手动切标签后验证 Ctrl+Tab 正常。该计数只证明本次按键与 AXPress 请求，不代替所有交互分支的验收。
 
 ## 2026-11-06 · Safari MRU 的 100 ms AX 轮询增加空闲 CPU {#safari-mru-event-driven}
 

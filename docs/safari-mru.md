@@ -41,6 +41,23 @@ macOS 27 的页面叫 **Device Control and Data Access**，早期版本叫 **辅
 升级到版本 4 后，移除旧条目并重新添加 app，再切回 Safari。打包缺陷与验证见
 `docs/incidents.md#safari-mru-app-signature`。
 
+若设置显示允许，但重启后的 agent 仍是 `permission=no`，旧签名的记录可能仍被保留。
+确认这种情况后，可仅重置本 app 的授权，再由当前 app 自己请求，避免继承终端的权限：
+
+```sh
+launchctl bootout gui/$(id -u)/org.nix-community.home.safari-mru
+tccutil reset Accessibility com.imdomestic.safari-mru
+open -n -g -a "$HOME/Applications/Home Manager Apps/Safari MRU.app" --args --request-access
+```
+
+在系统设置中允许后，再启动 agent：
+
+```sh
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/org.nix-community.home.safari-mru.plist
+```
+
+这会清除 Safari MRU 的旧授权；不要重置其他 app 或整个 Accessibility 服务。
+
 只读检查当前 Safari 窗口的标签识别（不会切标签，也不输出标题或 URL）：
 
 ```sh
@@ -102,6 +119,8 @@ Arc 交互调整在版本 3；版本 2 仍是按每次 Tab 立即激活的旧交
 自动桌面控制工具当前连接失败，版本 3 的实际键盘与事件验收尚未完成。
 版本 4 已增加整个 app 的严格签名校验、应用标识检查、Info.plist 篡改拒绝测试及按需状态输出。
 Nix 输出及可写副本均已通过 Apple codesign 严格验证；修改 Info.plist 的副本被拒绝。
-实际按键和 AX 通知验收仍需要启用修复版并完成系统授权。
 修复版 4 已在 praxic 激活；实际 agent 的版本和 bundle 标识均正确，安装副本验签成功。
-当前状态为 `permission=no`，正在等待 owner 重新允许完整签名的 app 后继续验收。
+通过 `tccd` 日志确认允许记录仍绑定旧 cdhash；仅重置本 app 并由当前 app 请求、owner 允许后，
+新启动的 launchd 实例已确认 `permission=yes`。
+Safari 前台识别到 6 个标签，`hotkeys=yes`；4 次真实快捷键对应 4 次切换请求，`activationErrors=0`。
+owner 已验证手动切换标签后 Ctrl+Tab 正常。本次没有逐项验收长按、反向、取消和新标签的通知覆盖。
