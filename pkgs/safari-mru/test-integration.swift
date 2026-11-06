@@ -23,7 +23,8 @@ func key(_ code: Int, _ down: Bool, _ flags: CGEventFlags = []) {
     e.post(tap: .cghidEventTap)
     Thread.sleep(forTimeInterval: 0.06)
 }
-func command(_ code: Int) {
+func command(_ code: Int) throws {
+    try check(NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.Safari", "Safari owns keyboard focus")
     key(55, true, .maskCommand); key(code, true, .maskCommand)
     key(code, false, .maskCommand); key(55, false)
     Thread.sleep(forTimeInterval: 0.35)
@@ -36,8 +37,9 @@ func check(_ condition: Bool, _ message: String) throws {
 }
 
 guard CommandLine.arguments.count == 2, AXIsProcessTrusted(),
+      NSWorkspace.shared.frontmostApplication?.bundleIdentifier != "com.apple.loginwindow",
       let safari = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.Safari").first else {
-    fputs("Usage: swift test-integration.swift /path/to/safari-mru (Safari running; Accessibility permission required)\n", stderr)
+    fputs("Usage: swift test-integration.swift /path/to/safari-mru (unlocked desktop; Safari running; Accessibility permission required)\n", stderr)
     exit(2)
 }
 let original = NSWorkspace.shared.frontmostApplication
@@ -48,29 +50,33 @@ var testWindow: AXUIElement?
 var helper: Process?
 do {
     defer {
-        key(56, false); key(59, false); key(55, false)
-        helper?.terminate()
-        helper?.waitUntilExit()
+        if testWindow != nil { key(56, false); key(59, false); key(55, false) }
+        if let helper {
+            if helper.isRunning { helper.terminate() }
+            helper.waitUntilExit()
+        }
         if let w = testWindow, let close = value(w, kAXCloseButtonAttribute) {
             _ = AXUIElementPerformAction(close as! AXUIElement, kAXPressAction as CFString)
         }
-        if let oldFocusedWindow { _ = AXUIElementPerformAction(oldFocusedWindow as! AXUIElement, kAXRaiseAction as CFString) }
-        original?.activate(options: [])
+        if testWindow != nil {
+            if let oldFocusedWindow { _ = AXUIElementPerformAction(oldFocusedWindow as! AXUIElement, kAXRaiseAction as CFString) }
+            original?.activate(options: [])
+        }
     }
     safari.activate(options: [])
     wait()
-    command(kVK_ANSI_N)
+    try command(kVK_ANSI_N)
     let windows = value(root, kAXWindowsAttribute) as? [AXUIElement] ?? []
     testWindow = windows.first { w in !oldWindows.contains(where: { CFEqual($0, w) }) }
     try check(testWindow != nil, "created a separate test window")
-    command(kVK_ANSI_T); command(kVK_ANSI_T)
-    let t = Array(tabs(testWindow!).suffix(3))
-    try check(t.count == 3, "three distinct blank tabs")
     let process = Process()
     process.executableURL = URL(fileURLWithPath: CommandLine.arguments[1])
     try process.run()
     helper = process
     Thread.sleep(forTimeInterval: 0.8)
+    try command(kVK_ANSI_T); try command(kVK_ANSI_T)
+    let t = Array(tabs(testWindow!).suffix(3))
+    try check(t.count == 3, "tabs created after the helper starts are discovered")
     _ = AXUIElementPerformAction(t[0], kAXPressAction as CFString); wait()
     _ = AXUIElementPerformAction(t[1], kAXPressAction as CFString); wait()
     key(59, true, .maskControl)
@@ -86,13 +92,13 @@ do {
     key(kVK_Tab, true, .maskControl); key(kVK_Tab, false, .maskControl)
     key(59, false); wait()
     try check(selected(t).map { CFEqual($0, t[1]) } ?? false, "release then tap returns to the original tab")
-    command(kVK_ANSI_L)
+    try command(kVK_ANSI_L)
     key(59, true, .maskControl)
     key(kVK_Tab, true, .maskControl); key(kVK_Tab, false, .maskControl)
     key(59, false); wait()
     try check(selected(t).map { CFEqual($0, t[0]) } ?? false, "switching works with the address bar focused")
     _ = AXUIElementPerformAction(t[2], kAXPressAction as CFString); wait()
-    command(kVK_ANSI_W)
+    try command(kVK_ANSI_W)
     key(59, true, .maskControl)
     key(kVK_Tab, true, .maskControl); key(kVK_Tab, false, .maskControl)
     key(59, false); wait()

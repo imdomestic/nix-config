@@ -7,14 +7,14 @@
     CFBundleName = "Safari MRU";
     CFBundleExecutable = "safari-mru";
     CFBundlePackageType = "APPL";
-    CFBundleVersion = "1";
+    CFBundleVersion = "2";
     LSUIElement = true;
     NSAccessibilityUsageDescription = "Switch Safari tabs in most recently used order with Control-Tab.";
   });
 in
   stdenv.mkDerivation {
     pname = "safari-mru";
-    version = "1";
+    version = "2";
     src = ./.;
     dontConfigure = true;
 

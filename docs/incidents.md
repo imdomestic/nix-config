@@ -4,6 +4,28 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-06 · Safari MRU 的 100 ms AX 轮询增加空闲 CPU {#safari-mru-event-driven}
+
+`pkgs/safari-mru` 初版只对已经发现的标签订阅 AXValueChanged，用 100 ms 定时器检查选中状态，
+每秒重扫标签树来补上标签增删。praxic、macOS 27.3、Safari 前台静置的两次短测中，
+程序本身约 2.5% 单核 CPU、7.2 MiB physical footprint、10.3 次 interrupt wakeup/s；
+Safari 主进程约 3.5% CPU，未运行 helper 的短基线约 0.1%。不是整机瓦数或续航测量。
+Safari 自身负载会变化，这段短基线不是严格 A/B，不把 Safari CPU 差值全部归因于 helper。
+
+**误导点：无界面、使用原生 API，不代表没有持续开销。** AX 轮询还会让目标 Safari 进程处理 IPC。
+初版没有先证明通知确实存在缺口；应用层 AX 订阅本来就能接收尚未创建元素的后续事件，
+不需要逐个发现标签后再补订阅。修正为应用层订阅、过滤网页控件事件、按通知合并结构扫描，
+保留 Ctrl+Tab 按下时的即时校验，去掉周期性定时器；授权恢复在切回 Safari 时检查。
+
+CPU 计数需要先用本机 `mach_timebase_info` 校正：此 Apple Silicon 机器是 125/3。
+把 `proc_pid_rusage` 的 Mach ticks 直接当成纳秒会少算约 41.7 倍；校正后与结束子进程的
+`getrusage(RUSAGE_CHILDREN)` CPU 秒数核对吻合。不能用未校正的 0.06% 宣称低开销。
+
+事件版在锁屏后台的 12 秒短测为 0.0067% CPU、0.417 interrupt wakeup/s；
+前台快捷键与实际 AX 通知覆盖仍待解锁后验收，不把锁屏后台数据当成与旧版前台数据的严格 A/B。
+Owner 随后自行 switch 启用未提交的事件版；确认 launchd 已运行，仍等待权限。
+此前按旧名指向“辅助功能”误导了设置定位：macOS 27 将该页改为 Device Control and Data Access。
+
 ## 2026-11-05 · CLIProxy HTTPS 的 DNS-01 等待与 nginx 原生排序冲突 {#cliproxy-https-dns01-ordering}
 
 给 gizmo 保留 HTTP 8317、另加 tailnet HTTPS 443 时，nginx 要等正式证书签发，

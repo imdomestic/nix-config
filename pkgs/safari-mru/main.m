@@ -43,12 +43,15 @@ static id selectedTab(NSArray *tabs) {
 @property(nonatomic) EventHotKeyRef backwardKey;
 @property(nonatomic) EventHandlerRef handler;
 @property(nonatomic) AXObserverRef observer;
-@property(nonatomic, strong) NSMutableArray *observedTabs;
+@property(nonatomic, copy) NSArray *tabContainers;
+@property(nonatomic, copy) NSArray *sheets;
 @property(nonatomic, strong) id modifierMonitor;
 @property(nonatomic) BOOL reportedMissingPermission;
-@property(nonatomic) NSTimeInterval nextScan;
+@property(nonatomic) BOOL synchronizationQueued;
+@property(nonatomic) BOOL sessionInactive;
 - (void)refresh;
 - (void)synchronize;
+- (void)accessibilityChanged:(id)element notification:(NSString *)notification;
 - (void)switchBackward:(BOOL)backward;
 @end
 
@@ -64,16 +67,14 @@ static OSStatus hotKeyHandler(EventHandlerCallRef next, EventRef event, void *co
 static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
                                   CFStringRef notification, void *context) {
     (void)observer;
-    (void)element;
-    (void)notification;
-    [(__bridge SafariMRU *)context synchronize];
+    [(__bridge SafariMRU *)context accessibilityChanged:(__bridge id)element
+                                          notification:(__bridge NSString *)notification];
 }
 
 @implementation SafariMRU
 - (instancetype)init {
     if ((self = [super init])) {
         _histories = [NSMapTable strongToStrongObjectsMapTable];
-        _observedTabs = [NSMutableArray array];
         EventTypeSpec type = {kEventClassKeyboard, kEventHotKeyPressed};
         OSStatus status = InstallEventHandler(GetApplicationEventTarget(), hotKeyHandler,
                                              1, &type, (__bridge void *)self, &_handler);
@@ -112,41 +113,67 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
 - (void)resetApplication {
     [self.history finish];
     [self unregisterKeys];
+    if (self.modifierMonitor) {
+        [NSEvent removeMonitor:self.modifierMonitor];
+        self.modifierMonitor = nil;
+    }
     if (_observer) {
         CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(_observer), kCFRunLoopCommonModes);
         CFRelease(_observer);
         _observer = NULL;
     }
-    [self.observedTabs removeAllObjects];
     [self.histories removeAllObjects];
     self.history = nil;
     self.window = nil;
     self.application = nil;
     self.tabs = @[];
+    self.tabContainers = @[];
+    self.sheets = @[];
     self.pid = 0;
-    self.nextScan = 0;
 }
 
-- (void)watchTabs {
-    if (!_observer) return;
-    for (id tab in [self.observedTabs copy]) {
-        if (![self.tabs containsObject:tab]) {
-            AXObserverRemoveNotification(_observer, (__bridge AXUIElementRef)tab, kAXValueChangedNotification);
-            [self.observedTabs removeObject:tab];
+- (void)queueSynchronization {
+    if (self.synchronizationQueued) return;
+    self.synchronizationQueued = YES;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.synchronizationQueued = NO;
+        [self synchronize];
+    });
+}
+
+- (void)accessibilityChanged:(id)element notification:(NSString *)notification {
+    if (self.sessionInactive || ![NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier isEqual:@"com.apple.Safari"]) return;
+    if ([notification isEqual:(__bridge NSString *)kAXValueChangedNotification]) {
+        if (![attribute(element, kAXSubroleAttribute) isEqual:@"AXTabButton"] ||
+            ![attribute(element, kAXValueAttribute) boolValue]) return;
+        if ([self.tabs containsObject:element]) {
+            [self.history observeTabs:self.tabs selected:element];
+        } else {
+            [self queueSynchronization];
         }
+        return;
     }
-    for (id tab in self.tabs) {
-        if (![self.observedTabs containsObject:tab]) {
-            AXError error = AXObserverAddNotification(_observer, (__bridge AXUIElementRef)tab,
-                                                     kAXValueChangedNotification, (__bridge void *)self);
-            if (error == kAXErrorSuccess) [self.observedTabs addObject:tab];
+    if ([notification isEqual:(__bridge NSString *)kAXUIElementDestroyedNotification]) {
+        // Destroyed AX elements may only be compared, never queried.
+        if ([element isEqual:self.window] || [self.tabs containsObject:element] ||
+            [self.tabContainers containsObject:element] || [self.sheets containsObject:element]) {
+            [self queueSynchronization];
         }
+        return;
     }
+    if ([notification isEqual:(__bridge NSString *)kAXCreatedNotification]) {
+        NSString *role = attribute(element, kAXRoleAttribute);
+        if (![attribute(element, kAXSubroleAttribute) isEqual:@"AXTabButton"] &&
+            ![@[@"AXWindow", @"AXSheet"] containsObject:role]) return;
+    } else if ([notification isEqual:(__bridge NSString *)kAXSelectedChildrenChangedNotification]) {
+        if (![element isEqual:self.window] && ![self.tabContainers containsObject:element]) return;
+    }
+    [self queueSynchronization];
 }
 
 - (void)synchronize {
     if (!self.application) return;
-    if (![NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier isEqual:@"com.apple.Safari"]) {
+    if (self.sessionInactive || ![NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier isEqual:@"com.apple.Safari"]) {
         [self.history finish];
         [self unregisterKeys];
         return;
@@ -161,14 +188,20 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
             [self.histories setObject:self.history forKey:window];
         }
     }
-    BOOL sheet = NO;
+    NSMutableArray *sheets = [NSMutableArray array];
     for (id child in attribute(window, kAXChildrenAttribute)) {
-        if ([attribute(child, kAXRoleAttribute) isEqual:@"AXSheet"]) sheet = YES;
+        if ([attribute(child, kAXRoleAttribute) isEqual:@"AXSheet"]) [sheets addObject:child];
     }
-    self.tabs = window && !sheet ? tabsInWindow(window) : @[];
+    self.sheets = sheets;
+    self.tabs = window && !sheets.count ? tabsInWindow(window) : @[];
+    NSMutableArray *containers = [NSMutableArray array];
+    for (id tab in self.tabs) {
+        id parent = attribute(tab, kAXParentAttribute);
+        if (parent && ![containers containsObject:parent]) [containers addObject:parent];
+    }
+    self.tabContainers = containers;
     id selected = selectedTab(self.tabs);
-    [self.history observeTabs:self.tabs selected:selected];
-    [self watchTabs];
+    if (selected) [self.history observeTabs:self.tabs selected:selected];
     NSArray *windows = attribute(self.application, kAXWindowsAttribute);
     if (windows) for (id key in self.histories.keyEnumerator.allObjects) {
         if (![windows containsObject:key]) [self.histories removeObjectForKey:key];
@@ -176,7 +209,6 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
     // A hidden tab bar or a sheet must leave Safari's normal shortcut available.
     if (self.tabs.count >= 2 && selected) [self registerKeys];
     else [self unregisterKeys];
-    self.nextScan = NSProcessInfo.processInfo.systemUptime + 1;
 }
 
 - (void)refresh {
@@ -189,9 +221,15 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
         }
         return;
     }
-    if (![front.bundleIdentifier isEqual:@"com.apple.Safari"]) {
+    if (self.sessionInactive || ![front.bundleIdentifier isEqual:@"com.apple.Safari"]) {
         [self.history finish];
         [self unregisterKeys];
+        if (self.modifierMonitor) {
+            [NSEvent removeMonitor:self.modifierMonitor];
+            self.modifierMonitor = nil;
+        }
+        NSRunningApplication *safari = [NSRunningApplication runningApplicationWithProcessIdentifier:self.pid];
+        if (self.pid && (!safari || safari.terminated)) [self resetApplication];
         return;
     }
     if (front.processIdentifier != self.pid) {
@@ -201,8 +239,24 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
         AXUIElementSetMessagingTimeout((__bridge AXUIElementRef)self.application, 0.15);
         if (AXObserverCreate(self.pid, accessibilityChanged, &_observer) == kAXErrorSuccess) {
             CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(_observer), kCFRunLoopCommonModes);
-            AXObserverAddNotification(_observer, (__bridge AXUIElementRef)self.application,
-                                      kAXFocusedWindowChangedNotification, (__bridge void *)self);
+            // App-level subscriptions also receive events from tabs created later.
+            NSArray *notifications = @[
+                (__bridge NSString *)kAXValueChangedNotification,
+                (__bridge NSString *)kAXFocusedWindowChangedNotification,
+                (__bridge NSString *)kAXWindowCreatedNotification,
+                (__bridge NSString *)kAXCreatedNotification,
+                (__bridge NSString *)kAXUIElementDestroyedNotification,
+                (__bridge NSString *)kAXSelectedChildrenChangedNotification,
+                (__bridge NSString *)kAXSheetCreatedNotification,
+            ];
+            for (NSString *notification in notifications) {
+                AXError error = AXObserverAddNotification(_observer, (__bridge AXUIElementRef)self.application,
+                                                          (__bridge CFStringRef)notification, (__bridge void *)self);
+                if (error != kAXErrorSuccess) NSLog(@"Cannot observe %@ (%d)", notification, error);
+            }
+        } else {
+            NSLog(@"Cannot observe Safari Accessibility events");
+            exit(1);
         }
     }
     if (!self.modifierMonitor) {
@@ -214,13 +268,7 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
     if (!(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState) & kCGEventFlagMaskControl)) {
         [self.history finish];
     }
-    id window = attribute(self.application, kAXFocusedWindowAttribute);
-    id selected = selectedTab(self.tabs);
-    if (![window isEqual:self.window] || !selected || NSProcessInfo.processInfo.systemUptime >= self.nextScan) {
-        [self synchronize];
-    } else {
-        [self.history observeTabs:self.tabs selected:selected];
-    }
+    [self synchronize];
 }
 
 - (void)switchBackward:(BOOL)backward {
@@ -275,17 +323,30 @@ int main(int argc, const char *argv[]) {
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyProhibited];
         SafariMRU *controller = [[SafariMRU alloc] init];
-        [NSWorkspace.sharedWorkspace.notificationCenter addObserverForName:NSWorkspaceDidActivateApplicationNotification
-            object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
-                (void)notification;
-                [controller refresh];
-            }];
-        // Poll cached tabs for missed selection notifications; rescan the tree once per second.
-        NSTimer *timer = [NSTimer timerWithTimeInterval:0.1 repeats:YES block:^(NSTimer *t) {
-            (void)t;
-            [controller refresh];
-        }];
-        [NSRunLoop.mainRunLoop addTimer:timer forMode:NSRunLoopCommonModes];
+        NSArray *workspaceNotifications = @[
+            NSWorkspaceDidActivateApplicationNotification,
+            NSWorkspaceDidLaunchApplicationNotification,
+            NSWorkspaceDidTerminateApplicationNotification,
+            NSWorkspaceDidWakeNotification,
+            NSWorkspaceSessionDidBecomeActiveNotification,
+            NSWorkspaceSessionDidResignActiveNotification,
+            NSWorkspaceActiveSpaceDidChangeNotification,
+        ];
+        for (NSString *name in workspaceNotifications) {
+            [NSWorkspace.sharedWorkspace.notificationCenter addObserverForName:name
+                object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *notification) {
+                    if ([notification.name isEqual:NSWorkspaceSessionDidResignActiveNotification]) {
+                        controller.sessionInactive = YES;
+                    } else if ([notification.name isEqual:NSWorkspaceSessionDidBecomeActiveNotification]) {
+                        controller.sessionInactive = NO;
+                    } else if ([notification.name isEqual:NSWorkspaceDidLaunchApplicationNotification] ||
+                               [notification.name isEqual:NSWorkspaceDidTerminateApplicationNotification]) {
+                        NSRunningApplication *app = notification.userInfo[NSWorkspaceApplicationKey];
+                        if (![app.bundleIdentifier isEqual:@"com.apple.Safari"]) return;
+                    }
+                    [controller refresh];
+                }];
+        }
         [controller refresh];
         [NSApp run];
     }
