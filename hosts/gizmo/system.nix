@@ -118,7 +118,6 @@ in {
     };
     tmp.useTmpfs = true;
     growPartition = true;
-    kernelPackages = pkgs.linuxPackages_latest;
     initrd.availableKernelModules = [
       "sdhci_of_dwcmshc"
       "dw_mmc_rockchip"

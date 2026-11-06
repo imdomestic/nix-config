@@ -46,7 +46,6 @@ in {
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernelModules = ["pppoe"];
 
   # 根要搬到 SD 卡(mmcblk0)上的 f2fs。**这一步只是把能力装上**,根还在 eMMC

@@ -65,7 +65,6 @@ in {
   boot.loader.grub.enable = true;
   boot.loader.grub.useOSProber = false;
   boot.tmp.cleanOnBoot = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.kernel.sysctl = {
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;

@@ -94,7 +94,6 @@ in {
     "dm-cache-default" # when using volumes set up with lvmcache
   ];
   boot.supportedFilesystems = ["xfs" "bcachefs" "ntfs"];
-  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
 
   # 限制同时构建的 derivation 数量；单个构建使用 Nix 默认的全部逻辑核。

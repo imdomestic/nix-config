@@ -154,7 +154,6 @@ in {
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
-  boot.kernelPackages = pkgs.linuxPackages_latest;
 
   # **故意不开 binfmt。** ARM 构建交给 tank(见 modules/nix.nix 的
   # buildMachines)。开着 binfmt 的坏处不是"抢在 tank 前面"而是**溢出** ——

@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{...}: {
   imports = [
     ../../system/modules/dae
   ];
@@ -17,7 +17,6 @@
       };
     };
     supportedFilesystems = ["bcachefs"];
-    kernelPackages = pkgs.linuxPackages_latest;
   };
 
   networking = {

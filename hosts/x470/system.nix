@@ -22,7 +22,6 @@ in {
   boot.loader.efi.canTouchEfiVariables = true;
 
   boot.supportedFilesystems = ["bcachefs"];
-  boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.binfmt.emulatedSystems = ["aarch64-linux"];
 
   zramSwap.enable = true;

@@ -11,6 +11,25 @@
 
 ---
 
+## 2026-11-06 · 除 268v 外都用默认内核，不用 linuxPackages_latest {#default-kernel}
+
+26.05 的默认内核是 6.18 LTS。除 268v 外，没有主机再设 `boot.kernelPackages`。
+
+- `linuxPackages_latest` 在 stable 分支上仍然跟主线最新系列：26.05 周期里从 7.1
+  到 7.2 再到 7.3，每一步都是新的内核系列加一次重启。默认内核在 stable 更新里只有
+  小版本变化，这才是 nixpkgs 自动更新需要的前提。
+- 树外模块只为默认内核预构建。nvidia-open、bcachefs、xone、xpad-noone 的 6.18.57
+  版本都在 cache.nixos.org 或 cache.nixos-cuda.org 里；7.3 版本都不在。26.05 的
+  nvidia 595.71.05 在 7.3 上编不过（`nvidia/os-interface.o`），x470 因此一度无法
+  构建（CI 只做 dry-run，没发现），taipan 之前靠 unstable 的驱动绕开。
+- tank 和 h310 的根在 bcachefs 上。bcachefs 是树外模块，两种内核用的都是 1.39.6，
+  换内核不改变盘上格式。
+- r2s、r5s、gizmo 的 DTB 来自内核，6.18.57 里都有；r6s 的设备树由 UEFI 固件提供。
+- 268v（Lunar Lake 笔记本）保留 `_latest`：nixos-hardware 要求至少 6.15，6.18 能
+  启动，但这一代的显卡和电源管理上游还在改。它没有树外模块，`_latest` 不会编不过。
+
+新机器也用默认内核；硬件确实需要更新的内核时才设 `_latest`，并在这里补一条。
+
 ## 2026-11-06 · Pi 主会话优先，不自动派搜索与审查代理 {#pi-subagents-main-first}
 
 Hank 反馈 Pi 仍偶尔出现上方 agent tree，并且委派过于频繁。全局配置已是
