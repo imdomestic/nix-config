@@ -22,6 +22,10 @@ TCC 数据库读取被系统拒绝，因此没有检查到旧授权中实际保�
 增加按需 SIGINFO 状态日志，报告当前权限、热键及事件计数，没有增加轮询。
 版本 4 仍使用 ad-hoc 签名；跨版本授权保留需要固定证书，完整 bundle 签名只解决本次打包缺陷。
 
+首次激活版本 4 后，安装的 app 验签成功，但实际 agent 报 `version=(null) bundle=(null)`。
+launchd 当时通过 `$out/bin/safari-mru` 的符号链接启动，NSBundle 没有识别到 app。
+改为直接启动 `Applications/Safari MRU.app/Contents/MacOS/safari-mru`，CLI 入口也改成 exec 真路径的 binary wrapper。
+
 ## 2026-11-06 · Safari MRU 的 100 ms AX 轮询增加空闲 CPU {#safari-mru-event-driven}
 
 `pkgs/safari-mru` 初版只对已经发现的标签订阅 AXValueChanged，用 100 ms 定时器检查选中状态，

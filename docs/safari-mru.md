@@ -3,6 +3,7 @@
 `pkgs/safari-mru` 是不显示窗口、Dock 图标或菜单栏图标的原生后台程序。
 只使用 macOS 自带的 Cocoa、Accessibility 和 Carbon；不需要 Safari 扩展。
 Hank 的 `gui-darwin` home 加载 `home/hank/modules/safari-mru.nix`，由用户 launchd 启动。
+launchd 直接执行 app 包内的真实路径；CLI 入口也通过 binary wrapper exec 真实路径，保留 NSBundle 的应用身份。
 
 ## 行为
 

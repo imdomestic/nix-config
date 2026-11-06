@@ -12,7 +12,8 @@ in {
   launchd.agents.safari-mru = {
     enable = true;
     config = {
-      ProgramArguments = ["${package}/bin/safari-mru"];
+      # NSBundle must see the app executable, not the bin/ symlink; docs/incidents.md#safari-mru-app-signature.
+      ProgramArguments = ["${package}/Applications/Safari MRU.app/Contents/MacOS/safari-mru"];
       RunAtLoad = true;
       KeepAlive = true;
       ThrottleInterval = 30;

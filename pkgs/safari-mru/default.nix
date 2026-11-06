@@ -4,6 +4,7 @@
   darwin,
   fetchFromGitHub,
   libplist,
+  makeBinaryWrapper,
 }: let
   # nixpkgs' 0.1.3 signs standalone Mach-O files, not complete app bundles.
   bundleSigtool = darwin.sigtool.overrideAttrs (old: {
@@ -32,7 +33,7 @@ in
     version = "4";
     src = ./.;
     dontConfigure = true;
-    nativeBuildInputs = [bundleSigtool];
+    nativeBuildInputs = [bundleSigtool makeBinaryWrapper];
 
     buildPhase = ''
       runHook preBuild
@@ -76,7 +77,7 @@ in
       mkdir -p "$app/Contents/MacOS" "$out/bin"
       cp safari-mru "$app/Contents/MacOS/"
       cp ${info} "$app/Contents/Info.plist"
-      ln -s "$app/Contents/MacOS/safari-mru" "$out/bin/safari-mru"
+      makeWrapper "$app/Contents/MacOS/safari-mru" "$out/bin/safari-mru"
       runHook postInstall
     '';
 
