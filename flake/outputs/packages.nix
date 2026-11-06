@@ -47,6 +47,7 @@ in {
     aarch64-darwin = {
       recursive-mono-cascadia-italic = font darwin.praxic;
       tmux-agent-sidebar = agentSidebar darwin.praxic;
+      safari-mru = darwin.praxic.pkgs.callPackage ../../pkgs/safari-mru {};
     };
     # x86_64-darwin(hackintosh)没进来:macos-13 runner 正在退役,而且 26.05
     # 是 nixpkgs 最后一个支持 x86_64-darwin 的版本,不值得为它单开一条流水线。

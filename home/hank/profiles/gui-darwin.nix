@@ -4,5 +4,6 @@
     ../modules/gui/darwin.nix
     ../modules/aerospace.nix
     ../modules/rex
+    ../modules/safari-mru.nix
   ];
 }
