@@ -120,4 +120,5 @@
     };
 in {
   inherit testSecrets vmify probe smoke;
+  router = import ./router.nix {inherit pkgs lib systemModules nixos vmify testSecrets;};
 }

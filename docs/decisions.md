@@ -11,6 +11,35 @@
 
 ---
 
+## 2026-11-07 · 路由器的数据面用三台 VM 单独测 {#router-tests}
+
+`fleetTests.x86_64-linux.router-<host>`（`tests/router.nix`）在主机的真实配置两侧
+各放一台 VM：模拟的运营商（PPPoE 服务端只认测试账号，Kea 发 DHCPv6-PD，radvd）
+和一台普通的 LAN 客户端。断言：
+
+- 用 sops 里的账号拨上号，委派的前缀落到 br-lan；
+- LAN 拿到 DHCPv4、SLAAC 地址和默认路由，DNS 指向路由器；
+- LAN 到 223.5.5.5 和 2400:3200::1（AliDNS，dae 直连）的 SYN 在运营商一侧是内核
+  转发出来的（TTL / hlim 63）、做了 NAT、MSS 被压到 1452 / 1432；
+- WAN 一侧连得上的端口都是防火墙对 ppp0 开放的；
+- WAN 一侧连不到 LAN 里的机器。
+
+smoke 测试只看 unit 有没有起来；拨号、前缀委派、转发和防火墙坏了，unit 照样是绿的
+（pppd 改插件名、networkd 改 PD 行为、防火墙换后端都属于这一类）。
+
+- 现在只有 h610：路由器里只有它是 x86_64，能在 tank 上用 KVM 跑。r2s、r5s、r6s、
+  gizmo、rpi4 都是 aarch64：r6s 有 KVM，但它自己就是网关、根在 SD 卡上；tank 上
+  模拟 aarch64 又太慢。
+- 透明代理的分流（国外流量进 dae 的节点）没测：测试里的节点是占位符，后面没有能用
+  的上游。
+- 在 VM 里 h610 永远到不了 multi-user.target：ACME 下单、ollama 和 qwen 拉模型这些
+  开机任务在没有外网的 VM 里不会结束。所以测试等的是 dae.service。将来给 h610 加
+  smoke 测试会碰到同一个问题。
+- 第一次跑就有发现：h610 的 forward 链是 `policy accept`，运营商那一跳上的任何人都
+  能直接连到 LAN 里的机器。IPv6 走委派出去的公网地址，IPv4 只要把 10.0.1.0/24
+  路由到 h610 就行。测试用 `lanReachableFromWan` 记下这个现状；转发加上过滤之后
+  测试会失败，提醒把这一项删掉。
+
 ## 2026-11-06 · 每晚的 input 更新跑在 tank 的定时器上，以 GitHub App 身份推送 {#flake-updater}
 
 `system/modules/flake-updater` 每天 16:00 UTC（国内零点）在 tank 上跑：把

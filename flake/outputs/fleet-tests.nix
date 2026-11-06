@@ -18,5 +18,12 @@
 in {
   flake.fleetTests.x86_64-linux = {
     smoke-h310 = x86.smoke {hostName = "h310";};
+    router-h610 = x86.router {
+      hostName = "h610";
+      wan = "eno1";
+      lan = "enp5s0";
+      peer = "telecom";
+      lanReachableFromWan = "its forward chain accepts everything (docs/decisions.md#router-tests)";
+    };
   };
 }
