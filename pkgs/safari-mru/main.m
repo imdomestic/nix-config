@@ -41,6 +41,8 @@ static id selectedTab(NSArray *tabs) {
 @property(nonatomic) pid_t pid;
 @property(nonatomic) EventHotKeyRef forwardKey;
 @property(nonatomic) EventHotKeyRef backwardKey;
+@property(nonatomic) EventHotKeyRef cancelKey;
+@property(nonatomic) EventHotKeyRef cancelShiftKey;
 @property(nonatomic) EventHandlerRef handler;
 @property(nonatomic) AXObserverRef observer;
 @property(nonatomic, copy) NSArray *tabContainers;
@@ -49,10 +51,14 @@ static id selectedTab(NSArray *tabs) {
 @property(nonatomic) BOOL reportedMissingPermission;
 @property(nonatomic) BOOL synchronizationQueued;
 @property(nonatomic) BOOL sessionInactive;
+@property(nonatomic) NSTimeInterval lastControlRelease;
+@property(nonatomic) EventTime gestureStarted;
 - (void)refresh;
 - (void)synchronize;
 - (void)accessibilityChanged:(id)element notification:(NSString *)notification;
-- (void)switchBackward:(BOOL)backward;
+- (void)switchBackward:(BOOL)backward timestamp:(EventTime)timestamp;
+- (void)commitGesture;
+- (void)cancelGesture;
 @end
 
 static OSStatus hotKeyHandler(EventHandlerCallRef next, EventRef event, void *context) {
@@ -60,7 +66,11 @@ static OSStatus hotKeyHandler(EventHandlerCallRef next, EventRef event, void *co
     EventHotKeyID key = {0};
     OSStatus status = GetEventParameter(event, kEventParamDirectObject, typeEventHotKeyID,
                                        NULL, sizeof(key), NULL, &key);
-    if (status == noErr) [(__bridge SafariMRU *)context switchBackward:key.id == 2];
+    if (status == noErr) {
+        SafariMRU *controller = (__bridge SafariMRU *)context;
+        if (key.id == 3 || key.id == 4) [controller cancelGesture];
+        else [controller switchBackward:key.id == 2 timestamp:GetEventTime(event)];
+    }
     return status;
 }
 
@@ -91,6 +101,36 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
     if (_backwardKey) UnregisterEventHotKey(_backwardKey);
     _forwardKey = NULL;
     _backwardKey = NULL;
+    [self cancelGesture];
+}
+
+- (void)unregisterCancelKeys {
+    if (_cancelKey) UnregisterEventHotKey(_cancelKey);
+    if (_cancelShiftKey) UnregisterEventHotKey(_cancelShiftKey);
+    _cancelKey = NULL;
+    _cancelShiftKey = NULL;
+}
+
+- (void)registerCancelKeys {
+    if (_cancelKey) return;
+    EventHotKeyID key = {.signature = 'SMRU', .id = 3};
+    OSStatus status = RegisterEventHotKey(kVK_Escape, controlKey, key, GetApplicationEventTarget(),
+                                         kEventHotKeyExclusive, &_cancelKey);
+    if (status == noErr) {
+        key.id = 4;
+        status = RegisterEventHotKey(kVK_Escape, controlKey | shiftKey, key, GetApplicationEventTarget(),
+                                     kEventHotKeyExclusive, &_cancelShiftKey);
+    }
+    if (status != noErr) {
+        [self unregisterCancelKeys];
+        NSLog(@"Cannot register Escape to cancel (%d)", (int)status);
+    }
+}
+
+- (void)cancelGesture {
+    [self.history cancel];
+    self.gestureStarted = 0;
+    [self unregisterCancelKeys];
 }
 
 - (void)registerKeys {
@@ -111,7 +151,6 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
 }
 
 - (void)resetApplication {
-    [self.history finish];
     [self unregisterKeys];
     if (self.modifierMonitor) {
         [NSEvent removeMonitor:self.modifierMonitor];
@@ -148,6 +187,7 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
             ![attribute(element, kAXValueAttribute) boolValue]) return;
         if ([self.tabs containsObject:element]) {
             [self.history observeTabs:self.tabs selected:element];
+            if (!self.history.cycle) [self unregisterCancelKeys];
         } else {
             [self queueSynchronization];
         }
@@ -174,13 +214,12 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
 - (void)synchronize {
     if (!self.application) return;
     if (self.sessionInactive || ![NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier isEqual:@"com.apple.Safari"]) {
-        [self.history finish];
         [self unregisterKeys];
         return;
     }
     id window = attribute(self.application, kAXFocusedWindowAttribute);
     if (![window isEqual:self.window]) {
-        [self.history finish];
+        [self cancelGesture];
         self.window = window;
         self.history = window ? [self.histories objectForKey:window] : nil;
         if (window && !self.history) {
@@ -202,6 +241,7 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
     self.tabContainers = containers;
     id selected = selectedTab(self.tabs);
     if (selected) [self.history observeTabs:self.tabs selected:selected];
+    if (!self.history.cycle) [self unregisterCancelKeys];
     NSArray *windows = attribute(self.application, kAXWindowsAttribute);
     if (windows) for (id key in self.histories.keyEnumerator.allObjects) {
         if (![windows containsObject:key]) [self.histories removeObjectForKey:key];
@@ -222,7 +262,6 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
         return;
     }
     if (self.sessionInactive || ![front.bundleIdentifier isEqual:@"com.apple.Safari"]) {
-        [self.history finish];
         [self unregisterKeys];
         if (self.modifierMonitor) {
             [NSEvent removeMonitor:self.modifierMonitor];
@@ -262,32 +301,47 @@ static void accessibilityChanged(AXObserverRef observer, AXUIElementRef element,
     if (!self.modifierMonitor) {
         self.modifierMonitor = [NSEvent addGlobalMonitorForEventsMatchingMask:NSEventMaskFlagsChanged
             handler:^(NSEvent *event) {
-                if (!(event.modifierFlags & NSEventModifierFlagControl)) [self.history finish];
+                if (!(event.modifierFlags & NSEventModifierFlagControl)) {
+                    self.lastControlRelease = MAX(self.lastControlRelease, event.timestamp);
+                    if (event.timestamp >= self.gestureStarted) [self commitGesture];
+                }
             }];
-    }
-    if (!(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState) & kCGEventFlagMaskControl)) {
-        [self.history finish];
     }
     [self synchronize];
 }
 
-- (void)switchBackward:(BOOL)backward {
+- (void)commitGesture {
+    if (!self.history.cycle) return;
+    if (self.sessionInactive || ![NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier isEqual:@"com.apple.Safari"]) {
+        [self cancelGesture];
+        return;
+    }
+    [self synchronize];
+    id target = [self.history commit];
+    self.gestureStarted = 0;
+    [self unregisterCancelKeys];
+    if (!target || [target isEqual:self.history.selected]) return;
+    AXError error = AXUIElementPerformAction((__bridge AXUIElementRef)target, kAXPressAction);
+    if (error != kAXErrorSuccess) NSLog(@"Cannot select Safari tab (%d)", error);
+    // Only the actually selected tab enters MRU, including when AXPress fails.
+    [self synchronize];
+}
+
+- (void)switchBackward:(BOOL)backward timestamp:(EventTime)timestamp {
     // Focus can change between hotkey registration and delivery.
     if (![NSWorkspace.sharedWorkspace.frontmostApplication.bundleIdentifier isEqual:@"com.apple.Safari"]) {
         [self unregisterKeys];
         return;
     }
     [self synchronize];
+    if (!self.history.cycle) self.gestureStarted = timestamp;
     id target = [self.history stepBackward:backward];
     if (!target) return;
-    AXError error = AXUIElementPerformAction((__bridge AXUIElementRef)target, kAXPressAction);
-    if (error != kAXErrorSuccess) {
-        NSLog(@"Cannot select Safari tab (%d)", error);
-        [self.history finish];
-        [self synchronize];
-    }
-    if (!(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState) & kCGEventFlagMaskControl)) {
-        [self.history finish];
+    [self registerCancelKeys];
+    // The release event may precede delivery of a queued hotkey, even during a new chord.
+    if (self.lastControlRelease >= timestamp ||
+        !(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState) & kCGEventFlagMaskControl)) {
+        [self commitGesture];
     }
 }
 @end

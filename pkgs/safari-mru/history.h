@@ -5,7 +5,9 @@
 @property(nonatomic, copy) NSArray *order;
 @property(nonatomic, copy) NSArray *cycle;
 @property(nonatomic, strong) id selected;
+@property(nonatomic, strong) id candidate;
 - (void)observeTabs:(NSArray *)tabs selected:(id)selected;
 - (id)stepBackward:(BOOL)backward;
-- (void)finish;
+- (id)commit;
+- (void)cancel;
 @end
