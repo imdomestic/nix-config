@@ -227,10 +227,17 @@ in {
       ${pkgs.ethtool} -G end0 rx 1024 tx 1024 2>/dev/null || true
       ${pkgs.ethtool} -G enu1 rx 1024 tx 1024 2>/dev/null || true
 
-      # 8(0b1000, CPU3) for 24(xhci-hcd:usb4, extern0)
-      echo 8 > /proc/irq/24/smp_affinity
-      # 2(0b0010, CPU1) for 47(intern0)
-      echo 2 > /proc/irq/47/smp_affinity
+      # IRQs by name, not number: the GMAC requests its IRQ only once end0 is
+      # up, which can come after network-online.target.
+      irq() { sed -nE "s/^ *([0-9]+):.* $1\$/\1/p" /proc/interrupts; }
+      for _ in $(seq 30); do
+        [ -n "$(irq end0)" ] && break
+        sleep 1
+      done
+      # 8(0b1000, CPU3) for xhci-hcd:usb4 (extern0)
+      echo 8 > "/proc/irq/$(irq xhci-hcd:usb4)/smp_affinity"
+      # 2(0b0010, CPU1) for end0 (intern0)
+      echo 2 > "/proc/irq/$(irq end0)/smp_affinity"
 
       for dev in end0 enu1; do
         [ -d /sys/class/net/$dev ] || continue
