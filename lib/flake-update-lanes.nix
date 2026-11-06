@@ -27,7 +27,6 @@
     "nixidy"
     "nix-minecraft"
     "NixVirt"
-    "steam-servers"
     "zjstatus"
     "paneru"
   ];

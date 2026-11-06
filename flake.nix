@@ -14,7 +14,10 @@
     };
 
   inputs = {
-    vex.url = "git+ssh://git@github.com/imdomestic/vex?ref=feat/vex-p2";
+    vex = {
+      url = "git+ssh://git@github.com/imdomestic/vex?ref=feat/vex-p2";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
@@ -43,7 +46,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    nixos-hardware = {
+      url = "github:NixOS/nixos-hardware/master";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     nixos-wsl = {
       url = "github:nix-community/NixOS-WSL";
@@ -82,10 +88,6 @@
       url = "github:emanspeaks/llama-swap-proxy/272260e56f4a47911dd46c5b2adf315df07c9938";
       flake = false;
     };
-    opencode-model-stats = {
-      url = "github:emanspeaks/opencode-model-stats/e461c45e70412ca491c24f0e0dde3e0a96eaeebf";
-      flake = false;
-    };
 
     sops-nix = {
       url = "github:Mic92/sops-nix";
@@ -108,7 +110,10 @@
     };
 
     # Max, the Rust rewrite, on tank as maxx.
-    maxx.url = "github:HCHogan/max";
+    maxx = {
+      url = "github:HCHogan/max";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     qq-bot = {
       url = "github:zty20040403/gaojibot";
@@ -144,15 +149,15 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nix-minecraft.url = "github:Infinidoge/nix-minecraft";
+    nix-minecraft = {
+      url = "github:Infinidoge/nix-minecraft";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     # 运营集群的 k8s 配置用 Nix 写，渲染成 YAML 交给 Argo CD，见 k8s/。
     nixidy = {
       url = "github:arnarg/nixidy/latest";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
-    thymis.url = "github:Thymis-io/thymis/v0.3";
-    steam-servers.url = "github:scottbot95/nix-steam-servers";
   };
 }
