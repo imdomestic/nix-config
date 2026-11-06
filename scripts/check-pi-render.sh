@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+repo=$PWD
 
 build_package() {
   nix build --no-link --print-out-paths --impure --expr "
@@ -17,7 +18,8 @@ subagents=$(build_package pi-tintin-subagents)
 agent=$(mktemp -d)
 trap 'rm -rf "$agent"' EXIT
 nix eval --json --file home/hank/modules/pi/subagents-settings.nix > "$agent/subagents.json"
-mkdir -p "$agent/extensions"
+mkdir -p "$agent/extensions" "$agent/workspace/.pi"
+printf '%s\n' '{"widgetMode":"all"}' > "$agent/workspace/.pi/subagents.json"
 printf '%s\n' '{"enableEditorPrefix":false,"enableCustomFooter":false,"enableMarkdownEnhance":false,"excludeRenderers":["Agent","SubagentWorkflow","get_subagent_result","steer_subagent"]}' > "$agent/pi-cc-extensions.json"
 nix eval --raw --impure --expr '
   let
@@ -36,10 +38,13 @@ nix eval --raw --impure --expr '
     module.home.file.".pi/agent/extensions/hank-pi.ts".text
 ' > "$agent/extensions/hank-pi.ts"
 
-PI_CODING_AGENT_DIR="$agent" \
-PI_RENDER_PACKAGE="$render" \
-PI_CC_RENDER_PACKAGE="$cc" \
-PI_SUBAGENTS_PACKAGE="$subagents" \
-  pi --offline --no-extensions --no-skills --no-prompt-templates \
-    --no-context-files --no-approve --no-session --mode rpc \
-    -e "$PWD/scripts/check-pi-render.ts" </dev/null
+(
+  cd "$agent/workspace"
+  PI_CODING_AGENT_DIR="$agent" \
+  PI_RENDER_PACKAGE="$render" \
+  PI_CC_RENDER_PACKAGE="$cc" \
+  PI_SUBAGENTS_PACKAGE="$subagents" \
+    pi --offline --no-extensions --no-skills --no-prompt-templates \
+      --no-context-files --no-approve --no-session --mode rpc \
+      -e "$repo/scripts/check-pi-render.ts" </dev/null
+)

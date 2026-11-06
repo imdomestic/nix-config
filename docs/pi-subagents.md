@@ -10,8 +10,10 @@ Hank 的 dev 档 Pi 安装 `@tintinweb/pi-subagents` 0.22.1，源码、依赖和
 
 Home Manager 激活后，在 Pi 中 `/reload`。`/agents` 打开管理菜单，能查看代理
 类型、运行中的会话、工作流和设置；运行中的代理显示在输入框下方的 FleetView 中。
-上方 Agents 树与重复的 running-agent 计数关闭；下方保持 statusline → 提示 →
-main / 子代理的紧凑顺序，两格缩进与方向键导航不变。
+上方 Agents 树与重复的 running-agent 计数由 `subagents.ts` 显示适配器硬关闭，
+即使项目设置覆盖 `widgetMode` 也不重新挂载。Workflow 工具结果默认只显示状态
+摘要与规模警告，展开工具或 `/agents → Workflows` 才看完整树；下方保持
+statusline → 提示 → main / 子代理的紧凑顺序，两格缩进与方向键导航不变。
 
 可以直接用自然语言：
 
@@ -21,11 +23,15 @@ main / 子代理的紧凑顺序，两格缩进与方向键导航不变。
 用动态工作流先列出目标模块，再逐个审查，最后汇总；不要修改文件。
 ```
 
-- `Agent`：单个或少量已知子任务，默认在后台运行；明确要求前台时可阻塞等待。
+- `Agent`：主会话优先直接读文件、搜索、修改和验证；只有明确要求委派，或直接调查后
+  确认一个较大的独立子任务确实受益于并行/上下文隔离时才使用。匹配代理类型、
+  普通查文件、小修改、常规调试和“多一个 reviewer 更保险”不自动触发委派。
+  获准的任务默认在后台运行；下一步必须等结果且无其他有效工作时才前台等待。
 - `get_subagent_result`：获取后台结果；完成时也会通知主会话，不必循环查询。
 - `steer_subagent`：运行中补充要求。也可通过 `/agents` 的会话查看器发送消息、停止代理。
-- `SubagentWorkflow`：模型编写 `agent()` / `parallel()` / `pipeline()` 脚本进行动态编排。
-  在 `/agents → Workflows` 查看；不是 `/workflows` 命令。
+- `SubagentWorkflow`：仅在用户明确要求 workflow 或多代理编排时，模型才编写
+  `agent()` / `parallel()` / `pipeline()` 脚本；任务复杂、多阶段、审查或独立验证
+  本身不算授权。在 `/agents → Workflows` 查看；不是 `/workflows` 命令。
 - `@explore …`：直接指定代理。上游默认 `agentMentions = "model"` 会先让主模型的
   临时副本根据当前对话整理任务，因此有额外模型调用；可在设置中改为 `direct`，
   代价是只发送自己写的任务，不自动整理对话背景。
@@ -59,7 +65,11 @@ Explore/Plan 使用独立的只读提示词，不继承整个仓库指令。Plan
 部分直接派发路径也不计入这两个池。初次使用应明确限制任务规模，不把普通池的
 `2` 理解成全插件总上限。
 
-没有自动运行审查或研究。插件本身保留每 60 秒一次的内存记录清理；有任务时
+没有自动运行审查或研究。`subagents.ts` 替换插件原来的主动委派描述与规则，
+不修改参数 schema、任务执行或通知协议；这是降低调用频率的模型策略，不是禁止
+所有 Agent 调用的权限门。决定与显示边界见
+[主会话优先策略](decisions.md#pi-subagents-main-first)。
+插件本身保留每 60 秒一次的内存记录清理；有任务时
 还有 UI 动画刷新，不会因此定时启动模型或执行 `git status`。状态栏的 Git
 刷新仍是事件驱动。
 
@@ -96,6 +106,8 @@ nix eval --raw '.#homeConfigurations."hosts/praxic/hank".activationPackage.drvPa
 渲染测试加载 Home Manager 实际生成的完整 bootstrap 入口，启动真实离线后台
 子代理，检查输入框与 footer 单一归属、只有下方 FleetView、异步启动后的挂载顺序、
 无 Magic Context 工具、主窗口补丁不被子会话退出清掉、公式、Markdown 与 reload 清理。
+测试刻意写入项目 `widgetMode = "all"`，验证启动、工具事件及异步代理刷新仍不出现
+上方树；另验委派提示词、Workflow 摘要/展开、规模警告与错误输出保留。
 不调用付费模型、不激活 home；不能替代 Rex 中的实际键盘、鼠标及网络服务验收。
 
 上游：[tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents)。

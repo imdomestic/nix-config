@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { AssistantMessageComponent, createAgentSession, DefaultResourceLoader, SessionManager, SettingsManager, ToolExecutionComponent, UserMessageComponent, getAgentDir, getMarkdownTheme, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Container, stripTerminalSequences, visibleWidth } from "@earendil-works/pi-tui";
+import installSubagents from "../home/hank/modules/pi/subagents.ts";
 
 const until = async (check: () => boolean, label: string) => {
   const deadline = performance.now() + 10_000;
@@ -54,6 +55,29 @@ export default function (pi: ExtensionAPI) {
       const { loadMermaid } = await import(`${better}/src/render/mermaid.ts`);
       const { config, updateConfig } = await import(`${cc}/extensions/config/config.ts`);
       updateConfig({ mode: "on" });
+
+      const { renderWorkflowCard } = await import(`${subagents}/src/ui/workflow-card.ts`);
+      const workflowCard = renderWorkflowCard({
+        progress: [{ type: "workflow_agent", index: 0, label: "fixture-agent", state: "start" }],
+        task: { status: "running", workflowName: "fixture-workflow", startTime: Date.now() },
+        agentCount: 2, agentCap: 1,
+      }, host.ui.theme);
+      let adaptedWorkflow: any;
+      installSubagents({ ...pi, on: () => () => {}, registerTool: (tool: any) => { adaptedWorkflow = tool; } } as any,
+        api => api.registerTool({ name: "SubagentWorkflow", label: "fixture", description: "fixture", parameters: {} as any,
+          execute: async () => ({ content: [], details: {} }), renderResult: () => workflowCard }));
+      for (const width of [100, 42, 10, 100]) {
+        const full = workflowCard.render(width);
+        assert(full.map(stripTerminalSequences).some(line => line.includes("╰─")), "The fixture must contain a real workflow tree");
+        const result = { content: [], details: { taskId: "fixture" } };
+        const collapsed = adaptedWorkflow.renderResult(result, { expanded: false }, host.ui.theme, { isError: false }).render(width);
+        assert.deepEqual(collapsed, full.filter((line: string, index: number) => index === 0 || /^\s*(?:⚠|!)/.test(stripTerminalSequences(line))));
+        assert(collapsed.map(stripTerminalSequences).some((line: string) => line.includes("⚠")), "Collapsing must retain budget warnings");
+        assert.deepEqual(adaptedWorkflow.renderResult(result, { expanded: true }, host.ui.theme, { isError: false }).render(width), full);
+        assert.deepEqual(adaptedWorkflow.renderResult(result, { expanded: false }, host.ui.theme, { isError: true }).render(width), full, "Do not truncate errors");
+        assert.deepEqual(adaptedWorkflow.renderResult({ content: [], details: {} }, { expanded: false }, host.ui.theme, { isError: false }).render(width), full, "Do not truncate non-workflow fallback output");
+      }
+      console.error("Workflow cards: collapsed summary, expanded tree, budget warnings, errors and widths passed");
 
       loadMathJaxSync();
       const raster = rasterize({ tex: String.raw`\frac{-b+\sqrt{b^2-4ac}}{2a}`, display: true, color: "#cdd6f4", cellWidth: 10, cellHeight: 20, maxColumns: 80, maxRows: 20 });
@@ -162,6 +186,13 @@ export default function (pi: ExtensionAPI) {
         installPi(api);
         assert(commands.has("agents"));
         assert(tools.has("SubagentWorkflow"));
+        const agentTool = tools.get("Agent");
+        assert(agentTool.description.includes("after direct investigation"), "Agent must prefer direct investigation before delegation");
+        assert(!agentTool.description.includes("used proactively"), "Agent must not encourage automatic delegation");
+        assert(!agentTool.promptGuidelines.some((rule: string) => rule.startsWith("For broad codebase")), "Broad searches must not automatically trigger agents");
+        assert(tools.get("SubagentWorkflow").promptGuidelines.every((rule: string) => rule.includes("explicitly requests")), "Workflow guidance must require explicit opt-in");
+        const { loadSettings } = await import(`${subagents}/src/settings.ts`);
+        assert.equal(loadSettings().widgetMode, "all", "Exercise a project override that tries to restore the upper tree");
         assert(![...commands.keys()].some(name => name.startsWith("ctx-")), "Magic Context commands must not be loaded");
         assert(![...tools.keys()].some(name => name.startsWith("ctx_")), "Magic Context tools must not be loaded");
         await emit("session_start");
@@ -181,6 +212,7 @@ export default function (pi: ExtensionAPI) {
         await until(() => record?.session?.isStreaming && widgets.has("fleet"), "real background child and FleetView");
         assert.equal((globalThis as any)[managerKey], manager, "The combined child bootstrap must not replace the parent manager");
         assert.deepEqual([...widgets].filter(([, widget]) => widget.placement === "belowEditor").map(([key]) => key), ["statusline", "fleet"]);
+        await emit("tool_execution_start", { toolName: "read", toolCallId: "tree-guard-probe" });
         assert(!widgets.has("agents"));
         assert(!statuses.has("subagents"), "The redundant running-agent status must stay hidden with the upper tree");
         const fleetLines = widgets.get("fleet")!.component.render(100).map(stripTerminalSequences);

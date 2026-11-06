@@ -14,7 +14,7 @@
   subagentsSettings = import ./subagents-settings.nix;
   extensionSource = lib.fileset.toSource {
     root = ./.;
-    fileset = lib.fileset.unions [./bootstrap.ts ./prompt-prefix.ts ./render.ts ./statusline.ts ./balance.ts];
+    fileset = lib.fileset.unions [./bootstrap.ts ./prompt-prefix.ts ./render.ts ./statusline.ts ./balance.ts ./subagents.ts];
   };
   free = {
     input = 0;
