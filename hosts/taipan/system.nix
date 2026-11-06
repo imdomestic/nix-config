@@ -1,7 +1,6 @@
 {
   config,
   pkgs,
-  pkgs-unstable,
   ...
 }: {
   imports = [
@@ -23,7 +22,8 @@
         efiSysMountPoint = "/efi";
       };
     };
-    kernelPackages = pkgs.linuxPackages_latest;
+    # Default (LTS) kernel on purpose: 26.05's nvidia driver is built and cached
+    # for it, and does not compile against linuxPackages_latest.
   };
 
   networking = {
@@ -52,7 +52,7 @@
       open = true;
       nvidiaSettings = false;
       nvidiaPersistenced = true;
-      package = (pkgs-unstable.linuxPackagesFor config.boot.kernelPackages.kernel).nvidiaPackages.production;
+      package = config.boot.kernelPackages.nvidiaPackages.production;
     };
     nvidia-container-toolkit.enable = true;
   };
