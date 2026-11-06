@@ -11,6 +11,24 @@
 
 ---
 
+## 2026-11-06 · VM 测试启动真实主机配置，不写示例配置 {#fleet-tests}
+
+`fleetTests.<system>.<name>`（`flake/outputs/fleet-tests.nix`、`tests/`）把主机
+自己的模块列表（`flake/_lib/system-modules.nix`，和 `nixosConfigurations` 是同
+一份）放进 NixOS 测试的 VM 里启动，用 `fleet-probe` 拍一份快照。
+
+- 不为测试另写一份「像 h310 的配置」：那样测的是那份副本，真实配置改了它不会跟着变。
+  nixpkgs 自己的服务测试 Hydra 已经跑过，我们只测上游测不到的组合。
+- VM 里改的只有 `tests/lib.nix` 的 `vmify`：不加载 hardware-configuration 和
+  hardwareModules、不开 nvidia、主机名保持真名、不等真实网卡；sops 的每个
+  secret 改读一份为测试密钥重新加密的文件，值是占位符。
+- `tests/secrets/age.key` 是**只给测试用**的私钥，故意提交在公开仓库里；它只能
+  解开测试生成的占位文件，任何真实 secret 都不对它加密。
+- 不进 `checks`，理由同 `deployChecks`：`nix flake check` 会全部构建。要 KVM，
+  x86_64 在 tank 上跑，aarch64 在 r6s 上跑。
+- 判据是快照，不是手写断言：失败的 unit 只能是列了理由的那些；新旧 lock 的快照
+  除版本号外应当一致。
+
 ## 2026-11-06 · 除 268v 外都用默认内核，不用 linuxPackages_latest {#default-kernel}
 
 26.05 的默认内核是 6.18 LTS。除 268v 外，没有主机再设 `boot.kernelPackages`。
