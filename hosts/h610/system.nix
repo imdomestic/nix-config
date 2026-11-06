@@ -1106,11 +1106,23 @@ in {
           ];
         };
 
+        # headplane 0.7's agent joins as this tag, with short-lived keys
+        # headplane creates through its API key; no user has to own it.
+        tagOwners."tag:headplane-agent" = [];
+
         acls = [
           # 核心规则：允许这个组内的所有人访问该组内的所有设备（所有端口）
           {
             action = "accept";
             src = ["group:imdomestic"];
+            dst = ["group:imdomestic:*"];
+          }
+
+          # The agent only reads the members' HostInfo from its netmap, which
+          # lists a peer only if some rule connects the two.
+          {
+            action = "accept";
+            src = ["tag:headplane-agent"];
             dst = ["group:imdomestic:*"];
           }
 
@@ -1247,6 +1259,12 @@ in {
     owner = "headscale";
     restartUnits = ["headplane.service"];
   };
+  # headplane 0.7 takes a headscale API key instead (`headscale apikeys create
+  # -e 87600h`, 2036) and makes the agent a tag:headplane-agent node itself.
+  sops.secrets."headplane/headscale_api_key" = {
+    owner = "headscale";
+    restartUnits = ["headplane.service"];
+  };
 
   services.headplane = {
     enable = true;
@@ -1262,9 +1280,16 @@ in {
       # headscale.url / public_url / config_path 三个默认值都是从
       # services.headscale 推出来的(127.0.0.1:8080、server_url、configFile),
       # 照抄一遍只会多一处漂移点,所以不写。
-      integration.agent = {
-        enabled = true;
-        pre_authkey_path = config.sops.secrets."headplane/agent_preauthkey".path;
+      # Both shapes until main's nixpkgs has headplane 0.7 (nixos-26.05 moved
+      # to it in 2026-11); then keep only the api_key_path one. Not mkIf: a
+      # definition inside a false mkIf still needs the option to exist.
+      integration.agent =
+        {enabled = true;}
+        // lib.optionalAttrs (lib.versionOlder pkgs.headplane.version "0.7") {
+          pre_authkey_path = config.sops.secrets."headplane/agent_preauthkey".path;
+        };
+      headscale = lib.optionalAttrs (lib.versionAtLeast pkgs.headplane.version "0.7") {
+        api_key_path = config.sops.secrets."headplane/headscale_api_key".path;
       };
     };
   };
