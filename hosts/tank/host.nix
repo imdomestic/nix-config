@@ -18,6 +18,7 @@
 
     modules = [
       ../../system/modules/home-sync.nix
+      ../../system/modules/flake-updater
       ./k3s.nix
       ./vex-archive.nix
       ./gaoji.nix

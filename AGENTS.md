@@ -526,6 +526,14 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   aarch64-darwin, evaluates a few dev homes, and commits straight to main as
   `github-actions[bot]`, with the version changes of the packages this repo
   uses in the message (`scripts/llm-agents-changes.sh`). Pushes made with `GITHUB_TOKEN` do not trigger ci.yml.
+- Every other moving input is updated nightly on tank, not in Actions:
+  `system/modules/flake-updater` (16:00 UTC) moves the inputs in
+  `lib/flake-update-lanes.nix` one commit each, builds every changed Linux
+  system and home, runs the VM tests of the hosts that changed, and pushes the
+  passing commits to main as `imdomestic-updater[bot]` (a GitHub App), which
+  triggers ci.yml. The run's report is the `nightly update` check on its last
+  commit; problems go to the issue "Nightly flake update needs attention".
+  Inputs in neither lane are moved by hand. Why: `docs/decisions.md#flake-updater`.
 - Pulling the private flake inputs needs the `SSH_PRIVATE_KEY` repo secret (a key
   with read access to the private `imdomestic/*` and `HCHogan/*` repos). macOS
   runners need the Determinate installer: the classic one aborts on their

@@ -11,6 +11,39 @@
 
 ---
 
+## 2026-11-06 · 每晚的 input 更新跑在 tank 的定时器上，以 GitHub App 身份推送 {#flake-updater}
+
+`system/modules/flake-updater` 每天 16:00 UTC（国内零点）在 tank 上跑：把
+`lib/flake-update-lanes.nix` 里的 input 逐个移到 main 之上，一个 input 一个提交；
+求值整个车队，构建 drvPath 变了的 Linux 系统和 home，跑涉及到的 VM 测试；通过的
+最长前缀推到 main，失败的 input 二分找出来、单独剔除。预算三小时。
+
+**为什么不用 tank 上的 self-hosted GitHub runner：**
+
+- 仓库是公开的。runner 执行的是触发它的那个分支上的 workflow，跑在 Nix 沙箱之外，
+  能用 tank 在局域网和 tailnet 上的身份。GitHub 自己的说法是 self-hosted runner
+  "should almost never be used for public repositories"。
+- 想把 runner 限定成只跑 main 上的这一个 workflow，要靠组织的 runner group 策略：
+  额外的 group 需要 Team 套餐，而且 group 默认只给私有仓库用。
+- NixOS 模块关掉了 runner 自更新；GitHub 不再给落后某个发布 30 天以上的 runner
+  派任务，而 tank 的系统是手动部署的，夜间任务会悄无声息地停掉。
+- runner 要一直连着 GitHub 的 Actions 服务，日志传到 Azure，在国内不可靠。定时器
+  只在开头和结尾各用一次 git。
+
+代价是夜间任务本身没有 Actions 界面，靠 App 补上：推上去的最后一个提交带一个
+`nightly update` check，内容是这次的报告；出问题就开（或追加到）一个 issue，下一次
+干净的运行把它关掉。
+
+**为什么用 App，而不是成员的账号或 machine user：** 推送不该挂在哪个人名下。
+`imdomestic-updater`（App ID 5641560）只装在 nix-config 上，权限只有 contents、
+checks、issues，没有 workflows，所以它推不了改动 `.github/workflows/` 的提交。私钥在
+`secrets/hosts/tank.yaml`，每次运行现换一小时有效的 token。用 App token 推送会触发
+ci.yml（`GITHUB_TOKEN` 的推送不会）。
+
+**两个私有 input**（`imdomestic/vex`、`imdomestic/wgconfigs`，都是 `git+ssh`）各用
+一把只读 deploy key：GitHub 不允许同一把 key 做两个仓库的 deploy key，所以由
+`flake-updater-ssh` 按仓库挑 key。
+
 ## 2026-11-06 · VM 测试启动真实主机配置，不写示例配置 {#fleet-tests}
 
 `fleetTests.<system>.<name>`（`flake/outputs/fleet-tests.nix`、`tests/`）把主机
