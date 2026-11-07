@@ -904,7 +904,8 @@ in {
   xdg.enable = true;
 
   xdg.configFile = {
-    fastfetch = {
+    # darwin 上装的是 macchina(见 profiles/interactive.nix)。
+    fastfetch = lib.mkIf (!pkgs.stdenv.hostPlatform.isDarwin) {
       source = ./modules/fastfetch;
       recursive = true;
     };
