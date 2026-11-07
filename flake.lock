@@ -1084,11 +1084,11 @@
         "systems": "systems_5"
       },
       "locked": {
-        "lastModified": 1793945320,
-        "narHash": "sha256-0QLAIc/sibD+tufwjuDEaUPZSvms5miQU5dwaPAmCr4=",
+        "lastModified": 1794029940,
+        "narHash": "sha256-dbkIISXZyrqgPUCZ5VNeuAembp6sHsh3cTs5svFdcM8=",
         "owner": "Infinidoge",
         "repo": "nix-minecraft",
-        "rev": "ff7d27cae7bddb0f168f0b195831989b91691745",
+        "rev": "ba50d7d219164e0802b1f1d45665480da8cf5a4d",
         "type": "github"
       },
       "original": {
