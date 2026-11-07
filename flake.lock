@@ -1759,11 +1759,11 @@
         "userborn": "userborn"
       },
       "locked": {
-        "lastModified": 1791268696,
-        "narHash": "sha256-XkmzsMbP/d9FPh5HbtPQdAVpMt7MJPDtzaKA9uBK0OI=",
+        "lastModified": 1793919780,
+        "narHash": "sha256-ze9EIGv78sLKXMzLBOYOa7fSNvAbcHu7L8UgLzjn4fw=",
         "owner": "numtide",
         "repo": "system-manager",
-        "rev": "8c7a4b84eabbae3236a423ca6f16c142ef3a91b9",
+        "rev": "7ee00fe58e82c101b283e2f4863a9bfdb6b86c69",
         "type": "github"
       },
       "original": {
