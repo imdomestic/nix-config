@@ -238,7 +238,9 @@ vm_tests() {
     say "${rev:0:12}: VM test $t"
     if out=$(timeout "$(left)" nix build --no-link --print-out-paths "$(ref "$rev")#fleetTests.x86_64-linux.$t" 2>"$g/$t.err"); then
       printf -- '- `%s` passed' "$t" >>"$g/tests.md"
-      if jq -e --arg t "$t" '.tests | index($t)' "$evals/$base.json" >/dev/null &&
+      # Only the smoke tests take a snapshot; router-* has nothing to compare.
+      if [[ -e $out/probe.json ]] &&
+        jq -e --arg t "$t" '.tests | index($t)' "$evals/$base.json" >/dev/null &&
         old=$(nix build --no-link --print-out-paths "$(ref "$base")#fleetTests.x86_64-linux.$t" 2>/dev/null); then
         if diff -u <(probe_lines "$old") <(probe_lines "$out") >"$g/$t.diff"; then
           printf '; its snapshot is the same as on main.\n' >>"$g/tests.md"
