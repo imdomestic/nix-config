@@ -1006,7 +1006,7 @@ in {
     #
     # dev.nix 里那份没删:它同时被 linwhite/dev.nix 引着。taipan 上两边都声明,指向
     # 同一个 derivation,profile 里会去重,无害。
-    # mermaid(mmdc)和 tectonic 仍然只在 dev profile —— 那两个是真的重。
+    # tectonic 仍然只在 dev profile —— 它是真的重。
     pkgs.imagemagick
     pkgs.ghostscript
   ];

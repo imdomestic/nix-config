@@ -27,7 +27,7 @@
       lua51Packages.lua
       lua51Packages.luarocks
       ruff
-      basedpyright
+      ty
       typst
       tinymist
       taplo
@@ -48,7 +48,6 @@
       imagemagick
       ghostscript
       fd
-      mermaid-cli
       tectonic
       resvg
       # texliveTeTeX

@@ -1,5 +1,9 @@
 # Shared editing behavior for terminal Neovim and the VS Code embedded instance.
-{lib, ...}: let
+{
+  lib,
+  pkgs,
+  ...
+}: let
   mkRaw = lib.nixvim.mkRaw;
 in {
   globals = {
@@ -20,7 +24,70 @@ in {
       enable = true;
       settings = {};
     };
-    treesitter.enable = true;
+    treesitter = {
+      enable = true;
+      # nixvim 的默认是全部 ~330 个 grammar(约 255 MiB),这里只留真在写的语言。
+      # VS Code 那份 nixvim 也吃这份列表;不在这里收窄的话,终端那边删掉的
+      # grammar 还会被它留在 store 里。非 dev 的终端 nvim 在 default.nix 里再收窄。
+      # 没有的:jsonc(json 兼管)、lean(lean.nvim 走 LSP 语义高亮)。
+      grammarPackages = lib.mkDefault (with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
+        # nvim 自身和插件(noice / markview)要的
+        c
+        lua
+        luadoc
+        luap
+        markdown
+        markdown_inline
+        printf
+        query
+        regex
+        vim
+        vimdoc
+
+        # 配置、数据、git
+        diff
+        dockerfile
+        git_config
+        git_rebase
+        gitattributes
+        gitcommit
+        gitignore
+        ini
+        json
+        json5
+        just
+        nix
+        toml
+        xml
+        yaml
+
+        # 语言
+        agda
+        bash
+        cmake
+        cpp
+        css
+        elm
+        glsl
+        go
+        haskell
+        html
+        java
+        javascript
+        latex
+        make
+        nu
+        ocaml
+        python
+        rust
+        scss
+        sql
+        swift
+        tsx
+        typescript
+        typst
+      ]);
+    };
     treesitter-textobjects = {
       enable = true;
       settings = {

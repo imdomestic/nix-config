@@ -40,17 +40,6 @@
   # 必须点名,否则守卫永远为假、声明了也不会启动。
   # config 直接就是 vim.lsp.config 的表,省略的字段用 nvim-lspconfig 的默认值。
   externalServers = {
-    basedpyright.config = {
-      cmd = ["basedpyright-langserver" "--stdio"];
-      filetypes = ["python"];
-      root_markers = ["pyproject.toml" "requirements.txt"];
-      settings.basedpyright.analysis = {
-        autoSearchPaths = true;
-        diagnosticMode = "openFilesOnly";
-        useLibraryCodeForTypes = true;
-      };
-    };
-
     bashls.config = {
       cmd = ["bash-language-server" "start"];
       filetypes = ["bash" "sh"];
@@ -189,6 +178,14 @@
       cmd = ["tinymist"];
       filetypes = ["typst"];
       root_markers = [".git"];
+    };
+
+    # 替掉 basedpyright:nixpkgs 那份把 keytar 的构建目录一起装了进来,
+    # 闭包里多出一整套 clang/LLVM 20,独占 1.15 GiB。
+    ty.config = {
+      cmd = ["ty" "server"];
+      filetypes = ["python"];
+      root_markers = ["ty.toml" "pyproject.toml" "requirements.txt" ".git"];
     };
 
     vtsls.config = {
@@ -1020,7 +1017,7 @@ in {
         indent.enable = true;
         folding.enable = true;
         # Non-dev machines only carry grammars for config editing; dev keeps
-        # the nixvim default (all grammars).
+        # the shared list in ./editing.nix.
         grammarPackages = lib.mkIf (!dev) (with pkgs.vimPlugins.nvim-treesitter.builtGrammars; [
           bash
           c
