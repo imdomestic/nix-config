@@ -529,7 +529,7 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
 - Every other moving input is updated nightly on tank, not in Actions:
   `system/modules/flake-updater` (16:00 UTC) moves the inputs in
   `lib/flake-update-lanes.nix` one commit each, builds every changed Linux
-  system and home, runs the VM tests of the hosts that changed, and pushes the
+  system and home (the aarch64 ones on r6s, tank's remote builder), runs the VM tests of the hosts that changed, and pushes the
   passing commits to main as `imdomestic-updater[bot]` (a GitHub App), which
   triggers ci.yml. The run's report is the `nightly update` check on its last
   commit; problems go to the issue "Nightly flake update needs attention".

@@ -38,6 +38,7 @@
     name = "flake-updater";
     runtimeInputs = with pkgs; [
       config.nix.package
+      bash
       gitMinimal
       openssh
       jq

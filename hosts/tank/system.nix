@@ -94,7 +94,23 @@ in {
     "dm-cache-default" # when using volumes set up with lvmcache
   ];
   boot.supportedFilesystems = ["xfs" "bcachefs" "ntfs"];
-  boot.binfmt.emulatedSystems = ["aarch64-linux"];
+  # aarch64 的构建交给 r6s 原生跑，不在这里用 binfmt 模拟：qemu-user 下要起很多
+  # 进程的构建慢 28 倍（docs/decisions.md#flake-updater）。r6s 是网关，内存 7.6 GB，
+  # 所以同时只给两个。
+  nix.buildMachines = [
+    {
+      hostName = config.my.fleet.hosts.r6s.tsName;
+      sshUser = "root";
+      protocol = "ssh-ng";
+      system = "aarch64-linux";
+      maxJobs = 2;
+      supportedFeatures = ["big-parallel"];
+      # r6s 的 /etc/ssh/ssh_host_ed25519_key.pub；Tailscale SSH 出示的就是它。
+      publicHostKey = "c3NoLWVkMjU1MTkgQUFBQUMzTnphQzFsWkRJMU5URTVBQUFBSU1GTE9ZdEo3Tm5OV1BnYkJuZ0ViamlDeHMvUmNkRlZaQXNHOUhaRWs5Ymggcm9vdEBuaXhvcwo=";
+    }
+  ];
+  # 让 r6s 自己从镜像拉依赖，不经 tank 中转。
+  nix.settings.builders-use-substitutes = true;
 
   # 限制同时构建的 derivation 数量；单个构建使用 Nix 默认的全部逻辑核。
   nix.settings.max-jobs = 6;

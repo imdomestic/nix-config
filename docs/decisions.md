@@ -47,6 +47,15 @@ smoke 测试只看 unit 有没有起来；拨号、前缀委派、转发和防�
 求值整个车队，构建 drvPath 变了的 Linux 系统和 home，跑涉及到的 VM 测试；通过的
 最长前缀推到 main，失败的 input 二分找出来、单独剔除。预算三小时。
 
+**aarch64 的主机在 r6s 上原生构建（2026-11-07 起）。** tank 原先用 binfmt
+（qemu-user）模拟 aarch64。纯计算只慢 2.8 倍（`xz -6` 压 64 MiB：25.8 s 对
+73.0 s），但构建要起成千上万个短进程，每个进程都让 qemu 从头翻译一遍加载器、libc
+和程序本身：重新构建 `hello` 27 s 对 772 s，慢 28 倍。11-06 那次运行里，r6s 用的
+mihomo-smart 在模拟下编了 34 分钟。现在 tank 的 `nix.buildMachines` 把 aarch64
+交给 r6s（同时两个，它是网关），更新和推送仍然只在 tank 一处：flake.lock 是一个
+文件，一个提交同时改动两种架构的主机，两个各自推送的更新器谁也拦不住谁。r6s 连不上
+时，这次运行的 aarch64 只求值，报告里写明。
+
 **为什么不用 tank 上的 self-hosted GitHub runner：**
 
 - 仓库是公开的。runner 执行的是触发它的那个分支上的 workflow，跑在 Nix 沙箱之外，

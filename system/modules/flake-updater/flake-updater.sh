@@ -164,7 +164,21 @@ changes() {
 }
 
 # --- The gate -------------------------------------------------------------
+# Platforms built in this run: this machine's own, and those of each remote
+# builder in /etc/nix/machines that answers. One that does not leaves its
+# platform evaluated only, instead of failing every build for it.
 read -ra platforms <<<"$(nix config show system) $(nix config show extra-platforms)"
+while read -r uri systems _; do
+  [[ -z $uri || $uri == \#* ]] && continue
+  host=${uri#*://}
+  host=${host#*@}
+  if timeout 10 bash -c 'exec 3<>"/dev/tcp/$0/22"' "$host" 2>/dev/null; then
+    IFS=, read -ra builder_platforms <<<"$systems"
+    platforms+=("${builder_platforms[@]}")
+  else
+    say "remote builder $host does not answer; ${systems//,/ } evaluated only"
+  fi
+done < <(cat /etc/nix/machines 2>/dev/null || true)
 buildable=$(printf '%s\n' "${platforms[@]}" | jq -R . | jq -sc .)
 out_of_time=
 
