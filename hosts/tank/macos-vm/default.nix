@@ -97,8 +97,8 @@
       installer=()
       if [ -e ${stateDir}/BaseSystem.img ]; then
         installer=(
-          -drive id=InstallMedia,if=none,format=raw,file=${stateDir}/BaseSystem.img
-          -device ide-hd,bus=sata.3,drive=InstallMedia
+          -drive "id=InstallMedia,if=none,format=raw,file=${stateDir}/BaseSystem.img"
+          -device "ide-hd,bus=sata.3,drive=InstallMedia"
         )
       fi
       # The CPU line is OSX-KVM's for Sequoia and Tahoe; on this Haswell host
