@@ -924,11 +924,11 @@
         "systems": "systems_4"
       },
       "locked": {
-        "lastModified": 1794128194,
-        "narHash": "sha256-kwDEn3RhFUR8KMzfsg1v1tla3oL2o35bZ+VSVSTv5Wk=",
+        "lastModified": 1794129451,
+        "narHash": "sha256-vrKDXuTwxwZBmg7d0Tu1236xtQ3s+FhFa9a+rmzFbTU=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "654c4ea538c4ccd7f54eacab40dd451815fa116d",
+        "rev": "7f7b9cfe1edad05e3b3258d2ec2dae2b03fad644",
         "type": "github"
       },
       "original": {
