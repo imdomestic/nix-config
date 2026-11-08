@@ -1,11 +1,19 @@
 {
   pkgs,
+  pkgs-unstable,
   inputs,
   lib,
   config,
   system,
   ...
-}: {
+}: let
+  # 26.05 的 nom 2.2.0 遇到 Determinate Nix 3.23 起的新 activity 类型(10113)直接退出
+  # (nix-output-monitor#320);unstable 打了补丁。Determinate 只在 Mac 上。
+  nixOutputMonitor =
+    if pkgs.stdenv.hostPlatform.isDarwin
+    then pkgs-unstable.nix-output-monitor
+    else pkgs.nix-output-monitor;
+in {
   # 用户无关的共享 dev 工具链(LSP / CLI / direnv)。
   # 编辑器(nixvim)是按用户的,放在各自的 home/<user>/dev.nix 里,
   # 由那里 import 本文件复用这套工具链。
@@ -13,7 +21,7 @@
     [
       # Nix configuration and deployment
       just
-      nix-output-monitor
+      nixOutputMonitor
       sops
       nil
       alejandra
@@ -148,6 +156,8 @@
 
   programs.nh = {
     enable = true;
+    # nh 把自己的 nom 放在 PATH 最前面,得换掉它带的那个。
+    package = pkgs.nh.override {nix-output-monitor = nixOutputMonitor;};
     clean.enable = false;
     clean.extraArgs = "--keep-since 4d --keep 3";
     flake = "${config.home.homeDirectory}/.config/nix-config";
