@@ -532,7 +532,8 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   system and home (the aarch64 ones on r6s, tank's remote builder), runs the VM tests of the hosts that changed, and pushes the
   passing commits to main as `imdomestic-updater[bot]` (a GitHub App), which
   triggers ci.yml. The run's report is the `nightly update` check on its last
-  commit; problems go to the issue "Nightly flake update needs attention".
+  commit (inputs moved, hosts to reboot, VM test snapshots, and the package
+  versions that changed in what it built); problems go to the issue "Nightly flake update needs attention".
   Inputs in neither lane are moved by hand. Why: `docs/decisions.md#flake-updater`.
 - Pulling the private flake inputs needs the `SSH_PRIVATE_KEY` repo secret (a key
   with read access to the private `imdomestic/*` and `HCHogan/*` repos). macOS

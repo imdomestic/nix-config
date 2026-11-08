@@ -301,6 +301,64 @@ gate() {
 }
 
 # --- Reporting ------------------------------------------------------------
+# packages GATEDIR: the version changes in the runtime closures of the systems
+# and homes built here, main's build against GATEDIR's (nix store
+# diff-closures). A change several of them share is listed once, under who
+# gets it.
+packages() {
+  local g=$1 kind name old new missing=() cap
+  jq -r --argjson p "$buildable" '.[] | select(.drv != null and .olddrv != null and (.system as $s | $p | index($s)))
+    | "\(.kind)\t\(.name)\t\(.olddrv)\t\(.drv)"' "$g/changes.json" >"$tmpd/pkg-targets"
+  while IFS=$'\t' read -r _ _ old _; do
+    if [[ -e $old ]] && ! built "$old"; then missing+=("$old"); fi
+  done <"$tmpd/pkg-targets"
+  # main's builds are mostly still here from the last run; what main changed
+  # since (a host edit, an llm-agents bump) is built now, for half an hour at most.
+  if ((${#missing[@]})) && (($(left) > 300)); then
+    cap=$(left)
+    ((cap > 1800)) && cap=1800
+    say "packages: building main's ${#missing[@]} systems and homes that are not here" >&2
+    timeout "$cap" nix build --no-link --keep-going "${missing[@]/%/^*}" >/dev/null 2>&1 || true
+  fi
+  : >"$tmpd/pkg-lines"
+  : >"$tmpd/pkg-done"
+  : >"$tmpd/pkg-skipped"
+  while IFS=$'\t' read -r kind name old new; do
+    if ! [[ -e $old && -e $new ]] || ! built "$old" || ! built "$new"; then
+      printf '%s\n' "$name" >>"$tmpd/pkg-skipped"
+      continue
+    fi
+    # The toplevel's own version is nixpkgs' and says nothing.
+    nix store diff-closures "$(nix-store -q --outputs "$old" | head -1)" "$(nix-store -q --outputs "$new" | head -1)" 2>/dev/null |
+      sed -E 's/\x1b\[[0-9;]*m//g; s/, [-+]?[0-9.]+ [KMGT]iB$//' |
+      awk -v k="$kind" -v n="$name" '/ → / && !/^nixos-system-/ { print k "\t" n "\t" $0 }' >>"$tmpd/pkg-lines" || true
+    printf '%s\t%s\n' "$kind" "$name" >>"$tmpd/pkg-done"
+  done <"$tmpd/pkg-targets"
+  [[ -s $tmpd/pkg-done ]] || return 0
+  jq -nr --rawfile lines "$tmpd/pkg-lines" --rawfile compared "$tmpd/pkg-done" --rawfile skipped "$tmpd/pkg-skipped" '
+    def rows($s): $s | split("\n") | map(select(length > 0) | split("\t"));
+    def names($l): $l | map("`\(sub("^hosts/"; ""))`") | join(", ");
+    def part($who; $all; $every):
+      if ($who | length) == 0 then empty
+      elif ($who | length) == ($all | length) then $every
+      elif ($all | length) > 4 and ($who | length) * 2 > ($all | length) then "\($every) but \(names($all - $who))"
+      else names($who) end;
+    def audience($s; $h; $systems; $homes):
+      [part($s; $systems; "every system"), part($h; $homes; "every home")]
+      | if . == ["every system", "every home"] then "every system and home" else join("; ") end;
+    (rows($compared) | map({k: .[0], n: .[1]})) as $d
+    | ($d | map(select(.k != "home") | .n)) as $systems
+    | ($d | map(select(.k == "home") | .n)) as $homes
+    | (rows($lines) | map({k: .[0], n: .[1], c: .[2]}) | group_by(.c)
+       | map({c: .[0].c, s: (map(select(.k != "home") | .n) | unique), h: (map(select(.k == "home") | .n) | unique)})) as $changes
+    | (if ($changes | length) == 0 then "No package version changed in" else "\($changes | length) package version(s) changed in" end)
+      + " the \($d | length) changed systems and homes compared (`nix store diff-closures` of main'"'"'s build and this one); \"every\" below means every one compared.\n",
+      (if ($skipped | length) > 0 then "Not compared, main'"'"'s build could not be had on tank: \(names(rows($skipped) | map(.[0]))).\n" else empty end),
+      ($changes | group_by([.s, .h]) | sort_by(-((.[0].s | length) + (.[0].h | length))) | .[]
+       | "**\(audience(.[0].s; .[0].h; $systems; $homes))**\n\n"
+         + (map("- " + (.c | sub("^(?<p>[^:]+): "; "`\(.p)`: "))) | join("\n")) + "\n")'
+}
+
 issue_title="Nightly flake update needs attention"
 open_issue() {
   gh_api GET "/repos/$repo/issues?state=open&creator=$(jq -rn --arg b "$bot_login" '$b | @uri')&per_page=100" |
@@ -408,6 +466,8 @@ if [[ -n $out_of_time ]]; then say "out of time; keeping what passed"; fi
 # What gets pushed: main..good.
 mapfile -t kept < <(git log --reverse --format=%s "$base..$good" | sed -E 's/^flake: update ([^:]+):.*/\1/')
 report=$rundir/report.md
+: >"$tmpd/packages"
+if [[ $good != "$base" ]]; then packages "$rundir/gate-$good" >"$tmpd/packages"; fi
 {
   printf 'Base: `%s`. ' "${base:0:12}"
   if ((${#kept[@]})); then printf 'Updated %s input(s).\n\n' "${#kept[@]}"; else printf 'Nothing passed.\n\n'; fi
@@ -442,7 +502,9 @@ report=$rundir/report.md
       jq -e --arg s "$s" 'index($s)' <<<"$buildable" >/dev/null ||
         printf -- '- %s: evaluated only, CI dry-builds it after the push\n' "$s"
     done >"$tmpd/unbuilt"
-    if [[ -s $tmpd/unbuilt ]]; then printf '## Not built here\n\n%s\n' "$(cat "$tmpd/unbuilt")"; fi
+    if [[ -s $tmpd/unbuilt ]]; then printf '## Not built here\n\n%s\n\n' "$(cat "$tmpd/unbuilt")"; fi
+    # Last, so that a long list is what the check's size limit cuts.
+    if [[ -s $tmpd/packages ]]; then printf '## Package versions\n\n%s\n' "$(cat "$tmpd/packages")"; fi
   fi
 } >"$report"
 
@@ -492,8 +554,11 @@ say "pushed ${pushed:0:12}"
 conclusion=success
 if [[ -n $problems ]]; then conclusion=neutral; fi
 jq -n --arg sha "$pushed" --arg c "$conclusion" --arg t "Updated ${#kept[@]} input(s)" --rawfile s "$report" \
+  --arg full "$report" \
   '{name: "nightly update", head_sha: $sha, status: "completed", conclusion: $c,
-    output: {title: $t, summary: ($s | .[0:65000])}}' | gh_api POST "/repos/$repo/check-runs" >/dev/null
+    output: {title: $t, summary: (if ($s | length) > 65000
+      then $s[0:64000] + "\n\n… cut at GitHub'"'"'s size limit; the whole report is `\($full)` on tank.\n"
+      else $s end)}}' | gh_api POST "/repos/$repo/check-runs" >/dev/null
 if [[ -n $problems ]]; then problem "$report"; else all_clear "$pushed"; fi
 cat "$report"
 finished=1
