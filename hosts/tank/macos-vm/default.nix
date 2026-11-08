@@ -77,10 +77,10 @@
         --rom ${secret "rom"} --uuid ${secret "uuid"}
 
       truncate -s 64M opencore.img
-      sgdisk -q -Z -n 1:2048:0 -t 1:ef00 -c 1:OPENCORE opencore.img
+      sgdisk -o -n 1:2048:0 -t 1:ef00 -c 1:OPENCORE opencore.img >/dev/null
       first=$(sgdisk -i 1 opencore.img | awk '/^First sector/ {print $3}')
       last=$(sgdisk -i 1 opencore.img | awk '/^Last sector/ {print $3}')
-      mkfs.fat -n OPENCORE --offset "$first" opencore.img $(((last - first + 1) / 2)) >/dev/null
+      mkfs.fat -n OPENCORE --offset="$first" opencore.img $(((last - first + 1) / 2)) >/dev/null
       export MTOOLS_SKIP_CHECK=1
       mmd -i "opencore.img@@$((first * 512))" ::/EFI
       mcopy -s -i "opencore.img@@$((first * 512))" esp/* ::/EFI/
