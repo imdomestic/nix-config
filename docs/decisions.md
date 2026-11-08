@@ -11,6 +11,28 @@
 
 ---
 
+## 2026-11-09 · maxx 的 iMessage 走 tank 上的 macOS 虚拟机，不用 rustpush {#macos-vm}
+
+iMessage 只能由一台「Mac」收发。Haskell 版 Max 的做法是 `imsg` + Go 写的
+`bridge/imsg` 跑在 hackintosh 上，2026-09-19 暂停，hackintosh 后来也没了。车队里没有
+一直开着的 Mac，于是把那台 Mac 换成 tank 上的虚拟机（`hosts/tank/macos-vm/`，操作见
+`docs/runbooks/macos-vm.md`），桥原样复活，maxx 写一个对接它的平台。
+
+- **不用 rustpush**（OpenBubbles 的协议实现，Linux 上无头跑，有现成的 mautrix 桥）：它要
+  一台真 Mac 的硬件身份。Intel Mac 提取一次就行，Apple Silicon 的身份要那台 Mac 上一直
+  跑着 NAC relay。车队里的真 Mac（praxic、aegis、alex、m1elite）全是 Apple Silicon，
+  等于又回到「要一台常开的 Mac」。再加上私有协议随时会被 Apple 封（2023 年的 Beeper
+  Mini），rustpush 本身是 SSPL。
+- **不用 libvirt / NixVirt**：NixVirt 会把它没声明的 libvirt 网络、存储池和虚拟机全部
+  undefine，而 tank 的 libvirtd 里有手工建的东西（`docs/268v-windows-vfio.md`）。一个
+  systemd 服务直接跑 QEMU，更好审计。
+- **代价**：身份是 `macserial` 生成的，在虚拟机上激活 iMessage 有被拒的风险（customer
+  code），bot 的 Apple ID 也可能被标记；macOS 的许可只允许跑在 Apple 硬件上；8 GiB
+  内存常驻，压在 maxx 的 VM 上面，而 tank 只有 zram；Tahoe 是最后一个支持 Intel 的版本，
+  客体先装 Sequoia（IMCore helper 更可能注入成功），所以这台虚拟机有寿命。
+- 客体关了 SIP、登着 Apple ID，所以只让它出公网，LAN、tailnet 和 tank 自己的端口都
+  进不去。
+
 ## 2026-11-07 · 路由器的数据面用三台 VM 单独测 {#router-tests}
 
 `fleetTests.x86_64-linux.router-<host>`（`tests/router.nix`）在主机的真实配置两侧

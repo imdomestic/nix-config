@@ -24,6 +24,7 @@
       ./gaoji.nix
       ./gaoji-web.nix
       ./maxx.nix
+      ./macos-vm
       ../../system/modules/gaoji-worker.nix
     ];
 
