@@ -56,7 +56,9 @@ Sequoia 支持的 iMac 里只有 iMac19,1 不带 T2；代价是升不了 Tahoe�
 `~/Library/{Messages,IdentityServices}` 和 `~/Library/Preferences/com.apple.{iChat,imagent,imessage.bag,madrid,imservice.ids.*}.plist`；
 停机后删 `OVMF_VARS.fd`（等于重置 NVRAM，启动时会重建）。`rom` 一换，en0 的 MAC 就变了，而 networkd
 把租约存在 `/var/lib/systemd/network/dhcp-server-lease/macos0`，池子只有一个地址，旧 MAC 占着它：
-删掉那个文件再 `networkctl reconfigure macos0`。
+删掉那个文件再 `networkctl reconfigure macos0`。`uuid` 一换，`-currentHost` 的设置（存在
+`~/Library/Preferences/ByHost/*.<硬件 UUID>.plist`）和 `sysadminctl -screenLock` 都回到默认，
+第 4 步里关屏保、关锁屏那两条要重跑，不然闲置一会儿又锁上。
 
 **一旦用这套身份登录过 iMessage，就不要再改。** 换 serial、MLB、ROM 任何一个，在 Apple
 看来都是换了一台 Mac，要重新激活，容易撞上要打电话给 Apple 的 "customer code"。
