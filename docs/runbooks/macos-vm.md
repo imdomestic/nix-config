@@ -12,7 +12,7 @@ macOS 虚拟机里。为什么这么做见 [macos-vm](../decisions.md#macos-vm)�
   客体只能出公网：LAN、tailnet、tank 自己开着的端口一律进不去（nft 表 `inet macos-vm`）。
   tank 可以主动连客体（maxx 连桥、ssh 管理）。
 - 状态在 `/data/services/macos-vm`：
-  - `mac_hdd.qcow2`：80G 系统盘；
+  - `mac_hdd.img`：80G 系统盘，稀疏的 raw 文件（bcachefs 自己就是写时复制，不再叠一层 qcow2）；
   - `OVMF_VARS.fd`：NVRAM；
   - `stop_key`、`known_hosts`：停机用的 ssh 密钥；
   - `BaseSystem.img`：只在安装时放，存在就挂上。
@@ -76,7 +76,8 @@ sops set secrets/hosts/tank.yaml '["macos-vm"]["mlb"]' '"<MLB>"'
 3. OpenCore 菜单选 macOS Base System → 磁盘工具把 QEMU HARDDISK 抹成 APFS → 安装。
    中途会重启几次，每次在菜单里选 macOS Installer，最后选装好的盘。
 
-4. 设置助理里**先不要登录 Apple ID**（身份还没核对）。建本地管理员 `max`，然后：
+4. 设置助理里**先不要登录 Apple ID**（身份还没核对）。建本地管理员 `max`，密码在 sops 的
+   `macos-vm/max-password`（只给人用，tank 上不装），然后：
    - 用户与群组 → 自动登录 `max`；
    - `sudo pmset -a sleep 0 disksleep 0 displaysleep 0 powernap 0`：老版本的 Mac 一睡着，
      健康检查超时就把整个 Max 拖崩过；

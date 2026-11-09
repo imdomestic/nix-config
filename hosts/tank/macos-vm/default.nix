@@ -54,14 +54,15 @@
 
   prepare = pkgs.writeShellApplication {
     name = "macos-vm-prepare";
-    runtimeInputs = with pkgs; [coreutils gawk python3 gptfdisk dosfstools mtools qemu-utils openssh];
+    runtimeInputs = with pkgs; [coreutils gawk python3 gptfdisk dosfstools mtools openssh];
     text = ''
       umask 077
       # What the first start creates and later starts keep.
       [ -e ${stateDir}/OVMF_VARS.fd ] ||
         install -m 600 ${osxKvm}/OVMF_VARS-1920x1080.fd ${stateDir}/OVMF_VARS.fd
-      [ -e ${stateDir}/mac_hdd.qcow2 ] ||
-        qemu-img create -q -f qcow2 ${stateDir}/mac_hdd.qcow2 80G
+      # Raw, not qcow2: bcachefs already copies on write, and a second
+      # copy-on-write layer on top of it only fragments the file further.
+      [ -e ${stateDir}/mac_hdd.img ] || truncate -s 80G ${stateDir}/mac_hdd.img
       [ -e ${stateDir}/stop_key ] ||
         ssh-keygen -q -t ed25519 -N "" -C macos-vm-stop -f ${stateDir}/stop_key
 
@@ -121,7 +122,7 @@
         -device ich9-ahci,id=sata \
         -drive id=OpenCoreBoot,if=none,format=raw,snapshot=on,file=${runDir}/opencore.img \
         -device ide-hd,bus=sata.2,drive=OpenCoreBoot \
-        -drive id=MacHDD,if=none,format=qcow2,discard=unmap,file=${stateDir}/mac_hdd.qcow2 \
+        -drive id=MacHDD,if=none,format=raw,discard=unmap,file=${stateDir}/mac_hdd.img \
         -device ide-hd,bus=sata.4,drive=MacHDD \
         "''${installer[@]}" \
         -netdev tap,id=net0,ifname=${tap},script=no,downscript=no,vhost=on \
