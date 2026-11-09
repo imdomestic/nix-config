@@ -104,6 +104,9 @@ sops set secrets/hosts/tank.yaml '["macos-vm"]["mlb"]' '"<MLB>"'
    sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
    sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
    sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool false
+   # 不能锁屏：闲置锁上的屏会跨重启保留，自动登录之后照样锁着
+   defaults -currentHost write com.apple.screensaver idleTime -int 0
+   sysadminctl -screenLock off -password -
    ```
 
    装完先 `diskutil verifyVolume /` 和 `diskutil verifyVolume /System/Volumes/Data`。
