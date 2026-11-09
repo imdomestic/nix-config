@@ -45,6 +45,10 @@ def main() -> None:
         uuid.UUID(read(args.uuid, r"[0-9A-Fa-f-]{36}", "a UUID"))
     ).upper()
 
+    # Nobody watches the picker, and OpenCanopy's timeout never fires here:
+    # boot macOS's default straight away. Holding Option over VNC shows it.
+    config["Misc"]["Boot"]["ShowPicker"] = False
+
     nvram = config["NVRAM"]
     nvram["Add"][NVRAM_GUID]["csr-active-config"] = bytes.fromhex(args.csr)
     # Without the delete, a value already in the guest's NVRAM wins over Add.

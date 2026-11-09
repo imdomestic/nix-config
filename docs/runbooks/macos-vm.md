@@ -23,6 +23,8 @@ macOS 虚拟机里。为什么这么做见 [macos-vm](../decisions.md#macos-vm)�
   机型固定 iMac20,1。每次启动渲染进 `/run/macos-vm/opencore.img`，不进 store。
   en0 的 MAC 就是 `rom`。
 - VNC 只听 `127.0.0.1:5947`，密码是 `macos-vm/vnc-password`。
+- OpenCore 不显示启动菜单，直接引导 macOS 设的默认盘（OpenCanopy 的倒计时在这台上不走，
+  无人值守的重启会卡在菜单）。要菜单：VNC 连着，开机时按住 Option。
 - 停机：先 ssh 进客体执行 `shutdown -h now`（客体只允许这把钥匙做这一件事），不通就按
   ACPI 电源键，120 秒后 systemd 直接杀 QEMU。
 
@@ -75,16 +77,36 @@ sops set secrets/hosts/tank.yaml '["macos-vm"]["mlb"]' '"<MLB>"'
    open vnc://localhost:5947
    ```
 
-3. OpenCore 菜单选 macOS Base System → 磁盘工具把 QEMU HARDDISK 抹成 APFS → 安装。
-   中途会重启几次，每次在菜单里选 macOS Installer，最后选装好的盘。
+3. 盘是空的，默认就进 macOS Base System（重装时按住 Option 选它）。Recovery 的终端里
+   `diskutil eraseDisk APFS "Macintosh HD" GPT disk0`（先 `diskutil list physical` 核对
+   disk0 是那块 80G 的），然后 Reinstall macOS Sequoia。中途重启几次，安装程序自己设好
+   下一次从哪启动。
 
-4. 设置助理里**先不要登录 Apple ID**（身份还没核对）。建本地管理员 `max`，密码在 sops 的
-   `macos-vm/max-password`（只给人用，tank 上不装），然后：
-   - 用户与群组 → 自动登录 `max`；
-   - `sudo pmset -a sleep 0 disksleep 0 displaysleep 0 powernap 0`：老版本的 Mac 一睡着，
-     健康检查超时就把整个 Max 拖崩过；
-   - 软件更新 → 关掉自动更新；
-   - 共享 → 打开远程登录。
+4. 设置助理里**先不要登录 Apple ID**（Set Up Later → Skip，身份还没核对）。建本地管理员
+   `max`，密码在 sops 的 `macos-vm/max-password`（只给人用，tank 上不装），不勾"用 Apple 账户
+   重置密码"；定位、分析、Screen Time 都不要，自动更新选 Only Download Automatically。
+   进桌面后，在客体自己的终端里（QEMU 的 USB 键盘会弹出键盘设置助理，直接 Quit）：
+
+   ```sh
+   # systemsetup -setremotelogin 要 Full Disk Access；SIP 关着，launchctl 直接开
+   sudo launchctl enable system/com.openssh.sshd
+   sudo launchctl bootstrap system /System/Library/LaunchDaemons/ssh.plist
+   # 只能在图形会话里跑：经 ssh 会报 SACSetAutoLoginPassword error:22
+   sudo sysadminctl -autologin set -userName max -password -
+   ```
+
+   把自己的公钥放进 `~max/.ssh/authorized_keys`，其余经 `ssh -J hank@tank max@10.234.0.2`：
+
+   ```sh
+   sudo systemsetup -settimezone Asia/Shanghai
+   # 老版本的 Mac 一睡着，健康检查超时就把整个 Max 拖崩过
+   sudo pmset -a sleep 0 disksleep 0 displaysleep 0 powernap 0
+   sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticDownload -bool false
+   sudo defaults write /Library/Preferences/com.apple.SoftwareUpdate AutomaticallyInstallMacOSUpdates -bool false
+   sudo defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool false
+   ```
+
+   装完先 `diskutil verifyVolume /` 和 `diskutil verifyVolume /System/Volumes/Data`。
 
 5. 装完撤掉安装盘：`sudo rm /data/services/macos-vm/BaseSystem.img && sudo systemctl restart macos-vm`。
 

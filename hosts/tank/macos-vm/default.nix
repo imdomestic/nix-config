@@ -70,6 +70,9 @@
       cd ${runDir}
       rm -rf esp opencore.img
       cp -r --no-preserve=mode ${opencoreEfi}/EFI esp
+      # Otherwise this image's own BOOTx64.efi is a boot entry, and the
+      # default when macOS hasn't chosen one.
+      printf Disabled > esp/BOOT/.contentVisibility
       # iMac20,1: Tahoe still supports it, so an upgrade keeps the identity
       # Messages was activated with. 0x877 is what `csrutil disable` sets;
       # imsg's IMCore helper needs SIP off.
