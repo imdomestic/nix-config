@@ -108,12 +108,16 @@
       fi
       # The CPU line is OSX-KVM's for Sequoia and Tahoe; on this Haswell host
       # QEMU drops the Skylake features the hardware lacks (`check` warns).
+      # -hypervisor and kvm=off: iMessage registration refuses a guest that
+      # says it is one (docs/incidents.md#macos-vm-apple-id). Without that
+      # bit macOS stops reading VMware's TSC leaf, so vmware-cpuid-freq is
+      # gone and the TSC rate comes from OpenCore's own calibration.
       # The NIC sits at 00:12, a slot the template's DeviceProperties mark
       # built-in, which iMessage requires of en0.
       exec qemu-system-x86_64 \
         -name macos-vm,process=macos-vm \
         -machine q35,accel=kvm \
-        -cpu Skylake-Client,-hle,-rtm,kvm=on,vendor=GenuineIntel,+invtsc,vmware-cpuid-freq=on,+ssse3,+sse4.2,+popcnt,+avx,+aes,+xsave,+xsaveopt,check \
+        -cpu Skylake-Client,-hle,-rtm,-hypervisor,kvm=off,vendor=GenuineIntel,+invtsc,+ssse3,+sse4.2,+popcnt,+avx,+aes,+xsave,+xsaveopt,check \
         -smp 4,cores=4,sockets=1 \
         -m 8192 \
         -device qemu-xhci,id=xhci \
