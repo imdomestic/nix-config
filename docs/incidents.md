@@ -4,6 +4,31 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-09 · macOS 客体里登录 Apple ID 报 "An unknown error occurred" {#macos-vm-apple-id}
+
+`macos-vm` 装好、身份核对完，在 Messages 里登录 bot 的 Apple ID，输完密码就报 "An unknown error
+occurred"，没到 2FA。客体里 `log show` 看 `akd`（AuthKit）：
+
+- 登录前要先做机器的 anisette 预配（provisioning）。`startMachineProvisioning` 返回 200，
+  `finishMachineProvisioning` 被 Apple 的服务器回了 **401**，于是
+  `Provisioning failed. No Anisette for you today! AKAnisetteError -8008`，SRP 认证根本没开始。
+  所以 Apple ID 本身没被拒，也没留下失败的登录记录。
+- 同一段里反复出现 `[com.apple.AppleVirtualPlatform:Identity] AVPIdentity: …` 和
+  `DeviceIdentity not available`。客体 `sysctl kern.hv_vmm_present` 是 1（QEMU 的 CPUID 带
+  hypervisor 位）。macOS 认出自己在虚拟机里，走的是给 Apple 自家 Virtualization.framework
+  的身份路径，QEMU 提供不了。
+
+Proxmox 论坛和 quickemu 的 issue（#1547）里是同一件事：Sonoma 还行，Sequoia 起虚拟机里登不上
+Apple ID。大家确认有效的办法是 OpenCore 内核补丁：在内核字符串表里把 `hv_vmm_present` 和
+`hibernatecount` 两个 sysctl 名对调（等长，各用前一个字符串做锚，15.8.2 的内核里各只匹配一处），
+这样 `kern.hv_vmm_present` 读到的是 0。补丁在 `hosts/tank/macos-vm/opencore.py`。
+quickemu 那边有人报告 Tahoe 上打了之后 PerfPowerServices 吃满 CPU，升级前留意。
+
+**误导人的地方：** 报错文字毫无信息量；日志里最显眼的是 `DCBAASigner … platform is not
+supported by DeviceIdentity` 和 BAA 证明失败，看起来像是 iMac20,1 带 T2、要 T2 做硬件证明，
+容易往"换个不带 T2 的机型"上想。可换机型就是换身份，激活过之后绝不能做。真正指向原因的是
+`AppleVirtualPlatform` 那几行，加上一条 `sysctl`。
+
 ## 2026-11-09 · macOS 客体的盘设成 bcachefs nocow 后，安装第二阶段两次校验失败 {#macos-vm-nocow}
 
 `macos-vm` 装 Sequoia 时，第一阶段（Recovery 里下载、展开，约 15.5 GB）跑在 qcow2 上，没出问题。

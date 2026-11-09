@@ -21,6 +21,26 @@ def read(path: str, pattern: str, what: str) -> str:
     return value
 
 
+def kernel_patch(find: bytes, replace: bytes) -> dict:
+    assert len(find) == len(replace)
+    return {
+        "Arch": "x86_64",
+        "Base": "",
+        "Comment": "macos-vm: kern.hv_vmm_present reads 0",
+        "Count": 1,
+        "Enabled": True,
+        "Find": find,
+        "Identifier": "kernel",
+        "Limit": 0,
+        "Mask": b"",
+        "MaxKernel": "",
+        "MinKernel": "",
+        "Replace": replace,
+        "ReplaceMask": b"",
+        "Skip": 0,
+    }
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("config")
@@ -48,6 +68,18 @@ def main() -> None:
     # Nobody watches the picker, and OpenCanopy's timeout never fires here:
     # boot macOS's default straight away. Holding Option over VNC shows it.
     config["Misc"]["Boot"]["ShowPicker"] = False
+
+    # Sequoia refuses an Apple ID sign-in while kern.hv_vmm_present is 1
+    # (docs/incidents.md#macos-vm-apple-id). Swap that sysctl's name with
+    # hibernatecount's, which is 0; each match is anchored on the string
+    # before it in the kernel's string table.
+    for anchor, old, new in (
+        (b"hibernatehidready", b"hibernatecount", b"hv_vmm_present"),
+        (b"boot session UUID", b"hv_vmm_present", b"hibernatecount"),
+    ):
+        config["Kernel"]["Patch"].append(
+            kernel_patch(anchor + b"\0" + old + b"\0", anchor + b"\0" + new + b"\0")
+        )
 
     nvram = config["NVRAM"]
     nvram["Add"][NVRAM_GUID]["csr-active-config"] = bytes.fromhex(args.csr)

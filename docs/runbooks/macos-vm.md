@@ -123,6 +123,8 @@ sops set secrets/hosts/tank.yaml '["macos-vm"]["mlb"]' '"<MLB>"'
    - `system_profiler SPHardwareDataType`：iMac20,1，serial 是 sops 里那个；
    - `ioreg -rn en0 | grep IOBuiltin`：要是 `Yes`，iMessage 只认内建网卡；
    - `csrutil status`：disabled。
+   - `sysctl kern.hv_vmm_present`：要是 0（OpenCore 的内核补丁），否则 Apple ID 登录报
+     "An unknown error occurred"，见 [macos-vm-apple-id](../incidents.md#macos-vm-apple-id)。
 
 8. Messages 登录 bot 的 Apple ID（`hnkhgn@icloud.com`），过 2FA。**关卡：** 用 iPhone 给它发
    一条，在客体里手动回一条，两边都收到才往下做。报 "customer code" 就带着那串码打 Apple
