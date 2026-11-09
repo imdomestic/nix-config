@@ -37,11 +37,14 @@ OpenCore 一读 KVM 不模拟的 MSR 就出错，停在 TianoCore 画面；运�
 macOS 在 KVM 上就靠 hypervisor 位绕开这些电源管理 MSR，并从 VMware 的叶读 TSC 频率。
 要走这条路得一并解决计时和电源管理，没再继续。
 
-**解决：换成不带 T2 的 iMac19,1。** 这个 Apple ID 在一台 iPhone 上 iMessage 正常，账号本身没问题。
-同一天换成 iMac19,1，配一套全新的 serial/MLB/ROM/UUID（旧的那套从没激活过，可以换），
+**换成不带 T2 的 iMac19,1：注册不再被拒，但没有生效。** 这个 Apple ID 在一台 iPhone 上 iMessage
+正常过。同一天换成 iMac19,1，配一套全新的 serial/MLB/ROM/UUID（旧的那套从没激活过，可以换），
 清掉客体里的 IDS/Messages 状态并重置 NVRAM，再登录：注册返回 status 0，生产环境的 APNs
-连上了。机型和整套身份是一起换的，严格说分不开是哪一个起的作用，但最直接的解释是
-T2 机型做不出 BAA 证明。代价是升不了 Tahoe。
+连上了，Messages 设置里两个地址都勾着。可是从 iPhone 发过来显示"未送达"、地址是绿色；客体
+自己查任何地址，Apple 都回 0 个设备（`PeerLookup … Found identity for: 0/1`，状态 2），包括
+账号自己的两个地址和一个确定开着 iMessage 的地址。**status 0 不等于能收发**，要用查询结果验证。
+BAA 签名在 iMac19,1 上照样失败（`IDSBAASignerErrorDomain Code=3`，请求头
+`x-apple-baa-supported: 0`），可见它和 6001 都不是 T2 的事。代价是升不了 Tahoe。
 
 **误导人的地方：** 报错文字毫无信息量；日志里最显眼的是 `DCBAASigner … platform is not
 supported by DeviceIdentity` 和 BAA 证明失败，看起来像是 iMac20,1 带 T2、要 T2 做硬件证明，
