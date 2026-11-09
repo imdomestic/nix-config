@@ -60,8 +60,8 @@
       # What the first start creates and later starts keep.
       [ -e ${stateDir}/OVMF_VARS.fd ] ||
         install -m 600 ${osxKvm}/OVMF_VARS-1920x1080.fd ${stateDir}/OVMF_VARS.fd
-      # Raw, not qcow2: bcachefs already copies on write, and a second
-      # copy-on-write layer on top of it only fragments the file further.
+      # Raw, not qcow2: APFS inside already copies on write, and the
+      # directory is nocow (below) so bcachefs doesn't add another layer.
       [ -e ${stateDir}/mac_hdd.img ] || truncate -s 80G ${stateDir}/mac_hdd.img
       [ -e ${stateDir}/stop_key ] ||
         ssh-keygen -q -t ed25519 -N "" -C macos-vm-stop -f ${stateDir}/stop_key
@@ -180,7 +180,13 @@ in {
     owner = user;
   });
 
-  systemd.tmpfiles.rules = ["d ${stateDir} 0700 ${user} ${user} -"];
+  # nocow, inherited by files made here: APFS in the guest already copies on
+  # write, so bcachefs writes the disk image in place (giving up checksums and
+  # compression for it).
+  systemd.tmpfiles.rules = [
+    "d ${stateDir} 0700 ${user} ${user} -"
+    "t ${stateDir} - - - - bcachefs.nocow=1"
+  ];
 
   # A /30 of its own; the guest gets .2 from networkd's DHCP server and
   # nothing else exists on the link.

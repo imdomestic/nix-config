@@ -12,7 +12,8 @@ macOS 虚拟机里。为什么这么做见 [macos-vm](../decisions.md#macos-vm)�
   客体只能出公网：LAN、tailnet、tank 自己开着的端口一律进不去（nft 表 `inet macos-vm`）。
   tank 可以主动连客体（maxx 连桥、ssh 管理）。
 - 状态在 `/data/services/macos-vm`：
-  - `mac_hdd.img`：80G 系统盘，稀疏的 raw 文件（bcachefs 自己就是写时复制，不再叠一层 qcow2）；
+  - `mac_hdd.img`：80G 系统盘，稀疏的 raw 文件。客体里的 APFS 自己就是写时复制，所以
+    不用 qcow2，目录还设了 bcachefs 的 nocow（就地写，代价是这些文件没有校验和、不压缩）；
   - `OVMF_VARS.fd`：NVRAM；
   - `stop_key`、`known_hosts`：停机用的 ssh 密钥；
   - `BaseSystem.img`：只在安装时放，存在就挂上。
