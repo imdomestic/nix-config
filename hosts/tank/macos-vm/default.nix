@@ -158,7 +158,10 @@
     name = "macos-vm-stop";
     runtimeInputs = [pkgs.coreutils pkgs.openssh qmp];
     text = ''
-      ssh -i ${stateDir}/stop_key -o BatchMode=yes -o ConnectTimeout=5 \
+      # systemd runs this even after the guest has powered itself off and
+      # QEMU has exited, and then without MAINPID; nothing is left to stop.
+      [ -n "''${MAINPID:-}" ] || exit 0
+      ssh -T -i ${stateDir}/stop_key -o BatchMode=yes -o ConnectTimeout=5 \
         -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=${stateDir}/known_hosts \
         max@${guestAddress} ||
         macos-vm-qmp '{"execute":"system_powerdown"}' || true
