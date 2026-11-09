@@ -5,6 +5,17 @@
   ...
 }: let
   cfg = config.services.sillytavern;
+  cliArguments = lib.filterAttrs (_: value: value != null) {
+    inherit (cfg) port listenAddressIPv4 listenAddressIPv6;
+    listen =
+      if cfg.listen == null
+      then null
+      else lib.boolToString cfg.listen;
+    whitelist =
+      if cfg.whitelist == null
+      then null
+      else lib.boolToString cfg.whitelist;
+  };
   placements = config.my.fleet.placements;
   placement = placements.sillytavern;
   domain = config.my.host.tsName;
@@ -209,6 +220,8 @@ in {
       ${pkgs.coreutils}/bin/install -m 0600 ${config.sops.templates."sillytavern-config".path} ${cfg.configFile}
     '';
     serviceConfig = {
+      # Native "--listen=1" disables auth in yargs; docs/incidents.md#sillytavern-native-flags.
+      ExecStart = lib.mkForce (lib.escapeShellArgs ([(lib.getExe cfg.package)] ++ lib.cli.toGNUCommandLine {} cliArguments));
       StateDirectoryMode = "0700";
       UMask = "0077";
     };

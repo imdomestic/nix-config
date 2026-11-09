@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-10 · SillyTavern 原生布尔参数关闭了认证 {#sillytavern-native-flags}
+
+seraph 首次部署 SillyTavern 1.18.0 时，Nix 求值、构建、SOPS 与 bootstrap
+单元测试都通过，服务器 YAML 的 `basicAuthMode` 也是 true，但 Tailnet
+未认证的 GET `/` 返回 **200**。发现后立即停止 nginx，关闭入口再修复。
+
+误导点是以为原生 `services.sillytavern.listen = true` 就表示开启 listen mode，
+或是 nginx 转发 header 导致了认证行为变化。nixpkgs 的模块用 `toString`
+拼 CLI 参数，把 true 写成 `--listen=1` / `--whitelist=1`；应用的 yargs
+把这两个参数解析成 **false**。Basic Auth 的挂载又受 `cliArgs.listen` 保护，
+因此被静默跳过。用同一包的 yargs 实测 `=true` 则两项均为 true。
+
+`system/modules/sillytavern/default.nix` 保留原生服务、包和 typed options，
+只覆盖 ExecStart 的参数序列化，用 `lib.boolToString` 传递 true/false。
+服务器配置仍由小片段初始化，让 SillyTavern 自己补全默认值。必须用实际
+未认证请求的 401 与 CSRF 的 403 验收，不能只看 systemd active 或 YAML。
+
+同次调查也发现 Connection Manager 会先切 URL，再旋转 active Secret，并在
+中间请求 `/models`。不同 Secret ID 不是完整的凭据隔离。部署因此让真实
+Bonsai / CLIProxy Key 只存在于 nginx 的 SOPS 私有 header 片段，固定路由注入；
+SillyTavern 全部使用无权限占位 Secret。没有 patch 前端，也没有把管理接口
+或模型 Key 暴露给浏览器。使用与最终上线验收见 [SillyTavern](sillytavern.md)。
+
 ## 2026-11-09 · Rex 归属工作区 2，却覆盖其他工作区 {#rex-aerospace-visibility}
 
 在 aegis 上，Rex Beta 1887 与 AeroSpace 0.20.3-Beta 同时运行。原有
