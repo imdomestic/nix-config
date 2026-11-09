@@ -76,6 +76,10 @@ BAA 签名在 iMac19,1 上照样失败（`IDSBAASignerErrorDomain Code=3`，请�
 `x-apple-baa-supported: 0`），可见它和 6001 都不是 T2 的事。代价是升不了 Tahoe。
 当晚把这个 Apple ID 登到一台真 iPad 上，iMessage 也报激活失败：被卡住的是账号，不只是客体。
 多半是这一天里从虚拟机反复登录、换过两套 Mac 身份、吃过几次 6001 招来的。
+随后换一个新 Apple ID 登客体（iMac19,1，同一套身份）：注册又是 user 6001（`Server rejected
+registration`），Messages 立刻退回登录页。两个账号、两个机型都过不去，共同点只剩客体本身。
+同一次登录里 SRP 请求（gsa.apple.com）连着几次被 RST、超时，在 tank 上抓包看到 RST 来自
+17.32.194.2；多试几次能过，和注册失败无关。
 
 **误导人的地方：** 报错文字毫无信息量；日志里最显眼的是 `DCBAASigner … platform is not
 supported by DeviceIdentity` 和 BAA 证明失败，看起来像是 iMac20,1 带 T2、要 T2 做硬件证明，
