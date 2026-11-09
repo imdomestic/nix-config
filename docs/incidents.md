@@ -4,6 +4,35 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-09 · macOS 客体的盘设成 bcachefs nocow 后，安装第二阶段两次校验失败 {#macos-vm-nocow}
+
+`macos-vm` 装 Sequoia 时，第一阶段（Recovery 里下载、展开，约 15.5 GB）跑在 qcow2 上，没出问题。
+第一次重启停在 OpenCore 菜单时，按当时的决定把盘换成 raw（`qemu-img convert`，`qemu-img compare`
+确认一致），并给 `/data/services/macos-vm` 设了 `bcachefs.nocow=1`。理由是客体里的 APFS 已经
+写时复制，不想 bcachefs 再来一层。新文件继承了 nocow。
+
+之后第二阶段（"macOS Update Assistant"）两次都在约 13 分钟时报 "An error occurred preparing
+the software update"。从 tank 上用 `apfs-fuse` 只读挂载数据卷，看
+`macOS Install Data/ia.log`，原因都是展开出来的系统文件和 BOM 对不上，而且两次坏的是不同文件：
+
+- `AppleAfterburner.kext/…/live_2.63_0x01_primary.bin`（`aae0c6f8 vs ffffffff`）
+- `/usr/bin/mpsgraphtool`（`34edd99 vs 47bd44f7`）
+
+只把这个文件改回 COW（`bcachefs set-file-option --nocow=0`，目录不动，CPU 型号等其余一律不变），
+第三次一次就过，进了设置助理。宿主机内核日志里没有任何 bcachefs 或磁盘错误，可 nocow 本来
+就关掉了数据校验和，坏了它也发现不了。tank 上别处都没用 nocow（数据、服务、VM、k3s 目录都查过）。
+
+**没有完全钉死：** 两次失败、一次成功，样本小；Dortania 说这个报错有时重试几次自己就过了。
+单独测 nocow 是干净的：fio 在 nocow 目录随机原地覆写 24 GiB 并校验，`drop_caches` 之后从盘上
+再校验一遍，都没有错。所以如果是 nocow 的问题，触发条件跟 QEMU 的 I/O 方式有关（raw 驱动、
+aio=threads、512 字节扇区、discard）。要报上游，得先用 `qemu-io` 在 nocow 和 COW 目录上对照复现。
+
+**误导人的地方：** 报错本身毫无信息量，Update Assistant 里也没有日志窗口，网上的答案五花八门
+（磁盘空间、内存、多余的盘）。先按其中一条把 BaseSystem.img 摘掉重试，白跑一次。我还怀疑过
+CPU：`-cpu Skylake-Client` 在这台 Haswell（E5-2666 v3）上被 QEMU 去掉了 rdseed/adx/smap/xsavec 等，
+客体看到的型号和特性对不上。第三次 CPU 一样也过了，这条才排除。真正有用的是直接读客体盘上的
+`ia.log`，第一步就该做。
+
 ## 2026-11-06 · h610 重启换了公网 IP，tank 重启后 tailscale 一直连旧地址 {#headscale-ip-change-stale-dns}
 
 内核换默认 LTS 的分批重启里，h610 重启后 PPPoE 换了地址（49.76.121.183 → 114.225.151.62），
