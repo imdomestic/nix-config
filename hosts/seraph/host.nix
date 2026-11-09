@@ -20,7 +20,10 @@
         services.bonsaiNinfer.tailnet.enable = true;
       }
     ];
-    externalModules = [inputs.nix-index-database.nixosModules.default];
+    externalModules = [
+      inputs.nix-index-database.nixosModules.default
+      inputs.lanzaboote.nixosModules.lanzaboote
+    ];
 
     users.linwhite.ageKey = "age1svatkwy2klm39twkpv7rxfteampuzkyu3ccxtjzpmuz2kq3d6sus8l3hg4";
   };

@@ -4,7 +4,10 @@
   pkgs,
   ...
 }: let
+  windowsEntry = pkgs.writeText "seraph-windows.conf" config.boot.loader.systemd-boot.extraEntries."windows.conf";
   prepareWindowsLoader = ''
+    ${pkgs.util-linux}/bin/mountpoint -q /boot
+    ${pkgs.util-linux}/bin/mountpoint -q /windows-efi
     windowsBoot=/windows-efi/EFI/Microsoft/Boot
     if [ -f "$windowsBoot/bootmgfw.efi" ]; then
       ${pkgs.coreutils}/bin/mv -f "$windowsBoot/bootmgfw.efi" "$windowsBoot/windows.efi"
@@ -14,27 +17,32 @@
     if [ -f "$windowsFallback/bootx64.efi" ] && ${pkgs.diffutils}/bin/cmp -s "$windowsFallback/bootx64.efi" "$windowsBoot/windows.efi"; then
       ${pkgs.coreutils}/bin/mv -f "$windowsFallback/bootx64.efi" "$windowsFallback/windows.efi"
     fi
+    # systemd-boot 只能读取自己的 ESP；保留重命名绕过固件抢启动项的行为。
+    ${pkgs.coreutils}/bin/install -d /boot/EFI/Microsoft /boot/loader/entries
+    ${pkgs.coreutils}/bin/cp -r /windows-efi/EFI/Microsoft/. /boot/EFI/Microsoft/
+    ${pkgs.coreutils}/bin/install -m 0600 ${windowsEntry} /boot/loader/entries/windows.conf
   '';
 in {
+  # 安装、密钥注册及双系统恢复步骤见 docs/runbooks/seraph-secure-boot.md。
+  boot.lanzaboote = {
+    enable = true;
+    pkiBundle = "/var/lib/sbctl";
+    configurationLimit = 5;
+    allowUnsigned = false;
+    autoEnrollKeys.enable = false;
+    settings.editor = false;
+  };
   boot.loader = {
     timeout = 5;
-    grub = {
-      enable = true;
-      device = "nodev";
-      efiSupport = true;
-      efiInstallAsRemovable = true;
-      configurationLimit = 5;
-      default = 0;
-      extraEntries = ''
-        menuentry "Windows" --class windows {
-          insmod part_gpt
-          insmod fat
-          insmod chain
-          search --no-floppy --fs-uuid --set=root 8C8A-383D
-          chainloader /EFI/Microsoft/Boot/windows.efi
-        }
+    grub.enable = false;
+    # Lanzaboote 用签名的 systemd-boot 替代 NixOS 自带的安装器。
+    systemd-boot = {
+      enable = lib.mkForce false;
+      extraEntries."windows.conf" = ''
+        title Windows
+        efi /EFI/Microsoft/Boot/windows.efi
+        sort-key o_windows
       '';
-      extraInstallCommands = prepareWindowsLoader;
     };
     efi = {
       canTouchEfiVariables = false;
@@ -114,8 +122,16 @@ in {
     hybrid-sleep.enable = false;
     suspend-then-hibernate.enable = false;
   };
+  # 原生 systemd-boot 模块停用后，由包装器安装其 Windows entry。
+  system.build.installBootLoader = lib.mkForce (pkgs.writeShellScript "seraph-install-bootloader" ''
+    set -euo pipefail
+    test -s ${lib.escapeShellArg (toString config.boot.lanzaboote.privateKeyFile)}
+    test -s ${lib.escapeShellArg (toString config.boot.lanzaboote.publicKeyFile)}
+    ${prepareWindowsLoader}
+    exec ${config.boot.loader.external.installHook} "$@"
+  '');
   systemd.services."seraph-boot-entries" = {
-    description = "Keep Windows boot access in the GRUB menu";
+    description = "Keep Windows boot access in the signed systemd-boot menu";
     wantedBy = ["multi-user.target"];
     after = ["local-fs.target"];
     unitConfig = {
@@ -155,7 +171,7 @@ in {
   security.sudo.wheelNeedsPassword = false;
   users.users.linwhite.hashedPasswordFile = "/var/lib/user-passwords/linwhite";
   programs.nix-index-database.comma.enable = true;
-  environment.systemPackages = with pkgs; [pciutils efibootmgr nvtopPackages.nvidia];
+  environment.systemPackages = with pkgs; [pciutils efibootmgr nvtopPackages.nvidia sbctl];
   time.timeZone = "Asia/Tokyo";
   system.stateVersion = "26.05";
 }
