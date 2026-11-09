@@ -45,6 +45,8 @@ macOS 在 KVM 上就靠 hypervisor 位绕开这些电源管理 MSR，并从 VMwa
 账号自己的两个地址和一个确定开着 iMessage 的地址。**status 0 不等于能收发**，要用查询结果验证。
 BAA 签名在 iMac19,1 上照样失败（`IDSBAASignerErrorDomain Code=3`，请求头
 `x-apple-baa-supported: 0`），可见它和 6001 都不是 T2 的事。代价是升不了 Tahoe。
+当晚把这个 Apple ID 登到一台真 iPad 上，iMessage 也报激活失败：被卡住的是账号，不只是客体。
+多半是这一天里从虚拟机反复登录、换过两套 Mac 身份、吃过几次 6001 招来的。
 
 **误导人的地方：** 报错文字毫无信息量；日志里最显眼的是 `DCBAASigner … platform is not
 supported by DeviceIdentity` 和 BAA 证明失败，看起来像是 iMac20,1 带 T2、要 T2 做硬件证明，
