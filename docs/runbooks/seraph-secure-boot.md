@@ -1,6 +1,8 @@
 # seraph：systemd-boot + Lanzaboote 安全启动
 
 配置在 `hosts/seraph/system.nix`，Lanzaboote 的稳定版本在 `flake.nix` / `flake.lock`。
+**当前配置是第一阶段：普通 systemd-boot，`boot.lanzaboote.enable = false`。**
+先确认新引导和双系统能用，再改为 `true` 进入签名阶段。
 **配置启用不等于固件已经开启 Secure Boot**：安装、密钥注册、重启验证是分开的步骤。
 
 ## 布局与约束
@@ -8,9 +10,9 @@
 - Linux ESP：`/boot`，UUID `8DC1-C232`，2 GiB。
 - Windows ESP：`/windows-efi`，UUID `8C8A-383D`，在另一块 NVMe 上。
 - 自签名的 PK / KEK / db 私钥：`/var/lib/sbctl`，只允许 root 读取；不进 Git / Nix store。
-- GRUB 停用。`boot.loader.systemd-boot.enable = false` 是刻意的：Lanzaboote 的安装器
-  安装并签名 systemd-boot 和 NixOS UKI，而不是运行 NixOS 自带的 unsigned 安装器。
-- 最多保留 5 代；禁用启动菜单的内核参数编辑；拒绝无密钥时安装未签名镜像。
+- GRUB 停用。原生 `boot.loader.systemd-boot.enable` 跟随 Lanzaboote 开关取反：
+  第一阶段使用原生安装器；开启 Lanzaboote 后改由它安装签名引导和 NixOS UKI。
+- 最多保留 5 代；禁用启动菜单的内核参数编辑。Lanzaboote 阶段拒绝无密钥时安装未签名镜像。
 - 不自动生成或注册密钥，也不自动重启。密钥丢失时应恢复备份，不能随手重建一套。
 
 systemd-boot 不会像 GRUB 一样跨 ESP 搜索并 chainload Windows。安装包装器和
@@ -24,9 +26,10 @@ systemd-boot 不会像 GRUB 一样跨 ESP 搜索并 chainload Windows。安装�
 注册时保留 Microsoft 证书。Windows 更新后，下次进入 NixOS 或安装新代会重新同步。
 
 Lanzaboote 同时写入 `EFI/systemd/systemd-bootx64.efi` 和 `EFI/BOOT/BOOTX64.EFI`。
-本机现有 NVRAM 项指向后一条 fallback 路径，可以继续使用；标签暂时仍可能显示
-`GRUB NixOS ms7e56`，不代表实际仍由 GRUB 启动。不必运行一个 unsigned 的
-`bootctl install`，也不必为此次迁移改写 BootOrder。
+原生 systemd-boot 安装器也使用这两条路径。本机现有 NVRAM 项指向后一条 fallback
+路径，可以继续使用；标签暂时仍可能显示 `GRUB NixOS ms7e56`，不代表实际仍由 GRUB
+启动。不必为此次迁移改写 BootOrder；进入签名阶段后不要再单独运行 unsigned 的
+`bootctl install`。
 
 ## 1. 准备和备份
 
@@ -59,9 +62,26 @@ sudo efibootmgr -v | sudo tee /root/seraph-boot-backup/efibootmgr.txt
 另外在固件中导出当前 Secure Boot 证书 / dbx（如果固件支持）。不要使用会连带清空
 吊销列表 dbx 的 “Clear All Secure Boot Keys”。只移除 PK 或进入 Setup Mode。
 
-## 2. 生成密钥、安装签名引导程序
+## 2. 先迁移到普通 systemd-boot
 
-第一次先使用仓库所钉 nixpkgs 的 sbctl，无需先激活新系统：
+确认 `boot.lanzaboote.enable = false`，保持固件的 Secure Boot 关闭：
+
+```sh
+nix build .#nixosConfigurations.seraph.config.system.build.toplevel --max-jobs 2 --cores 8
+nix store diff-closures /run/current-system ./result
+nixos-rebuild --sudo boot --install-bootloader --flake .#seraph --max-jobs 2 --cores 8
+sudo bootctl --esp-path=/boot list
+```
+
+`--install-bootloader` 不能省：原先只有 GRUB，没有已安装的 systemd-boot 可供更新。
+`boot` 只更新下一次启动配置，不切换正在运行的服务。先在 Secure Boot 关闭时重启，
+确认 NixOS 能正常进入，`sudo bootctl status` 的 Current Boot Loader 是 systemd-boot，
+且 Windows 菜单也能启动，再进入下一阶段。
+
+## 3. 生成密钥、安装签名引导程序
+
+将 `hosts/seraph/system.nix` 的 `boot.lanzaboote.enable` 改为 `true`，重新求值；
+原生安装器会随之停用，改用 Lanzaboote。先使用仓库所钉 nixpkgs 的 sbctl：
 
 ```sh
 sbctlPackage=$(nix build --no-link --print-out-paths --inputs-from . nixpkgs#sbctl)
@@ -94,7 +114,7 @@ sudo bootctl --esp-path=/boot list
 进入 NixOS 后用 `sudo bootctl status` 确认 Current Boot Loader 是 systemd-boot。
 此前不要直接在固件里启用安全启动，否则现有 GRUB 可能被拒绝。
 
-## 3. 注册密钥并开启 Secure Boot
+## 4. 注册密钥并开启 Secure Boot
 
 在固件中进入 Secure Boot Custom / Setup Mode（通常只删除 Platform Key / PK），
 保留 dbx。返回 NixOS 后：
@@ -108,6 +128,13 @@ sudo sbctl enroll-keys --microsoft --firmware-builtin
 `--microsoft` 兼容 Windows 和 Microsoft 签名的显卡 Option ROM；
 `--firmware-builtin` 保留厂商预置证书。若 sbctl 报 Option ROM 风险，停下来调查，
 **不要**加 `--yes-this-might-brick-my-machine` 强制绕过。
+
+本机是 MSI B850 GAMING PLUS WIFI（MS-7E56）。`sbctl status` 会报告
+[FQ0001](https://github.com/Foxboron/sbctl/wiki/FQ0001)：某些 MSI 固件在签名验证失败时
+默认仍执行镜像。**仅看到 Secure Boot enabled 不足以证明拒绝策略生效。**
+在 Custom 模式下，若有 `Image Execution Policy`，将 Option ROM、Removable Media、
+Fixed Media 都设为 `Deny Execute`；若菜单是 `Secure Boot Preset`，选 `Maximum Security`。
+这一步只在签名启动已验证且可信证书已注册之后进行，不在普通 systemd-boot 测试阶段做。
 
 在固件里确认 Secure Boot 已启用、使用已注册的自定义密钥，而不是恢复成仅信任
 出厂证书的 Standard 模式。重启后检查：

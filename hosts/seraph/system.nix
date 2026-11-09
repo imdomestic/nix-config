@@ -25,7 +25,8 @@
 in {
   # 安装、密钥注册及双系统恢复步骤见 docs/runbooks/seraph-secure-boot.md。
   boot.lanzaboote = {
-    enable = true;
+    # 先验证普通 systemd-boot 启动，确认后再启用签名。
+    enable = false;
     pkiBundle = "/var/lib/sbctl";
     configurationLimit = 5;
     allowUnsigned = false;
@@ -35,9 +36,12 @@ in {
   boot.loader = {
     timeout = 5;
     grub.enable = false;
-    # Lanzaboote 用签名的 systemd-boot 替代 NixOS 自带的安装器。
+    # 开启 Lanzaboote 时，它会替代原生 systemd-boot 安装器。
     systemd-boot = {
-      enable = lib.mkForce false;
+      enable = !config.boot.lanzaboote.enable;
+      configurationLimit = 5;
+      editor = false;
+      extraInstallCommands = prepareWindowsLoader;
       extraEntries."windows.conf" = ''
         title Windows
         efi /EFI/Microsoft/Boot/windows.efi
@@ -123,15 +127,15 @@ in {
     suspend-then-hibernate.enable = false;
   };
   # 原生 systemd-boot 模块停用后，由包装器安装其 Windows entry。
-  system.build.installBootLoader = lib.mkForce (pkgs.writeShellScript "seraph-install-bootloader" ''
+  system.build.installBootLoader = lib.mkIf config.boot.lanzaboote.enable (lib.mkForce (pkgs.writeShellScript "seraph-install-bootloader" ''
     set -euo pipefail
     test -s ${lib.escapeShellArg (toString config.boot.lanzaboote.privateKeyFile)}
     test -s ${lib.escapeShellArg (toString config.boot.lanzaboote.publicKeyFile)}
     ${prepareWindowsLoader}
     exec ${config.boot.loader.external.installHook} "$@"
-  '');
+  ''));
   systemd.services."seraph-boot-entries" = {
-    description = "Keep Windows boot access in the signed systemd-boot menu";
+    description = "Keep Windows boot access in the systemd-boot menu";
     wantedBy = ["multi-user.target"];
     after = ["local-fs.target"];
     unitConfig = {
