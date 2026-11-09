@@ -12,6 +12,24 @@
   dummy = "EK1080T2KHR";
   aerospace = "${config.programs.aerospace.package}/bin/aerospace";
 
+  rexVisibility = pkgs.writeShellScript "rex-workspace-visibility" ''
+    # Query live state, not the callback's potentially stale workspace environment.
+    workspaces=$(${aerospace} list-workspaces --monitor all --visible) || exit 0
+    visibility=hidden
+    if printf '%s\n' "$workspaces" | grep -qx 2; then
+      visibility=visible
+    fi
+    /usr/bin/osascript -l JavaScript ${./modules/rex/workspace-visibility.js} "$visibility"
+  '';
+  rexStartupVisibility = pkgs.writeShellScript "rex-startup-visibility" ''
+    # Cover Rex's asynchronous initial window restoration as well as detection.
+    ${rexVisibility}
+    for delay in 0.2 0.5 1 2; do
+      /bin/sleep "$delay"
+      ${rexVisibility}
+    done
+  '';
+
   evict = pkgs.writeShellScript "aerospace-evict-dummy" ''
     target=$(${aerospace} list-monitors --format '%{monitor-id}|%{monitor-name}' |
       grep -v '|${dummy}$' | head -n1 | cut -d'|' -f1)
@@ -31,11 +49,11 @@ in {
   imports = [./modules/opencode/local-bonsai.nix];
 
   programs.aerospace.settings = {
-    # 新建窗口和 AeroSpace 启动时恢复的 Rex 窗口都归到工作区 2。
+    # Rex 不接受屏幕外藏窗，另用原生隐藏；见 docs/incidents.md#rex-aerospace-visibility。
     "on-window-detected" = lib.mkBefore [
       {
         "if".app-id = "com.superlogical.rex";
-        run = "move-node-to-workspace 2";
+        run = ["move-node-to-workspace 2" "exec-and-forget ${rexStartupVisibility}"];
       }
     ];
 
@@ -46,9 +64,15 @@ in {
     }) ["1" "2" "3" "4" "5" "6" "7" "8" "9" "0"]);
 
     # 排在 linwhite 自己的命令之后(先 move-mouse 再挪窗口),和原来一致。
-    "after-startup-command" = lib.mkAfter ["exec-and-forget ${evict}"];
+    "after-startup-command" = lib.mkAfter ["exec-and-forget ${evict}" "exec-and-forget ${rexStartupVisibility}"];
     "on-focused-monitor-changed" = lib.mkAfter ["exec-and-forget ${evict}"];
-    "exec-on-workspace-change" = lib.mkAfter ["${evict}"];
+    # This list is one process's argv, not a sequence of AeroSpace commands.
+    "exec-on-workspace-change" = [
+      "${pkgs.writeShellScript "aerospace-workspace-change" ''
+        ${evict}
+        ${rexVisibility}
+      ''}"
+    ];
   };
 
   programs.claude-code.settings = {

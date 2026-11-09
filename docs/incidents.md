@@ -4,6 +4,35 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-09 · Rex 归属工作区 2，却覆盖其他工作区 {#rex-aerospace-visibility}
+
+在 aegis 上，Rex Beta 1887 与 AeroSpace 0.20.3-Beta 同时运行。原有
+`on-window-detected` 已匹配 `com.superlogical.rex` 并把窗口移到 2，
+但切到其他工作区后 Rex 仍整窗覆盖屏幕。
+
+误导点是把「窗口在错误工作区可见」当成分配规则没触发。现场
+`aerospace debug-windows` 显示窗口归属 2、父节点是 TilingContainer、
+windowLevel 是 normalWindow；可见工作区为 9 时，它的 AXFrame 却仍是
+`x:0 y:31 w:2560 h:1335`。Arc 的非可见窗口已经被移到
+`x:2559 y:1334`。再次移到 2、切换 2 → 9、切换 floating → tiling
+都没有让 Rex 移到屏幕外。这证明问题在藏窗阶段，不是规则未匹配或置顶窗口；
+尚未定位 Rex 内部拒绝／纠正窗口位置的具体代码。
+
+`home/linwhite/aegis.nix` 保留分配规则，另在窗口检测、AeroSpace 启动和
+工作区变化时调用 `modules/rex/workspace-visibility.js`，用 AppKit 的
+NSRunningApplication.hide/unhide 按工作区 2 是否在任一显示器可见来隐藏／恢复
+整个 Rex 应用。启动后短时重查覆盖异步恢复窗口，不常驻轮询，不激活应用，
+也不需要给 osascript 辅助功能权限。`exec-on-workspace-change` 是一个进程的 argv，
+所以用单个包装脚本依次执行原诱骗器守卫和 Rex 可见性守卫，不能把两个脚本路径
+直接并列当作两条命令。
+
+已构建 Home Manager 生成的 AeroSpace TOML，通过 `reload-config --dry-run`，
+仅替换当前 AeroSpace 配置链接并热加载，没有切换系统／整个 home。
+实测切到工作区 1、0 后 Rex.hidden=true，回到 2 为 false，窗口归属仍为 2，
+会话未重启。没有退出并重新启动 Rex，因此冷启动仍需用户下一次启动时验收。
+这是应用级兼容处理：离开 2 时 Rex 的设置等其他窗口也会一起隐藏；
+不是修复 Rex 本身的屏幕外窗口行为。
+
 ## 2026-11-09 · macOS 客体里登录 Apple ID 报 "An unknown error occurred" {#macos-vm-apple-id}
 
 `macos-vm` 装好、身份核对完，在 Messages 里登录 bot 的 Apple ID，输完密码就报 "An unknown error
