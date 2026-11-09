@@ -80,6 +80,9 @@ BAA 签名在 iMac19,1 上照样失败（`IDSBAASignerErrorDomain Code=3`，请�
 registration`），Messages 立刻退回登录页。两个账号、两个机型都过不去，共同点只剩客体本身。
 同一次登录里 SRP 请求（gsa.apple.com）连着几次被 RST、超时，在 tank 上抓包看到 RST 来自
 17.32.194.2；多试几次能过，和注册失败无关。
+新账号紧接着登到真 iPad 上，iMessage 里给一个确定在用的地址发消息，地址是红的：在真设备上也用不了。
+所以当晚的结果分不开是客体的问题还是账号的问题（新账号本来就常被限制；两个账号又都先碰过客体）。
+要分开，得让一个账号先在真设备上激活、确认能用，再只在客体上登一次。
 
 **误导人的地方：** 报错文字毫无信息量；日志里最显眼的是 `DCBAASigner … platform is not
 supported by DeviceIdentity` 和 BAA 证明失败，看起来像是 iMac20,1 带 T2、要 T2 做硬件证明，
