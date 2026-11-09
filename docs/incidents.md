@@ -24,6 +24,20 @@ Apple ID。大家确认有效的办法是 OpenCore 内核补丁：在内核字�
 这样 `kern.hv_vmm_present` 读到的是 0。补丁在 `hosts/tank/macos-vm/opencore.py`。
 quickemu 那边有人报告 Tahoe 上打了之后 PerfPowerServices 吃满 CPU，升级前留意。
 
+补丁之后 Apple ID 登录和 2FA 都过了，卡在下一层 **iMessage 注册**：`identityservicesd` 收到的
+响应整体 status 0，账号那一项是 **6001**（`ServerRegistrationUnsupported`），随即全局登出，
+Messages 回到登录页，看起来像闪退。注册请求里还带着 `Failed to baa sign message`
+（`IDSBAASignerErrorDomain Code=3`）：iMac20,1 是 T2 机型，客体给不出 T2 的硬件证明。
+可不少用 iMac20,1 的黑苹果照样能用 iMessage，所以不能单凭这一条下结论。
+
+**去掉 CPUID 的 hypervisor 位，失败，已回退：** 补丁只改了 sysctl，程序直接执行 `cpuid`
+还能看到 `VMM`。QEMU 改成 `-hypervisor,kvm=off` 之后：`kvm.ignore_msrs` 关着（tank 默认）时，
+OpenCore 一读 KVM 不模拟的 MSR 就出错，停在 TianoCore 画面；运行时打开 `ignore_msrs`，
+能进内核（日志里有 macOS 电源管理写 `0x199`），但先 panic 一次，再引导就卡在苹果标进度条。
+macOS 在 KVM 上就靠 hypervisor 位绕开这些电源管理 MSR，并从 VMware 的叶读 TSC 频率。
+要走这条路得一并解决计时和电源管理，没再继续。6001 到底是虚拟机被认出来还是这个
+Apple ID 本身的问题，当时没有定论。
+
 **误导人的地方：** 报错文字毫无信息量；日志里最显眼的是 `DCBAASigner … platform is not
 supported by DeviceIdentity` 和 BAA 证明失败，看起来像是 iMac20,1 带 T2、要 T2 做硬件证明，
 容易往"换个不带 T2 的机型"上想。可换机型就是换身份，激活过之后绝不能做。真正指向原因的是
