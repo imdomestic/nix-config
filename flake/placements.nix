@@ -21,6 +21,22 @@
     };
     # Bonsai NInfer 网关,端口在 lib/bonsai-models.nix。
     bonsai-ninfer.host = "seraph";
+    sillytavern = {
+      host = "seraph";
+      port = 8000;
+    };
+    qwen-ninfer = {
+      host = "taipan";
+      port = 8000;
+    };
+    small-qwen = {
+      host = "h610";
+      port = 11435;
+    };
+    ollama = {
+      host = "tank";
+      port = 11434;
+    };
     # k3s API(hosts/tank/k3s.nix),kubeconfig 用。
     k3s-api = {
       host = "tank";

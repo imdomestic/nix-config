@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated input-filter acceptance. Run as root: unshare -n python3 <script>."""
+"""Isolated input-filter acceptance: unshare -n python3 <script> [private-port ...]."""
 import os
 import socket
 import subprocess as sp
@@ -11,6 +11,9 @@ def run(*args, **kwargs):
 
 
 assert os.readlink('/proc/self/ns/net') != os.readlink('/proc/1/ns/net'), 'Run inside unshare -n, never in the host network namespace'
+ports = list(dict.fromkeys(map(int, sys.argv[1:]))) or [80, 443, 9090]
+assert all(0 < p < 65536 and p != 8443 for p in ports), 'Use valid private ports; 8443 is the public control'
+test_ports = ports + [8443]
 run('ip', 'link', 'set', 'lo', 'up')
 peer = sp.Popen(['unshare', '-n', 'sleep', '120'])
 try:
@@ -30,25 +33,25 @@ try:
     run('nft','-f','-',input='''table inet tailnet_web_test {
       chain input {
         type filter hook input priority -10; policy accept;
-        iifname != { "lo", "tailscale0" } tcp dport { 80, 443, 9090 } counter drop
+        iifname != { "lo", "tailscale0" } tcp dport { PRIVATE_PORTS } counter drop
       }
-    }''',text=True)
+    }'''.replace('PRIVATE_PORTS', ', '.join(map(str, ports))),text=True)
     listeners=[]
     for family, address in [(socket.AF_INET,'0.0.0.0'),(socket.AF_INET6,'::')]:
-        for port in [80,443,9090,8443]:
+        for port in test_ports:
             sock=socket.socket(family)
             if family == socket.AF_INET6:
                 sock.setsockopt(socket.IPPROTO_IPV6,socket.IPV6_V6ONLY,1)
             sock.bind((address,port));sock.listen(20);listeners.append(sock)
     count=0
     for address, allowed in [('192.0.2.1',False),('fd00:1::1',False),('100.64.254.1',True),('fd00:2::1',True)]:
-        for port in [80,443,9090,8443]:
+        for port in test_ports:
             code='import socket,sys\ns=socket.create_connection((sys.argv[1],int(sys.argv[2])),timeout=.5)\ns.close()'
             result=sp.run(prefix+[sys.executable,'-c',code,address,str(port)],stdout=sp.DEVNULL,stderr=sp.DEVNULL)
             expected=allowed or port==8443
             assert (result.returncode==0)==expected,(address,port,result.returncode)
             count+=1
-    for port in [80,443,9090,8443]:
+    for port in test_ports:
         with socket.create_connection(('127.0.0.1',port),timeout=1): pass
         count+=1
     print(f'PASS {count} isolated IPv4/IPv6 input checks: private ports restricted, 8443 reachable, loopback allowed')

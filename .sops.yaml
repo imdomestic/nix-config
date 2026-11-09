@@ -84,6 +84,7 @@ creation_rules:
           - age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7 # linwhite (personal)
           - age1m70ml5ff2cxswwqy8vz8al9ptjd4sfqmmk7mufem9gejgk5t34tqp7v7zr # host h610
           - age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq # host gizmo
+          - age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f # host seraph
   - path_regex: 'secrets/clients/kube-tank\.yaml$'
     key_groups:
       - age:

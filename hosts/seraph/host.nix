@@ -15,6 +15,7 @@
       ../../system/modules/bonsai-conversion.nix
       ../../system/modules/bonsai-ninfer.nix
       ../../system/modules/bonsai-tailnet.nix
+      ../../system/modules/sillytavern
       {
         services.bonsaiNinfer.enable = true;
         services.bonsaiNinfer.tailnet.enable = true;
