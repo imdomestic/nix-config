@@ -29,11 +29,12 @@ macOS 虚拟机里。为什么这么做见 [macos-vm](../decisions.md#macos-vm)�
 serial 和 MLB 用 OpenCorePkg 的 `macserial` 生成：
 
 ```sh
-macserial -m iMac20,1 -n 1     # 输出：serial | MLB
+macserial -m iMac20,1 -n 10    # 每行：serial | MLB，两个成对用
 ```
 
-拿 serial 去 <https://checkcoverage.apple.com> 查一下，要的是**查不到**（不是任何真机的）。
-写进 sops：
+拿 serial 去 <https://checkcoverage.apple.com> 查，要的是**查不到**（不是任何真机的）。
+macserial 生成的号格式和真机一样，常常撞上真机：2026-11-09 第一次生成的那个查出来是
+一台 2021 年买的 iMac，所以一次多生成几个，挑第一个查不到的。写进 sops：
 
 ```sh
 sops set secrets/hosts/tank.yaml '["macos-vm"]["serial"]' '"<serial>"'
