@@ -73,11 +73,12 @@
       # Otherwise this image's own BOOTx64.efi is a boot entry, and the
       # default when macOS hasn't chosen one.
       printf Disabled > esp/BOOT/.contentVisibility
-      # iMac20,1: Tahoe still supports it, so an upgrade keeps the identity
-      # Messages was activated with. 0x877 is what `csrutil disable` sets;
-      # imsg's IMCore helper needs SIP off.
+      # iMac19,1, the last iMac without a T2: as a T2 model the guest owed
+      # iMessage a hardware attestation it can't make, and registration was
+      # refused (docs/incidents.md#macos-vm-apple-id). Its cost: no Tahoe.
+      # 0x877 is what `csrutil disable` sets; imsg's IMCore helper needs SIP off.
       python3 ${./opencore.py} esp/OC/config.plist \
-        --product iMac20,1 --csr 77080000 \
+        --product iMac19,1 --csr 77080000 \
         --serial ${secret "serial"} --mlb ${secret "mlb"} \
         --rom ${secret "rom"} --uuid ${secret "uuid"}
 

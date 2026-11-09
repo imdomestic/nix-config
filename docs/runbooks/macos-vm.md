@@ -20,7 +20,7 @@ macOS 虚拟机里。为什么这么做见 [macos-vm](../decisions.md#macos-vm)�
   - `BaseSystem.img`：只在安装时放，存在就挂上。
   首次启动时没有的会自动建，已有的不会覆盖。
 - 身份（SMBIOS）在 sops：`secrets/hosts/tank.yaml` 的 `macos-vm/{serial,mlb,rom,uuid}`，
-  机型固定 iMac20,1。每次启动渲染进 `/run/macos-vm/opencore.img`，不进 store。
+  机型固定 iMac19,1（不带 T2，见下）。每次启动渲染进 `/run/macos-vm/opencore.img`，不进 store。
   en0 的 MAC 就是 `rom`。
 - VNC 只听 `127.0.0.1:5947`，密码是 `macos-vm/vnc-password`。
 - OpenCore 不显示启动菜单，直接引导 macOS 设的默认盘（OpenCanopy 的倒计时在这台上不走，
@@ -33,7 +33,7 @@ macOS 虚拟机里。为什么这么做见 [macos-vm](../decisions.md#macos-vm)�
 serial 和 MLB 用 OpenCorePkg 的 `macserial` 生成：
 
 ```sh
-macserial -m iMac20,1 -n 10    # 每行：serial | MLB，两个成对用
+macserial -m iMac19,1 -n 10    # 每行：serial | MLB，两个成对用
 ```
 
 拿 serial 去 <https://checkcoverage.apple.com> 查，要的是**查不到**（不是任何真机的）。
@@ -45,7 +45,12 @@ sops set secrets/hosts/tank.yaml '["macos-vm"]["serial"]' '"<serial>"'
 sops set secrets/hosts/tank.yaml '["macos-vm"]["mlb"]' '"<MLB>"'
 ```
 
-`rom`（Apple OUI 开头的 6 字节）、`uuid`、`vnc-password` 已经生成过。
+`rom`（Apple OUI 开头的 6 字节，比如 `3c0754` 加 `openssl rand -hex 3`）和 `uuid`（`uuidgen`）
+跟着一起换，`vnc-password` 不用动。
+
+机型要不带 T2 的。最早用的 iMac20,1 带 T2，注册 iMessage 时 macOS 要给 Apple 做 T2 的硬件证明，
+客体做不出来，注册被拒（6001，见 [macos-vm-apple-id](../incidents.md#macos-vm-apple-id)）。
+Sequoia 支持的 iMac 里只有 iMac19,1 不带 T2；代价是升不了 Tahoe。
 
 **一旦用这套身份登录过 iMessage，就不要再改。** 换 serial、MLB、ROM 任何一个，在 Apple
 看来都是换了一台 Mac，要重新激活，容易撞上要打电话给 Apple 的 "customer code"。
@@ -67,7 +72,6 @@ sops set secrets/hosts/tank.yaml '["macos-vm"]["mlb"]' '"<MLB>"'
 
    用 Sequoia 而不是 Tahoe：imsg 的 IMCore helper 在 Tahoe 更严的 library validation 下
    不一定注入得进去，没有 helper 就只能走 AppleScript 发送，老版本那批卡死的投递就是它。
-   iMac20,1 Tahoe 也支持，以后要升级不用换身份。
 
 2. 在自己机器上开 VNC：
 
@@ -123,7 +127,7 @@ sops set secrets/hosts/tank.yaml '["macos-vm"]["mlb"]' '"<MLB>"'
    验证：`sudo systemctl restart macos-vm`，日志里不应出现 QEMU 被 SIGTERM 杀掉。
 
 7. 登录 Apple ID 之前先核对：
-   - `system_profiler SPHardwareDataType`：iMac20,1，serial 是 sops 里那个；
+   - `system_profiler SPHardwareDataType`：iMac19,1，serial 是 sops 里那个；
    - `ioreg -rn en0 | grep IOBuiltin`：要是 `Yes`，iMessage 只认内建网卡；
    - `csrutil status`：disabled。
    - `sysctl kern.hv_vmm_present`：要是 0（OpenCore 的内核补丁），否则 Apple ID 登录报
