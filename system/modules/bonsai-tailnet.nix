@@ -35,7 +35,7 @@
     '';
   };
 in {
-  options.services.bonsaiNinfer.tailnet.enable = lib.mkEnableOption "Bonsai access from aegis over Tailscale";
+  options.services.bonsaiNinfer.tailnet.enable = lib.mkEnableOption "Authenticated Bonsai access over Tailscale";
   config = lib.mkIf (cfg.enable && cfg.tailnet.enable) {
     assertions = [
       {
@@ -50,7 +50,7 @@ in {
     };
     systemd.tmpfiles.rules = ["d ${bonsai.directory}/gateway 0750 bonsai-gateway bonsai-gateway -"];
     systemd.services.bonsai-tailnet-gateway = {
-      description = "Authenticated Bonsai gateway for aegis";
+      description = "Authenticated Bonsai gateway for the Tailnet";
       wantedBy = ["multi-user.target"];
       wants = ["tailscaled.service"];
       requires = ["llama-swap.service"];
@@ -71,16 +71,5 @@ in {
     };
     my.tailscale.guardedTCPServices.bonsai-tailnet-gateway = [bonsai.port];
     networking.firewall.interfaces.tailscale0.allowedTCPPorts = [bonsai.port];
-    # 100.64.0.25 已通过 aegis 的 Tailscale 状态核实。
-    networking.nftables.tables.bonsai-clients = {
-      family = "inet";
-      content = ''
-        chain input {
-          type filter hook input priority -11; policy accept;
-          iifname "tailscale0" ip saddr != 100.64.0.25 tcp dport ${toString bonsai.port} counter drop
-          iifname "tailscale0" meta nfproto ipv6 tcp dport ${toString bonsai.port} counter drop
-        }
-      '';
-    };
   };
 }

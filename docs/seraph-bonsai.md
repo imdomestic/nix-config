@@ -5,6 +5,10 @@
 
 两个模型均使用 NInfer、NVFP4 KV、174080 上下文和 MTP K=3。
 
+远程入口为 `http://seraph.inner.imdomestic.com:8080/v1`，允许所有能通过
+Tailnet 策略访问 seraph 的设备连接，不设设备 IP 白名单，仍须提供 Bonsai API Key。
+网关仅绑定 Tailscale IPv4 地址，防火墙保留 Tailnet 接口限制，不向公网或 LAN 开放。
+
 使用方法、模型校验值、性能测量、网络认证、验证结果和恢复命令见
 [部署报告](seraph-bonsai-deployment.md)。构建与转换记录见
 [运行记录](incidents.md#seraph-bonsai-ninfer-174080)，配置决定见
