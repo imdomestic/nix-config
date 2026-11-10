@@ -60,7 +60,10 @@
     max = null;
   };
 in {
-  imports = [../sops];
+  imports = [
+    ../sops
+    ./options.nix
+  ];
 
   sops.secrets."cliproxy/api_key".sopsFile = ../../../../secrets/clients/cliproxy.yaml;
 
@@ -125,111 +128,113 @@ in {
   home.file.".pi/agent/themes/kanso-pearl.json".text = builtins.toJSON themes.kanso-pearl;
   home.file.".pi/agent/themes/kanso-zen.json".text = builtins.toJSON themes.kanso-zen;
   home.file.".pi/agent/models.json".text = builtins.toJSON {
-    providers = {
-      ninfer = {
-        name = "NInfer";
-        baseUrl = "http://taipan.inner.imdomestic.com:8000/v1";
-        api = "openai-completions";
-        apiKey = "ninfer";
-        compat = {
-          supportsDeveloperRole = false;
-          supportsReasoningEffort = false;
-          thinkingFormat = "qwen-chat-template";
-          chatTemplateKwargs.enable_thinking."$var" = "thinking.enabled";
-        };
-        models = map (model:
-          model
-          // {
-            reasoning = true;
-            thinkingLevelMap = qwenLevels;
-            input = ["text" "image"];
-            cost = free;
-          }) [
-          {
-            id = "qwen3.8-27b";
-            name = "Qwen3.8 27B · Groupwise INT · 262K · Vision 8K · MTP3";
-            contextWindow = 262144;
-            maxTokens = 131072;
-          }
-          {
-            id = "qwen3.8-27b-fast";
-            name = "Qwen3.8 27B · NVFP4 · 100K · Vision 8K · MTP3";
-            contextWindow = 100000;
-            maxTokens = 100000;
-          }
-          {
-            id = "qwen3.8-27b-aligned";
-            name = "qwen3.8-27b-aligned";
-            contextWindow = 262144;
-            maxTokens = 262144;
-          }
-        ];
-      };
-      cliproxy = {
-        name = "CLIProxy (${config.my.fleet.placements.cliproxy.host})";
-        inherit (cliproxy) baseUrl;
-        api = "openai-responses";
-        # `!` 前缀让 pi 每次请求时执行命令取 key，明文不进 store。
-        apiKey = "!${pkgs.coreutils}/bin/cat ${config.sops.secrets."cliproxy/api_key".path}";
-        models = let
-          # Rewind 的已知型号跟随上游别名估价；动态 chat 别名不猜费用和推理能力。
-          gpt = limits: id: base: let
-            chatAlias = base == "gpt-chat-latest";
-          in
+    providers =
+      {
+        ninfer = {
+          name = "NInfer";
+          baseUrl = "http://taipan.inner.imdomestic.com:8000/v1";
+          api = "openai-completions";
+          apiKey = "ninfer";
+          compat = {
+            supportsDeveloperRole = false;
+            supportsReasoningEffort = false;
+            thinkingFormat = "qwen-chat-template";
+            chatTemplateKwargs.enable_thinking."$var" = "thinking.enabled";
+          };
+          models = map (model:
+            model
+            // {
+              reasoning = true;
+              thinkingLevelMap = qwenLevels;
+              input = ["text" "image"];
+              cost = free;
+            }) [
             {
-              inherit id;
-              reasoning = !chatAlias;
-              input =
-                if chatAlias
-                then ["text"]
-                else ["text" "image"];
-              contextWindow = limits.context;
-              maxTokens = limits.output;
-              cost =
-                if chatAlias
-                then free
-                else pricing.${base};
+              id = "qwen3.8-27b";
+              name = "Qwen3.8 27B · Groupwise INT · 262K · Vision 8K · MTP3";
+              contextWindow = 262144;
+              maxTokens = 131072;
             }
-            // lib.optionalAttrs (!chatAlias) {thinkingLevelMap = gptLevels base;}
-            // lib.optionalAttrs chatAlias {name = "Rewind GPT Chat Latest · 费用未估算";};
-        in
-          map (id: gpt cliproxy.gpt id id) cliproxy.gpt.ids
-          ++ lib.mapAttrsToList (id: gpt (cliproxy.rewind.modelLimits.${id} or cliproxy.rewind) id) cliproxy.rewind.models
-          ++ lib.mapAttrsToList (id: model: {
-            inherit id;
-            inherit (model) name;
-            reasoning = true;
-            thinkingLevelMap = geminiLevels id;
-            input = ["text" "image"];
-            contextWindow = cliproxy.gemini.context;
-            maxTokens = model.output;
-            cost = pricing.${id};
-          })
-          cliproxy.gemini.models
-          ++ lib.mapAttrsToList (id: model: {
-            id = "opencode/${id}";
-            inherit (model) name;
-            api = "openai-completions";
-            reasoning = true;
-            thinkingLevelMap = lib.genAttrs ["off" "minimal" "low" "medium" "high" "xhigh" "max"] (level:
-              if lib.elem level (model.efforts or ["high"])
-              then level
-              else null);
-            input = ["text" "image"];
-            contextWindow = model.context;
-            maxTokens = model.output;
-            cost = pricing."opencode/${id}";
-            compat = {
-              supportsReasoningEffort = model ? efforts;
-              thinkingFormat = "openai";
-              requiresReasoningContentOnAssistantMessages = true;
-              # CLIProxy expands this session into Go's x-opencode-session.
-              sendSessionAffinityHeaders = true;
-              sessionAffinityFormat = "openrouter";
-            };
-          })
-          cliproxy.opencode.models;
-      };
-    };
+            {
+              id = "qwen3.8-27b-fast";
+              name = "Qwen3.8 27B · NVFP4 · 100K · Vision 8K · MTP3";
+              contextWindow = 100000;
+              maxTokens = 100000;
+            }
+            {
+              id = "qwen3.8-27b-aligned";
+              name = "qwen3.8-27b-aligned";
+              contextWindow = 262144;
+              maxTokens = 262144;
+            }
+          ];
+        };
+        cliproxy = {
+          name = "CLIProxy (${config.my.fleet.placements.cliproxy.host})";
+          inherit (cliproxy) baseUrl;
+          api = "openai-responses";
+          # `!` 前缀让 pi 每次请求时执行命令取 key，明文不进 store。
+          apiKey = "!${pkgs.coreutils}/bin/cat ${config.sops.secrets."cliproxy/api_key".path}";
+          models = let
+            # Rewind 的已知型号跟随上游别名估价；动态 chat 别名不猜费用和推理能力。
+            gpt = limits: id: base: let
+              chatAlias = base == "gpt-chat-latest";
+            in
+              {
+                inherit id;
+                reasoning = !chatAlias;
+                input =
+                  if chatAlias
+                  then ["text"]
+                  else ["text" "image"];
+                contextWindow = limits.context;
+                maxTokens = limits.output;
+                cost =
+                  if chatAlias
+                  then free
+                  else pricing.${base};
+              }
+              // lib.optionalAttrs (!chatAlias) {thinkingLevelMap = gptLevels base;}
+              // lib.optionalAttrs chatAlias {name = "Rewind GPT Chat Latest · 费用未估算";};
+          in
+            map (id: gpt cliproxy.gpt id id) cliproxy.gpt.ids
+            ++ lib.mapAttrsToList (id: gpt (cliproxy.rewind.modelLimits.${id} or cliproxy.rewind) id) cliproxy.rewind.models
+            ++ lib.mapAttrsToList (id: model: {
+              inherit id;
+              inherit (model) name;
+              reasoning = true;
+              thinkingLevelMap = geminiLevels id;
+              input = ["text" "image"];
+              contextWindow = cliproxy.gemini.context;
+              maxTokens = model.output;
+              cost = pricing.${id};
+            })
+            cliproxy.gemini.models
+            ++ lib.mapAttrsToList (id: model: {
+              id = "opencode/${id}";
+              inherit (model) name;
+              api = "openai-completions";
+              reasoning = true;
+              thinkingLevelMap = lib.genAttrs ["off" "minimal" "low" "medium" "high" "xhigh" "max"] (level:
+                if lib.elem level (model.efforts or ["high"])
+                then level
+                else null);
+              input = ["text" "image"];
+              contextWindow = model.context;
+              maxTokens = model.output;
+              cost = pricing."opencode/${id}";
+              compat = {
+                supportsReasoningEffort = model ? efforts;
+                thinkingFormat = "openai";
+                requiresReasoningContentOnAssistantMessages = true;
+                # CLIProxy expands this session into Go's x-opencode-session.
+                sendSessionAffinityHeaders = true;
+                sessionAffinityFormat = "openrouter";
+              };
+            })
+            cliproxy.opencode.models;
+        };
+      }
+      // (config.my.pi.providers or {});
   };
 }

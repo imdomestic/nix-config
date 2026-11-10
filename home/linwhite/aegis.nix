@@ -46,7 +46,10 @@
     fi
   '';
 in {
-  imports = [./modules/opencode/local-bonsai.nix];
+  imports = [
+    ./modules/opencode/local-bonsai.nix
+    ./modules/pi/local-bonsai.nix
+  ];
 
   programs.aerospace.settings = {
     # Rex 不接受屏幕外藏窗，另用原生隐藏；见 docs/incidents.md#rex-aerospace-visibility。
