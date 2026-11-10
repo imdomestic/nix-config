@@ -33,6 +33,23 @@ Responses input 的图片数量。超限直接报 HTTP 400 / `image_limit_exceed
 4xx 分类与安全参数路径。原会话仍需由客户端卸载早期截图或新开会话；只有
 压缩文字而保留原图片不会解决。边界见 `docs/rewind.md#image-limit`。
 
+随后按用户指令从 r6s 的 `4826d617` 构建并激活 0.2.1，限制 `max-jobs=1`、
+`cores=2`。与当前代的闭包差异只有插件 0.2.0 → 0.2.1，CLIProxyAPI、
+kernel/modules/initrd 不变。先 `test` 并设置十分钟回退，11:26 UTC 完成
+持久 `switch` 后撤销回退；运行和默认代均为
+`/nix/store/2w933d7x8np4l7hp1v8sf5vy5rs1pnwp-nixos-system-gizmo-26.05.20261105.c56a87d`。
+
+线上验收：50 张仍为 200/OK，51 与 83 张明确返回 400 并列出数量；负数
+`max_output_tokens` 也为 400，不再是 502。持久激活后再次确认 Rewind Astra
+短文本为 200/OK、83 张仍为明确 400，余额与 HTTPS 模型目录为 200，设备
+hash/时间戳不变，相关服务 active。本次不重启、不激活任何 home，既有
+内核待重启状态不变。
+
+普通 Codex `gpt-6.1-sol` 此时返回 429 / `usage_limit_reached`，随后为
+provider=codex 的 `model_cooldown`。这是未改变的原生 provider 路径报告的
+订阅额度限制，不能记作“普通 GPT 验收通过”；未清冷却、换凭据或绕过额度。
+该情况单独保留，不据此回退已正常工作的 Rewind 图片校验。
+
 ## 2026-11-10 · Rewind 1.1.7 的连接策略不是只换版本号 {#rewind-client-policy-1-1-7}
 
 从官网 `/api/v1/downloads/rewind-harness` 取得最新
