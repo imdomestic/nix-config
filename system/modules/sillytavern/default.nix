@@ -137,6 +137,8 @@
     ];
   });
 in {
+  imports = [./charites.nix];
+
   assertions = [
     {
       assertion = config.services.tailscale.enable && domain != null && placement.host == config.my.host.name;

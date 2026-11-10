@@ -25,6 +25,10 @@
       host = "seraph";
       port = 8000;
     };
+    lumiverse = {
+      host = "seraph";
+      port = 7861;
+    };
     qwen-ninfer = {
       host = "taipan";
       port = 8000;

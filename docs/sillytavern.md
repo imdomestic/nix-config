@@ -14,6 +14,29 @@ HTTP 流量在 Tailnet 的 WireGuard 隧道内传输；没有启用 Funnel、公
 自签名 HTTPS。不要在公网反代这个端口。浏览器仍将 HTTP 视为非安全上下文：
 聊天和流式输出已验证，录音等要求 HTTPS 的浏览器功能不在本次部署范围内。
 
+## Charites 美化工坊
+
+已安装用户指定的 [Charites](https://github.com/SenriYuki/SillyTavern-Charites)，
+版本 1.0.1，固定 revision `672770d102d7069cea98f8178dc763a6fcdf5305`。
+刷新页面后，顶部新增画笔图标，点击打开中文美化面板。
+
+- 已用其原生控件配置低饱和的 **Charites · 静夜**，圆角消息 / 输入区、减少
+  按钮阴影；未添加外部字体、远程壁纸、粒子或鼠标特效。
+- 面板里的预览开关可以立即撤回 / 恢复 Charites 的覆盖样式。扩展管理里也能
+  禁用它；不要同时叠加多个大幅改写布局的美化扩展。
+- 当前样式保存在 ST 用户设置中，刷新 / 重启保留，不由 Nix 每次重置。
+  Charites 的“保存主题”列表使用浏览器 localStorage；跨浏览器分享方案时用
+  面板的导出 / 导入，不要误以为这个列表自动跨设备同步。
+- Nix 管理的文件 `system/modules/sillytavern/charites.nix` 只安装固定源码资产，
+  不复制上游配置文件。扩展目录是只读 store 链接，更新通过 Nix pin，不从
+  扩展管理器覆盖源文件。
+- 安装前的 ST 数据快照与桌面 / 390×844 手机验收截图保存在
+  `/var/lib/sillytavern-validation/20261110-charites/`；面板、预览切换、刷新保留
+  与无横向溢出均通过。模型设置及 12 个连接的内容未改变；ST 自己把连接列表
+  按显示名称排序不算配置丢失。
+
+另有[独立的 Lumiverse 实例](lumiverse.md)，不是 ST 皮肤，不共享聊天目录。
+
 ## 模型连接
 
 打开顶部 **API Connections** 面板，在 **Connection Profile** 下拉框切换。

@@ -1,0 +1,17 @@
+--- a/src/llm/registry.ts
++++ b/src/llm/registry.ts
+@@ -1,4 +1,5 @@
+ import type { LlmProvider } from "./provider";
++import { enforceModelPolicy } from "./model-policy";
+ import { OpenAIProvider } from "./providers/openai";
+ import { AnthropicProvider } from "./providers/anthropic";
+ import { GoogleProvider } from "./providers/google";
+@@ -26,7 +27,7 @@
+ const providers = new Map<string, LlmProvider>();
+ 
+ export function registerProvider(provider: LlmProvider): void {
+-  providers.set(provider.name, provider);
++  providers.set(provider.name, enforceModelPolicy(provider));
+ }
+ 
+ export function getProvider(name: string): LlmProvider | undefined {
