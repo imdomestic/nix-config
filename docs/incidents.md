@@ -44,7 +44,26 @@ C ABI 的 host HTTP callbacks 没有自定义 dialer 接口，故保留 callback
 策略边界与验证项见 `docs/rewind.md#connection-policy`。单元测试覆盖双栈
 TLS 胜负、证书/SNI、共享 deadline、取消与连接回收、单次授权、签名字节、
 已发送/未发送的失败归因、诊断白名单及跨 chunk 的凭据回显过滤；用
-`go test -race` 检查并发。代码更新不等于 gizmo 的系统已经激活新插件。
+`go test -race` 检查并发。
+
+在 r6s 将 checkout 快进到 `f71496c4`，以 `max-jobs=1`、`cores=2`
+构建 gizmo。相对现场当前代，`diff-closures` 只显示 CLIProxyAPI
+8.0.60 → 8.0.63 与插件 0.1.3 → 0.2.0，kernel/modules/initrd 均相同。
+07:45 UTC 先 `test`，设置十分钟自动回退；07:50 UTC 验收后设为系统 profile
+并 `switch`，取消回退计时器。运行与下次启动的默认代均为
+`/nix/store/i49wws56rqc1qwg57ncrr048zr27wfry-nixos-system-gizmo-26.05.20261105.c56a87d`。
+
+临时激活和持久激活后两次验收均通过：Rewind Luna 流式返回 200/completed/OK，
+强制函数调用为 `echo({"x":42})`，结果续接返回 42；普通 `gpt-6.1-sol` 返回
+200/OK，HTTP 与 HTTPS 模型目录和余额接口均为 200。设备文件的 hash 与旧
+时间戳保持不变，没有重新注册身份。实际映射的库 hash 与 0.2.0 的 store
+库相同；首次从宿主 `/tmp` 查它误报文件不存在，是 `PrivateTmp=yes` 的命名
+空间边界，改从 `/proc/<pid>/root` 读取后核对成功。线上未故意制造重复或
+结果未知的生成请求，该错误语义由 race 单测与网关 ABI 检查验证。
+
+本次未重启，也未激活任何 home。机器原有的待重启状态保留：当前/默认代
+内核都是 6.18.60，实际启动仍是上次的 6.18.57；这不是此次插件更新新增的
+内核差异。cliproxy、nginx、tailscaled、xray 均 active，无失败系统 unit。
 
 ## 2026-11-10 · SillyTavern 原生布尔参数关闭了认证 {#sillytavern-native-flags}
 
