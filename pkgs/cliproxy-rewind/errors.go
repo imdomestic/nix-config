@@ -13,6 +13,8 @@ type problem struct {
 	Message    string `json:"message"`
 	HTTPStatus int    `json:"http_status"`
 	RequestID  string `json:"request_id,omitempty"`
+	Param      string `json:"param,omitempty"`
+	SourceCode string `json:"source_code,omitempty"`
 }
 
 func (p *problem) Error() string { return p.Message }
@@ -21,6 +23,7 @@ func fail(status int, code, message string) *problem {
 }
 
 var requestIDPattern = regexp.MustCompile(`^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$`)
+var errorParamPattern = regexp.MustCompile(`^(input|messages|model|tools|tool_choice|reasoning|max_output_tokens|max_tokens|include|text|response_format|temperature|top_p|store|stream|truncation|metadata|prompt_cache_key|previous_response_id|service_tier|parallel_tool_calls|instructions|user|seed)(\.[A-Za-z_][A-Za-z0-9_]{0,39}|\[[0-9]{1,6}\])*$`)
 
 func unknownModelOutcome() *problem {
 	return fail(503, "REWIND_REQUEST_OUTCOME_UNKNOWN", "Rewind request may already have executed; the result is unknown. Do not automatically retry; check task progress first")
@@ -39,6 +42,7 @@ func routingProblem(p *problem) *problem {
 
 type wireError struct {
 	Code, Type, Stage, Reason, Origin string
+	Param                             string `json:"param"`
 	MinimumVersion                    string `json:"minimum_version"`
 	Schema                            string `json:"diagnostic_schema"`
 	RequestID                         string `json:"request_id"`
@@ -137,13 +141,27 @@ func upstreamProblem(status int, headers http.Header, raw []byte) *problem {
 		p = fail(404, "rewind_api_not_found", "Rewind API endpoint is unavailable")
 	case status == 413 || has("request_too_large payload_too_large"):
 		p = fail(413, "invalid_request_error", "Rewind request is too large; reduce input and attachments")
-	case status == 400 || status == 422 || has("invalid_request_error invalid_request"):
+	case status == 400 || status == 422 || has("invalid_request_error invalid_request invalid_value invalid_type unsupported_parameter missing_required_parameter invalid_image invalid_image_format invalid_encrypted_content invalid_prompt_cache_key"):
+		if status != 400 && status != 422 {
+			status = 400
+		}
 		p = fail(status, "invalid_request_error", "Rewind rejected the request; check model parameters and input size")
+		for _, source := range strings.Fields("invalid_request_error invalid_request invalid_value invalid_type unsupported_parameter missing_required_parameter invalid_image invalid_image_format invalid_encrypted_content invalid_prompt_cache_key") {
+			if strings.ToLower(v.Error.Code) == source {
+				p.SourceCode = source
+				p.Message += " (upstream code " + source + ")"
+				break
+			}
+		}
 	default:
 		if status < 400 || status > 599 {
 			status = 502
 		}
 		p = fail(status, "rewind_upstream", "Rewind upstream unavailable")
+	}
+	if len(v.Error.Param) <= 160 && errorParamPattern.MatchString(v.Error.Param) {
+		p.Param = v.Error.Param
+		p.Message += " (parameter " + p.Param + ")"
 	}
 	id := v.Error.RequestID
 	if !requestIDPattern.MatchString(id) {
@@ -162,6 +180,10 @@ func eventProblem(raw []byte) *problem {
 		Error      wireError
 	}
 	_ = json.Unmarshal(raw, &v)
+	if v.Type == "error" && v.Error == (wireError{}) {
+		_ = json.Unmarshal(raw, &v.Error)
+		raw, _ = json.Marshal(struct{ Error wireError }{v.Error})
+	}
 	status := v.Error.HTTPStatus
 	if serviceProblem(status, v.Error) == nil {
 		status = 502
@@ -173,6 +195,8 @@ func eventProblem(raw []byte) *problem {
 				status = 403
 			case "rate_limit_exceeded", "rate_limit_error", "capacity", "overloaded":
 				status = 429
+			case "invalid_request_error", "invalid_request", "invalid_value", "invalid_type", "unsupported_parameter", "missing_required_parameter", "invalid_image", "invalid_image_format", "invalid_encrypted_content", "invalid_prompt_cache_key", "context_length_exceeded", "context_window_exceeded", "context_window_overflow", "max_context_length_exceeded", "too_many_images", "image_limit_exceeded", "image_count_exceeded", "max_images_exceeded", "input_image_limit_exceeded":
+				status = 400
 			}
 		}
 	}

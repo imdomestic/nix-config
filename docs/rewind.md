@@ -143,6 +143,22 @@ Multi-turn requests should include the relevant previous output items and
 policy. Compact, token counting, and arbitrary upstream HTTP endpoints are
 not exposed by this plugin.
 
+### Images and long histories {#image-limit}
+
+Each model request may contain at most **50 images**, including images carried
+forward from earlier turns and structured tool output. This matches the
+1.1.7 desktop policy; the Astra upstream accepted 50 and rejected 51 small
+synthetic images in the [boundary investigation](incidents.md#rewind-image-limit).
+A large advertised text context does not remove this separate image-count limit.
+
+Plugin 0.2.1 rejects over-limit input with HTTP 400 / `image_limit_exceeded`,
+reporting the actual and allowed counts **before** device-session renewal or
+model dispatch. It does not silently delete, resize, replace or resend images,
+and it does not rewrite persisted conversation history. The caller must render
+older screenshots as text/file references or start a conversation without those
+images. Client-side compaction only helps if it also reduces the images actually
+sent; a text-only summary with the same old attachments still exceeds the limit.
+
 ## Connection policy {#connection-policy}
 
 The plugin follows the model connection policy inspected in the official
@@ -189,7 +205,7 @@ recognized `stream_truncated` marker with HTTP 503 and the original Rewind code
 in the bounded message. This prevents credential rotation/replay and avoids
 credential cooldown; simply setting `retryable:false` would not do so.
 **CLIProxyAPI 8.0.63 or later is required**: 8.0.60 ignores this routing marker.
-The Nix module rejects older host packages; do not load plugin 0.2.0 into an
+The Nix module rejects older host packages; do not load plugin 0.2.x into an
 older hand-started CLIProxyAPI instance.
 A confirmed HTTP refusal takes precedence even if its error body is truncated.
 The plugin does not automatically replay model POSTs on 401/403; a model HTTP
@@ -201,7 +217,11 @@ binding, request arrival, device proof, proof replay and internal service
 assertion errors. Upstream model authorization is distinguished from Rewind key
 eligibility only with the service's exact fields and a canonical request UUID.
 Unknown messages, unsafe request IDs and unvalidated diagnostic fields are not
-forwarded. Quota/context/image/rate-limit errors remain distinct.
+forwarded. Quota/context/image/rate-limit errors remain distinct. In 0.2.1,
+terminal SSE `invalid_request_error` is a request fault (HTTP 400), not a
+retryable 502. Known request-validation source codes and tightly validated
+parameter paths are retained in bounded messages; arbitrary upstream prose,
+parameter values and unrecognized source codes remain private.
 
 The official desktop's local grants, backup worker and default-model UI are
 not gateway protocols and are not imported here. Existing model aliases and

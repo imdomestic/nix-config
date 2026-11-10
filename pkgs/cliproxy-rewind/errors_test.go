@@ -41,6 +41,38 @@ func TestUpstreamErrorClassificationAndSafeRequestID(t *testing.T) {
 	}
 }
 
+func TestSafeRequestParameterDiagnostics(t *testing.T) {
+	inline := []byte(`{"type":"error","code":"invalid_request_error","param":"input[0].content","message":"private"}`)
+	if p := eventProblem(inline); p.HTTPStatus != 400 || p.SourceCode != "invalid_request_error" || p.Param != "input[0].content" || strings.Contains(p.Message, "private") {
+		t.Fatalf("inline SSE validation diagnostics were lost: %+v", p)
+	}
+	for _, param := range []string{"input", "input[50].content[0].image_url", "tools[3].parameters", "reasoning.effort", "max_output_tokens"} {
+		raw, _ := json.Marshal(map[string]any{"error": map[string]any{"code": "unsupported_parameter", "param": param, "message": "private API key and conversation text"}})
+		for _, p := range []*problem{upstreamProblem(422, nil, raw), eventProblem(raw)} {
+			if p.Code != "invalid_request_error" || p.Param != param || p.SourceCode != "unsupported_parameter" || !strings.Contains(p.Message, param) || strings.Contains(p.Message, "private") || strings.Contains(p.Message, "conversation") {
+				t.Fatalf("unsafe or missing request diagnostics: %+v", p)
+			}
+		}
+		if p := eventProblem(raw); p.HTTPStatus != 400 {
+			t.Fatal("declared invalid request was treated as a transient server failure")
+		}
+		if p := upstreamProblem(422, nil, raw); p.HTTPStatus != 422 {
+			t.Fatal("HTTP 422 was not preserved")
+		}
+	}
+	for _, param := range []string{"secret-value", "input[0].secret\nAuthorization", "../../secret", "input[1234567]", strings.Repeat("input.", 100), "sk_secret_api_key"} {
+		raw, _ := json.Marshal(map[string]any{"error": map[string]any{"code": "invalid_request_error", "param": param, "message": "private"}})
+		p := eventProblem(raw)
+		if p.Param != "" || strings.Contains(p.Message, param) || strings.Contains(p.Message, "private") {
+			t.Fatalf("unvalidated parameter path was forwarded: %+v", p)
+		}
+	}
+	p := upstreamProblem(400, nil, []byte(`{"error":{"code":"secret_provider_value","param":"input","message":"private"}}`))
+	if p.SourceCode != "" || strings.Contains(p.Message, "secret_provider_value") || strings.Contains(p.Message, "private") {
+		t.Fatal("unvalidated source code or upstream message was forwarded")
+	}
+}
+
 func TestValidatedServiceDiagnostics(t *testing.T) {
 	for _, test := range []struct{ stage, reason, code string }{
 		{"session_token", "jwt_expired", "REWIND_SESSION_TOKEN_EXPIRED"},
@@ -86,6 +118,9 @@ func TestSSEFailureHTTPStatusAndNoReplayMarker(t *testing.T) {
 	}{
 		{"authentication_error", 401}, {"permission_error", 403}, {"rate_limit_exceeded", 429},
 		{"insufficient_quota", 402}, {"rewind_request_outcome_unknown", 503},
+		{"invalid_request_error", 400}, {"invalid_request", 400}, {"unsupported_parameter", 400},
+		{"invalid_value", 400}, {"invalid_type", 400}, {"missing_required_parameter", 400},
+		{"request_too_large", 413}, {"too_many_images", 400}, {"context_length_exceeded", 400},
 		{"secret-authentication_error", 502},
 	} {
 		raw := []byte(`{"error":{"code":"` + test.code + `","message":"private token"}}`)

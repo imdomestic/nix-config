@@ -5,7 +5,7 @@
 }:
 buildGoModule {
   pname = "cliproxy-rewind";
-  version = "0.2.0";
+  version = "0.2.1";
   src = lib.cleanSource ./.;
   vendorHash = null;
   env.CGO_ENABLED = "1";

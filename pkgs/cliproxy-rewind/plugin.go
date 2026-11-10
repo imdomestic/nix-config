@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
@@ -112,7 +113,7 @@ func dispatch(method string, raw []byte) (any, *problem) {
 		if e := configureBalance(); e != nil {
 			return nil, e
 		}
-		return map[string]any{"schema_version": 6, "metadata": map[string]any{"Name": "rewind", "Version": "0.2.0", "Author": "imdomestic", "GitHubRepository": "https://github.com/imdomestic/nix-config", "ConfigFields": []any{}},
+		return map[string]any{"schema_version": 6, "metadata": map[string]any{"Name": "rewind", "Version": "0.2.1", "Author": "imdomestic", "GitHubRepository": "https://github.com/imdomestic/nix-config", "ConfigFields": []any{}},
 			"capabilities": map[string]any{"model_provider": true, "auth_provider": true, "executor": true, "executor_model_scope": "both",
 				"executor_input_formats": []string{"responses"}, "executor_output_formats": []string{"responses"}}}, nil
 	case "plugin.quiesce", "plugin.shutdown":
@@ -216,6 +217,34 @@ type upstreamStream struct {
 	accepted                bool
 }
 
+const maxImagesPerRequest = 50
+
+func countInputImages(raw json.RawMessage) int {
+	var input any
+	if len(raw) == 0 || json.Unmarshal(raw, &input) != nil {
+		return 0
+	}
+	var count func(any) int
+	count = func(v any) int {
+		n := 0
+		switch value := v.(type) {
+		case []any:
+			for _, item := range value {
+				n += count(item)
+			}
+		case map[string]any:
+			if value["type"] == "input_image" {
+				return 1
+			}
+			for _, item := range value {
+				n += count(item)
+			}
+		}
+		return n
+	}
+	return count(input)
+}
+
 func prepareExecution(req executorRequest) (credential, []byte, *problem) {
 	var empty credential
 	if req.SourceFormat != "openai-response" && req.SourceFormat != "responses" {
@@ -238,6 +267,10 @@ func prepareExecution(req executorRequest) (credential, []byte, *problem) {
 	var body map[string]json.RawMessage
 	if json.Unmarshal(req.Payload, &body) != nil || body == nil {
 		return empty, nil, fail(400, "invalid_request_error", "Invalid Responses payload")
+	}
+	// Match the desktop's limit before session renewal or model dispatch.
+	if images := countInputImages(body["input"]); images > maxImagesPerRequest {
+		return empty, nil, fail(400, "image_limit_exceeded", fmt.Sprintf("Rewind permits at most %d images per request (%d provided); remove older images or start a new conversation. No images were sent or deleted", maxImagesPerRequest, images))
 	}
 	body["model"], _ = json.Marshal(model)
 	body["store"] = json.RawMessage("false")

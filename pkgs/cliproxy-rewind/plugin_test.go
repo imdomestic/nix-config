@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -108,6 +109,65 @@ func TestPrepareExecutionForEveryRewindModel(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func TestImageLimitPreflightAndUnchangedHistory(t *testing.T) {
+	dir := t.TempDir()
+	c := credential{Type: "rewind", APIKeyFile: filepath.Join(dir, "missing-key"), DeviceFile: filepath.Join(dir, "missing-device.json")}
+	storage, _ := json.Marshal(c)
+	for _, total := range []int{0, 1, 50, 51, 83} {
+		images := make([]any, total)
+		for i := range images {
+			images[i] = map[string]any{"type": "input_image", "image_url": "data:image/png;base64,AA=="}
+		}
+		input := []any{
+			map[string]any{"role": "user", "content": images},
+			map[string]any{"type": "function_call", "call_id": "call_1", "arguments": `{"type":"input_image","image_url":"not an actual input image"}`},
+			map[string]any{"type": "function_call_output", "call_id": "call_1", "output": "input_image"},
+		}
+		payload, _ := json.Marshal(map[string]any{"input": input, "metadata": map[string]any{"type": "input_image"}})
+		original := bytes.Clone(payload)
+		req := executorRequest{Model: "rewind/gpt-6-astra", SourceFormat: "responses", Payload: payload, StorageJSON: storage, StreamID: "unused-test-stream"}
+		_, data, p := prepareExecution(req)
+		if total > 50 {
+			if p == nil || p.HTTPStatus != 400 || p.Code != "image_limit_exceeded" || !strings.Contains(p.Message, "50") || !strings.Contains(p.Message, "No images were sent or deleted") {
+				t.Fatalf("missing image preflight for %d: %+v", total, p)
+			}
+			raw, _ := json.Marshal(req)
+			if _, p := dispatch("executor.execute_stream", raw); p == nil || p.Code != "image_limit_exceeded" {
+				t.Fatal("oversized image history reached credential I/O or dispatch")
+			}
+		} else {
+			if p != nil {
+				t.Fatalf("valid image count %d rejected: %v", total, p)
+			}
+			var forwarded struct{ Input json.RawMessage }
+			_ = json.Unmarshal(data, &forwarded)
+			if countInputImages(forwarded.Input) != total {
+				t.Fatal("images were silently dropped or non-image input counted")
+			}
+			var before, after map[string]any
+			_ = json.Unmarshal(payload, &before)
+			_ = json.Unmarshal(data, &after)
+			if !reflect.DeepEqual(before["input"], after["input"]) {
+				t.Fatal("original image or tool history was changed")
+			}
+		}
+		if !bytes.Equal(req.Payload, original) {
+			t.Fatal("persisted request/history bytes were mutated")
+		}
+	}
+	if _, err := os.Stat(c.DeviceFile); !os.IsNotExist(err) {
+		t.Fatal("image preflight created or changed a device identity")
+	}
+	for _, raw := range []string{`"input_image"`, `null`, `[]`, `{}`} {
+		if countInputImages(json.RawMessage(raw)) != 0 {
+			t.Fatal("non-image content was counted")
+		}
+	}
+	if countInputImages(json.RawMessage(`[{"type":"function_call_output","output":[{"type":"input_image","image_url":"https://example.invalid/image"}]}]`)) != 1 {
+		t.Fatal("structured tool-output image bypassed the input limit")
 	}
 }
 

@@ -4,6 +4,35 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-10 · Rewind 的 50 张图片限制被报成了服务器错误 {#rewind-image-limit}
+
+用户偶发看到 `Rewind rejected the request; check model parameters and input size`。
+在 gizmo 的 10:08 UTC 错误日志中，只提取脱敏结构统计：Astra 请求
+23,165,417 字节，含 83 张图、625 个历史项与 46 个加密 reasoning 项；输出
+预算 96,000，effort=xhigh。281 次函数调用和结果配对，没有非法 arguments
+JSON 或重复 call ID。原日志在 gizmo 原位解析，只输出结构元数据；对话正文、
+原图、密钥与 token 没有输出或拷离机器。
+
+误导点是把通用的 input-size 提示当成字节超限、鉴权问题或换模型后的密文
+问题。用独立短文本在同型号、96,000/xhigh 与 encrypted-content include 下
+返回 200/OK；一张 128×128 灰色测试图也正常。83 张很小的占位图仍报相同
+错误；随后实测 **50 张为 200/OK，51 张即被拒绝**，不依赖大请求体或旧
+对话。官网 1.1.7 的 managed profile 与 plugin schema 都把
+`maxImagesPerRequest` 设为 50，桌面端要求更旧的图片转为引用并保留原附件。
+本次没有重放用户的原始大请求。
+
+另外，插件的 terminal SSE 分类漏掉 `invalid_request_error` 的 400 映射，
+落入 502，网关因而可能把确定的请求拒绝当成服务器故障，后续重试/路由又
+显示 503。0.2.1 修正该映射，并在签名、会话交换和上游请求前检查整个
+Responses input 的图片数量。超限直接报 HTTP 400 / `image_limit_exceeded`
+与实际数量，不自动删图或改历史。已知 validation code 与验证过的 param
+路径可以安全保留，其余上游消息仍不外传。
+
+测试覆盖 0/1/50/51/83 张、工具结果内图片、JSON 字符串和 schema 不误计、
+原始输入不变、超限不读取 key/创建设备或发请求，以及 SSE validation 的
+4xx 分类与安全参数路径。原会话仍需由客户端卸载早期截图或新开会话；只有
+压缩文字而保留原图片不会解决。边界见 `docs/rewind.md#image-limit`。
+
 ## 2026-11-10 · Rewind 1.1.7 的连接策略不是只换版本号 {#rewind-client-policy-1-1-7}
 
 从官网 `/api/v1/downloads/rewind-harness` 取得最新
