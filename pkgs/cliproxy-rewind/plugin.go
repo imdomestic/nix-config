@@ -46,6 +46,7 @@ func quiesce() {
 	for id, cb := range ops {
 		cancelOperation(id, cb)
 	}
+	stopModelRelay()
 	active.Wait()
 }
 
@@ -111,7 +112,7 @@ func dispatch(method string, raw []byte) (any, *problem) {
 		if e := configureBalance(); e != nil {
 			return nil, e
 		}
-		return map[string]any{"schema_version": 6, "metadata": map[string]any{"Name": "rewind", "Version": "0.1.3", "Author": "imdomestic", "GitHubRepository": "https://github.com/imdomestic/nix-config", "ConfigFields": []any{}},
+		return map[string]any{"schema_version": 6, "metadata": map[string]any{"Name": "rewind", "Version": "0.2.0", "Author": "imdomestic", "GitHubRepository": "https://github.com/imdomestic/nix-config", "ConfigFields": []any{}},
 			"capabilities": map[string]any{"model_provider": true, "auth_provider": true, "executor": true, "executor_model_scope": "both",
 				"executor_input_formats": []string{"responses"}, "executor_output_formats": []string{"responses"}}}, nil
 	case "plugin.quiesce", "plugin.shutdown":
@@ -183,7 +184,7 @@ func dispatch(method string, raw []byte) (any, *problem) {
 					if recover() != nil {
 						terminalError = fail(500, "rewind_plugin_error", "Rewind stream failed")
 					}
-					_ = callHost("host.stream.close", map[string]any{"stream_id": req.StreamID, "error_detail": terminalError}, nil)
+					_ = callHost("host.stream.close", map[string]any{"stream_id": req.StreamID, "error_detail": routingProblem(terminalError)}, nil)
 				}()
 				_, terminalError = readSSE(stream, func(frame []byte) *problem {
 					return callHost("host.stream.emit", map[string]any{"stream_id": req.StreamID, "payload": frame}, nil)
@@ -212,6 +213,7 @@ type upstreamStream struct {
 	read                    func(any, any) *problem
 	closeOnce               sync.Once
 	bytes                   int
+	accepted                bool
 }
 
 func prepareExecution(req executorRequest) (credential, []byte, *problem) {
@@ -244,6 +246,9 @@ func prepareExecution(req executorRequest) (credential, []byte, *problem) {
 	if err != nil {
 		return empty, nil, fail(400, "invalid_request_error", "Invalid Responses payload")
 	}
+	if len(data) > 32<<20 {
+		return empty, nil, fail(413, "invalid_request_error", "Rewind input is too large")
+	}
 	return c, data, nil
 }
 
@@ -272,32 +277,51 @@ func openExecution(req executorRequest) (*upstreamStream, *problem) {
 	}
 	operations[s.operation] = s.callback
 	runtimeMu.Unlock()
-	s.timer = time.AfterFunc(45*time.Second, func() { cancelOperation(s.operation, s.callback) })
+	relay, e := getModelRelay()
+	if e != nil {
+		s.close()
+		return nil, e
+	}
+	requestID, e := relay.authorize(headers, data)
+	if e != nil {
+		s.close()
+		return nil, e
+	}
+	defer relay.revoke(requestID)
+	s.timer = time.AfterFunc(modelIdleTimeout, func() { cancelOperation(s.operation, s.callback) })
 	var response struct {
 		Status  int         `json:"status_code"`
 		Headers http.Header `json:"headers"`
 		ID      string      `json:"stream_id"`
 	}
 	e = callHost("host.http.do_stream", map[string]any{"host_callback_id": req.CallbackID, "operation_id": s.operation, "method": "POST",
-		"url": rewindOrigin + "/v1/responses", "headers": headers, "body": data}, &response)
+		"url": relay.url, "headers": http.Header{relayRequestHeader: {requestID}, "Content-Type": {"application/json"}}, "body": data}, &response)
 	s.id = response.ID
 	if e != nil {
 		s.close()
-		return nil, e
+		// The callback may have failed after the loopback hop dispatched upstream.
+		return nil, unknownModelOutcome()
 	}
 	s.read = func(value, result any) *problem { return callHost("host.http.stream_read", value, result) }
-	s.timer.Reset(5 * time.Minute)
+	s.timer.Reset(modelIdleTimeout)
 	if response.Status != 200 {
 		raw, _ := io.ReadAll(io.LimitReader(s, 65536))
 		s.close()
 		if response.Status == 401 {
 			client.invalidate()
 		}
-		return nil, upstreamProblem(response.Status, response.Headers, raw)
+		if response.Headers.Get(relayErrorHeader) == "1" {
+			var env envelope
+			if json.Unmarshal(raw, &env) == nil && env.Error != nil {
+				return nil, env.Error
+			}
+		}
+		return nil, upstreamProblem(response.Status, response.Headers, nil)
 	}
+	s.accepted = true
 	if !strings.Contains(response.Headers.Get("Content-Type"), "text/event-stream") {
 		s.close()
-		return nil, fail(502, "rewind_upstream", "Rewind returned an unexpected response format")
+		return nil, unknownModelOutcome()
 	}
 	return s, nil
 }
@@ -310,19 +334,22 @@ func (s *upstreamStream) Read(out []byte) (int, error) {
 			Done    bool   `json:"done"`
 		}
 		if e := s.read(map[string]string{"stream_id": s.id}, &r); e != nil {
+			if s.accepted {
+				return 0, unknownModelOutcome()
+			}
 			return 0, e
 		}
 		if r.Error != "" {
-			return 0, fail(502, "rewind_transport", "Rewind stream interrupted")
+			return 0, unknownModelOutcome()
 		}
 		if len(r.Payload) > 0 {
 			s.bytes += len(r.Payload)
 			if s.bytes > 32<<20 {
-				return 0, fail(502, "rewind_transport", "Rewind response is too large")
+				return 0, unknownModelOutcome()
 			}
 			s.pending = r.Payload
 			if s.timer != nil {
-				s.timer.Reset(5 * time.Minute)
+				s.timer.Reset(modelIdleTimeout)
 			}
 		} else if r.Done {
 			return 0, io.EOF
@@ -375,7 +402,7 @@ func readSSE(input io.Reader, emit func([]byte) *problem) ([]byte, *problem) {
 			if event.Type == "response.failed" {
 				raw = event.Response
 			}
-			return nil, upstreamProblem(502, nil, raw)
+			return nil, eventProblem(raw)
 		}
 		if emit != nil {
 			if e := emit(bytes.Clone(frame.Bytes())); e != nil {
@@ -384,12 +411,12 @@ func readSSE(input io.Reader, emit func([]byte) *problem) ([]byte, *problem) {
 		}
 		if event.Type == "response.completed" || event.Type == "response.incomplete" {
 			if len(event.Response) == 0 {
-				return nil, fail(502, "rewind_transport", "Invalid terminal Responses event")
+				return nil, unknownModelOutcome()
 			}
 			return bytes.Clone(event.Response), nil
 		}
 		frame.Reset()
 		data.Reset()
 	}
-	return nil, fail(502, "rewind_transport", "Rewind stream ended before its terminal Responses event")
+	return nil, unknownModelOutcome()
 }

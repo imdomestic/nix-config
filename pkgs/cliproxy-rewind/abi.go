@@ -36,15 +36,6 @@ type envelope struct {
 	Error  *problem        `json:"error,omitempty"`
 }
 
-type problem struct {
-	Code       string `json:"code"`
-	Message    string `json:"message"`
-	HTTPStatus int    `json:"http_status"`
-}
-
-func (p *problem) Error() string                     { return p.Message }
-func fail(status int, code, message string) *problem { return &problem{code, message, status} }
-
 func main() {}
 
 //export cliproxy_plugin_init
@@ -86,7 +77,7 @@ func cliproxyPluginCall(method *C.char, request *C.uint8_t, length C.size_t, res
 }
 
 func writeABI(out *C.cliproxy_buffer, result any, err *problem) {
-	env := envelope{OK: err == nil, Error: err}
+	env := envelope{OK: err == nil, Error: routingProblem(err)}
 	if err == nil {
 		env.Result, _ = json.Marshal(result)
 	}

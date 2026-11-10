@@ -22,9 +22,11 @@ import (
 )
 
 const rewindOrigin = "https://rewind-api.apiwharf.com"
-const appVersion = "1.0.15"
+const appVersion = "1.1.7"
 
 var clientVersionPattern = regexp.MustCompile(`^(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})\.(0|[1-9][0-9]{0,5})$`)
+var noncePattern = regexp.MustCompile(`^[A-Za-z0-9_-]{43}$`)
+var modelTokenPattern = regexp.MustCompile(`^[A-Za-z0-9_.-]+$`)
 
 // The desktop session protocol rejects Linux's GOOS; this is a wire compatibility tag.
 const clientPlatform = "darwin"
@@ -189,39 +191,6 @@ func (c *sessionClient) proof(token, nonce, url, method string, body []byte) (st
 	return message + "." + base64.RawURLEncoding.EncodeToString(sig), nil
 }
 
-func upstreamProblem(status int, headers http.Header, raw []byte) *problem {
-	var v struct {
-		Code  string `json:"code"`
-		Error struct {
-			Code           string `json:"code"`
-			Type           string `json:"type"`
-			MinimumVersion string `json:"minimum_version"`
-		} `json:"error"`
-	}
-	_ = json.Unmarshal(raw, &v)
-	if status == 426 {
-		message := "Rewind requires a newer client protocol (current " + appVersion + ")"
-		if clientVersionPattern.MatchString(v.Error.MinimumVersion) {
-			message += "; minimum " + v.Error.MinimumVersion
-		}
-		return fail(426, "rewind_update_required", message)
-	}
-	code := strings.ToLower(v.Code + " " + v.Error.Code + " " + v.Error.Type)
-	if status == 402 || strings.Contains(code, "insufficient_quota") || strings.Contains(code, "quota_exhausted") || strings.Contains(code, "insufficient_balance") {
-		return fail(402, "insufficient_quota", "Rewind quota exhausted")
-	}
-	if status == 429 || strings.Contains(code, "rate_limit") {
-		return fail(429, "rate_limit_exceeded", "Rewind rate limit exceeded")
-	}
-	if status == 401 || status == 403 {
-		return fail(status, "rewind_auth_denied", "Rewind authorization failed; check key and device approval")
-	}
-	if status == 400 || status == 413 || status == 422 {
-		return fail(status, "invalid_request_error", "Rewind rejected the request; check model parameters and input size")
-	}
-	return fail(502, "rewind_upstream", "Rewind upstream unavailable")
-}
-
 func (c *sessionClient) jsonRequest(ctx context.Context, path string, body []byte, headers http.Header, out any) *problem {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.origin+path, bytes.NewReader(body))
 	if err != nil {
@@ -282,7 +251,7 @@ func (c *sessionClient) requestHeaders(ctx context.Context, method, url string, 
 		if err := c.jsonRequest(ctx, "/api/v1/rewind/challenge", challengeBody, nil, &challenge); err != nil {
 			return nil, err
 		}
-		if len(challenge.Nonce) != 43 {
+		if !noncePattern.MatchString(challenge.Nonce) {
 			return nil, fail(502, "rewind_auth_unavailable", "Invalid Rewind challenge")
 		}
 		sessionBody, _ := json.Marshal(map[string]string{"nonce": challenge.Nonce, "platform": clientPlatform, "app_version": appVersion})
@@ -298,7 +267,7 @@ func (c *sessionClient) requestHeaders(ctx context.Context, method, url string, 
 			return nil, fail(403, "rewind_device_approval_required", "Rewind device awaits administrator approval")
 		}
 		thumb, _ := json.Marshal(map[string]string{"crv": c.public.Crv, "kty": c.public.Kty, "x": c.public.X, "y": c.public.Y})
-		if s.Status != "verified" || s.Thumbprint != digest(thumb) || s.AppVersion != appVersion || len(s.Nonce) != 43 || s.ExpiresAt <= c.now().Unix()+30 || s.ExpiresAt > c.now().Unix()+310 || len(s.ModelToken) < 100 || strings.ContainsAny(s.ModelToken, " \r\n\t") {
+		if s.Status != "verified" || s.Thumbprint != digest(thumb) || s.AppVersion != appVersion || !noncePattern.MatchString(s.Nonce) || s.ExpiresAt <= c.now().Unix()+30 || s.ExpiresAt > c.now().Unix()+310 || len(s.ModelToken) <= 100 || len(s.ModelToken) >= 4096 || !modelTokenPattern.MatchString(s.ModelToken) {
 			return nil, fail(502, "rewind_auth_unavailable", "Invalid Rewind session")
 		}
 		c.key, c.session = key, s

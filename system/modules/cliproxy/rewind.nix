@@ -53,6 +53,10 @@ in {
   config = lib.mkIf (config.services.cliproxy.enable && cfg.enable) {
     assertions = [
       {
+        assertion = lib.versionAtLeast (config.services.cliproxy.package.version or "0") "8.0.63";
+        message = "Rewind requires CLIProxyAPI >= 8.0.63 for non-replayable stream_truncated errors.";
+      }
+      {
         assertion = !cfg.balance.enable || cfg.balance.port != config.services.cliproxy.port;
         message = "Rewind balance and model listeners must use different ports.";
       }

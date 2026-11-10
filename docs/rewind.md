@@ -143,14 +143,73 @@ Multi-turn requests should include the relevant previous output items and
 policy. Compact, token counting, and arbitrary upstream HTTP endpoints are
 not exposed by this plugin.
 
-Model HTTP requests use CLIProxyAPI's request-scoped HTTP callbacks, so
-downstream cancellation also closes the upstream request. Connection setup
-is bounded to 45 seconds; active streams may continue as long as their
-upstream remains active, with a five-minute idle timeout. Truncated streams
-are failures. Authentication, quota and HTTP errors have bounded, sanitized
-messages rather than forwarding arbitrary upstream error text.
+## Connection policy {#connection-policy}
 
-Rewind currently negotiates the 1.0.15 client protocol. HTTP 426 means this
+The plugin follows the model connection policy inspected in the official
+1.1.7 preview installer (2026-11-09). Its SHA-256 and investigation are recorded
+in [the policy investigation](incidents.md#rewind-client-policy-1-1-7).
+
+Model connections race IPv4 and IPv6 **through validated TLS handshakes**, not
+just TCP connection establishment. Each family advances through its resolved
+addresses independently; only the winner receives HTTP request bytes, and all
+losing connections are closed. DNS, TCP and TLS share a ten-second deadline.
+The model transport uses pooled HTTP/1.1, validates certificates and SNI, does
+not follow redirects, and does not inherit environment proxies. Authentication
+and balance continue using their bounded, non-redirecting session HTTP client.
+
+Model silence is bounded to **95 minutes**, including the wait for response
+headers. Each received chunk renews that idle deadline; it is not a total
+request-duration limit. An active stream may run longer. Downstream
+cancellation and plugin shutdown still close pending DNS/TCP/TLS connections
+and active model responses.
+
+CLIProxyAPI's request-scoped HTTP callbacks carry a **single-use loopback hop**
+to this native transport. The listener binds a random port on `127.0.0.1`, is
+created lazily, and exposes only `POST /v1/responses` without query parameters.
+An unguessable request ID selects immutable, in-memory authorization headers
+and an exact body hash; neither tokens nor caller-selected upstream URLs are
+accepted from that HTTP hop. IDs are consumed once and removed on cancellation.
+The upstream remains pinned to Rewind, and device keys remain in their existing
+state file. This is not a new fleet-facing endpoint or firewall opening.
+
+The original short-lived token and request-specific DPoP proof stay inside the
+plugin rather than entering the callback's HTTP logger. A separate
+`x-rewind-client-request-id` correlates the upstream request; it is not an
+idempotency key. Token and proof echoes are redacted across response chunk
+boundaries, without altering ordinary Responses events.
+
+### Failure and replay safety
+
+A failed connection before the request is written is a transient transport
+failure. Once a model request has been written, a connection loss, silent
+response timeout or truncated accepted stream is
+`REWIND_REQUEST_OUTCOME_UNKNOWN`: execution may already have happened, so it
+must not be automatically replayed. The C ABI projects it as CLIProxyAPI's
+recognized `stream_truncated` marker with HTTP 503 and the original Rewind code
+in the bounded message. This prevents credential rotation/replay and avoids
+credential cooldown; simply setting `retryable:false` would not do so.
+**CLIProxyAPI 8.0.63 or later is required**: 8.0.60 ignores this routing marker.
+The Nix module rejects older host packages; do not load plugin 0.2.0 into an
+older hand-started CLIProxyAPI instance.
+A confirmed HTTP refusal takes precedence even if its error body is truncated.
+The plugin does not automatically replay model POSTs on 401/403; a model HTTP
+401 clears the cached device session for a later request.
+
+HTTP and terminal SSE failures share bounded, code-only classification. Validated
+`rewind.auth-diagnostic.v1` envelopes distinguish session expiry, inactive
+binding, request arrival, device proof, proof replay and internal service
+assertion errors. Upstream model authorization is distinguished from Rewind key
+eligibility only with the service's exact fields and a canonical request UUID.
+Unknown messages, unsafe request IDs and unvalidated diagnostic fields are not
+forwarded. Quota/context/image/rate-limit errors remain distinct.
+
+The official desktop's local grants, backup worker and default-model UI are
+not gateway protocols and are not imported here. Existing model aliases and
+client budgets are unchanged, as are the [usage conditions](#usage-conditions).
+The desktop's anonymous upgrade-policy polling is also UI-specific; the gateway
+continues respecting the model/session endpoint's HTTP 426 upgrade refusal.
+
+The plugin negotiates the 1.1.7 client protocol. HTTP 426 means this
 protocol version needs reviewing against a newer official client; the error
 includes the current version and, when supplied, a validated minimum version.
 The upstream URL and protocol version live in `session.go`. A successful
@@ -176,7 +235,13 @@ prefixed alias forwarding, invalid-model rejection, ES256 proof validation,
 exact request-body binding, concurrent renewal, expiry, key rotation,
 persistent device identity, pending device approval, error redaction,
 fragmented Responses SSE, reasoning events, tool calls and truncated output.
-Run `go test -race ./...` from the package directory for the concurrency check.
+They also cover simultaneous family TLS races, no HTTP bytes on losing sockets,
+certificate/SNI validation, shared deadlines, pending-dial cancellation,
+HTTP/1.1 pooling, redirect refusal, single-use loopback authorization, exact
+body binding, downstream cancellation before headers, uncertain-delivery
+classification, validated error diagnostics and cross-chunk credential
+redaction. The Nix package runs `go test -race ./...`; use the same command from
+the package directory for the concurrency check.
 
 For end-to-end validation, use a temporary CLIProxyAPI instance with this
 plugin and a Rewind credential descriptor. Check `/v1/models`, a streamed

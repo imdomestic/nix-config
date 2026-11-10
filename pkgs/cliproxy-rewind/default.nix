@@ -5,7 +5,7 @@
 }:
 buildGoModule {
   pname = "cliproxy-rewind";
-  version = "0.1.3";
+  version = "0.2.0";
   src = lib.cleanSource ./.;
   vendorHash = null;
   env.CGO_ENABLED = "1";
@@ -17,7 +17,7 @@ buildGoModule {
   doCheck = true;
   checkPhase = ''
     runHook preCheck
-    go test ./...
+    go test -race ./...
     runHook postCheck
   '';
   installPhase = ''

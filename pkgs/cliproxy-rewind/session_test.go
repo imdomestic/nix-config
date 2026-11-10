@@ -86,7 +86,7 @@ func TestSessionProofRenewalAndConcurrentCalls(t *testing.T) {
 			if json.Unmarshal(raw, &login) != nil || login.Platform != "darwin" {
 				t.Error("unsupported Rewind session platform")
 			}
-			if login.AppVersion != "1.0.15" {
+			if login.AppVersion != "1.1.7" {
 				t.Error("outdated Rewind client protocol")
 			}
 			verifyProof(t, r.Header.Get("DPoP"), strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), nonce, http.MethodPost, server.URL+r.URL.Path, raw)
@@ -148,10 +148,10 @@ func TestUpdateRequiredVersionHint(t *testing.T) {
 	for _, tc := range []struct {
 		raw, want string
 	}{
-		{`{"error":{"code":"REWIND_UPDATE_REQUIRED","minimum_version":"1.0.16","message":"private token"}}`, "Rewind requires a newer client protocol (current 1.0.15); minimum 1.0.16"},
-		{`{"error":{"minimum_version":"private token"}}`, "Rewind requires a newer client protocol (current 1.0.15)"},
-		{`{"error":{"minimum_version":"1.0.16\nprivate token"}}`, "Rewind requires a newer client protocol (current 1.0.15)"},
-		{`not JSON`, "Rewind requires a newer client protocol (current 1.0.15)"},
+		{`{"error":{"code":"REWIND_UPDATE_REQUIRED","minimum_version":"1.1.8","message":"private token"}}`, "Rewind requires a newer client protocol (current 1.1.7); minimum 1.1.8"},
+		{`{"error":{"minimum_version":"private token"}}`, "Rewind requires a newer client protocol (current 1.1.7)"},
+		{`{"error":{"minimum_version":"1.1.8\nprivate token"}}`, "Rewind requires a newer client protocol (current 1.1.7)"},
+		{`not JSON`, "Rewind requires a newer client protocol (current 1.1.7)"},
 	} {
 		p := upstreamProblem(426, nil, []byte(tc.raw))
 		if p.HTTPStatus != 426 || p.Code != "rewind_update_required" || p.Message != tc.want {

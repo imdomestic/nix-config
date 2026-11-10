@@ -4,6 +4,48 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-10 · Rewind 1.1.7 的连接策略不是只换版本号 {#rewind-client-policy-1-1-7}
+
+从官网 `/api/v1/downloads/rewind-harness` 取得最新
+`1.1.7-preview.20261109.1` 的 macOS ARM64 安装包，静态解开 DMG 与
+`app.asar`，没有运行桌面 App。包的 520,992,877 字节与 SHA-256
+`f993e213f61a5a54fd6566de040a85f2ee5a1244349d0b363b567bceda3be0ce`
+均与官网 manifest 相符；协议代码来自
+`Contents/Resources/harness-update-base/plugin/legacy/apps/account/`。
+
+gizmo 实际映射的插件缓存副本与 0.1.3 的 store 库哈希相同，声明的协议仍为
+1.0.15。04:48 UTC，既有设备身份的余额查询为 200、约 $47.34；Luna 的短
+Responses 请求为 200/completed/OK。1.0.15 与 1.1.7 的匿名桌面升级检查均
+未要求升级，说明这次不是版本门槛导致连接失效，但不能把桌面检查代替模型
+接口验收。本次比较的是已部署插件与新安装包，不宣称每个差异都是 1.1.7
+才首次引入。
+
+核心域名、P-256 设备身份、五分钟会话和逐请求 DPoP 没换。官方模型连接
+在 IPv4/IPv6 间竞争 **TLS 完成**，DNS/TCP/TLS 合用十秒预算，模型静默则是
+95 分钟；还把已写出请求后的断线标成执行结果未知，而非可直接重试的
+普通网络错误。版本声明同步为 1.1.7，同时保留原设备文件、模型别名和
+Rewind 的使用条件，不引入桌面 backup/grant/default-model UI。
+
+两个误导点：Go 的普通 Happy Eyeballs 竞争的是 TCP，不能防住 TCP 通但
+TLS 卡住的候选；而 `net/http.Transport` 会剥离 dial context 的取消，所以
+仅把原请求 ctx 传给 Transport 仍可能留下 DNS/TLS 工作。新模型 transport
+通过原始 ctx 的取消回调与共享 deadline 关闭所有候选，单元测试用阻塞 TLS
+和取消发生在响应头之前的请求验收，而不是等待真实链路碰巧超时。
+
+C ABI 的 host HTTP callbacks 没有自定义 dialer 接口，故保留 callbacks
+作为单次授权的 loopback hop，使下游取消仍能到达原生 transport。只绑定
+随机 `127.0.0.1` 端口，只允许固定 Responses 路径；签名 token 留在进程内，
+按原始请求体 hash 校验，ID 用一次即销毁。另一个陷阱是 plugin ABI 的
+`retryable:false` 不足以控制 CPA 的重试：执行结果未知通过它已识别的
+`stream_truncated` 路由标记返回，消息保留 Rewind 原错误码。现场 8.0.60
+的 SDK 还没有该标记语义，不能拿新源码的能力当作旧进程已有；Nix 模块因此
+要求 CLIProxyAPI 至少 8.0.63，新插件与新网关必须一起更新。
+
+策略边界与验证项见 `docs/rewind.md#connection-policy`。单元测试覆盖双栈
+TLS 胜负、证书/SNI、共享 deadline、取消与连接回收、单次授权、签名字节、
+已发送/未发送的失败归因、诊断白名单及跨 chunk 的凭据回显过滤；用
+`go test -race` 检查并发。代码更新不等于 gizmo 的系统已经激活新插件。
+
 ## 2026-11-10 · SillyTavern 原生布尔参数关闭了认证 {#sillytavern-native-flags}
 
 seraph 首次部署 SillyTavern 1.18.0 时，Nix 求值、构建、SOPS 与 bootstrap
