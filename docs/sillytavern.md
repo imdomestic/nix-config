@@ -11,12 +11,14 @@ ssh linwhite@seraph.inner.imdomestic.com 'sudo cat /run/secrets/sillytavern/pass
 
 密码加密保存在 `secrets/hosts/seraph.yaml`，不与任何模型 API Key 共用。
 HTTP 流量在 Tailnet 的 WireGuard 隧道内传输；没有启用 Funnel、公网入口或
-自签名 HTTPS。不要在公网反代这个端口。
+自签名 HTTPS。不要在公网反代这个端口。浏览器仍将 HTTP 视为非安全上下文：
+聊天和流式输出已验证，录音等要求 HTTPS 的浏览器功能不在本次部署范围内。
 
 ## 模型连接
 
 打开顶部 **API Connections** 面板，在 **Connection Profile** 下拉框切换。
 首次安装默认选择本机的 **Bonsai Hikari**，不需要填写 API Key。
+已完成首次引导，Persona 名为 `linwhite`，并开启自动连接上次服务器。
 
 | 连接 | 模型 / 用途 |
 | --- | --- |
@@ -102,6 +104,31 @@ package=$(nix build --no-link --print-out-paths .#nixosConfigurations.seraph.con
 node scripts/test-sillytavern-exclusions.mjs "$package/lib/node_modules/sillytavern"
 ```
 
-## 上线验收
+## 2026-11-10 · 上线验收 {#acceptance}
 
-上线的版本、模型样本与离线情况在部署完成后记录于此。
+SillyTavern 1.18.0 已部署到 seraph，当前运行系统为
+`/nix/store/85gp4v0bvkhknp68pvj1zqjawa77mjlp-nixos-system-seraph-26.05.20261105.c56a87d`。
+没有更新内核或 NVIDIA 驱动，没有重启机器，也没有激活 Home Manager。
+
+- 24 个 NixOS / Darwin 配置求值及 `just lint` 通过；bootstrap 23 项测试、
+  安装包排除规则测试、真实端口的 15 项隔离 IPv4/IPv6 防火墙检查通过。
+- 从 gizmo 的真实 Tailnet 客户端访问入口，未认证返回 401；内部 8001 / 8002
+  不可达。同一 LAN 上访问 seraph 的 `10.1.2.194:8000` 也不可达。
+- 合法登录可打开页面；缺少 CSRF 的 POST 与非法 Host 均返回 403。
+- 12 个连接保留，Rewind 连接、未使用的预设及管理记录已移除。验收时 CLIProxy
+  目录 79 个 ID 中的 8 个 `rewind/` 被过滤，其他 71 个保持不变。手填 Rewind
+  在 Custom / OpenAI / Claude 请求路径均立即返回 `model_not_allowed` / 403。
+- 两个 Bonsai、Gemini 3.8 Flash High、GPT 6.1 Sol、Claude Opus 4.6 Thinking、
+  Vertex Gemini 4 Argon、DeepSeek V4.1 Flash、h610 Qwen3.5 4B、tank Qwen3 8B /
+  Gemma 4 E4B 的小请求均返回文本和完整的流式终止帧。这是连通性验收，
+  **不是**所有目录 ID 的能力、长上下文或性能保证。
+- Chromium 实际完成首次引导、连接切换与模型目录过滤；新页面自动连接本机
+  Hikari，聊天框发送中文请求后得到“部署验收通过”，无页面脚本错误。
+- 重启 bootstrap 后，用户 settings 文件逐字节不变，保留 Persona、自动连接、
+  选中的 Hikari 及其余偏好。真实模型 Key 仍仅在 nginx 私有 SOPS header 中，
+  SillyTavern 服务用户不能读取，secret store 中只有 `not-required`。
+- taipan 的 NixOS 节点离线，Windows 节点在线；本次不重启那台机器或切换系统。
+  两个 Qwen3.8 连接已经配置，但尚不能做在线生成验收。
+
+原始流式请求、浏览器截图与排除规则记录保存在 seraph 的
+`/var/lib/sillytavern-validation/20261110/`，按私有运维记录处理。
