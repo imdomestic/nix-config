@@ -68,7 +68,17 @@ Arc 独有的浏览器缺陷。
 通过 nginx 原生 `sub_filter` 注入独立同源脚本，固定镜像不变，无需重建
 整个前端。不读取凭据、不改变密码类型、不取消提交、不干扰聊天或其他
 表单。回归测试：`node --test system/modules/lumiverse/login-focus.test.cjs`。
-macOS Secure Input 的最终验收需要用户在 Arc 重做上述登录流程。
+11:52 UTC 从 `cfc9389e` 持久 switch 到
+`/nix/store/92m1p7i3nzx6z61bxn7fp6yggj51h3qq-nixos-system-seraph-26.05.20261105.c56a87d`。
+闭包差异只有 nginx 配置和小脚本，kernel/modules/initrd 不变，没有重启机器
+或 Lumiverse 容器。nginx 与容器 active；线上 HTML 含脚本且脚本哈希与
+仓库一致。干净快照 lint、20 个 NixOS 和 5 个 darwin 求值、6 项回归测试
+通过；本地 `just lint` 原先被 `.work/` 中无关旧副本挡住，没有改动它们。
+
+Chromium 加载线上登录页，分别用 Enter 和点击按钮提交，验证 blur 发生
+在字段 disabled 之前、原登录处理仍执行、密码类型不变。登录 API 在测试
+浏览器内 mock，没有向服务器提交测试凭据。macOS Secure Input 的最终
+验收仍需要用户刷新页面后在 Arc 重做上述登录流程。
 
 ## 2026-11-10 · Rewind 1.1.7 的连接策略不是只换版本号 {#rewind-client-policy-1-1-7}
 
