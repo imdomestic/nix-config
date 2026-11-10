@@ -11,6 +11,25 @@
 
 ---
 
+## 2026-11-10 · encore 从 GRUB 切换为 systemd-boot 并启用 XBOOTLDR {#encore-systemd-boot}
+
+encore 原先使用 GRUB，在原 EFI 分区（`/efi`，300 MiB）保存可移动引导文件，通过
+UUID 链式加载 Windows，在独立的 2 GiB FAT32 分区（`nvme0n1p4`，XBOOTLDR）保存
+NixOS 内核及 initrd。
+
+切换为 systemd-boot 的原因与约束：
+- **原生支持 XBOOTLDR**：`nvme0n1p4` 的 GPT 分区类型 GUID 本身就是标准的
+  `BC13C2FF-59E6-4262-A352-B275FD6F7172`（XBOOTLDR）。NixOS 的 `boot.loader.systemd-boot`
+  原生支持 `xbootldrMountPoint = "/boot"` 与 `efiSysMountPoint = "/efi"`，内核与
+  引导项放置在 2 GiB 的 `/boot`，ESP (`/efi`) 仅存放 bootloader 本身。
+- **双系统与华硕固件**：华硕固件检测到 `bootmgfw.efi` 时会自动重建 Windows Boot Manager
+  并抢占启动优先级。与 seraph 一致，Windows 引导程序重命名为 `windows.efi`，通过
+  `prepareWindowsLoader` 与 `encore-boot-entries.service` 将其同步并生成
+  `loader/entries/windows.conf`，在 systemd-boot 菜单中提供 Windows 选项。
+- **固件默认路径保护**：固件中的 Boot0000 指向 `\EFI\BOOT\BOOTX64.EFI`。安装时确保将
+  systemd-boot 的最新二进制同步至该路径，无论 NVRAM 状态如何，开机均能直接进入
+  systemd-boot。
+
 ## 2026-11-10 · 系统从不自动更新;home 只在自己编得动的服务器上自动同步 {#auto-update}
 
 **系统**:没有 `system.autoUpgrade`,也没有定时器跑 `nixos-rebuild` /

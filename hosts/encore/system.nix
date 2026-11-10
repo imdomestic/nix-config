@@ -1,14 +1,29 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }: let
+  windowsEntry = pkgs.writeText "encore-windows.conf" config.boot.loader.systemd-boot.extraEntries."windows.conf";
   prepareWindowsLoader = ''
+    ${pkgs.util-linux}/bin/mountpoint -q /efi
+    ${pkgs.util-linux}/bin/mountpoint -q /boot
     windowsBoot=/efi/EFI/Microsoft/Boot
     if [ -f "$windowsBoot/bootmgfw.efi" ]; then
       ${pkgs.coreutils}/bin/mv -f "$windowsBoot/bootmgfw.efi" "$windowsBoot/windows.efi"
     fi
     test -s "$windowsBoot/windows.efi"
+    windowsFallback=/efi/EFI/Boot
+    if [ -f "$windowsFallback/bootx64.efi" ] && ${pkgs.diffutils}/bin/cmp -s "$windowsFallback/bootx64.efi" "$windowsBoot/windows.efi"; then
+      ${pkgs.coreutils}/bin/mv -f "$windowsFallback/bootx64.efi" "$windowsFallback/windows.efi"
+    fi
+    # systemd-boot 拷贝 Windows 文件到 /boot（XBOOTLDR 分区），
+    # 确保无论 systemd-boot 从 $BOOT 还是 ESP 读取都能找到 Windows 启动文件。
+    ${pkgs.coreutils}/bin/install -d /boot/EFI/Microsoft /boot/loader/entries
+    ${pkgs.coreutils}/bin/cp -r /efi/EFI/Microsoft/. /boot/EFI/Microsoft/
+    ${pkgs.coreutils}/bin/install -m 0600 ${windowsEntry} /boot/loader/entries/windows.conf
+    # 确保 /efi/EFI/BOOT/BOOTX64.EFI 是最新的 systemd-boot 引导二进制（华硕固件默认执行此 fallback 路径）
+    ${pkgs.coreutils}/bin/install -D -m 0755 ${config.systemd.package}/lib/systemd/boot/efi/systemd-bootx64.efi /efi/EFI/BOOT/BOOTX64.EFI
   '';
 in {
   imports = [
@@ -20,27 +35,54 @@ in {
     # 禁用 Alder Lake 等现代 Intel CPU 上的 split lock 延迟惩罚（默认强制 sleep 10ms），
     # 解决 Bambu Studio 等含未对齐原子锁的程序在拖动模型/UI 交互时的严重卡顿
     "kernel.split_lock_mitigate" = 0;
+
+    # 配合 zramSwap 调优：积极换出匿名页进压缩池，避免抢占文件页缓存导致桌面卡顿
+    "vm.swappiness" = 150;
+    "vm.page-cluster" = 0; # zram 按单页解压，禁用磁盘式的顺序预读
+    "vm.watermark_scale_factor" = 125; # 提前启动后台回收
   };
 
+  # 双重 Swap 防线：优先走 12 GiB 高速 zram 压缩内存，再以 8 GiB 物理磁盘 Swapfile 兜底
+  zramSwap = {
+    enable = true;
+    memoryPercent = 50; # 约 11.5~12 GiB
+    algorithm = "zstd";
+    priority = 100; # 优先换入 zram
+  };
+
+  swapDevices = [
+    {
+      device = "/var/lib/swapfile";
+      size = 8 * 1024; # 8 GiB
+      priority = 10; # 低优先级，仅在 zram 耗尽时溢出到磁盘
+    }
+  ];
+
+  # 限制 Nix 构建并发为最大全大核
+  # i7-12700H (6P + 8E): 单包内部最大 12 线程（吃满全部 6 个 P-Core 性能大核）
+  nix.settings = {
+    cores = 12;
+    max-jobs = 2;
+  };
+
+  # 放宽后台 home-sync 内存限制，防止软件包更新回落本地编译时撞上默认 3G cgroup 内存墙
+  systemd.services.home-sync.serviceConfig.MemoryMax = lib.mkForce "16G";
+
+  # 从 GRUB 切换为 systemd-boot 与双系统兼容细节见 docs/decisions.md#encore-systemd-boot。
   boot.loader = {
     timeout = 5;
-    grub = {
+    grub.enable = false;
+    systemd-boot = {
       enable = true;
-      device = "nodev";
-      efiSupport = true;
-      efiInstallAsRemovable = true;
       configurationLimit = 5;
-      default = 0;
-      extraEntries = ''
-        menuentry "Windows" --class windows {
-          insmod part_gpt
-          insmod fat
-          insmod chain
-          search --no-floppy --fs-uuid --set=root 6219-21FA
-          chainloader /EFI/Microsoft/Boot/windows.efi
-        }
-      '';
+      editor = false;
+      xbootldrMountPoint = "/boot";
       extraInstallCommands = prepareWindowsLoader;
+      extraEntries."windows.conf" = ''
+        title Windows
+        efi /EFI/Microsoft/Boot/windows.efi
+        sort-key o_windows
+      '';
     };
     efi = {
       canTouchEfiVariables = false;
@@ -92,10 +134,10 @@ in {
   nixpkgs.config.allowUnfree = true;
   virtualisation.podman.enable = true;
 
-  my.inputMethod = "ibus";
-  i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
+  my.inputMethod = "fcitx5";
   services = {
     tailscale.extraSetFlags = ["--hostname=${config.networking.hostName}"];
+    displayManager.defaultSession = "hyprland";
     displayManager.gdm = {
       enable = true;
       autoSuspend = false;
@@ -166,7 +208,7 @@ in {
     after = ["local-fs.target"];
     unitConfig = {
       ConditionPathIsMountPoint = "/sys/firmware/efi/efivars";
-      RequiresMountsFor = ["/efi"];
+      RequiresMountsFor = ["/boot" "/efi"];
     };
     serviceConfig = {
       Type = "oneshot";
@@ -187,11 +229,11 @@ in {
           case "$entry" in
             "$name: "*"Windows Boot Manager HD(1,GPT,8762fad7-cfcb-4eae-8bf0-4315bef44901,"*)
               ${pkgs.coreutils}/bin/cp "$variable" "$STATE_DIRECTORY/$name"
-              ${pkgs.coreutils}/bin/rm "$variable"
+              ${pkgs.efibootmgr}/bin/efibootmgr --bootnum "''${name#Boot}" --delete-bootnum
               ;;
             "$name: "*"UEFI:CD/DVD Drive BBS(129,,0x0)"|"$name: "*"UEFI:Removable Device BBS(130,,0x0)"|"$name: "*"UEFI:Network Device BBS(131,,0x0)")
               ${pkgs.coreutils}/bin/cp "$variable" "$STATE_DIRECTORY/$name"
-              ${pkgs.coreutils}/bin/rm "$variable"
+              ${pkgs.efibootmgr}/bin/efibootmgr --bootnum "''${name#Boot}" --delete-bootnum
               ;;
           esac
         done
@@ -213,9 +255,14 @@ in {
   programs = {
     zsh.enable = true;
     nix-index-database.comma.enable = true;
+    hyprland = {
+      enable = true;
+      xwayland.enable = true;
+    };
   };
   environment.systemPackages = with pkgs; [
     pciutils
+    efibootmgr
     nvtopPackages.nvidia
     btop-cuda
   ];

@@ -4,6 +4,9 @@
   pkgs,
   ...
 }: {
+  imports = [
+    ./modules/hyprland
+  ];
   # KMS 串流需要活动的屏幕；GNOME 自动熄屏后不会留下可捕获的 framebuffer。
   dconf.settings."org/gnome/desktop/session".idle-delay = lib.hm.gvariant.mkUint32 0;
   home.packages = [
