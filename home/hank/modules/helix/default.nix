@@ -3,7 +3,26 @@ let
 in {
   programs.helix = {
     enable = true;
-    settings.theme = theme;
+    settings = {
+      theme = theme;
+      editor = {
+        line-number = "relative";
+        cursorline = true;
+        color-modes = true;
+        end-of-line-diagnostics = "hint";
+        cursor-shape = {
+          insert = "bar";
+          normal = "block";
+          select = "underline";
+        };
+        lsp = {
+          display-inlay-hints = true;
+        };
+        inline-diagnostics = {
+          cursor-line = "warning";
+        };
+      };
+    };
 
     # 与 Hank 的 nixvim / lazygit 同用 Evergarden Winter / Green。高亮角色抄自
     # evergardentheme/helix@53cad3aa2623faf837bb19cc81dfd5c8b2772b10 的 helix.tera，
