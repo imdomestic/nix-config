@@ -25,6 +25,12 @@
       ++ lib.concatMap (r: roles.${r}.profiles.${host.kind} or [])
       (lib.filter (r: lib.elem r host.roles) profileOrder));
 
+  # Servers that build their own systems also keep their homes on main by
+  # themselves; the tsName is what gets a failing sync alerted on.
+  # Systems never update themselves (docs/decisions.md#auto-update).
+  syncsHomes = host:
+    host.kind == "nixos" && lib.elem "server" host.roles && host.tsName != null && host.buildOn == null;
+
   # The host's own files that load by name, ahead of whatever host.nix lists.
   byName = host: n: let
     f = host.dir + "/${n}.nix";
@@ -43,6 +49,7 @@ in
       ++ lib.unique (profilesOf host
         ++ byName host "system"
         ++ lib.optionals withHardware (byName host "hardware-configuration")
+        ++ lib.optional (syncsHomes host) ../../system/modules/home-sync.nix
         ++ host.modules
         ++ lib.optionals withHardware host.hardwareModules
         ++ host.externalModules);

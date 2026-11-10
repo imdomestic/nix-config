@@ -7,7 +7,6 @@
     ageKey = "age12z6tru33ag256gs62fufpjkxnjta3mjn5ryv6uvqaukre7yx4g7q37am5f";
 
     modules = [
-      ../../system/modules/home-sync.nix
       ../../system/modules/sudo-pwfeedback.nix
       ./compute.nix
       ./vex-agent.nix

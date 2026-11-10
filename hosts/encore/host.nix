@@ -7,7 +7,6 @@
     ageKey = "age1f6suumsw5f3e5sqf46j63kmympqk0anexjvuwsg7uh02wxnkwymqmkj32v";
 
     modules = [
-      ../../system/modules/home-sync.nix
       ../../system/modules/sudo-pwfeedback.nix
       ./cooling.nix
       ./keyboard.nix

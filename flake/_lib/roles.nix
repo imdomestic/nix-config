@@ -4,7 +4,7 @@
 # `roles` is an enum of these names, so a typo fails evaluation.
 {
   server = {
-    description = "Headless service box: system/profiles/server.nix (ssh, telemetry, no docs; no graphics unless also `desktop`).";
+    description = "Headless service box: system/profiles/server.nix (ssh, telemetry, no docs; no graphics unless also `desktop`). With a tsName and no buildOn, also system/modules/home-sync.nix (flake/_lib/system-modules.nix).";
     profiles.nixos = [../../system/profiles/server.nix];
   };
   desktop = {

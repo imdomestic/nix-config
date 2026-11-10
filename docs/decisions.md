@@ -11,6 +11,35 @@
 
 ---
 
+## 2026-11-10 · 系统从不自动更新;home 只在自己编得动的服务器上自动同步 {#auto-update}
+
+**系统**:没有 `system.autoUpgrade`,也没有定时器跑 `nixos-rebuild` /
+`darwin-rebuild`。flake-updater 只构建、跑 VM 测试、推 main,不激活任何东西。系统
+只在有人 `just switch` / `deploy-*` / `deploy-built` 时才动,赶上哪次手动部署就顺便
+追上 main。
+
+- 新内核或 GPU 驱动要 `--boot` 加重启;自动 switch 会让 taipan、encore 的 GPU 服务一直
+  坏到有人重启。
+- 改网络、防火墙可能把国内的机器断掉。deploy-rs 的 magicRollback 兜得住,本机定时器
+  兜不住。
+- main 编不编得过,CI 和 flake-updater 已经证明了;落后只是漂移,下次部署时用
+  `nix store diff-closures` 判断风险,不看落后多少个提交。
+- 代价:漂移可能几个月没人发现,安全更新也一样。要补就加告警(运行中那一代的年龄),
+  不加自动部署。
+
+**home**:谁跑 home-sync 不再在 host.nix 里逐台列,而是由 registry 推出:`server` 角色、
+有 `tsName`、没有 `buildOn` 的 NixOS 主机(`flake/_lib/system-modules.nix` 的
+`syncsHomes`)。今天落在 h310、h610、tank、taipan、seraph、encore、r6s,和之前手列的
+完全一样,所有主机的 toplevel drvPath 都没变。新服务器自动加入,跟 `ciMatrix` 一样。
+
+- `buildOn` 的机器(r2s、r5s、gizmo、rpi4、tokyo)连求值都不该在本机做,home 继续走
+  deploy-rs(见 [#home-sync](#home-sync))。
+- 要 `tsName`:同步连续失败靠 SystemdUnitFailed 告警,没有 tsName 就没有监控,坏了没人
+  知道(marble、x470、aarch64-wsl)。
+- taipan、encore 同时是 `desktop` / `gui`,有人坐在前面,仍然保留:有人手动 `just hm`
+  过的账户会被 held,不会被覆盖;去掉的话 encore 上 linwhite 的 home 会停在旧代。
+- 没有逐台的退出开关,等真有一台 server 不该同步时再加。
+
 ## 2026-11-09 · maxx 的 iMessage 走 tank 上的 macOS 虚拟机，不用 rustpush {#macos-vm}
 
 iMessage 只能由一台「Mac」收发。Haskell 版 Max 的做法是 `imsg` + Go 写的

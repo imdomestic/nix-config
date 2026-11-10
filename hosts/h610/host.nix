@@ -28,7 +28,6 @@
     sshUser = "root";
 
     modules = [
-      ../../system/modules/home-sync.nix
       ./tailscale-names.nix
       ./cluster.nix
       ./qwen35-sycl.nix

@@ -15,10 +15,6 @@
     sshUser = "root";
     maxTier = "interactive";
 
-    modules = [
-      ../../system/modules/home-sync.nix
-    ];
-
     externalModules = [
       # inputs.determinate.nixosModule.default
     ];

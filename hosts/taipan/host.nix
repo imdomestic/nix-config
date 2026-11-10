@@ -25,7 +25,6 @@
     };
 
     modules = [
-      ../../system/modules/home-sync.nix
       ./desktop.nix
     ];
 

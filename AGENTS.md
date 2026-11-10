@@ -194,7 +194,8 @@ Every new file has to be `git add`ed before Nix sees it — an untracked
    and, for `nixos` / `darwin`, `system.nix` + `hardware-configuration.nix`.
 2. A `tsName` opts it into Tailscale and Tailscale SSH, deployment, telemetry
    and monitoring; the first login to headscale is done once on the machine.
-   CI picks it up from `ciMatrix` on its own.
+   CI picks it up from `ciMatrix` on its own, and a `server` without `buildOn`
+   also gets home-sync (see "Deploys").
 3. Too small to build: `buildOn`. A LAN behind it: `lanRoutes` (headscale's
    policy approves it from the registry).
 4. Secrets: `ssh-keyscan -t ed25519 <host> | ssh-to-age` into `ageKey`,
@@ -286,10 +287,10 @@ adds no home-manager module at all.
 - A home change is verified with `just hm-dry <host> <user>`, **not** with
   `just switch` — a system switch does not build homes at all. Never tell the
   user a rebuild will pick up an edit under `home/`.
-- On the hosts that list `system/modules/home-sync.nix` (h310, h610, tank,
-  taipan, seraph, encore, r6s) a push to main **is** the home deploy: within about
-  an hour each builds and activates every account's home from main (see
-  "Deploys").
+- On the hosts that run home-sync (every NixOS `server` with a `tsName` and no
+  `buildOn`: today h310, h610, tank, taipan, seraph, encore, r6s) a push to main
+  **is** the home deploy: within about an hour each builds and activates every
+  account's home from main (see "Deploys").
 - Conversely, a system-level change does not need a home eval to prove it works,
   and a broken home does not break its host's system eval.
 - The two sides meet in exactly three places: `config.my.host`,
@@ -493,8 +494,10 @@ nix eval --json .#deploy.nodes --apply builtins.attrNames
   user via `sudo -H -u <user>` (the `-H` keeps `$HOME` right) with
   `HOME_MANAGER_BACKUP_EXT=backup`, so a file a home takes over for the first
   time is moved to `<name>.backup` instead of failing the activation.
-- **Homes on hosts that can build them sync themselves.** A host that lists
-  `system/modules/home-sync.nix` in its `modules` runs `home-sync.timer`:
+- **Homes on servers that can build them sync themselves.** Every NixOS host
+  with the `server` role, a `tsName` and no `buildOn` gets
+  `system/modules/home-sync.nix` from `flake/_lib/system-modules.nix` (never list
+  it in a host.nix) and runs `home-sync.timer`:
   hourly, as root, it resolves main with `git ls-remote`, builds
   `github:imdomestic/nix-config/<rev>#homeConfigurations."hosts/<host>/<account>".activationPackage`
   for each account and activates it as that account, the same way the
@@ -504,7 +507,11 @@ nix eval --json .#deploy.nodes --apply builtins.attrNames
   generation or `sudo home-sync resume <account>`. `sudo home-sync` shows
   every account's state, `home-sync run --dry-run` what a run would do; a step
   failing three runs in a row fails the unit (SystemdUnitFailed). Which hosts
-  and why: `docs/decisions.md#home-sync`.
+  and why: `docs/decisions.md#home-sync` and `#auto-update`.
+- **Systems never update themselves.** No `system.autoUpgrade`, no timer
+  running `nixos-rebuild`, and flake-updater only pushes to main. A system moves
+  to main when someone deploys or rebuilds it
+  (`docs/decisions.md#auto-update`).
 
 Max operates these targets through ordinary SSH as the full-sudo `max` account,
 using its own Tailscale client. The bot runs on `tank` as `max-service`.
