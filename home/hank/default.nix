@@ -15,6 +15,7 @@ in {
     ./modules/ghostty/neovide-cursor.nix
     ./modules/yazi
     ./modules/fzf.nix
+    ./modules/helix
   ];
 
   # macOS shader redraw cost: docs/incidents.md#ghostty-shader-vsync.
