@@ -36,7 +36,6 @@
       tailwindcss-language-server
       vscode-langservers-extracted
       typstyle
-      marksman
       markdownlint-cli
       prettierd
       biome
