@@ -50,6 +50,26 @@ provider=codex 的 `model_cooldown`。这是未改变的原生 provider 路径�
 订阅额度限制，不能记作“普通 GPT 验收通过”；未清冷却、换凭据或绕过额度。
 该情况单独保留，不据此回退已正常工作的 Rewind 图片校验。
 
+## 2026-11-10 · Lumiverse 登录后 Arc 保持安全输入 {#lumiverse-secure-input}
+
+用户在 seraph 的 Lumiverse 登录页复现：聚焦密码框开启 macOS Secure
+Input，登录成功后仍保持，首次点击聊天输入框或关闭标签页才释放；先填
+密码再填用户名则不复现。`ioreg` 当时的 `kCGSSessionSecureInputPID`
+指向 Arc（PID 41665）。第一次复查时占用已经消失，单凭这一快照容易误判
+成偶发问题；输入顺序和焦点转移才是关键证据。
+
+固定镜像对应的上游 `frontend/src/components/auth/LoginPage.tsx`
+在提交时直接设置 loading、调用 login 并导航，没有显式释放密码焦点。
+表现符合浏览器在密码控件禁用/卸载过程中未释放安全输入；尚未证明是
+Arc 独有的浏览器缺陷。
+
+`system/modules/lumiverse/login-focus.js` 在登录页捕获 submit，先对当前
+表单的 `current-password` 输入框执行 blur，再让 React 继续正常登录。
+通过 nginx 原生 `sub_filter` 注入独立同源脚本，固定镜像不变，无需重建
+整个前端。不读取凭据、不改变密码类型、不取消提交、不干扰聊天或其他
+表单。回归测试：`node --test system/modules/lumiverse/login-focus.test.cjs`。
+macOS Secure Input 的最终验收需要用户在 Arc 重做上述登录流程。
+
 ## 2026-11-10 · Rewind 1.1.7 的连接策略不是只换版本号 {#rewind-client-policy-1-1-7}
 
 从官网 `/api/v1/downloads/rewind-harness` 取得最新

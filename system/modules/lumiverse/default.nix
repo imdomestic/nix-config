@@ -149,11 +149,22 @@ in {
         inherit (placement) port;
       }
     ];
+    locations."= /_nix/login-focus-v1.js" = {
+      alias = "${pkgs.writeText "lumiverse-login-focus.js" (builtins.readFile ./login-focus.js)}";
+      extraConfig = ''
+        default_type application/javascript;
+        add_header Cache-Control "no-store" always;
+      '';
+    };
     locations."/" = {
       proxyPass = "http://127.0.0.1:${toString port}";
       proxyWebsockets = true;
       recommendedProxySettings = false;
       extraConfig = ''
+        # Release password focus before the upstream login page unmounts.
+        proxy_set_header Accept-Encoding "";
+        sub_filter '</head>' '<script src="/_nix/login-focus-v1.js"></script></head>';
+        sub_filter_once on;
         proxy_set_header Host $host:$server_port;
         proxy_set_header X-Forwarded-Host $host:$server_port;
         proxy_set_header X-Forwarded-Proto $scheme;
