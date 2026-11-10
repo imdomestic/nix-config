@@ -1,0 +1,42 @@
+--- a/src/endpoints/backends/chat-completions.js
++++ b/src/endpoints/backends/chat-completions.js
+@@ -94,6 +94,14 @@
+ const API_MINIMAX_CN = 'https://api.minimaxi.com/v1';
+ const API_OPENROUTER = 'https://openrouter.ai/api/v1';
+ const API_WORKERS_AI = 'https://api.cloudflare.com/client/v4/accounts';
++
++/** Check deployment-local provider exclusions without changing upstream discovery. */
++function isExcludedModel(modelId) {
++    const prefixes = getConfigValue('openai.excludedModelPrefixes', []);
++    return typeof modelId === 'string' && Array.isArray(prefixes)
++        && prefixes.some(prefix => typeof prefix === 'string' && prefix.length > 0
++            && modelId.trim().startsWith(prefix));
++}
+ 
+ /**
+  * Module-scoped Claude caching configuration values.
+@@ -2022,6 +2030,9 @@
+                     });
+             }
+ 
++            if (Array.isArray(data?.data)) {
++                data.data = data.data.filter(model => !isExcludedModel(model?.id));
++            }
+             statusResponse.send(data);
+ 
+             if (request.body.chat_completion_source === CHAT_COMPLETION_SOURCES.COHERE && Array.isArray(data?.models)) {
+@@ -2157,6 +2168,14 @@
+ router.post('/generate', async function (request, response) {
+     try {
+         if (!request.body) return response.status(400).send({ error: true });
++        if (isExcludedModel(request.body.model)) {
++            return response.status(403).send({
++                error: {
++                    message: 'This model provider is excluded from this deployment.',
++                    type: 'model_not_allowed',
++                },
++            });
++        }
+ 
+         const postProcessingType = request.body.custom_prompt_post_processing;
+         if (Array.isArray(request.body.messages) && postProcessingType) {

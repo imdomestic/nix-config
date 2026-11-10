@@ -2,13 +2,32 @@
 
 `pkgs/cliproxy-rewind/` builds a C ABI shared library for CLIProxyAPI 8. The
 plugin owns Rewind authentication and declares native Responses input and
-output. CLIProxyAPI still owns client authentication, credential selection,
-protocol translation for other client formats, and usage collection.
+output. CLIProxyAPI still owns client authentication, credential selection and
+usage collection. The Rewind executor requires native `/v1/responses`; ordinary
+Chat Completions requests are not supported.
 
 The fleet enables it on gizmo through `services.cliproxy.rewind`. Its models
 use the `rewind/` prefix, kept separate from the existing unprefixed Codex
 models. The upstream controls what each alias resolves to; the plugin
 preserves the upstream response's `model` field.
+
+## Usage conditions {#usage-conditions}
+
+Rewind is a **conditional-use model provider**, marked `conditional = true` in
+`lib/cliproxy-models.nix`. Its actual eligibility and usage terms must be
+confirmed with the provider or administrator before separate use. A model's
+presence in discovery, or possession of the fleet's CLIProxy client key, does
+not establish that its usage conditions have been satisfied or quota remains.
+
+At the owner's request on 2026-11-10, SillyTavern does **not** include Rewind:
+there is no connection preset, discovery omits `rewind/` IDs, and hand-entered
+Rewind generation is rejected. Existing explicit Rewind configurations in
+other clients are retained; this is not a fleet-wide removal or a declaration
+of unconditional availability.
+
+The native Responses protocol, persistent device identity and quota behavior
+below are technical requirements, not substitutes for the provider's usage
+conditions.
 
 ## Models and clients
 

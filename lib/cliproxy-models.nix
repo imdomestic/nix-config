@@ -20,8 +20,9 @@
       "gpt-5.5"
     ];
   };
-  # Rewind 的显式前缀隔离 Codex；别名和客户端限额见 docs/rewind.md。
+  # Rewind 是有使用条件的提供商；见 docs/rewind.md#usage-conditions。
   rewind = {
+    conditional = true;
     inherit (gpt) context input;
     output = 96000;
     models = {

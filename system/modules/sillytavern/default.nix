@@ -96,15 +96,6 @@
         })
       (cloud
         // {
-          id = "fleet-rewind";
-          name = "CLIProxy · Rewind GPT 6 Astra";
-          model = "rewind/gpt-6-astra";
-          context = 262144;
-          maxTokens = 8192;
-          reasoningEffort = "low";
-        })
-      (cloud
-        // {
           id = "fleet-claude";
           name = "CLIProxy · Claude Opus 4.6 Thinking";
           model = "claude-opus-4-6-thinking";
@@ -202,11 +193,16 @@ in {
         allowedRanges = ["127.0.0.0/8" "::1/128" "100.64.0.0/10" "fd7a:115c:a1e0::/48"];
       };
       logging.minLogLevel = 1;
+      openai.excludedModelPrefixes = ["rewind/"];
     };
   };
 
   services.sillytavern = {
     enable = true;
+    # Keep conditional-use providers out of discovery and hand-entered generation.
+    package = pkgs.sillytavern.overrideAttrs (old: {
+      patches = (old.patches or []) ++ [./exclude-conditional-models.patch];
+    });
     port = 8001;
     listen = true;
     listenAddressIPv4 = "127.0.0.1";
@@ -221,7 +217,7 @@ in {
     '';
     serviceConfig = {
       # Native "--listen=1" disables auth in yargs; docs/incidents.md#sillytavern-native-flags.
-      ExecStart = lib.mkForce (lib.escapeShellArgs ([(lib.getExe cfg.package)] ++ lib.cli.toGNUCommandLine {} cliArguments));
+      ExecStart = lib.mkForce (lib.escapeShellArgs ([(lib.getExe cfg.package)] ++ lib.cli.toCommandLineGNU {} cliArguments));
       StateDirectoryMode = "0700";
       UMask = "0077";
     };

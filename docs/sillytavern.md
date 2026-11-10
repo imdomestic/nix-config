@@ -22,8 +22,8 @@ HTTP 流量在 Tailnet 的 WireGuard 隧道内传输；没有启用 Funnel、公
 | --- | --- |
 | Bonsai Hikari / Bonsai 2 | seraph 本机的两个 27B 模型，174080 上下文；互斥加载 |
 | Qwen3.8 Swift / Aligned | taipan 的两个 27B 模型，262144 上下文；主机需启动到 NixOS |
-| CLIProxy · 全部模型 | 动态读取 CLIProxy 的 `/v1/models`，默认 Gemini 3.8 Flash High |
-| CLIProxy · GPT / Rewind / Claude / Vertex / DeepSeek | 同一网关的常用模型快捷连接；仍可在模型下拉框选择其他模型 |
+| CLIProxy · 全部模型 | 动态读取 CLIProxy 的 `/v1/models`，过滤 Rewind；默认 Gemini 3.8 Flash High |
+| CLIProxy · GPT / Claude / Vertex / DeepSeek | 同一网关的常用模型快捷连接；仍可在模型下拉框选择其他模型 |
 | Qwen3.5 4B | h610 的 llama.cpp，当前运行窗口为 32768 |
 | Ollama · Qwen3 8B / Gemma 4 E4B | tank 的两个小模型，使用保守的 4096 客户端窗口 |
 
@@ -32,8 +32,14 @@ CLIProxy 的新模型会随重新连接 / 刷新模型列表出现，不需要�
 对话模型**，不能当成聊天模型选择。Clef 的 `/v1/systemone` 决策接口也不是聊天
 接口，因此没有创建一个看似可用但实际上不兼容的连接。
 
+**Rewind 不接入本实例。** 它是[有使用条件的提供商](rewind.md#usage-conditions)，
+在共享模型资料中标记 `conditional = true`。本实例不保留 Rewind 连接或预设，
+模型目录过滤 `rewind/`，手填的 Rewind 生成请求也会在调用上游之前被拒绝。
+其他客户端已有的显式 Rewind 配置不变；不要把共享 CLIProxy Key 当成已经满足
+该提供商使用条件的证明。
+
 云端快捷连接默认采用 131072 或 262144 的保守客户端上下文预算，回复预算为
-4096（GPT、Rewind、Argon 为 8192）；这不是对上游最大能力的声明。按需在
+4096（GPT、Argon 为 8192）；这不是对上游最大能力的声明。按需在
 SillyTavern 的 Chat Completion 预设里修改，不会改变模型服务器本身的容量。
 本机的两个 Bonsai 预设分别保留 Hikari 的 medium / Bonsai 2 的 high 思考设置。
 
@@ -58,7 +64,8 @@ SillyTavern 的 Chat Completion 预设里修改，不会改变模型服务器本
 - Nix 只管理服务器安全配置、固定上游的模型 Key 和初始化的连接。后续重启 /
   部署不得重置用户选择、改过的预设或聊天记录。重新运行 bootstrap 只补建管理的
   连接 / 预设并保留已有编辑，不重置界面。
-- 升级 SillyTavern 前需要复核 bootstrap 的 REST schema；当前固定验证 1.18.0。
+- 升级 SillyTavern 前需要复核 bootstrap 的 REST schema 及排除规则补丁；当前
+  固定验证 1.18.0。
 - SillyTavern 仅监听 `127.0.0.1:8001`；nginx 仅监听本机 MagicDNS 对应的
   Tailnet 地址 `:8000`，另有独立 nftables 接口守卫。保留 Basic Auth、CSRF、
   Host whitelist 和服务端私网请求白名单。
@@ -91,6 +98,8 @@ bootstrap 单元测试及真实端口的隔离防火墙回归：
 source=$(nix build --no-link --print-out-paths .#nixosConfigurations.seraph.pkgs.sillytavern.src)
 python3 scripts/test-sillytavern-bootstrap.py --source "$source"
 sudo unshare -n python3 scripts/test-tailscale-web.py 8000 8080
+package=$(nix build --no-link --print-out-paths .#nixosConfigurations.seraph.config.services.sillytavern.package)
+node scripts/test-sillytavern-exclusions.mjs "$package/lib/node_modules/sillytavern"
 ```
 
 ## 上线验收
