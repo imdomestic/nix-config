@@ -157,6 +157,10 @@ in {
                   context_window = 262144;
                   video = true;
                 };
+                "vertex-c820/gemini-4-carbon" = {
+                  context_window = 262144;
+                  video = true;
+                };
               }
               // lib.mapAttrs' (id: model:
                 lib.nameValuePair "opencode/${id}" {
