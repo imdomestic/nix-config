@@ -16,7 +16,15 @@ tailscale ssh linwhite@seraph.inner.imdomestic.com 'sudo cat /run/secrets/lumive
 密码加密保存在 `secrets/hosts/seraph.yaml`。首次启动通过官方 `OWNER_PASSWORD`
 环境入口创建 owner；应用把密码哈希存入自己的数据目录。之后修改用户密码用
 Lumiverse 的原生账户功能，**修改 SOPS 的初始密码不会覆盖已经存在的账户密码**。
-修改后也需要同步 bootstrap 使用的秘密，或停用 bootstrap，避免后续登录失败。
+初始化服务成功后会留下 `.nix-bootstrap-complete` 标记，此后重启 / 部署不再用
+初始密码自动登录。**你可以直接在 Settings → Account → Change Password 中
+填写当前密码、新密码及确认密码（8–128 字符），无需修改 Nix 或 SOPS。**
+其他设备的登录会话会被注销，需要用新密码重新登录；当前会话保留。
+
+`/run/secrets/lumiverse/password` 此后仍是部署时的初始密码，不会变成网页中
+设置的新密码。应用在修改密码时更新数据库，不把新密码交回 Nix。
+`owner.credentials` 也是初始建号文件，不应当作当前登录密码的权威副本；
+现有数据库在重启时不会被它重置。备份应包含数据库，不要靠旧建号文件重建账户。
 
 两边不共享数据库、会话、主题、角色或聊天目录。**没有自动迁移 ST 数据**，
 Lumiverse 容器没有挂载 ST 目录。保留现有 ST，先在 Lumiverse 的临时聊天里
@@ -60,9 +68,10 @@ Qwen3.8 Aligned、h610 Qwen3.5 4B、tank Ollama。默认选中本机 Hikari。
   no-new-privileges；最多 4 GiB 内存、4 CPU，无 GPU 或宿主设备映射。
 - `/var/lib/lumiverse`：独立的数据库、密钥、用户文件与扩展，目录 0700。
   `lumiverse.identity` 是加密身份，**必须连同数据库一起备份**，不能丢弃。
-- `bootstrap.py` 通过原生登录和 REST API 创建连接；后续运行不覆盖用户编辑，
-  也不恢复用户主动删除的连接或重置默认选择。它只初始化连接，不修改 Loom
-  提示词预设，不访问模型上游。
+- `bootstrap.py` 通过原生登录和 REST API 创建连接；成功后由 systemd 启动脚本
+  写入 `/var/lib/lumiverse/.nix-bootstrap-complete`，以后自动跳过。手动运行 helper
+  也不覆盖用户编辑，不恢复用户主动删除的连接或重置默认选择。它只初始化
+  连接，不修改 Loom 提示词预设，不访问模型上游。
 - `model-policy.ts` 与 `model-policy.patch`：只读挂载到固定 revision，保持本实例
   的条件提供商排除规则；升级镜像时须同时核对源码 revision 并重跑测试。
 - 不运行交互式 updater / runner。界面的 runner 更新、切分支、重启等操作不用于
@@ -78,8 +87,12 @@ WebSocket 已验收，Push / 麦克风等依赖安全上下文的功能不在本
 
 ```sh
 systemctl status podman-lumiverse lumiverse-bootstrap nginx
-sudo systemctl restart lumiverse-bootstrap
 ```
+
+初始化完成后，`lumiverse-bootstrap` 被 condition 跳过是正常状态，不代表服务
+故障。不要为重跑初始化而删除标记：用户可能已经改了密码。后续添加连接优先
+使用网页；确需重新运行 helper 时，用安全的临时凭据文件提供当前密码，不要
+把密码写进命令行、Git 或日志。
 
 日志和浏览器状态可能包含会话标识，不要直接公开日志。系统部署遵守
 `AGENTS.md` 的 freshness check；Home Manager 不参与。

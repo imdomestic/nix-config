@@ -112,11 +112,14 @@ in {
     requires = ["podman-lumiverse.service"];
     after = ["podman-lumiverse.service"];
     partOf = ["podman-lumiverse.service"];
+    # Account passwords belong to the user after the initial connections are seeded.
+    unitConfig.ConditionPathExists = "!${state}/.nix-bootstrap-complete";
     script = ''
       ${pkgs.curl}/bin/curl --silent --show-error --fail --output /dev/null \
         --retry 60 --retry-connrefused --retry-delay 2 --retry-max-time 120 \
         http://127.0.0.1:${toString port}/api/auth/get-session
-      exec ${pkgs.python3}/bin/python3 ${./bootstrap.py} ${manifest}
+      ${pkgs.python3}/bin/python3 ${./bootstrap.py} ${manifest}
+      ${pkgs.coreutils}/bin/touch ${state}/.nix-bootstrap-complete
     '';
     serviceConfig = {
       Type = "oneshot";
@@ -128,6 +131,7 @@ in {
       UMask = "0077";
       NoNewPrivileges = true;
       ProtectSystem = "strict";
+      ReadWritePaths = [state];
       ProtectHome = true;
       PrivateTmp = true;
       PrivateDevices = true;
