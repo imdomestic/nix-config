@@ -2,7 +2,17 @@
   lib,
   pkgs,
   ...
-}: {
+}: let
+  clamshell = pkgs.writeShellScript "hyprland-clamshell" ''
+    if grep -q "closed" /proc/acpi/button/lid/*/state 2>/dev/null; then
+      if ${pkgs.hyprland}/bin/hyprctl monitors all | grep -v "eDP-1" | grep -q "Monitor "; then
+        ${pkgs.hyprland}/bin/hyprctl keyword monitor "eDP-1, disable"
+      fi
+    else
+      ${pkgs.hyprland}/bin/hyprctl keyword monitor "eDP-1, preferred, auto, 1"
+    fi
+  '';
+in {
   wayland.windowManager.hyprland = {
     enable = true;
     xwayland.enable = true;
@@ -29,13 +39,18 @@
         "XDG_SESSION_DESKTOP,Hyprland"
         "XCURSOR_SIZE,24"
         "QT_IM_MODULE,fcitx"
+        "GTK_IM_MODULE,fcitx"
         "XMODIFIERS,@im=fcitx"
+      ];
+
+      exec = [
+        "${clamshell}"
       ];
 
       exec-once = [
         "dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
         "systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP"
-        "${pkgs.fcitx5}/bin/fcitx5 -d --replace"
+        "/run/current-system/sw/bin/fcitx5 -d --replace"
         "${pkgs.waybar}/bin/waybar"
         "${pkgs.mako}/bin/mako"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
@@ -118,17 +133,17 @@
         "$mod SHIFT, K, movewindow, u"
         "$mod SHIFT, J, movewindow, d"
 
-        # Switch workspaces
-        "$mod, 1, workspace, 1"
-        "$mod, 2, workspace, 2"
-        "$mod, 3, workspace, 3"
-        "$mod, 4, workspace, 4"
-        "$mod, 5, workspace, 5"
-        "$mod, 6, workspace, 6"
-        "$mod, 7, workspace, 7"
-        "$mod, 8, workspace, 8"
-        "$mod, 9, workspace, 9"
-        "$mod, 0, workspace, 10"
+        # Switch workspaces (summon to current focused monitor)
+        "$mod, 1, focusworkspaceoncurrentmonitor, 1"
+        "$mod, 2, focusworkspaceoncurrentmonitor, 2"
+        "$mod, 3, focusworkspaceoncurrentmonitor, 3"
+        "$mod, 4, focusworkspaceoncurrentmonitor, 4"
+        "$mod, 5, focusworkspaceoncurrentmonitor, 5"
+        "$mod, 6, focusworkspaceoncurrentmonitor, 6"
+        "$mod, 7, focusworkspaceoncurrentmonitor, 7"
+        "$mod, 8, focusworkspaceoncurrentmonitor, 8"
+        "$mod, 9, focusworkspaceoncurrentmonitor, 9"
+        "$mod, 0, focusworkspaceoncurrentmonitor, 10"
 
         # Move active window to workspace
         "$mod SHIFT, 1, movetoworkspace, 1"
@@ -165,6 +180,8 @@
       ];
 
       bindl = [
+        ", switch:on:Lid Switch, exec, ${clamshell}"
+        ", switch:off:Lid Switch, exec, ${clamshell}"
         ", XF86AudioNext, exec, ${lib.getExe pkgs.playerctl} next"
         ", XF86AudioPause, exec, ${lib.getExe pkgs.playerctl} play-pause"
         ", XF86AudioPlay, exec, ${lib.getExe pkgs.playerctl} play-pause"
