@@ -104,12 +104,11 @@ in {
           model = "cliproxy/gemini-3.8-flash-high";
           effort = "high";
         };
-        # low thinks ~100 tokens before the verdict, up to ~280; maxx gives
-        # it 1000 (at 300, one call in eight was cut off, 2026-11-04).
-        intent = {
-          model = "cliproxy/opencode/deepseek-v4.1-flash";
-          effort = "low";
-        };
+        # Qwen 3.5 4B on h610's llama.cpp, which doesn't think (--reasoning
+        # off) and answers at once: 3000 tokens of prompt in 7 s, 0.3 s
+        # once cached (2026-11-11). OpenCode's DeepSeek V4.1 Flash, which
+        # had judged since 11-04, answered 503 auth_unavailable that day.
+        intent.model = "h610/qwen3.5-4b-q4_k_m";
         # Tidies each memory file Max wrote in the day, at 05:00.
         dreamer = {
           model = "cliproxy/gemini-3.8-flash-high";
@@ -216,8 +215,8 @@ in {
           h610 = {
             base_url = "http://h610.inner.imdomestic.com:11435/v1";
             protocol = "chat";
-            # llama.cpp's n_ctx.
-            models."qwen3.5-4b-q4_k_m".context_window = 131072;
+            # llama.cpp's --ctx-size in hosts/h610/qwen35-sycl.nix.
+            models."qwen3.5-4b-q4_k_m".context_window = 32768;
           };
         };
       };
