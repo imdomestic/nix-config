@@ -78,7 +78,6 @@
       };
 
       dwindle = {
-        pseudotile = true;
         preserve_split = true;
       };
 
@@ -105,7 +104,7 @@
         "$mod, F, fullscreen, 0"
         "$mod SHIFT, Space, togglefloating"
         "$mod, P, pseudo"
-        "$mod, S, togglesplit"
+        "$mod, S, layoutmsg, togglesplit"
 
         # Focus with vim keys
         "$mod, H, movefocus, l"
@@ -172,15 +171,15 @@
         ", XF86AudioPrev, exec, ${lib.getExe pkgs.playerctl} previous"
       ];
 
-      windowrulev2 = [
-        "suppressevent maximize, class:.*"
-        "float, class:^(pavucontrol)$"
-        "float, class:^(nm-connection-editor)$"
-        "float, class:^(blueman-manager)$"
-        "float, class:^(org.gnome.FileRoller)$"
-        "float, class:^(vicinae)$"
-        "float, class:^(com.tencent.xinWeChat)$, title:^(?!微信|WeChat).*"
-        "float, title:^(Open File|Save File|Choose Folder|Select File).*"
+      windowrule = [
+        "match:class .*, suppress_event maximize"
+        "match:class ^(pavucontrol)$, float on"
+        "match:class ^(nm-connection-editor)$, float on"
+        "match:class ^(blueman-manager)$, float on"
+        "match:class ^(org.gnome.FileRoller)$, float on"
+        "match:class ^(vicinae)$, float on"
+        "match:class ^(com.tencent.xinWeChat)$, match:title ^(?!微信|WeChat).*, float on"
+        "match:title ^(Open File|Save File|Choose Folder|Select File).*, float on"
       ];
     };
   };
