@@ -4,6 +4,37 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-11 · tank 被 bambu-studio 的源码编译拖进 swap 两个半小时 {#bambu-studio-build-oom}
+
+11-11 00:23–03:00 HKT(11-10 16:23–19:00 UTC)tank 没有死机，但 SSH 连不上,
+h610 抓不到它的 node / alertmanager,tank 自己的 Prometheus 从 00:20 到 03:10
+没有数据。
+
+经过:00:00 flake-updater 开跑,nixpkgs 11-05 c56a87d → 11-08 ac588ef,
+00:13 开始构建 59 个变了的 system 和 home。其中 linwhite 在 encore 的 home 带
+`pkgs.bambu-studio`,cache.nixos.org 上没有(新的 `8nvk1h7x…` 和 encore 正在用的
+`2wgdf9k0…` 都是 404;Hydra 上这个 job 最后一次成功是 2026-05-25),于是在 tank 上
+以 `-j20` 源码编译。libslic3r 的单个 C++ 编译单元要 1–2 GB。00:19–00:23 匿名内存
+22 → 44 GB,15.7 GB 的 zram swap 写满，可用内存 2.2 GB,page cache 4.8 GB;
+nix-daemon.service 的 memory.peak 35.7 GB。有 swap 兜着,OOM killer 没出手，全机
+在换页里打转;Tailscale SSH 在 tailscaled 里，它被换出去了，所以连不上。03:00
+flake-updater 到了 180 分钟预算，杀掉构建(660 步只走到 129),内存立刻回来;
+结果是 nothing passed。
+
+误导点:先以为是 `max-jobs = 6` × `cores = 0` 同时编太多东西。看 gate 的
+build.err,779 个 building 几乎全是配置文件和 unit,543 个 copying 是下载，真正
+编译的只有这一个包;是按 `/nix/var/log/nix/drvs` 里日志的 mtime 和大小找到它的。
+另一个误导:`journalctl --list-boots` 和多条命令一起跑时卡住，像是 ssh 还有问题，
+其实单条命令 0.6 s 就回来了。同一天 20:09–21:09 的几次 1–2 分钟抖动是另一回事:
+一个 root 会话在构建并运行 `vm-test-run-max-vm`。
+
+处理:linwhite 的 Bambu Studio 改用 Flathub 的 `com.bambulab.BambuStudio`
+(`home/linwhite/encore.nix`),设置从 `~/.config/BambuStudio` 复制到
+`~/.var/app/com.bambulab.BambuStudio/config/BambuStudio`(不含 log、plugins、
+cache;网络插件跟版本走，由新版自己下载),原目录保留。没处理的根因：车队里
+nix-daemon 没有内存上限(MemoryHigh / MemoryMax 都是 infinity),systemd-oomd 不管
+system.slice;下一个缓存里没有的大包还会这样。
+
 ## 2026-11-10 · Rewind 的 50 张图片限制被报成了服务器错误 {#rewind-image-limit}
 
 用户偶发看到 `Rewind rejected the request; check model parameters and input size`。
