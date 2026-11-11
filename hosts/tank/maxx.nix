@@ -15,6 +15,30 @@
   # auth git's HTTPS takes. Change both together.
   secretNames = ["qq-app-id" "qq-app-secret" "owners" "github-token" "github-git-auth"];
   secret = name: config.sops.secrets."maxx/${name}".path;
+  # Makers' list prices, US$ per million tokens, for the cost /status
+  # shows; the public API's even where the model is free to us. Looked up
+  # 2026-11-12 on the makers' pricing pages, the rate for short prompts.
+  price = input: cached: output: {inherit input cached output;};
+  prices = {
+    # Promotional until 2026-12-31, then 1.50 / 0.15 / 7.50.
+    gemini-flash = price 0.75 0.075 3.75;
+    # Vertex's global endpoint; promotional until 2026-11-30, then twice.
+    gemini-4 = price 2 0.1 10;
+    gpt-6-astra = price 10 1 50;
+    # Promotional until 2026-11-30.
+    gpt-5-6-sol = price 4 0.4 20;
+    gpt-5-6-terra = price 2 0.2 12;
+    gpt-5-6-luna = price 0.2 0.02 1.2;
+    # DeepSeek's peak rate; off-peak is half.
+    deepseek-flash = price 0.3 0.006 1.2;
+    mimo-flash = price 0.14 0.0028 0.28;
+    # On our own GPUs: no per-token price.
+    local = price 0 0 0;
+  };
+  opencodePrices = {
+    "deepseek-v4.1-flash" = prices.deepseek-flash;
+    "mimo-v2.6-flash" = prices.mimo-flash;
+  };
 in {
   sops.secrets =
     lib.genAttrs (map (name: "maxx/${name}") secretNames) (_: {
@@ -146,26 +170,31 @@ in {
                   context_window = cliproxy.gemini.context;
                   max_output = cliproxy.gemini.models."gemini-3.8-flash-high".output;
                   video = true;
+                  price = prices.gemini-flash;
                 };
                 # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
                 "vertex/gemini-4-argon" = {
                   context_window = 262144;
                   video = true;
+                  price = prices.gemini-4;
                 };
                 "vertex-c820/gemini-4-argon" = {
                   context_window = 262144;
                   video = true;
+                  price = prices.gemini-4;
                 };
                 "vertex-c820/gemini-4-carbon" = {
                   context_window = 262144;
                   video = true;
+                  price = prices.gemini-4;
                 };
               }
               // lib.mapAttrs' (id: model:
-                lib.nameValuePair "opencode/${id}" {
-                  context_window = model.context;
-                  max_output = model.output;
-                })
+                lib.nameValuePair "opencode/${id}" ({
+                    context_window = model.context;
+                    max_output = model.output;
+                  }
+                  // lib.optionalAttrs (opencodePrices ? ${id}) {price = opencodePrices.${id};}))
               cliproxy.opencode.models;
           };
           # The same cliproxy and key; GPT's reasoning only round-trips
@@ -178,23 +207,28 @@ in {
               "gpt-6-astra" = {
                 context_window = cliproxy.gpt.context;
                 max_output = cliproxy.gpt.output;
+                price = prices.gpt-6-astra;
               };
               "gpt-5.6-sol" = {
                 context_window = cliproxy.gpt.context;
                 max_output = cliproxy.gpt.output;
+                price = prices.gpt-5-6-sol;
               };
               "gpt-5.6-terra" = {
                 context_window = cliproxy.gpt.context;
                 max_output = cliproxy.gpt.output;
+                price = prices.gpt-5-6-terra;
               };
               "gpt-5.6-luna" = {
                 context_window = cliproxy.gpt.context;
                 max_output = cliproxy.gpt.output;
+                price = prices.gpt-5-6-luna;
               };
               # Rewind's, through cliproxy's Rewind plugin.
               "rewind/gpt-6-astra" = {
                 context_window = cliproxy.rewind.context;
                 max_output = cliproxy.rewind.output;
+                price = prices.gpt-6-astra;
               };
             };
           };
@@ -202,13 +236,20 @@ in {
             base_url = "http://taipan.inner.imdomestic.com:8000/v1";
             protocol = "chat";
             api_key_file = secret "taipan-api-key";
-            models."qwen3.8-27b".context_window = 262144;
+            models."qwen3.8-27b" = {
+              context_window = 262144;
+              price = prices.local;
+            };
           };
           deepseek = {
             base_url = "https://api.deepseek.com/v1";
             protocol = "chat";
             api_key_file = secret "deepseek-api-key";
-            models."deepseek-v4-flash-vision-exp".context_window = 131072;
+            # Retired: DeepSeek answers it with V4.1 Flash, at Flash's price.
+            models."deepseek-v4-flash-vision-exp" = {
+              context_window = 131072;
+              price = prices.deepseek-flash;
+            };
           };
           # Not here, as of 2026-10-29: grok-4.5 (its relay answers 403
           # "Task APIs are private during staging deployment").
@@ -216,7 +257,10 @@ in {
             base_url = "http://h610.inner.imdomestic.com:11435/v1";
             protocol = "chat";
             # llama.cpp's --ctx-size in hosts/h610/qwen35-sycl.nix.
-            models."qwen3.5-4b-q4_k_m".context_window = 32768;
+            models."qwen3.5-4b-q4_k_m" = {
+              context_window = 32768;
+              price = prices.local;
+            };
           };
         };
       };
