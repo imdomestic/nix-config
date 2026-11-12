@@ -31,6 +31,11 @@ in {
     ../../system/modules/nerdfonts
   ];
 
+  fonts.packages = with pkgs; [
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+  ];
+
   boot.kernel.sysctl = {
     # 禁用 Alder Lake 等现代 Intel CPU 上的 split lock 延迟惩罚（默认强制 sleep 10ms），
     # 解决 Bambu Studio 等含未对齐原子锁的程序在拖动模型/UI 交互时的严重卡顿

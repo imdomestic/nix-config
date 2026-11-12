@@ -175,6 +175,10 @@ in {
   security.sudo.wheelNeedsPassword = false;
   users.users.linwhite.hashedPasswordFile = "/var/lib/user-passwords/linwhite";
   programs.nix-index-database.comma.enable = true;
+  fonts.packages = with pkgs; [
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+  ];
   environment.systemPackages = with pkgs; [pciutils efibootmgr nvtopPackages.nvidia sbctl];
   time.timeZone = "Asia/Tokyo";
   system.stateVersion = "26.05";

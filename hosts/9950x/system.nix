@@ -9,6 +9,11 @@
     ../../system/modules/nerdfonts
   ];
 
+  fonts.packages = with pkgs; [
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+  ];
+
   wsl = {
     enable = true;
     defaultUser = "linwhite";

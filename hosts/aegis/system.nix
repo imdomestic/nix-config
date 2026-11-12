@@ -13,6 +13,11 @@
   ];
   system.stateVersion = 5;
 
+  fonts.packages = with pkgs; [
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+  ];
+
   services.lidguard.enable = true;
 
   system.defaults = {

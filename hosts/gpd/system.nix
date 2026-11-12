@@ -110,6 +110,11 @@ in {
     adwaita-icon-theme
   ];
 
+  fonts.packages = with pkgs; [
+    noto-fonts-cjk-sans
+    noto-fonts-cjk-serif
+  ];
+
   programs = {
     gamescope = {
       enable = true;
