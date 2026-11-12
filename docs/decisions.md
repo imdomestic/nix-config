@@ -11,6 +11,20 @@
 
 ---
 
+## 2026-11-12 · 国内的 exit node 直连出网,不分流 {#china-exit-direct}
+
+gizmo、r5s、r6s 都是 exit node(`my.tailscale.exitNode`)。r5s 和 r6s 的 exit
+流量**故意不进**本机的透明代理,直接从 WAN 出去,拿的是国内宽带 IP;墙外的网站
+经它们打不开,这是 Hank 选的,不是漏配。要日本 IP 用 gizmo 或 tokyo。
+
+- r5s:`my.dae.lanInterfaces` 保持默认 `["br-lan"]`,不加 `tailscale0`。dae 模块
+  那个选项的说明讲的是 shanghai 当年要分流的做法,别照着把 tailscale0 加回来。
+- r6s:mihomo 路由模式 `exclude-interface = ["tailscale0"]`。不加的话
+  auto-redirect 会把 exit 流量 DNAT 到本机重定向口,而 tailscale0 上那个口没
+  放行,TCP 全被 input 丢掉 —— 广播了、headscale 也批了,用起来却全超时。
+
+---
+
 ## 2026-11-10 · encore 从 GRUB 切换为 systemd-boot 并启用 XBOOTLDR {#encore-systemd-boot}
 
 encore 原先使用 GRUB，在原 EFI 分区（`/efi`，300 MiB）保存可移动引导文件，通过
