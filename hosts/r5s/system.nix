@@ -20,6 +20,7 @@ in {
   my.dae.foreignDnsOverTcp = true;
   # ddns-go must reach Cloudflare's API even while the proxy is down.
   my.dae.bootstrapDomains = ["api.cloudflare.com"];
+  my.tailscale.exitNode = true;
 
   sops.secrets."wireguard/private_key".owner = "systemd-network";
   sops.secrets."wireguard/preshared_key".owner = "systemd-network";

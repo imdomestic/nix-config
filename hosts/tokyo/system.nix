@@ -24,9 +24,8 @@ in {
   ];
 
   # Host traffic is direct; Xray entries retain the Japan and Sydney reverse tunnels.
-  services.tailscale.useRoutingFeatures = "server";
+  my.tailscale.exitNode = true;
   services.tailscale.extraSetFlags = [
-    "--advertise-exit-node"
     # 悉尼的设备和 tank 这类移动大内网打不了洞,中转默认落在 h610 的 DERP,
     # 走的是丢包的悉尼↔电信那段。这台到两边都干净,当 peer relay;谁能用它由
     # h610 的 headscale policy 里那条 grant 决定。见 docs/incidents.md#sydney-tank-peer-relay。

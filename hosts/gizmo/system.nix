@@ -50,6 +50,7 @@ in {
     };
   };
   my.tailscale.bindServices = ["cliproxy"];
+  my.tailscale.exitNode = true;
   sops.secrets."rewind/api_key" = {
     owner = "cliproxy";
     restartUnits = ["cliproxy.service"];

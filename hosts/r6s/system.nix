@@ -34,6 +34,7 @@ in {
   my.mihomo.controllerAddress = "0.0.0.0:9090";
   # mihomo provides DNS during bootstrap, so its controller must not wait for MagicDNS.
   my.tailscale.guardedTCPServices.mihomo = [9090];
+  my.tailscale.exitNode = true;
 
   # 重新启用 modules/singbox 时,这台要一并加上
   #   my.singbox.autoRedirect = false;

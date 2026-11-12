@@ -66,6 +66,18 @@ in {
       '';
     };
 
+    exitNode = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        向 tailnet 广播自己是 exit node。批准和出网放行已在 h610 的 headscale
+        policy 里(autoApprovers.exitNode、dst autogroup:internet),这里只管广播。
+
+        exit 流量从 tailscale0 进来再转发,本机的 dae 不把 tailscale0 列进
+        `my.dae.lanInterfaces` 就看不到它,会直接从 WAN 出去。
+      '';
+    };
+
     ssh = lib.mkOption {
       type = lib.types.bool;
       default = cfg.enable;
@@ -89,9 +101,9 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    # 广播子网就得让内核转发起来;不设的话 ip_forward 之类不会被打开,
-    # 广播了也转不动。和 shanghai 的 exit node 是同一个开关。
-    services.tailscale.useRoutingFeatures = lib.mkIf (cfg.advertiseRoutes != []) "server";
+    # 广播子网或当 exit node 都得让内核转发起来;不设的话 ip_forward 之类
+    # 不会被打开,广播了也转不动。
+    services.tailscale.useRoutingFeatures = lib.mkIf (cfg.advertiseRoutes != [] || cfg.exitNode) "server";
 
     services.tailscale = {
       enable = true;
@@ -104,7 +116,8 @@ in {
       extraSetFlags =
         ["--accept-dns=true"]
         ++ lib.optionals cfg.ssh ["--ssh"]
-        ++ lib.optional (cfg.advertiseRoutes != []) "--advertise-routes=${lib.concatStringsSep "," cfg.advertiseRoutes}";
+        ++ lib.optional (cfg.advertiseRoutes != []) "--advertise-routes=${lib.concatStringsSep "," cfg.advertiseRoutes}"
+        ++ lib.optional cfg.exitNode "--advertise-exit-node";
     };
   };
 }
