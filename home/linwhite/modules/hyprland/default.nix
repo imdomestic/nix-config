@@ -38,8 +38,8 @@ in {
         "XDG_SESSION_TYPE,wayland"
         "XDG_SESSION_DESKTOP,Hyprland"
         "XCURSOR_SIZE,24"
+        # 不设 GTK_IM_MODULE：Wayland 下 GTK4 应走原生 text-input-v3，设成 fcitx 会导致 Ghostty 无法激活输入法
         "QT_IM_MODULE,fcitx"
-        "GTK_IM_MODULE,fcitx"
         "XMODIFIERS,@im=fcitx"
       ];
 
