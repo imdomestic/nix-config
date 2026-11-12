@@ -229,11 +229,12 @@ in {
           case "$entry" in
             "$name: "*"Windows Boot Manager HD(1,GPT,8762fad7-cfcb-4eae-8bf0-4315bef44901,"*)
               ${pkgs.coreutils}/bin/cp "$variable" "$STATE_DIRECTORY/$name"
-              ${pkgs.efibootmgr}/bin/efibootmgr --bootnum "''${name#Boot}" --delete-bootnum
+              # 用 rm 注销变量而非 efibootmgr，避免修改 BootOrder 在 NVRAM 余量不足时触发内核 ENOSPC
+              ${pkgs.coreutils}/bin/rm -f "$variable" || true
               ;;
             "$name: "*"UEFI:CD/DVD Drive BBS(129,,0x0)"|"$name: "*"UEFI:Removable Device BBS(130,,0x0)"|"$name: "*"UEFI:Network Device BBS(131,,0x0)")
               ${pkgs.coreutils}/bin/cp "$variable" "$STATE_DIRECTORY/$name"
-              ${pkgs.efibootmgr}/bin/efibootmgr --bootnum "''${name#Boot}" --delete-bootnum
+              ${pkgs.coreutils}/bin/rm -f "$variable" || true
               ;;
           esac
         done
