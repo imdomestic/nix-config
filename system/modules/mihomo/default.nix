@@ -240,6 +240,10 @@ in {
             # 用普通前缀列表而不是 route-exclude-address-set —— 后者会触发
             # AutoRedirectMarkMode,进而生成打死本机 IPv4 的 lo 重定向。
             route-exclude-address = ["100.64.0.0/10" "fd7a:115c:a1e0::/48"];
+            # tailnet 转发进来的流量(子网路由、exit node)不进 mihomo:exit 要的
+            # 就是直连的国内 IP。不排除的话 auto-redirect 会把它 DNAT 到本机
+            # 重定向口,而 tailscale0 上那个口没放行,TCP 全被 input 丢掉。
+            exclude-interface = ["tailscale0"];
           };
 
         # redir-host 而不是 fake-ip。三个理由,都不是洁癖:
