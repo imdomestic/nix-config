@@ -1537,11 +1537,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794261091,
-        "narHash": "sha256-JehR2gPZggwwi4lF4UW3KFSoGNL1zTXBFegG9Pvo40I=",
+        "lastModified": 1794427499,
+        "narHash": "sha256-3OIGGdzGTBZlrfpVp//t6osVtxO0/RWrVabH+YsWcZY=",
         "owner": "karinushka",
         "repo": "paneru",
-        "rev": "24edaa97c52b785d8d1ce88d1359a088c5a865c2",
+        "rev": "092b55c0fb18e6d041169879f5878f11891ed5b2",
         "type": "github"
       },
       "original": {
