@@ -9,7 +9,7 @@
         ${pkgs.hyprland}/bin/hyprctl keyword monitor "eDP-1, disable"
       fi
     else
-      ${pkgs.hyprland}/bin/hyprctl keyword monitor "eDP-1, preferred, auto, 1"
+      ${pkgs.hyprland}/bin/hyprctl keyword monitor "eDP-1, highrr, auto, 1"
     fi
   '';
 in {
@@ -21,7 +21,7 @@ in {
       "$mod" = "SUPER";
 
       monitor = [
-        ",preferred,auto,1"
+        ",highrr,auto,1"
       ];
 
       env = [
