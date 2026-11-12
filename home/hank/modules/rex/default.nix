@@ -16,7 +16,7 @@
     rex="''${REX_BIN_DIR:-${rexCliDir}}/rex"
     target=$1
     file=$(mktemp -t rex-copy-mode)
-    # The app does not follow the focus the server restores when a layer closes.
+    # Rex 1443's app did not follow the server's refocus when a layer closed.
     trap 'rm -f "$file"; "$rex" focus "$target" >/dev/null 2>&1 || true' EXIT
     "$rex" capture -b "$target" --unwrap --trim >"$file"
     # y leaves after yanking, like tmux's copy-selection-and-cancel; "+ is OSC 52.
@@ -190,8 +190,8 @@ in {
         };
       };
     # Rex's pane.move restructures splits; tmux swaps their contents instead.
-    # copy_mode floats over the window instead of splitting the pane, so the
-    # pane is not resized and its program does not redraw.
+    # copy_mode floats over the pane instead of splitting it, so the pane is
+    # not resized and its program does not redraw.
     extraConfig = ''
       rex.action{
         name = "tmux_swap",
@@ -221,6 +221,15 @@ in {
         end,
       }
 
+      local function rect_of(node, block_id)
+        if node == nil then return nil end
+        if node.block_id == block_id then return node.rect end
+        if node.split then
+          return rect_of(node.split.before, block_id)
+            or rect_of(node.split.after, block_id)
+        end
+      end
+
       rex.action{
         name = "copy_mode",
         title = "Copy Mode",
@@ -230,21 +239,19 @@ in {
           local view = assert(rex.session.view{})
           for _, window in ipairs(view.windows or {}) do
             for _, layer in ipairs(window.layers or {}) do
-              for _, block in ipairs(layer.blocks or {}) do
-                if block.block_id == target then
-                  -- Not the pane's rect: Rex 1443 draws no floating layer that
-                  -- starts right of the window's left edge (docs/rex.md#copy-mode).
-                  assert(rex.session.new_layer{
-                    window_id = window.window_id,
-                    bounds = { 0, 0, 1, 1 },
-                    focus = true,
-                    layout = rex.layout.block{
-                      flavor = "com.superlogical.terminal.shell",
-                      options = { command = { "${copyMode}", target }, shell = "none" },
-                    },
-                  })
-                  return
-                end
+              local rect = rect_of(layer.layout, target)
+              if rect then
+                if window.zoomed_block_id == target then rect = { 0, 0, 1, 1 } end
+                assert(rex.session.new_layer{
+                  window_id = window.window_id,
+                  bounds = rect,
+                  focus = true,
+                  layout = rex.layout.block{
+                    flavor = "com.superlogical.terminal.shell",
+                    options = { command = { "${copyMode}", target }, shell = "none" },
+                  },
+                })
+                return
               end
             end
           end

@@ -112,28 +112,42 @@ switch was needed. The test session was retained after the user began using it.
 ## Copy mode
 
 **Ctrl-b [** runs the `copy_mode` action from `home/hank/modules/rex/default.nix`. It
-opens a floating layer over the whole window and shows the focused pane's
-scrollback, captured with `rex capture --unwrap --trim`, in a read-only nvim
-with the cursor on the last line. A floating layer is used instead of a split
-so the original pane is not resized and its program does not redraw. In
-visual mode `y` copies the selection through OSC 52, which Rex writes to the
-macOS clipboard, and leaves, like tmux's `copy-selection-and-cancel`. `q`
-leaves without copying; the layer closes and the script focuses the pane
-again with `rex focus`. All other nvim motions and searches work as usual.
-Colors are not kept.
+opens a floating layer over the focused pane (over the whole window when the
+pane is zoomed) and shows the pane's scrollback, captured with
+`rex capture --unwrap --trim`, in a read-only nvim with the cursor on the last
+line. A floating layer is used instead of a split so the original pane is not
+resized and its program does not redraw. In visual mode `y` copies the
+selection through OSC 52, which Rex writes to the macOS clipboard, and leaves,
+like tmux's `copy-selection-and-cancel`. `q` leaves without copying; the layer
+closes and the script focuses the pane again with `rex focus`. All other nvim
+motions and searches work as usual. Colors are not kept.
 
-Until 2026-10-25 the layer covered only the pane. Rex 1443 draws no floating
-layer that starts right of the window's left edge: over a right-hand pane
-(bounds `[0.6, 0, 0.4, 1]`), and in a test layer at `[0.25, 0.25, 0.25, 0.25]`,
-nothing appeared, while the invisible nvim kept the keyboard and only a blind
-`:q` closed it. Layers starting at the top-left corner draw normally, which is
-why left-hand and zoomed panes worked. What misled: everything the server
+From 2026-10-25 to 2026-11-12 the layer covered the whole window instead,
+working around a Rex 1443 bug: it drew no floating layer that started right of
+the window's left edge. Over a right-hand pane (bounds `[0.6, 0, 0.4, 1]`),
+and in a test layer at `[0.25, 0.25, 0.25, 0.25]`, nothing appeared, while
+the invisible nvim kept the keyboard and only a blind `:q` closed it. Layers
+starting at the top-left corner drew normally, which is why left-hand and
+zoomed panes worked. What misled: everything the server
 reports was right. The layer had the pane's bounds, the app had even sized it
 (63×47 for a 63-column pane, with itself as owner), and its screen captured
 fine, so only looking at the window showed the fault. The 2026-10-24 check
 below had the same blind spot: it compared bounds, not pixels. After those
 blind quits the keyboard also did not come back to the pane, although in the
 recorded run the server had refocused it; hence the explicit `rex focus`.
+
+Rex 1889 fixed it. On 2026-11-12, in a test tab split left and right, layers
+at `[0.5, 0, 0.5, 1]` and `[0.25, 0.25, 0.25, 0.25]` drew, and the copy-mode
+script in a layer with the right pane's rect showed that pane's scrollback
+ending at its last line, confirmed in screenshots of the window. After a test
+layer closed, keys typed in the app went to the pane without the script's
+`rex focus`, but `q` had been sent with `rex send-key`, not typed in the app,
+so the explicit refocus stays as a safety net. Pane rects in
+`rex.session.view` are fractions of the window even inside a floating layer
+(a split in a layer at `[0.5, 0.5, 0.5, 0.5]` reports `[0.75, 0.5, 0.25, 0.5]`
+for its right half), so a pane's rect can be used as layer bounds anywhere.
+Opening the layer ends a pane's zoom, and closing it does not restore the
+zoom; the whole-window version did the same on 1889.
 
 Verified on 2026-10-24 by running the action against a test tab through
 `rex do --action`: the layer bounds matched the pane, the view ended at the
