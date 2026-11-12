@@ -107,57 +107,59 @@ in {
       };
 
       bind = [
-        # Applications
+        # Applications (Super)
         "$mod, Return, exec, ${lib.getExe pkgs.ghostty}"
         "$mod, Space, exec, vicinae toggle || ${lib.getExe pkgs.rofi} -show drun"
         "$mod, D, exec, ${lib.getExe pkgs.rofi} -show drun"
         "$mod, B, exec, ${lib.getExe pkgs.google-chrome}"
 
-        # Window management
+        # Window management (macOS-like: Super+W/Q close; Alt/Tab for tiling)
+        "$mod, W, killactive"
         "$mod, Q, killactive"
         "$mod, M, exit"
-        "$mod, F, fullscreen, 0"
-        "$mod SHIFT, Space, togglefloating"
-        "$mod, P, pseudo"
-        "$mod, S, layoutmsg, togglesplit"
+        "ALT, F, fullscreen, 0"
+        "ALT SHIFT, Space, togglefloating"
+        "ALT, P, pseudo"
+        "ALT, S, layoutmsg, togglesplit"
 
-        # Focus with vim keys
-        "$mod, H, movefocus, l"
-        "$mod, L, movefocus, r"
-        "$mod, K, movefocus, u"
-        "$mod, J, movefocus, d"
+        # Focus with vim keys (Alt / Tab, matching AeroSpace)
+        "ALT, H, movefocus, l"
+        "ALT, L, movefocus, r"
+        "ALT, K, movefocus, u"
+        "ALT, J, movefocus, d"
 
-        # Move window with vim keys
-        "$mod SHIFT, H, movewindow, l"
-        "$mod SHIFT, L, movewindow, r"
-        "$mod SHIFT, K, movewindow, u"
-        "$mod SHIFT, J, movewindow, d"
+        # Move window with vim keys (Alt+Shift / Tab+Shift, matching AeroSpace)
+        "ALT SHIFT, H, movewindow, l"
+        "ALT SHIFT, L, movewindow, r"
+        "ALT SHIFT, K, movewindow, u"
+        "ALT SHIFT, J, movewindow, d"
 
-        # Switch workspaces (summon to current focused monitor)
-        "$mod, 1, focusworkspaceoncurrentmonitor, 1"
-        "$mod, 2, focusworkspaceoncurrentmonitor, 2"
-        "$mod, 3, focusworkspaceoncurrentmonitor, 3"
-        "$mod, 4, focusworkspaceoncurrentmonitor, 4"
-        "$mod, 5, focusworkspaceoncurrentmonitor, 5"
-        "$mod, 6, focusworkspaceoncurrentmonitor, 6"
-        "$mod, 7, focusworkspaceoncurrentmonitor, 7"
-        "$mod, 8, focusworkspaceoncurrentmonitor, 8"
-        "$mod, 9, focusworkspaceoncurrentmonitor, 9"
-        "$mod, 0, focusworkspaceoncurrentmonitor, 10"
+        # Switch workspaces (Alt / Tab + 1..0, matching AeroSpace summon-workspace)
+        "ALT, 1, focusworkspaceoncurrentmonitor, 1"
+        "ALT, 2, focusworkspaceoncurrentmonitor, 2"
+        "ALT, 3, focusworkspaceoncurrentmonitor, 3"
+        "ALT, 4, focusworkspaceoncurrentmonitor, 4"
+        "ALT, 5, focusworkspaceoncurrentmonitor, 5"
+        "ALT, 6, focusworkspaceoncurrentmonitor, 6"
+        "ALT, 7, focusworkspaceoncurrentmonitor, 7"
+        "ALT, 8, focusworkspaceoncurrentmonitor, 8"
+        "ALT, 9, focusworkspaceoncurrentmonitor, 9"
+        "ALT, 0, focusworkspaceoncurrentmonitor, 10"
 
-        # Move active window to workspace
-        "$mod SHIFT, 1, movetoworkspace, 1"
-        "$mod SHIFT, 2, movetoworkspace, 2"
-        "$mod SHIFT, 3, movetoworkspace, 3"
-        "$mod SHIFT, 4, movetoworkspace, 4"
-        "$mod SHIFT, 5, movetoworkspace, 5"
-        "$mod SHIFT, 6, movetoworkspace, 6"
-        "$mod SHIFT, 7, movetoworkspace, 7"
-        "$mod SHIFT, 8, movetoworkspace, 8"
-        "$mod SHIFT, 9, movetoworkspace, 9"
-        "$mod SHIFT, 0, movetoworkspace, 10"
+        # Move active window to workspace (Alt+Shift / Tab+Shift + 1..0)
+        "ALT SHIFT, 1, movetoworkspace, 1"
+        "ALT SHIFT, 2, movetoworkspace, 2"
+        "ALT SHIFT, 3, movetoworkspace, 3"
+        "ALT SHIFT, 4, movetoworkspace, 4"
+        "ALT SHIFT, 5, movetoworkspace, 5"
+        "ALT SHIFT, 6, movetoworkspace, 6"
+        "ALT SHIFT, 7, movetoworkspace, 7"
+        "ALT SHIFT, 8, movetoworkspace, 8"
+        "ALT SHIFT, 9, movetoworkspace, 9"
+        "ALT SHIFT, 0, movetoworkspace, 10"
 
         # Workspace switching
+        "ALT, Tab, workspace, previous"
         "$mod, Tab, workspace, previous"
 
         # Screenshots
@@ -168,6 +170,8 @@ in {
       bindm = [
         "$mod, mouse:272, movewindow"
         "$mod, mouse:273, resizewindow"
+        "ALT, mouse:272, movewindow"
+        "ALT, mouse:273, resizewindow"
       ];
 
       bindel = [
