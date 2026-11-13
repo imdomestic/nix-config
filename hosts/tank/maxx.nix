@@ -24,6 +24,7 @@
     gemini-flash = price 0.75 0.075 3.75;
     # Vertex's global endpoint; promotional until 2026-11-30, then twice.
     gemini-4 = price 2 0.1 10;
+    gemini-4-hydrogen = price 1.5 0.075 7.5;
     # As docs/pi-model-pricing.md has it, checked 2026-10-18.
     gpt-6-1-sol = price 2 0.1 10;
     gpt-6-astra = price 10 1 50;
@@ -191,6 +192,11 @@ in {
                   context_window = 262144;
                   video = true;
                   price = prices.gemini-4;
+                };
+                "vertex-c820/gemini-4-hydrogen" = {
+                  context_window = 262144;
+                  video = true;
+                  price = prices.gemini-4-hydrogen;
                 };
               }
               // lib.mapAttrs' (id: model:
