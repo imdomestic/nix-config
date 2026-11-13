@@ -21,61 +21,66 @@
           repo = "tuicr";
           rev = "928a536e5c939ed3c3217703c06f140ee5d9a258";
           sparseCheckout = ["skills/tuicr"];
-          hash = lib.fakeHash;
+          hash = "sha256-MtdigFT6ntQ+5mTgmblRwkSOxO9UkH13zYG3JpgaMcI=";
         }}/skills/tuicr $out
         chmod -R u+w $out
         patchShebangs --host $out
       '';
 
-  kansoZen = with (import ./palettes/kanso-zen.nix).colors; {
-    panel_bg = zenBg0;
-    bg_highlight = zenBg2;
-    fg_primary = fg;
-    fg_secondary = gray2;
-    fg_dim = gray4;
+  # Evergarden Winter / Green, like Hank's nixvim, helix and lazygit; the diff
+  # roles follow the opencode theme (modules/opencode/default.nix).
+  evergardenWinter = with (import ./palettes/evergarden-winter.nix).colors; {
+    panel_bg = base;
+    bg_highlight = surface1;
+    fg_primary = text;
+    fg_secondary = subtext0;
+    fg_dim = overlay1;
 
-    diff_add = gitGreen;
-    diff_add_bg = diffGreen;
-    diff_del = gitRed;
-    diff_del_bg = diffRed;
-    diff_context = fg;
-    diff_hunk_header = violet;
-    expanded_context_fg = gray4;
-    syntax_add_bg = diffGreen;
-    syntax_del_bg = diffRed;
-    # Codex's Kanso Zen syntax theme; tuicr reads .tmTheme files too.
-    syntax_theme = "${import ./codex/kanso-zen.nix {inherit pkgs;}}";
+    diff_add = green;
+    diff_add_bg = diffAddBg;
+    diff_del = red;
+    diff_del_bg = diffDelBg;
+    diff_context = subtext0;
+    diff_hunk_header = overlay1;
+    expanded_context_fg = overlay1;
+    syntax_add_bg = diffAddBg;
+    syntax_del_bg = diffDelBg;
+    # The same upstream bat theme Codex uses (modules/codex/default.nix).
+    syntax_theme = "${pkgs.fetchurl {
+      url = "https://raw.githubusercontent.com/evergardentheme/bat/aa5b92e927d1169673050f4f444496590e053487/themes/evergarden-winter.tmTheme";
+      hash = "sha256-jZ6Rc6ScIffy73FQJn8FYqJG5pS/6plk4oqJModbxKw=";
+    }}";
 
-    file_added = gitGreen;
+    file_added = green;
     file_modified = yellow;
-    file_deleted = gitRed;
-    file_renamed = violet;
+    file_deleted = red;
+    file_renamed = purple;
     reviewed = green;
     pending = yellow;
 
     comment_note = blue;
-    comment_suggestion = aqua;
+    comment_suggestion = skye;
     comment_issue = red;
     comment_praise = green;
 
-    border_focused = blue3;
-    border_unfocused = zenBg3;
-    status_bar_bg = zenBg1;
-    cursor_color = yellow2;
-    cursor_line_bg = zenBg1;
-    branch_name = violet;
-    help_indicator = gray4;
+    border_focused = green;
+    border_unfocused = surface2;
+    status_bar_bg = mantle;
+    cursor_color = orange;
+    cursor_line_bg = surface0;
+    branch_name = purple;
+    help_indicator = overlay1;
 
-    message_info_fg = zenBg0;
-    message_info_bg = blue3;
-    message_warning_fg = zenBg0;
+    message_info_fg = base;
+    message_info_bg = blue;
+    message_warning_fg = base;
     message_warning_bg = yellow;
-    message_error_fg = zenBg0;
+    message_error_fg = base;
     message_error_bg = red;
-    update_badge_fg = zenBg0;
+    update_badge_fg = base;
     update_badge_bg = yellow;
-    mode_fg = zenBg0;
-    mode_bg = blue3;
+    mode_fg = base;
+    mode_bg = green;
   };
 in {
   home.packages = [tuicr];
@@ -85,10 +90,11 @@ in {
   # Codex and pi read skills here.
   home.file.".agents/skills/tuicr".source = skill;
 
-  xdg.configFile."tuicr/themes/kanso-zen.toml".source = toml.generate "kanso-zen.toml" kansoZen;
+  xdg.configFile."tuicr/themes/evergarden-winter.toml".source =
+    toml.generate "evergarden-winter.toml" evergardenWinter;
 
   xdg.configFile."tuicr/config.toml".source = toml.generate "tuicr-config.toml" {
-    theme = "kanso-zen";
+    theme = "evergarden-winter";
     # A dark theme on a light terminal background is unreadable; paint its own.
     transparent_background = false;
     # llm-agents moves the version every hour; tuicr's own check only nags.
