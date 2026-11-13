@@ -62,6 +62,11 @@ use a conservative 128,000 context / 16,384 output budget, text input, and no
 reasoning controls. Its Pi name marks the cost as unestimated; zero cost
 fields mean no estimate, **not** a promise that the service is free.
 
+Hank's Pi also lists the same eight aliases under `rewind2/`, with identical
+limits, reasoning controls and cost estimates. The dynamic alias is labeled
+Rewind2 separately. This is a Pi-only catalog addition; OpenCode is unchanged.
+`rewind2/` does not query or display the original `rewind/` account's balance.
+
 The server plugin and client settings have separate activation paths. Deploy
 gizmo's system through its configured builder to load the plugin; activate
 Hank's Home Manager configuration on each client to update Pi and OpenCode.

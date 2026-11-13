@@ -196,9 +196,15 @@ in {
               }
               // lib.optionalAttrs (!chatAlias) {thinkingLevelMap = gptLevels base;}
               // lib.optionalAttrs chatAlias {name = "Rewind GPT Chat Latest · 费用未估算";};
+            rewindModels = lib.mapAttrsToList (id: gpt (cliproxy.rewind.modelLimits.${id} or cliproxy.rewind) id) cliproxy.rewind.models;
           in
             map (id: gpt cliproxy.gpt id id) cliproxy.gpt.ids
-            ++ lib.mapAttrsToList (id: gpt (cliproxy.rewind.modelLimits.${id} or cliproxy.rewind) id) cliproxy.rewind.models
+            ++ rewindModels
+            ++ map (model:
+              model
+              // {id = "rewind2/${lib.removePrefix "rewind/" model.id}";}
+              // lib.optionalAttrs (model ? name) {name = lib.replaceStrings ["Rewind "] ["Rewind2 "] model.name;})
+            rewindModels
             ++ lib.mapAttrsToList (id: model: {
               inherit id;
               inherit (model) name;

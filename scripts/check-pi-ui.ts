@@ -328,6 +328,11 @@ async function checkBalanceStatusline(theme: any): Promise<void> {
   assert(stale.signal?.aborted, "Model switches must abort pending reads");
   assert(!text().includes("bal "), "A model switch must clear balance immediately");
   assert.equal(reads, 5, "Non-Rewind CLIProxy models must not read balance");
+  ctx.model = { provider: "cliproxy", id: "rewind2/gpt-6-astra" };
+  handlers.model_select({ model: ctx.model }, ctx);
+  handlers.agent_end({}, ctx);
+  assert.equal(reads, 5, "Rewind2 must not read the original credential's balance");
+  assert(!text().includes("bal "), "Rewind2 must not display the original credential's balance");
   ctx.model = { provider: "ninfer", id: "rewind/claude" };
   handlers.model_select({ model: ctx.model }, ctx);
   assert.equal(reads, 5, "Non-CLIProxy providers must not read balance");
