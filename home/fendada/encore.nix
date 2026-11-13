@@ -6,6 +6,7 @@
     ../linwhite/modules/ghostty/settings.nix
     ../linwhite/modules/wezterm.nix
     ../linwhite/modules/starship.nix
+    ../linwhite/modules/zsh.nix
     ../linwhite/modules/tmux.nix
     ../linwhite/modules/fastfetch.nix
     ../linwhite/modules/yazi

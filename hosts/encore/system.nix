@@ -257,6 +257,7 @@ in {
       extraGroups = ["uinput"];
     };
     hank.hashedPasswordFile = "/var/lib/user-passwords/hank";
+    fendada.hashedPasswordFile = "/var/lib/user-passwords/fendada";
   };
   programs = {
     zsh.enable = true;
