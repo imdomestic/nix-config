@@ -146,8 +146,9 @@ so the explicit refocus stays as a safety net. Pane rects in
 `rex.session.view` are fractions of the window even inside a floating layer
 (a split in a layer at `[0.5, 0.5, 0.5, 0.5]` reports `[0.75, 0.5, 0.25, 0.5]`
 for its right half), so a pane's rect can be used as layer bounds anywhere.
-Opening the layer ends a pane's zoom, and closing it does not restore the
-zoom; the whole-window version did the same on 1889.
+Opening the layer ends a pane's zoom, so the action passes the zoom state to
+the script, which zooms the pane again on exit, before the layer closes; a
+zoom set then survives the close (checked on 1889, zoomed and unzoomed).
 
 Verified on 2026-10-24 by running the action against a test tab through
 `rex do --action`: the layer bounds matched the pane, the view ended at the

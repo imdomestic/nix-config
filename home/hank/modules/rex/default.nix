@@ -15,9 +15,18 @@
     set -eu
     rex="''${REX_BIN_DIR:-${rexCliDir}}/rex"
     target=$1
+    zoomed=''${2:-0}
     file=$(mktemp -t rex-copy-mode)
-    # Rex 1443's app did not follow the server's refocus when a layer closed.
-    trap 'rm -f "$file"; "$rex" focus "$target" >/dev/null 2>&1 || true' EXIT
+    leave() {
+      rm -f "$file"
+      # Opening the layer ended the pane's zoom; the layer is still up here.
+      if [ "$zoomed" = 1 ]; then
+        "$rex" zoom "$target" --on >/dev/null 2>&1 || true
+      fi
+      # Rex 1443's app did not follow the server's refocus when a layer closed.
+      "$rex" focus "$target" >/dev/null 2>&1 || true
+    }
+    trap leave EXIT
     "$rex" capture -b "$target" --unwrap --trim >"$file"
     # y leaves after yanking, like tmux's copy-selection-and-cancel; "+ is OSC 52.
     ${lib.getExe' config.programs.nixvim.build.package "nvim"} -R -n \
@@ -241,14 +250,18 @@ in {
             for _, layer in ipairs(window.layers or {}) do
               local rect = rect_of(layer.layout, target)
               if rect then
-                if window.zoomed_block_id == target then rect = { 0, 0, 1, 1 } end
+                local zoomed = window.zoomed_block_id == target
+                if zoomed then rect = { 0, 0, 1, 1 } end
                 assert(rex.session.new_layer{
                   window_id = window.window_id,
                   bounds = rect,
                   focus = true,
                   layout = rex.layout.block{
                     flavor = "com.superlogical.terminal.shell",
-                    options = { command = { "${copyMode}", target }, shell = "none" },
+                    options = {
+                      command = { "${copyMode}", target, zoomed and "1" or "0" },
+                      shell = "none",
+                    },
                   },
                 })
                 return
