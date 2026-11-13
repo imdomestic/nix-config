@@ -1,5 +1,17 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-13 · Python 已完成功能发布到 tank
+
+- owner要求暂停未完成功能、收尾提交并只部署tank。Bot PR #74合并为`ad5a6e1612798c93212b08f138f0f09946b81905`，Nix配置`f874a2a9`固定该版本；未部署/重启h610，未改主备关系、内核或Home Manager。F9四维费用页/每日预算、F7/F10/F8不在本次发布内。
+- 发布阻碍已修复：`fe00a25`移除模拟VM测试对宿主QEMU的无意依赖；`55011b7`用确定性RED修复600秒审批在来源/配置检查间到期的终态误分类，并阻止回执检查后刚到期的批准领取执行。不放宽owner、原任务/租约或通知回执门槛。
+- 最终固定本机快照全套1,971项、0失败、10跳过（1,432.751秒、exit0）；PR Linux CI与合并后Linux CI均1,971项通过，Nix包和Secret scan通过。UI构建与五项React检查通过，20个NixOS配置求值与lint通过。Windows credential ACL是已有失败，未修复也不声称全部CI绿色。
+- tank上以hank隔离检出共享main，限制`max-jobs=2 / cores=4`实际构建。新旧内核均`linux-6.18.62`且路径相同；系统闭包差异仅gaojibot。dry-activate列出应用和accounts-daemon启停、polkit重启/dbus重载，未重启数据库、VM、Worker或Maxx。已有greeter UID和停用channels警告未顺带改动。
+- 先用PG17在线备份，在systemd PrivateNetwork内实际恢复并执行`0077→0095`，10510条消息保持不变；再停旧应用、保留维护闸门，做最终完整备份并正式迁移。最终备份`/data/services/gaoji/backups/python-next-20261113/before-switch/qq_bot.dump`为96,266,512字节、0600，pg_restore目录检查通过；配置、checksum、schema/服务和健康证据均留在该root-only目录，未下载或提交凭据。
+- 17:54:06 UTC（11-14 01:54:06 HKT）新版启动，Gaoji PID1720188。运行/启动profile均`/nix/store/946mbv9mzc2azz55p6jrnalcfiaxq3a3-nixos-system-tank-26.05.20261108.ac588ef`，包`/nix/store/yd2nw8hyrpdylg8gphg8027yb56br8cj-gaojibot-0.20.0`；12个运行源码SHA256与合并提交相同。QQ三次连续`ready / healthy=true / message_gap=false`，后续复查仍ready。
+- tank数据库PID3417、VM服务PID3692101、Worker PID3255、Maxx PID340030均与切换前备份一致；schema为`0095_billing_source_metadata`，消息仍10510条。tank SQL可写，h610维持`qq_bot_standby / streaming / async`，没有启动keeper/monitor或自动切主。
+- 收尾脚本曾因root PATH没有python3不能解析成功健康JSON，改用包引用的gaoji-env Python完成验证；这是检查脚本失败，未回滚或重复迁移，维护gate已移除。旧离线会话VM共有3个，活跃会话VM为0；未为刷新擅自开机、改依赖或删除/work/浏览器profile，后续复用须先执行显式工具升级。
+- 边界：没有伪造真实QQ消息、请求实际模型、登录真实账号或执行真实运维操作；ready、包级校验和隔离备份演练不等于所有新功能端到端验收。数据库已有新增证据后不可仅切旧应用包；恢复旧版必须停写并恢复最终DB/config备份与仍固定tank主库的匹配系统，不能恢复旧HA控制器。
+
 ## 2026-11-04 · 固定 tank 主库与 QQ 租约自动恢复已部署
 
 **当前策略：tank 固定主库、h610 异步只读灾备，故障由人确认后切换。下文历史记录中的 monitor、优先级、`qq-bot-postgres-prefer-tank` 不再适用于当前部署。** 人工切换、隔离与回滚边界见 [固定主库 runbook](runbooks/qq-fixed-primary.md)，取舍见 [决策](decisions.md#qq-fixed-primary)。
