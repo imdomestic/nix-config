@@ -112,6 +112,45 @@ func TestPrepareExecutionForEveryRewindModel(t *testing.T) {
 	}
 }
 
+func TestAdditionalRewindCredentialPrefix(t *testing.T) {
+	dir := t.TempDir()
+	c := credential{Type: "rewind", APIKeyFile: filepath.Join(dir, "rewind2-key"), DeviceFile: filepath.Join(dir, "device.json"), Prefix: "rewind2"}
+	storage, _ := json.Marshal(c)
+	for _, id := range expectedRewindModels {
+		for _, prefix := range []string{"", "rewind2/"} {
+			req := executorRequest{Model: prefix + id, SourceFormat: "responses", Payload: []byte(`{"input":"hello"}`), StorageJSON: storage}
+			got, data, e := prepareExecution(req)
+			if e != nil || got != c {
+				t.Fatalf("additional credential rejected: %s, %v", req.Model, e)
+			}
+			var body struct{ Model string }
+			if json.Unmarshal(data, &body) != nil || body.Model != id {
+				t.Fatalf("wrong upstream alias for %s: %s", req.Model, data)
+			}
+		}
+	}
+	for _, model := range []string{"rewind/gpt-6-astra", "other/gpt-6-astra", "rewind2/rewind2/gpt-6-astra", "rewind2/unknown"} {
+		req := executorRequest{Model: model, SourceFormat: "responses", Payload: []byte(`{"input":"hello"}`), StorageJSON: storage}
+		if _, _, e := prepareExecution(req); e == nil || e.Code != "model_not_found" {
+			t.Fatalf("foreign or invalid prefix accepted: %s, %v", model, e)
+		}
+	}
+	request, _ := json.Marshal(map[string]any{"RawJSON": storage, "FileName": "rewind2.json"})
+	parsed, e := dispatch("auth.parse", request)
+	if e != nil {
+		t.Fatal(e)
+	}
+	raw, _ := json.Marshal(parsed)
+	if !bytes.Contains(raw, []byte(`"Prefix":"rewind2"`)) {
+		t.Fatalf("auth parser lost the independent prefix: %s", raw)
+	}
+	primary := c
+	primary.APIKeyFile = filepath.Join(dir, "rewind-key")
+	if getClient(primary) == getClient(c) {
+		t.Fatal("different API key files shared an authentication session")
+	}
+}
+
 func TestImageLimitPreflightAndUnchangedHistory(t *testing.T) {
 	dir := t.TempDir()
 	c := credential{Type: "rewind", APIKeyFile: filepath.Join(dir, "missing-key"), DeviceFile: filepath.Join(dir, "missing-device.json")}

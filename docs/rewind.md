@@ -7,7 +7,8 @@ usage collection. The Rewind executor requires native `/v1/responses`; ordinary
 Chat Completions requests are not supported.
 
 The fleet enables it on gizmo through `services.cliproxy.rewind`. Its models
-use the `rewind/` prefix, kept separate from the existing unprefixed Codex
+use the `rewind/` prefix; gizmo also has an independent `rewind2/` credential
+for the same aliases. Both are kept separate from the existing unprefixed Codex
 models. The upstream controls what each alias resolves to; the plugin
 preserves the upstream response's `model` field.
 
@@ -20,10 +21,10 @@ presence in discovery, or possession of the fleet's CLIProxy client key, does
 not establish that its usage conditions have been satisfied or quota remains.
 
 At the owner's request on 2026-11-10, SillyTavern does **not** include Rewind:
-there is no connection preset, discovery omits `rewind/` IDs, and hand-entered
-Rewind generation is rejected. Existing explicit Rewind configurations in
-other clients are retained; this is not a fleet-wide removal or a declaration
-of unconditional availability.
+there is no connection preset, discovery omits `rewind/` and `rewind2/` IDs,
+and hand-entered Rewind generation is rejected. Existing explicit Rewind
+configurations in other clients are retained; this is not a fleet-wide removal
+or a declaration of unconditional availability.
 
 The native Responses protocol, persistent device identity and quota behavior
 below are technical requirements, not substitutes for the provider's usage
@@ -43,8 +44,9 @@ plugin registers and accepts these eight aliases from one shared allowlist:
 - `rewind/gpt-6.1-sol`
 - `rewind/gpt-chat-latest`
 
-The executor strips only the `rewind/` prefix and forwards the selected alias
-unchanged. Unknown IDs remain rejected. Model discovery is a checked-in
+The executor strips only the selected credential's prefix (`rewind/` or
+`rewind2/`) and forwards the selected alias unchanged. Unknown IDs and other
+credentials' prefixes remain rejected. Model discovery is a checked-in
 snapshot, not a startup network request; a listed model has not necessarily
 been tested for generation.
 
@@ -77,6 +79,16 @@ The `cliproxy.service` pre-start step installs a credential descriptor at
 key. The raw key is encrypted under `rewind/api_key` in
 `secrets/hosts/gizmo.yaml`, installed at `/run/secrets/rewind/api_key` for the
 `cliproxy` user. Key changes restart the service.
+
+Additional credentials use `services.cliproxy.rewind.extraCredentials`, keyed
+by prefix without the trailing slash. Gizmo's `extraCredentials.rewind2` reads
+`rewind2/api_key` from the same encrypted host file and installs
+`auths/rewind2.json`. By default it reuses the gateway's persistent device
+identity, but each API key file has its own in-memory session and renewal lock.
+An optional `deviceFile` can select a separate persistent identity. The balance
+listener remains tied to the original `rewind/` credential: it does not report
+`rewind2/` quota. Client-side model catalogs are not changed by adding a server
+credential; explicit `rewind2/<alias>` requests use the existing Responses URL.
 
 The device's P-256 private key is created once at
 `/var/lib/cli-proxy-api/rewind/device.json` with mode 0600. Preserve it across

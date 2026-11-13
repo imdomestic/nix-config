@@ -253,16 +253,20 @@ func prepareExecution(req executorRequest) (credential, []byte, *problem) {
 	if req.Alt != "" {
 		return empty, nil, fail(400, "not_supported", "Rewind does not expose this alternate endpoint")
 	}
-	model := strings.TrimPrefix(req.Model, "rewind/")
-	if !supportsModel(model) {
-		return empty, nil, fail(404, "model_not_found", "Unknown Rewind model")
-	}
 	if len(req.Payload) > 32<<20 {
 		return empty, nil, fail(413, "invalid_request_error", "Rewind input is too large")
 	}
 	c, e := parseCredential(req.StorageJSON)
 	if e != nil {
 		return empty, nil, e
+	}
+	prefix := c.Prefix
+	if prefix == "" {
+		prefix = "rewind"
+	}
+	model := strings.TrimPrefix(req.Model, prefix+"/")
+	if !supportsModel(model) {
+		return empty, nil, fail(404, "model_not_found", "Unknown Rewind model")
 	}
 	var body map[string]json.RawMessage
 	if json.Unmarshal(req.Payload, &body) != nil || body == nil {
