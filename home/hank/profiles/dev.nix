@@ -13,7 +13,7 @@
     ../modules/lazygit
     ../modules/codex
     ../modules/pi
-    ../modules/tuicr.nix
+    # ../modules/tuicr.nix
   ];
 
   home.sessionVariables = {
