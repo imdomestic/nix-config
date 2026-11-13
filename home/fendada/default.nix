@@ -1,4 +1,5 @@
 {
+  inputs,
   lib,
   pkgs,
   ...
@@ -59,6 +60,7 @@ in {
         starship
         zsh-autosuggestions
         zsh-syntax-highlighting
+        inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.claude-code
       ];
     })
 
