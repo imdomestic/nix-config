@@ -50,8 +50,11 @@ Pi 用目录的 1,048,576 上下文和保守的 65,536 输出预算；Max 按用
 四条共用已有 Google Hydrogen 设置。不创建转向 XHigh 的别名。
 目录快照维护与生效方式见 `docs/cliproxy-model-catalog.md`。
 
-用户要求不再编译或运行 `nix check`，因此这里只修改配置，不激活
-Home Manager、CLIProxy 或 Max 服务；此前的请求验证不等于配置已经部署。
+最初按用户要求不再编译或运行 `nix check`，这里只修改配置。随后用户授权
+部署：仅生成配置产物，gizmo 的四条已可调用，Max 已加载同样四条且原有
+8 台 VM 未重启。Pi 只发布模型文件并加 GC root，未运行会编译 Node/PostgreSQL
+的完整 home 激活；gizmo 的完整新系统留待下次启动。实际 store 路径、root
+logind 激活中断与回退计时器处理见 `docs/cliproxy-model-catalog.md`。
 
 ## 2026-11-11 · tank 被 bambu-studio 的源码编译拖进 swap 两个半小时 {#bambu-studio-build-oom}
 
