@@ -4,26 +4,40 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
-## 2026-11-15 · Antigravity Hydrogen 的 -xhigh 不是 effort 锁 {#antigravity-hydrogen-effort}
+## 2026-11-15 · Hydrogen 的其他三档被 CLIProxy 静态目录过滤 {#antigravity-hydrogen-effort}
 
-在 gizmo 为 Google 账号重新登录 Antigravity 后，模型目录新增
-`gemini-4-hydrogen-xhigh`，但仍没有不带后缀的 `gemini-4-hydrogen`。
-误导点是把模型 ID 中的 `-xhigh` 当成固定推理档位：CLIProxyAPI 8.0.69
-的 thinking suffix 解析只识别 `model(value)`，不会拆这个连字符后缀。
-该版本内置目录为 Hydrogen 声明 `low / medium / high / xhigh`，请求中的
-`reasoning_effort` 会作为 Antigravity 的 `thinkingConfig.thinkingLevel` 发送。
+在 gizmo 为 Google 账号重新登录 Antigravity 后，公开模型目录只新增
+`gemini-4-hydrogen-xhigh`。随后按该版本原生 Hub User-Agent 读取 Google
+的 `fetchAvailableModels`，同一账号实际有四个独立预设：
 
-独立短请求使用相同 ID，分别发送 `low` 和 `xhigh`，都返回 HTTP 200 / OK，
-响应中的实际型号均为 `gemini-4-hydrogen`；输出 token 分别为 34、96，耗时
-3.0、3.8 秒。这个对比确认两档请求可用，不把一次 token 数量差异当成普遍
-性能结论，也不重放用户会话。Pi 开放目录声明的四档，隐藏未声明的
-`off / minimal / max`，采用 Chat Completions 与同一网关调用密钥。
+| ID 后缀 | Google `thinkingLevel` | 后端模型枚举 |
+| --- | ---: | --- |
+| `-low` | 1 | `MODEL_PLACEHOLDER_M527` |
+| `-medium` | 2 | `MODEL_PLACEHOLDER_M526` |
+| `-high` | 3 | `MODEL_PLACEHOLDER_M525` |
+| `-xhigh` | 100 | `MODEL_PLACEHOLDER_M528` |
 
-Max（Rust maxx）的模型表没有逐模型 effort 字段；effort 属于会话或任务
-选择。`/model cliproxy/gemini-4-hydrogen-xhigh` 不会重置当前 effort，未覆盖
-时仍继承全局默认的 `high`；要用最高档，另发 `/effort xhigh`。后台任务
-选非默认型号时必须同时给 `--effort xhigh`，否则 Pi 启动器不会因 ID 后缀
-自动开启推理。没有改变 Max 的默认聊天、caption、dreamer 或 job 型号。
+CLIProxyAPI 8.0.69 的内置 Antigravity 定义只有 Hydrogen 的 `-xhigh`。
+`antigravityModelsForHintsWithConfig` 用账号目录过滤内置表，不从原始
+目录创建缺失型号；故另外三档被过滤，并非该账号没有它们。第一次用旧
+客户端 UA 查询也看不到新型号；查询必须匹配原生 Hub 协议版本。
+
+先前的误判是：内置表声明四档、suffix 解析不拆 `-xhigh`、两次请求都返回
+200，便认为该预设的实际推理档位可调。相同 ID 下的 `low` 与 `xhigh`
+短请求确实都返回 OK（输出 token 34、96；3.0、3.8 秒），但这些结果只证明
+请求被接受，不能证明底层计算档位变化，也不能当作性能对比。
+
+转换器确实将 `reasoning_effort` 写入 `thinkingConfig.thinkingLevel`，发送
+阶段没有按连字符后缀强制改写该字段。直接给 Google 发送非法 thinkingLevel
+得到 400 / `INVALID_ARGUMENT`，证明字段被解析，却仍不能证明合法值可以
+覆盖预设。当前应按真实型号 ID 选择 Low、Medium、High、XHigh；不要创建
+全部仍转到 XHigh 的假别名，也不要把 Pi 的四档选择器当成已验证的预设切换。
+
+Max（Rust maxx）的 effort 属于会话或任务，不属于模型表；`/effort` 只改变
+请求字段、不改变上游型号 ID。未覆盖时仍继承全局 `high`，但不能据此声称
+选中的 XHigh 预设变为 High。后台 Pi 任务还需显式 `--effort` 才会发送推理
+参数；这同样不是预设切换的证明。没有改变 Max 的默认聊天、caption、
+dreamer 或 job 型号。
 
 Pi 用目录的 1,048,576 上下文和保守的 65,536 输出预算；Max 按用户指令
 与现有 Vertex Hydrogen 共用配置，包括 262,144 会话预算与视频开关，
