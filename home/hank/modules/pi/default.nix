@@ -200,11 +200,13 @@ in {
           in
             map (id: gpt cliproxy.gpt id id) cliproxy.gpt.ids
             ++ rewindModels
-            ++ map (model:
-              model
-              // {id = "rewind2/${lib.removePrefix "rewind/" model.id}";}
-              // lib.optionalAttrs (model ? name) {name = lib.replaceStrings ["Rewind "] ["Rewind2 "] model.name;})
-            rewindModels
+            ++ lib.concatMap (prefix:
+              map (model:
+                model
+                // {id = "${prefix}/${lib.removePrefix "rewind/" model.id}";}
+                // lib.optionalAttrs (model ? name) {name = lib.replaceStrings ["Rewind "] ["Rewind${lib.removePrefix "rewind" prefix} "] model.name;})
+              rewindModels)
+            ["rewind2" "rewind3" "rewind4"]
             ++ lib.mapAttrsToList (id: model: {
               inherit id;
               inherit (model) name;

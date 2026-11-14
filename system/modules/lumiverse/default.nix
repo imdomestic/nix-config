@@ -86,7 +86,7 @@ in {
       LUMIVERSE_SMART_MONITOR = "false";
       LUMIVERSE_ST_MIGRATE = "false";
       LUMIVERSE_SMOL = "true";
-      LUMIVERSE_EXCLUDED_MODEL_PREFIXES = "rewind/,rewind2/";
+      LUMIVERSE_EXCLUDED_MODEL_PREFIXES = "rewind/,rewind2/,rewind3/,rewind4/";
     };
     environmentFiles = [config.sops.templates."lumiverse-environment".path];
     volumes = [

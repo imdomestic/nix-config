@@ -47,7 +47,11 @@ in {
       enable = true;
       balance.enable = true;
       apiKeyFile = config.sops.secrets."rewind/api_key".path;
-      extraCredentials.rewind2.apiKeyFile = config.sops.secrets."rewind2/api_key".path;
+      extraCredentials = {
+        rewind2.apiKeyFile = config.sops.secrets."rewind2/api_key".path;
+        rewind3.apiKeyFile = config.sops.secrets."rewind3/api_key".path;
+        rewind4.apiKeyFile = config.sops.secrets."rewind4/api_key".path;
+      };
     };
   };
   my.tailscale.bindServices = ["cliproxy"];
@@ -57,6 +61,14 @@ in {
     restartUnits = ["cliproxy.service"];
   };
   sops.secrets."rewind2/api_key" = {
+    owner = "cliproxy";
+    restartUnits = ["cliproxy.service"];
+  };
+  sops.secrets."rewind3/api_key" = {
+    owner = "cliproxy";
+    restartUnits = ["cliproxy.service"];
+  };
+  sops.secrets."rewind4/api_key" = {
     owner = "cliproxy";
     restartUnits = ["cliproxy.service"];
   };

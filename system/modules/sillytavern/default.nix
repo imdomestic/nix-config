@@ -195,7 +195,7 @@ in {
         allowedRanges = ["127.0.0.0/8" "::1/128" "100.64.0.0/10" "fd7a:115c:a1e0::/48"];
       };
       logging.minLogLevel = 1;
-      openai.excludedModelPrefixes = ["rewind/" "rewind2/"];
+      openai.excludedModelPrefixes = ["rewind/" "rewind2/" "rewind3/" "rewind4/"];
     };
   };
 
