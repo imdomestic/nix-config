@@ -18,6 +18,7 @@ CLIProxy 的订阅额度和实际账单与这个估算金额并不等价。
 | gemini-3.8-flash-high | 0.75 | 0.075 | 0 | 3.75 |
 | gemini-3.1-flash-lite | 0.25 | 0.025 | 0 | 1.50 |
 | gemini-3.5-flash-lite | 0.30 | 0.03 | 0 | 2.50 |
+| gemini-4-hydrogen-xhigh | 1.50 | 0.075 | 0 | 7.50 |
 
 GPT 价格来源：[OpenAI 官方价目](https://developers.openai.com/api/docs/pricing)、
 [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol)、
@@ -26,6 +27,10 @@ GPT 价格来源：[OpenAI 官方价目](https://developers.openai.com/api/docs/
 [Luna](https://developers.openai.com/api/docs/models/gpt-5.6-luna)、
 [GPT-5.5](https://developers.openai.com/api/docs/models/gpt-5.5)。
 Gemini 价格来源：[Google 官方价目](https://ai.google.dev/gemini-api/docs/pricing)。
+Hydrogen 于 2026-11-15 加入，沿用 `hosts/tank/maxx.nix` 在 2026-11-12
+核对的公开 Hydrogen 价格；`-xhigh` 是 Antigravity 的型号 ID，不代表按
+另一档价格计费，也不是订阅账单。档位验证见
+`docs/incidents.md#antigravity-hydrogen-effort`。
 
 GPT 输入总量超过 272,000 token 时，输入、缓存读取和缓存写入单价乘 2，
 输出乘 1.5。通过 Pi 原生 `cost.tiers` 配置；阈值包括输入、缓存读取和

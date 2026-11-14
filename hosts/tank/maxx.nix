@@ -42,6 +42,11 @@
     "deepseek-v4.1-flash" = prices.deepseek-flash;
     "mimo-v2.6-flash" = prices.mimo-flash;
   };
+  googleHydrogen = {
+    context_window = 262144;
+    video = true;
+    price = prices.gemini-4-hydrogen;
+  };
 in {
   sops.secrets =
     lib.genAttrs (map (name: "maxx/${name}") secretNames) (_: {
@@ -177,6 +182,8 @@ in {
                   video = true;
                   price = prices.gemini-flash;
                 };
+                # Effort is independent of the Antigravity ID; docs/incidents.md#antigravity-hydrogen-effort.
+                "gemini-4-hydrogen-xhigh" = googleHydrogen;
                 # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
                 "vertex/gemini-4-argon" = {
                   context_window = 262144;
@@ -193,11 +200,7 @@ in {
                   video = true;
                   price = prices.gemini-4;
                 };
-                "vertex-c820/gemini-4-hydrogen" = {
-                  context_window = 262144;
-                  video = true;
-                  price = prices.gemini-4-hydrogen;
-                };
+                "vertex-c820/gemini-4-hydrogen" = googleHydrogen;
               }
               // lib.mapAttrs' (id: model:
                 lib.nameValuePair "opencode/${id}" ({

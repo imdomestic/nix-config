@@ -101,4 +101,9 @@ in {
     output = 2.5;
     cacheRead = 0.03;
   };
+  "gemini-4-hydrogen-xhigh" = gemini {
+    input = 1.5;
+    output = 7.5;
+    cacheRead = 0.075;
+  };
 }

@@ -4,6 +4,35 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-15 · Antigravity Hydrogen 的 -xhigh 不是 effort 锁 {#antigravity-hydrogen-effort}
+
+在 gizmo 为 Google 账号重新登录 Antigravity 后，模型目录新增
+`gemini-4-hydrogen-xhigh`，但仍没有不带后缀的 `gemini-4-hydrogen`。
+误导点是把模型 ID 中的 `-xhigh` 当成固定推理档位：CLIProxyAPI 8.0.69
+的 thinking suffix 解析只识别 `model(value)`，不会拆这个连字符后缀。
+该版本内置目录为 Hydrogen 声明 `low / medium / high / xhigh`，请求中的
+`reasoning_effort` 会作为 Antigravity 的 `thinkingConfig.thinkingLevel` 发送。
+
+独立短请求使用相同 ID，分别发送 `low` 和 `xhigh`，都返回 HTTP 200 / OK，
+响应中的实际型号均为 `gemini-4-hydrogen`；输出 token 分别为 34、96，耗时
+3.0、3.8 秒。这个对比确认两档请求可用，不把一次 token 数量差异当成普遍
+性能结论，也不重放用户会话。Pi 开放目录声明的四档，隐藏未声明的
+`off / minimal / max`，采用 Chat Completions 与同一网关调用密钥。
+
+Max（Rust maxx）的模型表没有逐模型 effort 字段；effort 属于会话或任务
+选择。`/model cliproxy/gemini-4-hydrogen-xhigh` 不会重置当前 effort，未覆盖
+时仍继承全局默认的 `high`；要用最高档，另发 `/effort xhigh`。后台任务
+选非默认型号时必须同时给 `--effort xhigh`，否则 Pi 启动器不会因 ID 后缀
+自动开启推理。没有改变 Max 的默认聊天、caption、dreamer 或 job 型号。
+
+Pi 用目录的 1,048,576 上下文和保守的 65,536 输出预算；Max 按用户指令
+与现有 Vertex Hydrogen 共用配置，包括 262,144 会话预算与视频开关，
+不另设输出上限。两端按 Max 已有的 Hydrogen 公开价格估算：输入 / 缓存
+读取 / 输出为 $1.50 / $0.075 / $7.50 每百万 token，不是 Antigravity 订阅账单。
+
+用户随后要求不再编译或运行 `nix check`，因此只完成配置修改，不激活
+Home Manager 或 Max 服务；此前的两档请求验证不等于配置已经部署。
+
 ## 2026-11-11 · tank 被 bambu-studio 的源码编译拖进 swap 两个半小时 {#bambu-studio-build-oom}
 
 11-11 00:23–03:00 HKT(11-10 16:23–19:00 UTC)tank 没有死机，但 SSH 连不上,

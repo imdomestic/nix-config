@@ -218,6 +218,31 @@ in {
               cost = pricing.${id};
             })
             cliproxy.gemini.models
+            ++ [
+              {
+                id = "gemini-4-hydrogen-xhigh";
+                name = "Gemini 4 Hydrogen · Antigravity";
+                api = "openai-completions";
+                reasoning = true;
+                thinkingLevelMap = {
+                  off = null;
+                  minimal = null;
+                  low = "low";
+                  medium = "medium";
+                  high = "high";
+                  xhigh = "xhigh";
+                  max = null;
+                };
+                input = ["text" "image"];
+                contextWindow = cliproxy.gemini.context;
+                maxTokens = 65536;
+                cost = pricing."gemini-4-hydrogen-xhigh";
+                compat = {
+                  supportsReasoningEffort = true;
+                  thinkingFormat = "openai";
+                };
+              }
+            ]
             ++ lib.mapAttrsToList (id: model: {
               id = "opencode/${id}";
               inherit (model) name;
