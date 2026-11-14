@@ -5,6 +5,7 @@
 {placement}: rec {
   origin = "http://${placement.tsName}:${toString placement.port}";
   baseUrl = "${origin}/v1";
+  antigravityHydrogen = import ./antigravity-hydrogen.nix;
   gpt = {
     context = 1050000;
     input = 922000;

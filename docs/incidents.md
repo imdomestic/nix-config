@@ -44,8 +44,14 @@ Pi 用目录的 1,048,576 上下文和保守的 65,536 输出预算；Max 按用
 不另设输出上限。两端按 Max 已有的 Hydrogen 公开价格估算：输入 / 缓存
 读取 / 输出为 $1.50 / $0.075 / $7.50 每百万 token，不是 Antigravity 订阅账单。
 
-用户随后要求不再编译或运行 `nix check`，因此只完成配置修改，不激活
-Home Manager 或 Max 服务；此前的两档请求验证不等于配置已经部署。
+随后按用户指令通过原生 `models.catalog` 配置补齐真实四档：
+`lib/cliproxy-catalog.nix` 在完整官方目录快照上合并
+`lib/antigravity-hydrogen.nix` 的定义；Pi 每个型号只开放对应档位，Max
+四条共用已有 Google Hydrogen 设置。不创建转向 XHigh 的别名。
+目录快照维护与生效方式见 `docs/cliproxy-model-catalog.md`。
+
+用户要求不再编译或运行 `nix check`，因此这里只修改配置，不激活
+Home Manager、CLIProxy 或 Max 服务；此前的请求验证不等于配置已经部署。
 
 ## 2026-11-11 · tank 被 bambu-studio 的源码编译拖进 swap 两个半小时 {#bambu-studio-build-oom}
 

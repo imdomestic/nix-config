@@ -6,6 +6,10 @@
   ...
 }: let
   cliproxy = import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
+  modelCatalog = import ../../lib/cliproxy-catalog.nix {
+    inherit pkgs;
+    extraModels.antigravity = cliproxy.antigravityHydrogen.catalog;
+  };
 in {
   imports = [
     ../../system/modules/keyd
@@ -19,6 +23,7 @@ in {
   services.cliproxy = {
     enable = true;
     bindAddress = config.my.host.tsName;
+    settings.models.catalog = toString modelCatalog;
     settings.openai-compatibility = [
       {
         name = "opencode-go";

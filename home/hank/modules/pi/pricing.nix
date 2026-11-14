@@ -19,6 +19,11 @@ let
     ];
   };
   gemini = rates: rates // {cacheWrite = 0;};
+  hydrogen = gemini {
+    input = 1.5;
+    output = 7.5;
+    cacheRead = 0.075;
+  };
 in {
   "gpt-6.1-sol" = gpt {
     input = 2;
@@ -101,9 +106,8 @@ in {
     output = 2.5;
     cacheRead = 0.03;
   };
-  "gemini-4-hydrogen-xhigh" = gemini {
-    input = 1.5;
-    output = 7.5;
-    cacheRead = 0.075;
-  };
+  "gemini-4-hydrogen-low" = hydrogen;
+  "gemini-4-hydrogen-medium" = hydrogen;
+  "gemini-4-hydrogen-high" = hydrogen;
+  "gemini-4-hydrogen-xhigh" = hydrogen;
 }

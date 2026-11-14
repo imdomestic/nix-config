@@ -182,8 +182,6 @@ in {
                   video = true;
                   price = prices.gemini-flash;
                 };
-                # Effort is independent of the Antigravity ID; docs/incidents.md#antigravity-hydrogen-effort.
-                "gemini-4-hydrogen-xhigh" = googleHydrogen;
                 # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
                 "vertex/gemini-4-argon" = {
                   context_window = 262144;
@@ -202,6 +200,7 @@ in {
                 };
                 "vertex-c820/gemini-4-hydrogen" = googleHydrogen;
               }
+              // lib.genAttrs cliproxy.antigravityHydrogen.ids (_: googleHydrogen)
               // lib.mapAttrs' (id: model:
                 lib.nameValuePair "opencode/${id}" ({
                     context_window = model.context;
