@@ -65,7 +65,6 @@ in {
       git-filter-repo
       duckdb
       tree-sitter
-      pgcli
       usql
       gnumake
       gh

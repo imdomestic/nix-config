@@ -11,6 +11,7 @@
     # kubectl/k9s 在 modules/dev-tools.nix 里,kubeconfig 跟着走,不往路由器上解密集群 token。
     ../modules/kube
     ../modules/lazygit
+    ../modules/pgcli.nix
     ../modules/codex
     ../modules/pi
     # ../modules/tuicr.nix
