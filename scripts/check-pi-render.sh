@@ -27,7 +27,10 @@ nix eval --raw --impure --expr '
     pkgs = flake.inputs.nixpkgs.legacyPackages.${builtins.currentSystem};
     module = import ./home/hank/modules/pi {
       config = {
-        my.fleet.placements.rewind-balance = { tsName = "balance.invalid"; port = 8318; };
+        my.fleet.placements = {
+          cliproxy = { tsName = "cliproxy.invalid"; port = 8317; };
+          rewind-balance = { tsName = "balance.invalid"; port = 8318; };
+        };
         sops.secrets."cliproxy/api_key".path = "/nonexistent/pi-test-client-key";
       };
       inherit pkgs;

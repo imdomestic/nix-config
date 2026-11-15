@@ -1,4 +1,5 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import installAntigravityPrompt from "./antigravity-prompt.ts";
 import installPrompt from "./prompt-prefix.ts";
 import { installRenderers } from "./render.ts";
 import installStatusline from "./statusline.ts";
@@ -7,7 +8,7 @@ import type { BalanceConfig } from "./balance.ts";
 
 type Extension = (pi: ExtensionAPI) => void;
 type Extensions = { cc: Extension; better: Extension; subagents: Extension };
-export type Options = { showTokenRate?: boolean; balance?: BalanceConfig };
+export type Options = { showTokenRate?: boolean; balance?: BalanceConfig; antigravityModels?: readonly string[] };
 
 export default function bootstrap(pi: ExtensionAPI, extensions: Extensions, options: Options = {}): void {
   process.env.PI_BETTER_RENDER_MERMAID_INSTALL ??= "0";
@@ -15,6 +16,7 @@ export default function bootstrap(pi: ExtensionAPI, extensions: Extensions, opti
 
   installRenderers(pi, extensions.cc, extensions.better);
   installPrompt(pi);
+  installAntigravityPrompt(pi, options.antigravityModels);
   // Below-editor widgets retain registration order: statusline, then FleetView.
   installStatusline(pi, options);
   installSubagents(pi, extensions.subagents);

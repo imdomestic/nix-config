@@ -14,7 +14,7 @@
   subagentsSettings = import ./subagents-settings.nix;
   extensionSource = lib.fileset.toSource {
     root = ./.;
-    fileset = lib.fileset.unions [./bootstrap.ts ./prompt-prefix.ts ./render.ts ./statusline.ts ./balance.ts ./subagents.ts];
+    fileset = lib.fileset.unions [./bootstrap.ts ./antigravity-prompt.ts ./prompt-prefix.ts ./render.ts ./statusline.ts ./balance.ts ./subagents.ts];
   };
   free = {
     input = 0;
@@ -109,6 +109,7 @@ in {
     export default function (pi) {
       bootstrap(pi, { cc, better, subagents }, ${builtins.toJSON {
       showTokenRate = false;
+      antigravityModels = lib.attrNames cliproxy.gemini.models ++ cliproxy.antigravityHydrogen.ids;
       balance = {
         url = "http://${balancePlacement.tsName}:${toString balancePlacement.port}/rewind/balance";
         apiKeyFile = config.sops.secrets."cliproxy/api_key".path;

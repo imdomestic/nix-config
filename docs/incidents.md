@@ -4,6 +4,35 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-15 · Pi 的默认身份段与 Antigravity 的泛化 429 {#pi-antigravity-prompt-429}
+
+Pi 调用 CLIProxy 的 `gemini-4-hydrogen-high`、`gemini-3.8-flash-high` 时，
+Google 的 `daily-cloudcode-pa.googleapis.com` 返回 429 / `RESOURCE_EXHAUSTED`。
+最初被「check quota」误导，以为账号额度耗尽；但 Max 和同模型的极短请求
+仍能成功，不能据此认定整体额度耗尽。Google 的原始响应没有具体原因或
+额度恢复时间，因此这里不把它定名为已证实的风控或某个词的封禁。
+
+同一 Pi 完整请求移除输出上限或降到 8,192 都仍返回上游 429。CLIProxyAPI
+8.0.69 的 `antigravity_executor_request.go` 本来就会为非 Claude 型号删除
+`generationConfig.maxOutputTokens`，所以改 Pi 的 65,536 预算不是修复。
+保留全部 13 个工具和该预算，移除原系统提示词或换成相近长度的普通提示词
+则返回 200；原提示词只把 `developer` 改成 `system` 仍返回 429。
+
+本机 Antigravity 的 language server 二进制含有原生身份与任务两段文本。
+只用它们替换 Pi 开头的身份段，保留后面的工具规则、项目说明、技能与工作
+目录，完整请求返回 200。真正的 Pi 进程使用这两段也正常回复 OK。这证明
+该替换在这些请求上有效，不等于获得了 Google 对拒绝原因的确认；未修改
+不可见字符、OAuth 凭据、客户端 headers 或服务端冷却状态。
+
+Hank 的 `home/hank/modules/pi/antigravity-prompt.ts` 在原生
+`before_agent_start` 钩子里按当前模型替换精确的默认开头；scope 从已有的
+Gemini / Hydrogen 模型表生成，不匹配 GPT、Rewind、Vertex 前缀或其他
+provider。显式自定义身份不覆盖，正文中再出现 Pi 身份文本也不改。
+其余提示词原样保留，不搬用 agy 的工具定义。离线回归命令是
+`bash scripts/check-pi-antigravity-prompt.sh`；组合扩展的 Nix scope 另由
+`bash scripts/check-pi-render.sh` 检查。本次只修改声明并临时加载验证，
+未激活完整 Home Manager；后续 home 激活才会安装持久扩展。
+
 ## 2026-11-15 · Hydrogen 的其他三档被 CLIProxy 静态目录过滤 {#antigravity-hydrogen-effort}
 
 在 gizmo 为 Google 账号重新登录 Antigravity 后，公开模型目录只新增

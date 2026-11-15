@@ -184,6 +184,18 @@ export default function (pi: ExtensionAPI) {
         };
 
         installPi(api);
+        const identity = "You are a coding assistant running inside pi, a coding agent harness. Help users inspect files, run commands, and modify code.";
+        const promptSuffix = "\n\n<rules>Keep rules.</rules>\n<project_context>Keep AGENTS.md.</project_context>";
+        const modelPrompt = { systemPrompt: identity + promptSuffix };
+        const promptHandlers = handlers.get("before_agent_start") ?? [];
+        for (const id of ["gemini-3.8-flash-high", "gemini-4-hydrogen-high"]) {
+          const rewrites = await Promise.all(promptHandlers.map(handler => handler(modelPrompt, { ...ctx, model: { provider: "cliproxy", id }, mode: "print" })));
+          const result = rewrites.find(result => result?.systemPrompt);
+          assert(result?.systemPrompt.startsWith("You are Antigravity Agent"), "The Nix bootstrap must configure the Antigravity prompt scope");
+          assert(result.systemPrompt.endsWith(promptSuffix), "The bootstrap must retain rules and project context");
+        }
+        const otherModelResults = await Promise.all(promptHandlers.map(handler => handler(modelPrompt, { ...ctx, model: { provider: "cliproxy", id: "gpt-6.1-sol" }, mode: "print" })));
+        assert(!otherModelResults.some(result => result?.systemPrompt), "The bootstrap must not rewrite GPT prompts");
         assert(commands.has("agents"));
         assert(tools.has("SubagentWorkflow"));
         const agentTool = tools.get("Agent");
