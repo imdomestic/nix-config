@@ -32,6 +32,7 @@ in {
           run = ["layout floating"];
         }) [
           "com.mitchellh.ghostty"
+          "com.apple.finder"
           "com.apple.Passwords"
           "com.apple.ScreenContinuity" # iPhone Mirroring
           "com.apple.systempreferences"
