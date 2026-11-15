@@ -50,7 +50,6 @@ in {
       biome
       lua-language-server
       bash-language-server
-      nodejs_22
       # sqlite
       # sqlite-interactive
       imagemagick
