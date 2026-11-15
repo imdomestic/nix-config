@@ -1,5 +1,15 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-16 · Python F8/F9/F10 及 Windows ACL 修复发布到 tank
+
+- Bot 汇总 PR #123（`42d9155`）合并至 `main`（`6b74445f755ece0d1e5fc64c35a7f5693cabefed`），并关闭堆叠草稿 PR #75–#122。本机固定快照 `summary-42d9155`（`2,339` 项、`10` 跳过、`1407.929s`、`exit 0`）、PR CI（`43743729498`）与 `main` 合并后 CI（`43746200082`）全部 5 项通过：其中 `Python 3.12` `2,339` 项通过（`1315.837s`、`10` 跳过），`Windows credential ACL` `15` 项原生 DACL 检查全部通过（`0.088s`），`Admin UI`、`Nix package`、`Secret scan` 通过。
+- Nix 配置在 rebase 至 `origin/main`（`9254ff48`）后由 `7a05aabc` 将 `qq-bot` 固定至 `6b74445f755ece0d1e5fc64c35a7f5693cabefed`，19 个 NixOS 与 5 个 Darwin 主机配置求值均通过。仅部署 `tank` system，未操作 `h610`、主备关系、内核或 Home Manager。
+- 切换前检查：`tank` 内核保持 `/nix/store/ppm8487552xic16bdqzq9792px66ra37-linux-6.18.63/bzImage` 不变；`nix store diff-closures` 仅显示 `gaojibot`（`983.4 KiB`）及来自 `origin/main`（`1493cdae`）的静态 `index-x86_64` / `index-x86_64-linux` 数据库更新（`10.3 MiB` / `54.1 KiB`）；`dry-activate` 仅涉及 `gaoji.service`、`accounts-daemon.service`、`dbus-broker.service` 与 `polkit.service`，未重启数据库、VM、Worker、Maxx 或其他业务服务。
+- 先在在线备份 `/data/services/gaoji/backups/python-next-20261116/online/qq_bot.dump`（`93M`、`0600`、SHA256 `e83dafa526dafdc19ba86951f1201523f602d283e0669418530bec8387a95db6`）上通过 `systemd-run -p PrivateNetwork=yes` 完成隔离 `pg_restore` 与 `gaoji-db upgrade/check` 演练（`0095_billing_source_metadata → 0106_question_notices`、`10590` 条消息完整保留）。
+- 随后停止 `gaoji.service` 并保留最终停写备份 `/data/services/gaoji/backups/python-next-20261116/before-switch/qq_bot.dump`（`93M`、`0600`、SHA256 `bf9b2c7705a5f5921af01cbcc039c2219aaa0b85034bb77f72c263e4af6cd924`），记录原系统路径 `/nix/store/1m06828syk4irf85jkdnphs621rn22a6-nixos-system-tank-26.05.20261113.f1e5c35`。
+- 切换至 `/nix/store/qmcb2inri57l7fw9ci5s3y1jq0d32d83-nixos-system-tank-26.05.20261113.f1e5c35`（应用包 `/nix/store/ab5v0blw54kddn46pg94gi2wisfms2a4-gaojibot-0.20.0`），启动前自动完成 `0095_billing_source_metadata → 0106_question_notices` 迁移，`messages` 仍为 `10590` 条，`gaoji` PID `68266`（`NRestarts=0`），`credentials.py` / `question_runtime.py` / `question_notices.py` SHA256 与 `main` 一致。`qq-bot-postgres-node`（PID `3417`）、`gaoji-vm`（PID `3692101`）、`gaoji-cluster-worker`（PID `3255`）及 `maxx`（PID `2514837`）均保持未重启，备库 `qq_bot_standby` 维持 `streaming / async`。
+- 部署后连续检查 `/health/qq-official` 均返回 HTTP 200 `state="ready" / healthy=true / message_gap=false`（`observed_at` 1794770425、1794770438、1794770447、1794770485、1794770494`），无启动或 QQ 网关报错；既有切换前已每 90 秒出现的 `sandbox maintenance error=SandboxError` 日志仍存在（未改动既有 VM 或 `/work`）。全程未向真实群或私聊发送测试消息；用户已明确取消 F7 实测，真实 QQ 对话与模型端到端交互仍待用户后续按需实测。
+
 ## 2026-11-13 · Python 已完成功能发布到 tank
 
 - owner要求暂停未完成功能、收尾提交并只部署tank。Bot PR #74合并为`ad5a6e1612798c93212b08f138f0f09946b81905`，Nix配置`f874a2a9`固定该版本；未部署/重启h610，未改主备关系、内核或Home Manager。F9四维费用页/每日预算、F7/F10/F8不在本次发布内。
