@@ -1,5 +1,13 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-16 · 表情包发送与图片校验修复发布到 tank
+
+- Bot PR #124（放宽 PNG/JPEG 校验：调色板/低高位深/隔行 PNG、SOF1/CMYK JPEG、结束标记后的多余字节、扫描中途截断的 JPEG）与 #125（表情校验失败不再变成无日志的“内部错误”、`find_stickers` 不再把结果标为已用、发送计数生效、发送结果带表情描述、检索拆词并加近义词组）各自 CI 5 项全部通过后合并，`main` 为 `849de336bad36a7371ae7b510aaa438aa99ef74f`。无数据库迁移。
+- 部署前（owner 批准）修复生产表情库中 13 张校验失败的表情：本机重新编码后逐张通过线上校验，在一个事务内按旧哈希核对更新 `media_blobs` 的哈希/大小/路径（13 行），旧文件保留。行备份、旧文件与执行的 SQL 在 `/data/services/gaoji/media-repair-backups/20261116-stickers/`。
+- 配置 `3f3bd70a` 固定 `qq-bot`。从 Mac 用 deploy-rs `--remote-build` 时 `nix copy --derivation` 停滞 36 分钟无进展，改为在 tank 上以普通用户在 `/tmp` 隔离检出构建（`max-jobs=2 / cores=4`）；系统 drv 与 Mac 求值一致（`h29sb3ll…`）。内核不变，`nix store diff-closures` 仅 `gaojibot`（+12.5 KiB），`dry-activate` 仅停止/启动 `gaoji.service`。
+- 切换前无运行中的后台任务或回合。原系统 `/nix/store/qmcb2inri57l7fw9ci5s3y1jq0d32d83-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/mh8yvg0j15maqx3gnrgbxixj1mdjvr0j-nixos-system-tank-26.05.20261113.f1e5c35`（包 `/nix/store/v3k8izv53walkixid052yc4xf4964grf-gaojibot-0.20.0`），`gaoji` PID `622996`、`NRestarts=0`。`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，启动后无新增错误日志。
+- 未向真实群发送测试消息；表情检索效果仅用 360 张生产表情标签离线比对验证，真实对话验收由 owner 在群里进行。回滚只需切回原系统路径；13 张表情的数据可按备份 CSV 改回。
+
 ## 2026-11-16 · Python F8/F9/F10 及 Windows ACL 修复发布到 tank
 
 - Bot 汇总 PR #123（`42d9155`）合并至 `main`（`6b74445f755ece0d1e5fc64c35a7f5693cabefed`），并关闭堆叠草稿 PR #75–#122。本机固定快照 `summary-42d9155`（`2,339` 项、`10` 跳过、`1407.929s`、`exit 0`）、PR CI（`43743729498`）与 `main` 合并后 CI（`43746200082`）全部 5 项通过：其中 `Python 3.12` `2,339` 项通过（`1315.837s`、`10` 跳过），`Windows credential ACL` `15` 项原生 DACL 检查全部通过（`0.088s`），`Admin UI`、`Nix package`、`Secret scan` 通过。
