@@ -17,7 +17,8 @@
   };
   gpt = model: aliases: (proxy model aliases) // {reasoning_effort = "low";};
 in {
-  default = "gpt-6.1-sol";
+  # This embedded default wins over AI_MODEL_DEFAULT_PROFILE in gaoji's catalog.
+  default = "gemini-3.8-flash-high";
   profiles = {
     deepseek = {
       provider = "deepseek";
