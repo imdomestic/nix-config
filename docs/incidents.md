@@ -4,6 +4,27 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-16 · agy 原生请求与透明反代原型 {#agy-native-proxy-profile}
+
+本机 agy 1.5.9 的 Cloud Code 请求可通过 `CLOUD_CODE_URL` 转到临时本地
+转发器观察；原 origin 是 daily-cloudcode-pa.googleapis.com。不需要改 App、
+装根证书或关闭 TLS 校验。原生探针成功之后实现了 `pkgs/agy-proxy/`：
+原生 envelope/SSE 透传，另有只包外壳、不清理历史与签名的 Gemini 入口。
+本机 Keychain 登录、动态模型发现、JSON/SSE、带原生签名的两轮工具调用
+均实测成功；未替换生产 CLIProxy，也未激活常驻服务。
+
+误导排查的两件事：`AGY_LLM_GATEWAY_URL` 实际启用另一条 gateway 认证和
+模型目录，不是 Cloud Code override；`--settings` 也不接受那个 endpoint。
+临时 Python relay 起初只按 Content-Length 读 body，却没处理 agy 的
+chunked generation request，导致自己转发空 body 后收到 Google 400。
+这个 400 是探针的 bug，不是上游协议拒绝。
+
+原生 Hydrogen High 的输出上限 262144 被接受，工具签名可以原样回放。
+当前 CLIProxy 8.0.73 确实会删除非 Claude 输出上限并改 schema、历史、签名，
+但不能由这些差异断言此前的泛化 429 的原因。协议画像、源码基准、验收和
+原型边界见 `docs/agy-proxy.md`；自动到期刷新和完整 Pi 工作负载尚未验收。
+原始 OAuth/token、project 和 prompt 没有进入仓库。
+
 ## 2026-11-15 · Pi 的默认身份段与 Antigravity 的泛化 429 {#pi-antigravity-prompt-429}
 
 Pi 调用 CLIProxy 的 `gemini-4-hydrogen-high`、`gemini-3.8-flash-high` 时，

@@ -34,9 +34,11 @@ in {
       # (deploy 走 --remote-build)。不缓存的话那几台要现编一遍。
       tmux-agent-sidebar = agentSidebar nixos.rpi4;
       cliproxy-rewind = nixos.gizmo.config.services.cliproxy.rewind.package;
+      agy-proxy = nixos.gizmo.pkgs.callPackage ../../pkgs/agy-proxy {};
     };
     x86_64-linux = {
       bonsai-convert-env = nixos.seraph.pkgs.callPackage ../../pkgs/bonsai-convert-env {};
+      agy-proxy = nixos.taipan.pkgs.callPackage ../../pkgs/agy-proxy {};
       vfio-igd-rom = nixos."268v".config.my.windowsVM.igdROM;
       # 在 taipan 等 x86_64 Linux 主机上通过 LLVM 构建 ARM64 Android 内核。
       templar-droidspaces-kernel = templarDroidspacesKernel nixos.taipan;
@@ -48,6 +50,7 @@ in {
       recursive-mono-cascadia-italic = font darwin.praxic;
       tmux-agent-sidebar = agentSidebar darwin.praxic;
       safari-mru = darwin.praxic.pkgs.callPackage ../../pkgs/safari-mru {};
+      agy-proxy = darwin.praxic.pkgs.callPackage ../../pkgs/agy-proxy {};
     };
     # x86_64-darwin(hackintosh)没进来:macos-13 runner 正在退役,而且 26.05
     # 是 nixpkgs 最后一个支持 x86_64-darwin 的版本,不值得为它单开一条流水线。
