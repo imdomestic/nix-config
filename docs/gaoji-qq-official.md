@@ -1,5 +1,13 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-16 · 表情收录、近期去重、少引用发布到 tank；识图改用 Gemini
+
+- Bot PR #126（同一会话 6 小时内发过的表情排后、语境合适时主动带表情）、#127（群聊/私聊收到的 QQ 收藏表情自动打标签入库，不受图片识别开关限制，全站每日上限 200；打标签提示词改为适中偏详细并包含口语情绪词）、#128（一轮回复只有第一条、且之后有人插话时才引用原消息）各自 CI 5 项通过后合并，`main` 为 `99674144e4acd51afefc5cab556bf4946485eb53`。无数据库迁移。三者合并后本机全量 2,361 项中仅 2 项因本机缺 `TEST_OPS_POSTGRES_DSN` / `AI_POSTGRES_DSN` 报错。
+- 配置 `aca31e3a` 固定 `qq-bot`，并在最后加载的 `gaoji-models.env` 中设置 `AI_VISION_PROFILE=gemini-3.8-flash-high`，覆盖主机 `runtime.env` 中的 `gpt-5.6-luna`。未使用 Rewind：其仅支持 Responses 接口，gaoji 网关只支持 chat completions，且文档标注为有条件使用。
+- 在 tank 以普通用户隔离检出构建；内核不变，`diff-closures` 仅 `gaojibot`（+13.7 KiB），`dry-activate` 仅停止/启动 `gaoji.service`；切换前无运行中的后台任务或回合。原系统 `/nix/store/mh8yvg0j15maqx3gnrgbxixj1mdjvr0j-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/81gkplbmxlk8mrvkiry8zahr90pf83a6-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `794981`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，运行环境 `AI_VISION_PROFILE=gemini-3.8-flash-high`。
+- 重打标签（owner 批准）：先备份全部表情的 `media_analysis` 与 `sticker_library` 到 `/data/services/gaoji/media-repair-backups/20261116-retag/`，再为 360 张启用表情各排一条 `caption` 任务，由运行中的媒体 worker 用 Gemini 重写标签并重建向量。约 22 分钟内 360 条全部成功，向量 360 条全部重建；344 张仍启用且标签均为 `gemini-3.8-flash-high`，16 张因新判定停用（10 张 safety=review，2 张 blocked，4 张判为非表情或截图），可按备份或控制台审核恢复。
+- 未向真实群发送测试消息；真实对话验收由 owner 进行。
+
 ## 2026-11-16 · 表情包发送与图片校验修复发布到 tank
 
 - Bot PR #124（放宽 PNG/JPEG 校验：调色板/低高位深/隔行 PNG、SOF1/CMYK JPEG、结束标记后的多余字节、扫描中途截断的 JPEG）与 #125（表情校验失败不再变成无日志的“内部错误”、`find_stickers` 不再把结果标为已用、发送计数生效、发送结果带表情描述、检索拆词并加近义词组）各自 CI 5 项全部通过后合并，`main` 为 `849de336bad36a7371ae7b510aaa438aa99ef74f`。无数据库迁移。
