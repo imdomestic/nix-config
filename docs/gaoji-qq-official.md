@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-16 · Gemini 开启 high 思考；提示词分清闲聊与提问、提供情绪价值
+
+- owner 认为回答不如 Max 详细。Max 使用同一 `gemini-3.8-flash-high` 但 `effort = "high"`；gaoji 此前不发送思考强度。`lib/gaoji-model-profiles.nix` 为该档位设置 `reasoning_effort = "high"`、超时 90→180 秒（`9492f53f`；其格式问题由 `b92ad8de` 修正，推送时漏检 lint）。
+- Bot PR #131（先分清闲聊与提问：闲聊简短；提问先想清楚、结论在前、讲清理由、查证出处、不抖机灵）与 #132（有人难过或分享好事时先接住情绪）按 owner 要求未等 CI 合并，`main` 为 `0f3eb134f9403f09fa857cf76e07d86181fae7d3`；配置 `e93f7edc` 固定。
+- tank 隔离构建，内核不变，`dry-activate` 仅停止/启动 `gaoji.service`，切换前无运行中的任务或回合。原系统 `/nix/store/08hzf2r063qkria2m4fydjxb8a7jaadg-…`，现系统 `/nix/store/kxsgsqv642nr7r0ja411y7c7w2m6asw7-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `3045735`、`NRestarts=0`；`/health/qq-official` 连续三次 ready，启动后无新错误。
+
 ## 2026-11-16 · 全局统一模型（Gemini 3.8 flash），只有 owner 能改
 
 - 目的：成员各自 `/model` 让同一会话分散在多个模型上，三天内 luna / Gemini 输入缓存命中仅 54% / 51%。Bot PR #130：`/model` 设置全局模型且仅当前 owner 可改，其他人只读；`/model 群默认` 仍可单独设群；选择顺序为群默认 → 全局 → 配置默认；个人模型条目不再读取（未删除），推理强度仍按个人。按 owner 要求未等 CI 合并，`main` 为 `05d5ffcf1c1b167c4ed69ad0538e4d70cdb2640a`；本机相关 85 项测试通过。生产库中仅有 OneBot 时期的旧键，官方会话无群默认。
