@@ -47,12 +47,7 @@ type oauthClientMetadata struct {
 }
 
 func loadOAuthClient(path string) (*oauthClient, error) {
-	file, err := openCredentialFile(path, false)
-	if err != nil {
-		return nil, errors.New("OAuth client configuration must be a private runtime JSON file owned by this user")
-	}
-	defer file.root.Close()
-	data, _, err := file.read()
+	data, err := readRuntimeSecret(path, 1<<20)
 	var metadata oauthClientMetadata
 	if err != nil || json.Unmarshal(data, &metadata) != nil || !validOAuthToken(metadata.ClientID) || !validOAuthToken(metadata.ClientSecret) {
 		return nil, errors.New("invalid OAuth client configuration")

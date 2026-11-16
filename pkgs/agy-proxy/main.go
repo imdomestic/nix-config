@@ -53,13 +53,9 @@ func run() error {
 	}
 	var key string
 	if *keyFile != "" {
-		info, err := os.Stat(*keyFile)
-		if err != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || info.Size() > 4096 {
-			return errors.New("client-key-file must be a private regular file, at most 4096 bytes")
-		}
-		data, err := os.ReadFile(*keyFile)
+		data, err := readRuntimeSecret(*keyFile, 4096)
 		if err != nil {
-			return errors.New("cannot read client-key-file")
+			return errors.New("client-key-file must be a private file or protected systemd credential, at most 4096 bytes")
 		}
 		key = strings.TrimSpace(string(data))
 		if len(key) < 16 || strings.ContainsAny(key, " \r\n\t") {
