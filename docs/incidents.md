@@ -4,6 +4,29 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-16 · gizmo 的 agy 凭据 ACL 与 runtime unit 优先级 {#agy-gizmo-systemd-credentials}
+
+首次部署 agy-proxy 到 gizmo 时，程序拒绝 systemd LoadCredential 文件。
+错误的第一猜是服务尚未就绪；实测文件是 root:root 0440，父目录 0550，
+systemd 通过 named-user ACL 授权服务 UID，并不是给普通 group 共享。
+v0.2.1 只对 CREDENTIALS_DIRECTORY 下 root-owned、read-only 的受保护
+`/run/credentials/` 路径接受此形态；普通 group/world 可读文件仍拒绝。
+OAuth 本体继续要求本 UID、私有目录和原子 0600 写入。
+
+登录辅助又暴露另一层：SOPS 的嵌套父目录是 root-only，单把文件 owner
+改成服务用户并不能让它穿过目录。改由 root 辅助启动 transient login
+service，以 LoadCredential 注入，再用服务 UID 执行登录，不放宽目录。
+
+运行时路由一度没有更新：旧 `/etc/systemd/system/nginx.service` 优先于
+同名 `/run/systemd/system/nginx.service`，后者存在不代表已加载。改成
+runtime drop-in 显式替换 ExecStart/ExecReload，确认实际 nginx cmdline
+及外部 HTTPS 返回值之后才取消回退 timer；不要在仅有进程 active 时
+宣称端点就绪，也不要在回退 timer 尚未取消时离开部署。
+
+最终后端、HTTPS 认证边界、控制面不暴露和登录 bootstrap 均通过；
+用户浏览器尚未授权新 Google 账号。旧 CLIProxy PID 未变。完整配置只设
+启动默认，运行内核未换；路径、临时激活层与后续登录见 `docs/agy-proxy.md`。
+
 ## 2026-11-16 · agy 原生请求与透明反代原型 {#agy-native-proxy-profile}
 
 本机 agy 1.5.9 的 Cloud Code 请求可通过 `CLOUD_CODE_URL` 转到临时本地

@@ -240,8 +240,10 @@ nix build .#agy-proxy
 - 新 OAuth：`/var/lib/agy-proxy/oauth.json`，登录和刷新只由该服务用户写。
   scopes 按 Antigravity installed-app 协议使用；client ID/secret 通过
   SOPS `agy-proxy/oauth_client` 私有 JSON 注入，不硬编码在源码或 Nix store。
-  登录辅助会传入该文件；直接 `agy-proxy login` 也需 `--oauth-client-file`。
-  Google 密码只在用户自己的浏览器输入，不给服务器或代理。
+  登录辅助通过临时 `agy-proxy-login.service` 的 LoadCredential 注入，进程仍
+  以 `agy-proxy` UID 写 OAuth，不放宽 SOPS 父目录权限。直接 `agy-proxy login`
+  也需 `--oauth-client-file`。Google 密码只在用户自己的浏览器输入，不给服务器
+  或代理。
 
 ### 1. 开 SSH 回调隧道并启动登录
 
@@ -264,7 +266,9 @@ callback port 并同时修改 SSH `-L` 与命令 `--callback-port`。
 不需要重启，不改本机 agy 的 Keychain。
 
 默认拒绝覆盖已有 OAuth 文件；需要换账号时，明确加 `--force` 再走完整
-浏览器登录。登录超时十分钟；不要把 callback URL、authorization code、
+浏览器登录。辅助以 transient service 运行；需主动取消时，另开终端运行
+`ssh hank@gizmo.inner.imdomestic.com 'sudo systemctl stop agy-proxy-login'`。
+登录超时十分钟；不要把 callback URL、authorization code、
 refresh token 或 OAuth JSON 贴进聊天。
 
 新账号仍须满足 Google / Antigravity 的地区、年龄、验证、资格和条款要求。
@@ -309,3 +313,33 @@ PY
 401 是客户端 key 错；未登录/凭据或 project 不可用会返回 503；Google 的
 403/429 仍需按它给出的资格/额度响应处理。离线测试覆盖登录、刷新和竞态，
 真实新账号 consent、token 到期及实机模型调用须在用户完成登录后验收。
+
+## 2026-11-16 · gizmo 部署验收
+
+声明提交 `7f8f021a`，systemd credential ACL 修复 `4754e893`，登录辅助的
+LoadCredential 修复 `784e2d3f`；统一在 r6s 构建（`--max-jobs 1 --cores 2`），
+gizmo 不编译。版本 **0.2.1**。
+
+- `agy-proxy`、nginx、旧 CLIProxy 全部 active；后端仅 `127.0.0.1:8319`。
+- Mac 验证真实 TLS：新 HTTPS 不带 key 为 401，独立 key 为 503（还没有
+  新 Google OAuth），`/agy/v1internal:loadCodeAssist` 为 404。
+- 旧 `/v1/models` 认证边界仍为 401；CLIProxy PID `3000392` 未改变，仍跑
+  8.0.69，没有趁此重启或换掉它的 Google 登录。
+- 在 gizmo 实测启动登录辅助：已读到 runtime OAuth client，回调监听正常，
+  URL 含 PKCE S256 和账号选择；探针在 consent 前取消，未产生 OAuth 文件。
+- 自动回退 timers 已取消；没有遗留监听 51121/51122 的探针。
+
+gizmo 原先已积压内核升级。本次不重启：加载内核仍 **6.18.57**，
+`/run/current-system` 仍为
+`/nix/store/17kx445cffhd0yw7f0j8nbsx3ij0am0x-nixos-system-gizmo-26.05.20261108.ac588ef`。
+完整新配置已持久设为下次启动：
+`/nix/store/ihcb5zc9vfzvm54m872amb21szz4h75i-nixos-system-gizmo-26.05.20261113.f1e5c35`，
+含 6.18.63 和 CLIProxy 8.0.74；这里只启用本任务的服务和路由。
+
+当前 runtime 激活层是 `/run/systemd/system/agy-proxy.service` 和
+`/run/systemd/system/nginx.service.d/90-agy-proxy.conf`（ExecStart/ExecReload
+来自同一声明产物）。后者必要，因为旧 `/etc/systemd/system` 整体是 store
+symlink，且 `/etc` whole unit 优先于 `/run` whole unit；不能用同名 `/run`
+unit 假装已切换 nginx。重启时这两层自然消失，由新系统声明接管，不要
+把当前运行代误报成已完整升级。回退与权限排查见
+[事故记录](incidents.md#agy-gizmo-systemd-credentials)。
