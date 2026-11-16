@@ -5,6 +5,11 @@
   ...
 }: let
   cfg = config.services.agy-proxy;
+  login = pkgs.writeShellScript "agy-proxy-login-worker" ''
+    exec ${lib.getExe cfg.package} login \
+      --credential-file ${lib.escapeShellArg cfg.credentialsFile} \
+      --oauth-client-file "$CREDENTIALS_DIRECTORY/oauth-client" "$@"
+  '';
   args =
     [
       (lib.getExe cfg.package)
@@ -114,11 +119,17 @@ in {
       cfg.package
       (pkgs.writeShellScriptBin "agy-proxy-login" ''
         set -euo pipefail
-        if [ "$(${pkgs.coreutils}/bin/id -un)" != "agy-proxy" ]; then
-          exec sudo -u agy-proxy -- "$0" "$@"
+        if [ "$(${pkgs.coreutils}/bin/id -u)" != 0 ]; then
+          exec sudo -- "$0" "$@"
         fi
-        cd /var/lib/agy-proxy
-        exec ${lib.getExe cfg.package} login --credential-file ${lib.escapeShellArg cfg.credentialsFile} --oauth-client-file ${lib.escapeShellArg cfg.oauthClientFile} "$@"
+        # Match the service's credential ACLs without opening SOPS parent directories.
+        exec ${pkgs.systemd}/bin/systemd-run --quiet --pipe --wait --collect \
+          --unit=agy-proxy-login \
+          --property=User=agy-proxy --property=Group=agy-proxy \
+          --property=WorkingDirectory=/var/lib/agy-proxy \
+          --property=UMask=0077 --property=RuntimeMaxSec=10min \
+          --property=LoadCredential=oauth-client:${lib.escapeShellArg cfg.oauthClientFile} \
+          ${login} "$@"
       '')
     ];
   };

@@ -7,10 +7,7 @@ in {
     oauthClientFile = config.sops.secrets."agy-proxy/oauth_client".path;
   };
   sops.secrets."agy-proxy/api_key".restartUnits = ["agy-proxy.service"];
-  sops.secrets."agy-proxy/oauth_client" = {
-    owner = "agy-proxy";
-    restartUnits = ["agy-proxy.service"];
-  };
+  sops.secrets."agy-proxy/oauth_client".restartUnits = ["agy-proxy.service"];
 
   # Native OAuth/control endpoints stay private; see docs/agy-proxy.md.
   services.nginx.virtualHosts.${config.my.host.tsName}.locations."^~ /agy/v1beta/" = {
