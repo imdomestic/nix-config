@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 能看到群里其他机器人的消息；机器人之间适时停下
+
+- 发现问题：QQ 对其他机器人的消息带 `author.bot=true`，编解码器将其记为 `bot_origin` 并跳过，不进账本；自 10-30 起共跳过 299 条（全部在同一群，仅 4 条与 gaoji 自己发送时间相近，且从未出现 gaoji 自身回声），因此 gaoji 看不到 Max 的发言。
+- Bot PR #134（`main` 为 `3833e262299d445bdf615f4488eb30ecc7f66201`）：其他机器人的消息按普通群成员入账，名字标"（机器人）"，原始事件记 `sender_is_bot`；自身回声仍先被丢弃。提示词要求与机器人聊到没必要时收尾或 `[silence]`；另设硬上限：10 分钟内没有真人插话时，连续机器人消息最多被回复 3 次（直接触发和主动插话都适用）。本机编解码/入库 56 项测试通过；QQ 全套 675 项中 2 项端到端超时，单独重跑确认为改动前即存在的偶发超时。已跳过的旧消息正文已按保留策略清除，无法补回。
+- 配置 `f9a72943` 固定；tank 隔离构建，内核不变，闭包差异仅 gaojibot；`dry-activate` 仅停止/启动 `gaoji.service`，切换前无运行中的回合。原系统 `/nix/store/503rn7akr5fzm19k6jwc8s275k900ayb-…`，现系统 `/nix/store/yz4842nj0agy6dsafx3am25rlivjpsdm-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `3907253`；`/health/qq-official` 连续三次 ready，启动后无新错误，运行包已含 `peer_bots.py` 与新提示词。
+
 ## 2026-11-17 · 修正：默认模型此前未真正切到 Gemini；主动插话也改用 Gemini
 
 - 发现问题：`863ae7e8` 只改了 `AI_MODEL_DEFAULT_PROFILE`，但 `lib/gaoji-model-profiles.nix` 生成的 `AI_MODEL_PROFILES_JSON` 自带 `"default": "gpt-6.1-sol"`，其优先级更高；部署后 13 轮正式回答实际仍为 `gpt-6.1-sol`，当时只核对了环境变量、未核对生效模型。`e2c43d4f` 把内嵌默认改为 `gemini-3.8-flash-high` 并注明优先级。
