@@ -10,8 +10,10 @@
     placement = config.my.fleet.placements.cliproxy;
   };
   modelEnvironment = pkgs.writeText "gaoji-models.env" ''
-    AI_MODEL_DEFAULT_PROFILE=gpt-6.1-sol
-    AI_SIMPLE_CHAT_PROFILE=gpt-6-luna
+    # One model for every conversation keeps the provider cache warm; the
+    # owner's /model changes it at runtime. No separate small-talk model.
+    AI_MODEL_DEFAULT_PROFILE=gemini-3.8-flash-high
+    AI_SIMPLE_CHAT_PROFILE=
     # Sticker tagging and image descriptions; this file loads last, so it
     # overrides the older value in runtime.env.
     AI_VISION_PROFILE=gemini-3.8-flash-high
