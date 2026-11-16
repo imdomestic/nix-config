@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var errCredentials = errors.New("credentials unavailable; refresh with the native client")
+var errCredentials = errors.New("credentials unavailable; sign in or refresh credentials")
 
 type credential struct {
 	AccessToken string
@@ -24,17 +24,28 @@ type credentialSource interface {
 	Load(context.Context) (credential, error)
 }
 
-// The native client remains the only writer of its keychain and refresh token.
+// Keychain remains native-client-owned; only explicitly opted-in own files refresh here.
 type localCredentials struct {
-	file       string
-	account    string
-	refreshAgy string
-	mu         sync.Mutex
+	file        string
+	account     string
+	refreshAgy  string
+	refreshFile bool
+	oauth       *oauthClient // Optional isolated test transport/endpoints.
+	mu          sync.Mutex
 }
 
 func (s *localCredentials) Load(ctx context.Context) (credential, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if ctx.Err() != nil {
+		return credential{}, errCredentials
+	}
+	if s.refreshFile {
+		if s.file == "" || s.refreshAgy != "" {
+			return credential{}, errCredentials
+		}
+		return s.loadOwnFile(ctx)
+	}
 	c, err := s.read(ctx)
 	if err != nil {
 		return credential{}, errCredentials
@@ -60,6 +71,59 @@ func (s *localCredentials) Load(ctx context.Context) (credential, error) {
 	return c, nil
 }
 
+func (s *localCredentials) loadOwnFile(ctx context.Context) (credential, error) {
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
+	defer cancel()
+	file, err := openPrivateCredentialFile(s.file)
+	if err != nil {
+		return credential{}, errCredentials
+	}
+	defer file.root.Close()
+	unlock, err := file.lock(ctx)
+	if err != nil {
+		return credential{}, errCredentials
+	}
+	defer unlock()
+	data, original, err := file.read()
+	if err != nil {
+		return credential{}, errCredentials
+	}
+	token, err := decodeOwnToken(data)
+	if err != nil {
+		return credential{}, errCredentials
+	}
+	if time.Until(token.Expiry) <= time.Minute {
+		refreshCtx, cancel := context.WithTimeout(ctx, 45*time.Second)
+		defer cancel()
+		oauth := s.oauth
+		if oauth == nil {
+			return credential{}, errCredentials
+		}
+		token, err = oauth.refresh(refreshCtx, token.RefreshToken)
+		if err != nil || refreshCtx.Err() != nil {
+			return credential{}, errCredentials
+		}
+		current, err := file.existing()
+		if err != nil {
+			return credential{}, errCredentials
+		}
+		if !sameCredentialFile(original, current) {
+			// A separately completed login takes precedence over this refresh.
+			data, _, err = file.read()
+			if err != nil {
+				return credential{}, errCredentials
+			}
+			token, err = decodeOwnToken(data)
+			if err != nil || time.Until(token.Expiry) <= time.Minute {
+				return credential{}, errCredentials
+			}
+		} else if file.write(token, true, original) != nil {
+			return credential{}, errCredentials
+		}
+	}
+	return credential{AccessToken: token.AccessToken, Expiry: token.Expiry}, nil
+}
+
 func withoutGateway(env []string) []string {
 	out := make([]string, 0, len(env))
 	for _, entry := range env {
@@ -76,11 +140,12 @@ func (s *localCredentials) read(ctx context.Context) (credential, error) {
 	var data []byte
 	var err error
 	if s.file != "" {
-		info, statErr := os.Stat(s.file)
-		if statErr != nil || !info.Mode().IsRegular() || info.Mode().Perm()&0077 != 0 || info.Size() > 1<<20 {
+		file, openErr := openCredentialFile(s.file, false)
+		if openErr != nil {
 			return credential{}, errCredentials
 		}
-		data, err = os.ReadFile(s.file)
+		defer file.root.Close()
+		data, _, err = file.read()
 	} else {
 		readCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()

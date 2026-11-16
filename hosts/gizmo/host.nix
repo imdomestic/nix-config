@@ -13,7 +13,7 @@
     };
     maxTier = "interactive";
     buildOn = "r6s";
-    modules = [./cliproxy-https.nix];
+    modules = [./cliproxy-https.nix ./agy-proxy.nix];
 
     users = {
       nix = {};

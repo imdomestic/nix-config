@@ -15,6 +15,7 @@ in {
     ../../system/modules/keyd
     ../../system/modules/vlmcsd
     ../../system/modules/cliproxy
+    ../../system/modules/agy-proxy
   ];
 
   # 上游请求本来就从这台出境;放在这里,国内的调用方只跨一次境,海外的不再绕进

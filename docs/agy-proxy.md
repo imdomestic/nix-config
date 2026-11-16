@@ -1,8 +1,9 @@
 # agy-proxy：原生 Antigravity 透传与 Gemini API
 
 `pkgs/agy-proxy/` 是独立的 Go 程序，无第三方依赖，不复用 CLIProxy 的
-translator/executor。当前是 **loopback 原型**，没有替换 gizmo 的 CLIProxy，
-没有启用常驻服务，也没有修改 Pi / Max 的模型路由。
+translator/executor。后端只监听 loopback；gizmo 的独立 NixOS 服务经现有
+Tailscale HTTPS 暴露 `/agy/v1beta/`，不替换 CLIProxy 的 `/v1/`，也不修改
+Pi / Max 路由。v0.2 增加独立浏览器 OAuth 登录与服务自己凭据的原子刷新。
 
 ## 2026-11-16 · 本机原生协议画像
 
@@ -81,7 +82,7 @@ SSE JSON 外层含 `response`、`metadata`、`traceId`；内层含 `candidates`�
 
 ### 与仓库当前 CLIProxy 的差异
 
-仓库当前求值版本为 **CLIProxyAPI 8.0.73**，来自 `llm-agents`，不是
+首次调查时仓库求值版本为 **CLIProxyAPI 8.0.73**，来自 `llm-agents`，不是
 nixpkgs。对应公开源码 commit：
 [`43806c865da7d47f9252316e95e315ad9f885b84`](https://github.com/router-for-me/CLIProxyAPI/tree/43806c865da7d47f9252316e95e315ad9f885b84)。
 
@@ -130,8 +131,8 @@ headers。上游固定 daily，不能由请求指定 URL，不跟随重定向。
 macOS consumer 登录实际存放在 Keychain 的 **service `gemini` / account
 `antigravity`**；不是 `~/.gemini/oauth_creds.json` 的 Gemini CLI 登录。
 Keychain 值是 `go-keyring-base64:` 编码的 JSON，含 `token`、`auth_method`、
-`id_token_email`、`writer_id`。程序仅读取 consumer token，不输出 email，
-不解析或使用 refresh_token，不回写 Keychain。
+`id_token_email`、`writer_id`。Keychain 模式仅读取 consumer token，不输出
+email，不解析或使用 refresh_token，不回写 Keychain。
 
 ```sh
 umask 077
@@ -152,9 +153,12 @@ nix run .#agy-proxy -- \
 Linux 或显式导出凭据可用 `--credential-file /private/oauth.json`，代替
 `--keychain`。接受上述原生 consumer wrapper，或带 `access_token`、
 可选 `project_id`、RFC3339 `expiry` / CLIProxy `expired` 的 JSON。文件必须
-是 private regular file；不接受 group/world 可读权限。程序每次重新读，
-**不做独立 OAuth refresh、回写或自动 onboardUser**。不要把凭据写到 Nix
-表达式、Nix store、环境日志或 git。此路径没有 Linux 实机上游验收。
+是 private regular file；不接受 group/world 可读权限。程序每次重新读。
+默认仍只读；v0.2 的 `--refresh-credentials` 只供本服务通过独立 `login`
+生成并拥有的文件使用，且要求 `--oauth-client-file` 私有运行时 JSON；距
+到期不足一分钟时刷新并原子写回 0600 文件。
+不要对 CLIProxy 的共享 auth 文件打开它，也不要把凭据写到 Nix 表达式、
+Nix store、环境日志或 git。不自动 onboardUser、购买额度或启用 credits。
 
 API：
 
@@ -188,7 +192,7 @@ SSE 支持多行 data、event/id/retry、comments、未知内层字段和多 can
 生成请求的非 200 保留上游 status、body 和 Retry-After，不解释成已证实的
 风控；凭据读取或初次 project discovery 失败则返回本地 503。
 
-## 验证与范围
+## 最初原型验证与范围
 
 2026-11-16，编译出的本程序临时运行、随后退出：
 
@@ -219,8 +223,89 @@ nix build .#agy-proxy
 多候选、多行 SSE、EOF、不重试 429、断连取消、账号 project 隔离、私有
 凭据格式/权限和 body 上限。
 
-包输出提供 aarch64-darwin、aarch64-linux、x86_64-linux。没有 Home Manager
-激活或系统部署。以后若要变成 fleet 服务，先补原生模块选项、运行时 secrets、
-访问控制/TLS、压力与真实 token 到期测试，再决定 placement；不要直接把
-loopback 原型暴露到 LAN。TLS 栈使用 Go 默认校验和协商，没有证明 TLS
-指纹与 agy 完全一致，也没有据此关闭 HTTP/2。
+包输出提供 aarch64-darwin、aarch64-linux、x86_64-linux。以上是最初原型
+的本机验收，不是新 Google 账号的 gizmo 实机推理验收。TLS 栈使用 Go
+默认校验和协商，没有证明 TLS 指纹与 agy 完全一致，也没有据此关闭 HTTP/2。
+
+## gizmo 服务与新 Google 账号登录
+
+- 原生模块：`system/modules/agy-proxy/default.nix`；host 配置：
+  `hosts/gizmo/agy-proxy.nix`。后端 `127.0.0.1:8319`，独立 `agy-proxy` 用户，
+  private state directory，512 MiB memory ceiling。
+- HTTPS：`https://gizmo.inner.imdomestic.com/agy/v1beta`，仅已有 Tailscale
+  TLS 443 listener；不开放额外 LAN/公网端口，不暴露 native/control/login。
+- 独立客户端 key：SOPS `secrets/hosts/gizmo.yaml` 的 `agy-proxy/api_key`，
+  runtime `/run/secrets/agy-proxy/api_key`；systemd LoadCredential 私有传入。
+  不复用 CLIProxy key，旧账号凭据与客户端路由不变。
+- 新 OAuth：`/var/lib/agy-proxy/oauth.json`，登录和刷新只由该服务用户写。
+  scopes 按 Antigravity installed-app 协议使用；client ID/secret 通过
+  SOPS `agy-proxy/oauth_client` 私有 JSON 注入，不硬编码在源码或 Nix store。
+  登录辅助会传入该文件；直接 `agy-proxy login` 也需 `--oauth-client-file`。
+  Google 密码只在用户自己的浏览器输入，不给服务器或代理。
+
+### 1. 开 SSH 回调隧道并启动登录
+
+在有浏览器的 Mac 终端运行，保持连接：
+
+```sh
+ssh -t -o ExitOnForwardFailure=yes \
+  -L 51121:127.0.0.1:51121 hank@gizmo.inner.imdomestic.com \
+  'sudo /nix/var/nix/profiles/system/sw/bin/agy-proxy-login'
+```
+
+使用启动默认 profile 的绝对路径，当前若尚未完整切换新系统也可运行；
+完整激活后也可以直接 `agy-proxy-login`。本地端口被占用时，选另一个
+callback port 并同时修改 SSH `-L` 与命令 `--callback-port`。
+
+终端会打印 Google OAuth URL。用隐私窗口打开，明确选择**新创建的账号**，
+阅读并确认 Google consent。浏览器回到 `localhost:51121/oauth-callback`
+后经 SSH 到 gizmo；state、PKCE 和 callback 只在这次登录内使用。
+看到成功提示及预期 email 后即可退出 SSH。服务下一次请求就读到新文件，
+不需要重启，不改本机 agy 的 Keychain。
+
+默认拒绝覆盖已有 OAuth 文件；需要换账号时，明确加 `--force` 再走完整
+浏览器登录。登录超时十分钟；不要把 callback URL、authorization code、
+refresh token 或 OAuth JSON 贴进聊天。
+
+新账号仍须满足 Google / Antigravity 的地区、年龄、验证、资格和条款要求。
+如无 Antigravity project 或 Google 返回不符合资格，先去官方网页或原生
+客户端完成正常开通；代理不自动开通付费产品、不绕过账号验证或限额。
+
+### 2. 把客户端 key 安全取到本机
+
+只取代理调用 key，**不要下载 OAuth 文件**：
+
+```sh
+umask 077
+mkdir -p ~/.local/state/agy-proxy
+ssh hank@gizmo.inner.imdomestic.com \
+  'sudo cat /run/secrets/agy-proxy/api_key' \
+  > ~/.local/state/agy-proxy/client-key
+chmod 600 ~/.local/state/agy-proxy/client-key
+```
+
+该 key 与旧 CLIProxy key 不同。应用选 Gemini 协议，HTTP base URL 通常设
+`https://gizmo.inner.imdomestic.com/agy`（SDK 再追加 `v1beta`）；直接 REST
+请求则完整使用 `/agy/v1beta/models/...`。认证用 `X-Goog-Api-Key` 或 Bearer，
+不要放到 URL query。
+
+### 3. 验证账号模型目录
+
+```sh
+python3 - <<'PY'
+import json
+from pathlib import Path
+from urllib.request import Request, urlopen
+key = (Path.home() / '.local/state/agy-proxy/client-key').read_text().strip()
+req = Request('https://gizmo.inner.imdomestic.com/agy/v1beta/models',
+              headers={'X-Goog-Api-Key': key})
+with urlopen(req, timeout=45) as response:
+    for model in json.load(response)['models']:
+        print(model['name'])
+PY
+```
+
+以返回的真实 ID 为准，不假设新账号一定有 Hydrogen 或全部档位。
+401 是客户端 key 错；未登录/凭据或 project 不可用会返回 503；Google 的
+403/429 仍需按它给出的资格/额度响应处理。离线测试覆盖登录、刷新和竞态，
+真实新账号 consent、token 到期及实机模型调用须在用户完成登录后验收。

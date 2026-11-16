@@ -21,7 +21,9 @@ import (
 func run() error {
 	listen := flag.String("listen", "127.0.0.1:8319", "loopback listen address")
 	keyFile := flag.String("client-key-file", "", "private file containing the proxy client Bearer key")
-	credentialFile := flag.String("credential-file", "", "private OAuth JSON file (read-only; never in the Nix store)")
+	credentialFile := flag.String("credential-file", "", "private OAuth JSON file; never in the Nix store")
+	refreshFile := flag.Bool("refresh-credentials", false, "refresh and atomically persist this service's own OAuth credential file")
+	oauthFile := flag.String("oauth-client-file", "", "private runtime OAuth client configuration, required for independent refresh")
 	keychain := flag.Bool("keychain", false, "enable Gemini API using the native macOS gemini/antigravity keychain")
 	refreshAgy := flag.String("refresh-with-agy", "", "optional absolute agy path; refresh expired keychain credentials with agy models")
 	ua := flag.String("user-agent", defaultUserAgent, "Gemini upstream UA; default is the observed CLI 1.5.9 profile")
@@ -46,6 +48,9 @@ func run() error {
 	if *refreshAgy != "" && (!*keychain || !strings.HasPrefix(*refreshAgy, "/")) {
 		return errors.New("refresh-with-agy requires keychain and an absolute executable path")
 	}
+	if *refreshFile && *credentialFile == "" {
+		return errors.New("refresh-credentials requires this service's own credential-file")
+	}
 	var key string
 	if *keyFile != "" {
 		info, err := os.Stat(*keyFile)
@@ -61,12 +66,22 @@ func run() error {
 			return errors.New("client key must have at least 16 characters and contain no whitespace")
 		}
 	}
+	var oauth *oauthClient
+	if *refreshFile {
+		if *oauthFile == "" {
+			return errors.New("refresh-credentials requires oauth-client-file")
+		}
+		oauth, err = loadOAuthClient(*oauthFile)
+		if err != nil {
+			return err
+		}
+	}
 	var source credentialSource
 	if *keychain || *credentialFile != "" {
 		if key == "" {
 			return errors.New("Gemini API requires client-key-file; never expose a subscription through an anonymous local endpoint")
 		}
-		source = &localCredentials{file: *credentialFile, account: "antigravity", refreshAgy: *refreshAgy}
+		source = &localCredentials{file: *credentialFile, account: "antigravity", refreshAgy: *refreshAgy, refreshFile: *refreshFile, oauth: oauth}
 	}
 	origin, _ := url.Parse("https://daily-cloudcode-pa.googleapis.com")
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -101,7 +116,13 @@ func run() error {
 }
 
 func main() {
-	if err := run(); err != nil {
+	var err error
+	if len(os.Args) > 1 && os.Args[1] == "login" {
+		err = runLogin(os.Args[2:])
+	} else {
+		err = run()
+	}
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "agy-proxy:", err)
 		os.Exit(1)
 	}
