@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 修正：默认模型此前未真正切到 Gemini；主动插话也改用 Gemini
+
+- 发现问题：`863ae7e8` 只改了 `AI_MODEL_DEFAULT_PROFILE`，但 `lib/gaoji-model-profiles.nix` 生成的 `AI_MODEL_PROFILES_JSON` 自带 `"default": "gpt-6.1-sol"`，其优先级更高；部署后 13 轮正式回答实际仍为 `gpt-6.1-sol`，当时只核对了环境变量、未核对生效模型。`e2c43d4f` 把内嵌默认改为 `gemini-3.8-flash-high` 并注明优先级。
+- 主动插话分类器的模型在主机 `qq-official/host.json` 的 `native_background.proactive.profile`（不在仓库内）。owner 批准后由 root 备份为 `host.json.bak-20261117`，并把 `gpt-6-luna` 改为 `gemini-3.8-flash-high`，JSON 校验通过。
+- 切换：`dry-activate` 仅停止/启动 `gaoji.service`，切换前无运行中的任务或回合。原系统 `/nix/store/kxsgsqv642nr7r0ja411y7c7w2m6asw7-…`，现系统 `/nix/store/503rn7akr5fzm19k6jwc8s275k900ayb-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `3109153`、`NRestarts=0`，`/health/qq-official` 连续三次 ready。
+- 用运行包代码与进程实际环境/凭据核对：正式回答默认 `gemini-3.8-flash-high`（`reasoning_effort=high`、超时 180 秒），主动插话 `gemini-3.8-flash-high`。
+
 ## 2026-11-16 · Gemini 开启 high 思考；提示词分清闲聊与提问、提供情绪价值
 
 - owner 认为回答不如 Max 详细。Max 使用同一 `gemini-3.8-flash-high` 但 `effort = "high"`；gaoji 此前不发送思考强度。`lib/gaoji-model-profiles.nix` 为该档位设置 `reasoning_effort = "high"`、超时 90→180 秒（`9492f53f`；其格式问题由 `b92ad8de` 修正，推送时漏检 lint）。
