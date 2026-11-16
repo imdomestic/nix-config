@@ -32,6 +32,7 @@ nix eval --raw --impure --expr '
           rewind-balance = { tsName = "balance.invalid"; port = 8318; };
         };
         sops.secrets."cliproxy/api_key".path = "/nonexistent/pi-test-client-key";
+        my.pi.providers.agy.models = import ./home/hank/modules/pi/agy-models.nix { inherit (pkgs) lib; };
       };
       inherit pkgs;
       inherit (pkgs) lib;

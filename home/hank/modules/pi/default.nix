@@ -47,22 +47,11 @@
       then null
       else "max";
   };
-  geminiLevels = id: {
-    off = null;
-    minimal =
-      if lib.hasInfix "-pro" id
-      then null
-      else "minimal";
-    low = "low";
-    medium = "medium";
-    high = "high";
-    xhigh = null;
-    max = null;
-  };
 in {
   imports = [
     ../sops
     ./options.nix
+    ./agy.nix
   ];
 
   sops.secrets."cliproxy/api_key".sopsFile = ../../../../secrets/clients/cliproxy.yaml;
@@ -76,6 +65,13 @@ in {
       terminal.images = "kitty";
       compaction.enabled = true;
     })}
+    run ${pkgs.python3}/bin/python ${../../../../scripts/migrate-pi-agy.py} \
+      ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/settings.json"} \
+      ${lib.escapeShellArg (builtins.toJSON (map (model: {
+        inherit (model) id;
+        levels = lib.attrNames (lib.filterAttrs (_: value: value != null) model.thinkingLevelMap);
+      })
+      config.my.pi.providers.agy.models))}
     run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/mcp.json"} \
       ${lib.escapeShellArg (builtins.toJSON {
@@ -109,7 +105,7 @@ in {
     export default function (pi) {
       bootstrap(pi, { cc, better, subagents }, ${builtins.toJSON {
       showTokenRate = false;
-      antigravityModels = lib.attrNames cliproxy.gemini.models ++ cliproxy.antigravityHydrogen.ids;
+      antigravityModels = map (model: model.id) config.my.pi.providers.agy.models;
       balance = {
         url = "http://${balancePlacement.tsName}:${toString balancePlacement.port}/rewind/balance";
         apiKeyFile = config.sops.secrets."cliproxy/api_key".path;
@@ -208,36 +204,6 @@ in {
                 // lib.optionalAttrs (model ? name) {name = lib.replaceStrings ["Rewind "] ["Rewind${lib.removePrefix "rewind" prefix} "] model.name;})
               rewindModels)
             ["rewind2" "rewind3" "rewind4"]
-            ++ lib.mapAttrsToList (id: model: {
-              inherit id;
-              inherit (model) name;
-              reasoning = true;
-              thinkingLevelMap = geminiLevels id;
-              input = ["text" "image"];
-              contextWindow = cliproxy.gemini.context;
-              maxTokens = model.output;
-              cost = pricing.${id};
-            })
-            cliproxy.gemini.models
-            ++ map (model: {
-              inherit (model) id;
-              name = "${model.name} · Antigravity";
-              api = "openai-completions";
-              reasoning = true;
-              thinkingLevelMap = lib.genAttrs ["off" "minimal" "low" "medium" "high" "xhigh" "max"] (level:
-                if level == model.level
-                then level
-                else null);
-              input = ["text" "image"];
-              contextWindow = cliproxy.antigravityHydrogen.context;
-              maxTokens = 65536;
-              cost = pricing.${model.id};
-              compat = {
-                supportsReasoningEffort = true;
-                thinkingFormat = "openai";
-              };
-            })
-            cliproxy.antigravityHydrogen.models
             ++ lib.mapAttrsToList (id: model: {
               id = "opencode/${id}";
               inherit (model) name;

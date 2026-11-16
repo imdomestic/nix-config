@@ -189,13 +189,18 @@ export default function (pi: ExtensionAPI) {
         const modelPrompt = { systemPrompt: identity + promptSuffix };
         const promptHandlers = handlers.get("before_agent_start") ?? [];
         for (const id of ["gemini-3.8-flash-high", "gemini-4-hydrogen-high"]) {
-          const rewrites = await Promise.all(promptHandlers.map(handler => handler(modelPrompt, { ...ctx, model: { provider: "cliproxy", id }, mode: "print" })));
+          const rewrites = await Promise.all(promptHandlers.map(handler => handler(modelPrompt, { ...ctx, model: { provider: "agy", id }, mode: "print" })));
           const result = rewrites.find(result => result?.systemPrompt);
           assert(result?.systemPrompt.startsWith("You are Antigravity Agent"), "The Nix bootstrap must configure the Antigravity prompt scope");
           assert(result.systemPrompt.endsWith(promptSuffix), "The bootstrap must retain rules and project context");
         }
         const otherModelResults = await Promise.all(promptHandlers.map(handler => handler(modelPrompt, { ...ctx, model: { provider: "cliproxy", id: "gpt-6.1-sol" }, mode: "print" })));
         assert(!otherModelResults.some(result => result?.systemPrompt), "The bootstrap must not rewrite GPT prompts");
+        const retiredResults = await Promise.all(promptHandlers.map(handler => handler(modelPrompt, { ...ctx, model: { provider: "cliproxy", id: "gemini-4-hydrogen-high" }, mode: "print" })));
+        assert(!retiredResults.some(result => result?.systemPrompt), "Retired CLIProxy Gemini entries must no longer match");
+        const agyHeaders: Record<string, string> = {};
+        for (const handler of handlers.get("before_provider_headers") ?? []) await handler({ headers: agyHeaders }, { ...ctx, model: { provider: "agy", id: "gemini-4-hydrogen-high" } });
+        assert.equal(agyHeaders["X-Agy-Session-Id"], ctx.sessionManager.getSessionId(), "AGY must receive Pi's stable session ID");
         assert(commands.has("agents"));
         assert(tools.has("SubagentWorkflow"));
         const agentTool = tools.get("Agent");

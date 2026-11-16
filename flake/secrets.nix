@@ -51,6 +51,8 @@
       (rule "secrets/hosts/tank-max\\.yaml$" (readersOf "tank"))
       # 网关的 API key:用它的人,加上网关自己。
       (rule "secrets/clients/bonsai\\.yaml$" (readersOf config.placements.bonsai-ninfer.host))
+      # Hank's independent Gemini provider; never distribute Google OAuth state.
+      (rule "secrets/clients/agy-proxy\\.yaml$" (keysOf "hank" ++ [(host config.placements.agy-proxy.host)]))
       # 系统客户端还有 h610 的 gaoji 与 SillyTavern；浏览器拿不到原始 key。
       (rule "secrets/clients/cliproxy\\.yaml$" (everyone ++ map host (lib.unique ["h610" config.placements.cliproxy.host config.placements.sillytavern.host])))
       # tank 集群的 cluster-admin token,只给 hank 自己的机器(home/hank/modules/kube)。

@@ -4,6 +4,24 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-17 · 原生 Gemini 入口仍拒绝 Pi 默认提示词 {#pi-agy-native-prompt-429}
+
+Hank 的 Pi Gemini 从 CLIProxy 转到 agy-proxy 的 `google-generative-ai`
+入口时，短自定义提示词曾返回 200，但实际 Pi 默认系统提示词搭配 read
+工具仍返回 Google 429 / RESOURCE_EXHAUSTED。完整仓库上下文与隔离
+无 AGENTS.md 的会话都复现。
+
+容易误判的是「换成原生协议就消除了 CLIProxy 的问题」，或以为把扩展
+scope 改成 agy 时漏了此前身份段。离线捕获真实 HTTP body 已确认前两段
+是 Antigravity 身份，role 是原生 user，HIGH 和稳定 session header 也在。
+降输出预算、parametersJsonSchema 改 parameters、单独移除 tools 均无效；
+只作对照移除 systemInstruction 才 200，同一时段普通短请求也仍为 200。
+因此不能声称账号整体额度耗尽，也没有 Google 对具体拒绝原因的确认。
+
+本次只完成 Pi 的 8 型号声明迁移、SOPS 调用 key、提示词 scope 与默认
+选择迁移脚本。未在正式配置删系统提示、编造签名或重写项目规则来让测试
+变绿；未完整 home 激活。验收边界与命令见 `docs/agy-proxy.md`。
+
 ## 2026-11-16 · gizmo 的 agy 凭据 ACL 与 runtime unit 优先级 {#agy-gizmo-systemd-credentials}
 
 首次部署 agy-proxy 到 gizmo 时，程序拒绝 systemd LoadCredential 文件。

@@ -234,7 +234,7 @@ nix build .#agy-proxy
   private state directory，512 MiB memory ceiling。
 - HTTPS：`https://gizmo.inner.imdomestic.com/agy/v1beta`，仅已有 Tailscale
   TLS 443 listener；不开放额外 LAN/公网端口，不暴露 native/control/login。
-- 独立客户端 key：SOPS `secrets/hosts/gizmo.yaml` 的 `agy-proxy/api_key`，
+- 独立客户端 key：SOPS `secrets/clients/agy-proxy.yaml` 的 `agy-proxy/api_key`，
   runtime `/run/secrets/agy-proxy/api_key`；systemd LoadCredential 私有传入。
   不复用 CLIProxy key，旧账号凭据与客户端路由不变。
 - 新 OAuth：`/var/lib/agy-proxy/oauth.json`，登录和刷新只由该服务用户写。
@@ -324,16 +324,19 @@ Gemini 是 Google 原生的 REST/JSON + SSE API：请求用 `contents`、`parts`
 
 Pi 1.5.2 已有 `google-generative-ai` provider。Hank 的声明入口是
 `home/hank/modules/pi/default.nix`，也可在自己的 host home module 通过
-`my.pi.providers.agy` 增补，不要覆盖整份 `models.json`。例如只加 High：
+`my.pi.providers.agy` 增补，不要覆盖整份 `models.json`。Hank 现在通过
+`home/hank/modules/pi/agy.nix` 声明该 provider，型号表在 `agy-models.nix`。
+下面是只加 High 的简化示例：
 
 ```nix
 my.pi.providers.agy = {
-  name = "AGY · gizmo";
+  name = "agy";
   baseUrl = "https://gizmo.inner.imdomestic.com/agy/v1beta";
   api = "google-generative-ai";
-  apiKey = "!cat ${config.home.homeDirectory}/.local/state/agy-proxy/client-key";
+  apiKey = "!cat ${config.sops.secrets."agy-proxy/api_key".path}";
   models = [{
     id = "gemini-4-hydrogen-high";
+    name = "agy/gemini-4-hydrogen-high";
     reasoning = true;
     input = ["text" "image"];
     contextWindow = 1048576;
@@ -349,8 +352,9 @@ my.pi.providers.agy = {
 
 上例成本是公开 API 的估算，不是订阅账单；输出预算是保守选择，目录上限
 仍是 262144。其余真实预设分别增补模型 ID，不靠 changing effort 假装
-切换预设。home 修改须单独激活，系统 switch 不生效。该声明尚未自动加入
-用户 home；已有 CLIProxy 路由不变。
+切换预设。home 修改须单独激活，系统 switch 不生效。声明中已移除 Hank
+Pi 的全部 8 个 CLIProxy Gemini 条目，GPT、Rewind、OpenCode 与 NInfer
+不变；Max、其他账户和 OpenCode 自己的 Gemini 配置没有在此次迁移中改动。
 
 新账号在 gizmo 的实测：Hydrogen High JSON 200（约 5.34 秒）、Flash High
 SSE 200（约 6.22 秒）、两轮工具调用 200（约 7.12/4.16 秒，原始签名保留）。
@@ -367,6 +371,50 @@ model content/signature 原样持久化及图片/视频/工具回放测试，再
 `agy` provider。VM 内 Pi 的链路还要更新 `crates/max/src/service/forward.rs`
 的 `/llm` 模型描述及 Gemini 路径转发，不是只改主聊天 client。
 不要为图省事在本反代里再做默认 OpenAI 转译，重复 CLIProxy 的保真问题。
+
+## 2026-11-17 · Hank Pi 的 provider 迁移
+
+`my.pi.providers.agy` 经 `agy.nix` 加入，模型名与 provider/id 都是
+`agy/gemini-…`；保留原先 4 条 Flash/Lite 和 Hydrogen 的真实四档，不添加
+目录中标记 disabled 或未经选定的别名。Pi 上下文仍是 1M，输出预算
+65535/65536，价格沿用公开 API 估算。
+
+- 调用 key **未轮换**：从 gizmo host secret 移到独立 client SOPS 文件，
+  `.sops.yaml` 只允许 Hank 的 keys 和 gizmo 解密。Hank home 使用原生
+  sops option 注入 secret 路径，不依赖每台手工下载；Google OAuth 不分发。
+  gizmo 的 runtime key 路径保持不变，本次未重启或激活 gizmo。
+- 既有 Antigravity 身份两段保留，扩展 scope 改为 agy；只改精确的 Pi 默认
+  开头，AGENTS.md / 工具规则 / 自定义身份不覆盖。增加稳定的
+  `X-Agy-Session-Id`，跨两轮请求使用 Pi 的 session UUID。
+- `migrate-pi-agy.py` 仅在 home 激活时把已移除的 CLIProxy Gemini 默认选择
+  和显式 Gemini scoped patterns 转到 agy；固定预设的旧 effort 校正到该档。
+  自定义默认、其他 provider、历史会话不改，第二次执行不会覆盖新选择。
+- 静态比较确认：新 agy 恰好覆盖删除的 8 个 ID；剩余 CLIProxy 和 NInfer
+  配置语义与迁移前完全相同。`check-pi-agy.sh`、提示词、组合扩展两代离线
+  测试及迁移脚本 5 项单测通过；praxic/tank/taipan/wsl home 求值通过。
+- Home dry-build 仍需要构建 Node 等依赖，**未做完整 home 激活**，也没有
+  手工替换当前运行的 `models.json` / extension。当前会话和默认选择要等
+  home 激活与 Pi reload/重开后才跟随新声明。
+
+### 实际请求的边界
+
+新的 XHigh 模型 ID + native `thinkingLevel: "XHIGH"` 短请求返回 200；
+这证明字段被接受，不是计算档位的独立测量。迁移前的短 Pi smoke test
+以及直接 Gemini 的签名工具回放均已通过（上文）。
+
+但本次实际 Pi 的默认提示词 + `read` 工具请求，无论完整仓库上下文还是
+隔离的无 AGENTS.md 会话，都返回 Google 429 / RESOURCE_EXHAUSTED。
+离线捕获实际 HTTP body 确认 Antigravity 身份前缀、HIGH、Gemini 原生
+字段和 session header 都已发送；不能把这个 429 解释成漏装身份扩展。
+同一时段同模型短请求仍返回 200。仅降输出上限至 8192，或将工具 schema
+字段从 parametersJsonSchema 改为 parameters 的对照也仍为 429，不能
+当作已修复或据此断言账号额度/风控的具体原因。原生 user role 已由 Pi
+发送；移除工具但保留 systemInstruction 仍是 429，只作为对照移除
+systemInstruction 则 200。没有据此在正式配置里删除系统提示词。
+
+**本次是声明迁移与回归验证，不声称完整 Pi 工具工作负载已排除 429。**
+未为通过测试更换账号、抹掉项目规则、伪造 thoughtSignature 或自动重放
+代理请求；后续定位应保留这一边界。
 
 ## 2026-11-16 · gizmo 部署验收
 

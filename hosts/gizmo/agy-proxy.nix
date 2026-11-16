@@ -6,7 +6,10 @@ in {
     clientKeyFile = config.sops.secrets."agy-proxy/api_key".path;
     oauthClientFile = config.sops.secrets."agy-proxy/oauth_client".path;
   };
-  sops.secrets."agy-proxy/api_key".restartUnits = ["agy-proxy.service"];
+  sops.secrets."agy-proxy/api_key" = {
+    sopsFile = ../../secrets/clients/agy-proxy.yaml;
+    restartUnits = ["agy-proxy.service"];
+  };
   sops.secrets."agy-proxy/oauth_client".restartUnits = ["agy-proxy.service"];
 
   # Native OAuth/control endpoints stay private; see docs/agy-proxy.md.

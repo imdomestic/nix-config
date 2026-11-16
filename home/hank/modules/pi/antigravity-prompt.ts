@@ -10,9 +10,13 @@ const antigravityIdentity = [
 export default function installAntigravityPrompt(pi: ExtensionAPI, modelIds: readonly string[] = []): void {
   const models = new Set(modelIds);
   pi.on("before_agent_start", (event, ctx) => {
-    if (ctx.model?.provider !== "cliproxy" || !models.has(ctx.model.id)) return;
+    if (ctx.model?.provider !== "agy" || !models.has(ctx.model.id)) return;
     // Only replace Pi's exact default opening, never a custom prompt or project text.
     if (event.systemPrompt !== piIdentity && !event.systemPrompt.startsWith(`${piIdentity}\n\n`)) return;
     return { systemPrompt: antigravityIdentity + event.systemPrompt.slice(piIdentity.length) };
+  });
+  pi.on("before_provider_headers", (event, ctx) => {
+    if (ctx.model?.provider !== "agy" || !models.has(ctx.model.id)) return;
+    event.headers["X-Agy-Session-Id"] = ctx.sessionManager.getSessionId();
   });
 }
