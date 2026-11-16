@@ -11,6 +11,45 @@
 
 ---
 
+## 2026-11-17 · darwin 用 nixpkgs-26.05-darwin,Linux 留在 nixos-26.05 {#nixpkgs-darwin}
+
+darwin 的系统(nix-darwin 的 `inputs.nixpkgs.follows`)、darwin 上的 home 和
+registry 钉的 nixpkgs(`lib/nixpkgs-for.nix`)都来自 `nixpkgs-darwin` 这个 input,
+跟 `nixpkgs-26.05-darwin`;Linux 不变。两个都在 flake-updater 的 release lane 里,
+每晚各自前进。
+
+**为什么分开。** `nixos-26.05` 只等 Hydra 的 `nixos:release-26.05`:只构建 Linux、
+跑 NixOS 测试。darwin 的包由另一个 jobset `nixpkgs:nixpkgs-26.05-darwin` 按自己
+的节奏求值,一次完整构建要好几天。nixos-26.05 停在一个 darwin jobset 没求值过的
+提交上时,这中间改过的 darwin 包在 cache.nixos.org 里都没有。11-17 的实例:lock
+在 `f1e5c356`(11-13),darwin jobset 的相邻两次求值是 `f4244ef`(11-09)和
+`c7b1abae`(11-15,两天后还有 19156 个排队);praxic 上 hank 的 home 要本地编
+nodejs-slim 22.23.5 和 psycopg(postgresql 17.11 → 17.12),连带 pnpm、vtsls、
+pgspecial、pgcli。
+
+**为什么不让全车队都跟 darwin channel。** 那个 jobset 一个 Linux job 都不构建,
+channel 也不跑 NixOS 测试;而且常常落后:11-17 时它还停在 11-09,比 nixos-26.05
+晚四天,换过去等于把内核从 6.18.63 退回 6.18.62、h610 的 PostgreSQL 退回 17.11。
+当天把 nixpkgs 指到 `f4244ef` 试过,h610、r6s、taipan 恰好都有缓存,那是运气,
+不是保证。
+
+**为什么不让 updater 只锁两边都构建过的提交。** 这是第一个想法,数据否定了它。
+26.05 的半年里(05-24 到 11-15),既是 nixos-26.05 发布过、又被 darwin jobset
+求值过的提交只有 8 个,间隔 2 到 7 周,最后一个是 09-24;两个 channel 都发布过的
+只有 5 个。「没有就放弃」等于整个车队的 nixpkgs 一冻就是几周。
+
+**踩坑时误导人的地方。** `hydra-check nodejs-slim_22` 在 darwin jobset 上全是 ✔,
+看起来 Hydra 构建过;但那是另一次求值的另一个 drv(`lzbaqx1d…` 对我们的
+`mv66l3jm…`)。判断有没有缓存要看自己那个输出路径的 narinfo,不是看 job 绿不绿。
+
+**代价。** flake.lock 里两份 nixpkgs;Mac 比 Linux 晚几天拿到同一个修复。跟
+`nixpkgs` 走的其他 input(home-manager、nixvim、sops-nix……)在 darwin 上带进来的
+lib 仍是 nixos-26.05 的,包都来自传进去的 pkgs。`formatter` 留在 `nixpkgs`,
+`just fmt` 和 CI 用同一个 alejandra。`pkgs-unstable` 没动,各平台都是
+nixos-unstable。tank 上的 updater 只求值 darwin,不构建,推送后由 CI dry-build。
+
+---
+
 ## 2026-11-12 · 国内的 exit node 直连出网,不分流 {#china-exit-direct}
 
 gizmo、r5s、r6s 都是 exit node(`my.tailscale.exitNode`)。r5s 和 r6s 的 exit

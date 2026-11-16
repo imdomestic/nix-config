@@ -6,7 +6,10 @@
   inputs,
   ...
 }: let
-  registryPins = import ../../lib/nixpkgs-registry.nix {inherit inputs;};
+  registryPins = import ../../lib/nixpkgs-registry.nix {
+    inherit inputs;
+    inherit (config.my.host) system;
+  };
 in {
   options.my.home.tier = lib.mkOption {
     type = (import ./tiers.nix {inherit lib;}).type;

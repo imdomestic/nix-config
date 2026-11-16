@@ -9,8 +9,15 @@
 # whose input reads `nixpkgs.url = "nixpkgs"`, which no other machine can fetch.
 # A github ref carrying rev + narHash pins exactly as hard, still resolves
 # offline out of the fetcher cache, and stays portable.
-{inputs}: let
+#
+# `nixpkgs` is the one this platform builds from (./nixpkgs-for.nix), so on a
+# Mac `nix run nixpkgs#x` hits the same cache as its home.
+{
+  inputs,
+  system,
+}: let
   lib = inputs.nixpkgs.lib;
+  nixpkgs = import ./nixpkgs-for.nix inputs system;
 
   githubRef = flake: {
     type = "github";
@@ -20,8 +27,8 @@
   };
 
   entries = {
-    nixpkgs = githubRef inputs.nixpkgs;
-    nixpkgs-local = githubRef inputs.nixpkgs;
+    nixpkgs = githubRef nixpkgs;
+    nixpkgs-local = githubRef nixpkgs;
     nixpkgs-unstable = githubRef inputs.nixpkgs-unstable;
   };
 in {

@@ -17,7 +17,10 @@
   lib,
   ...
 }: let
-  pins = import ../../lib/nixpkgs-registry.nix {inherit inputs;};
+  pins = import ../../lib/nixpkgs-registry.nix {
+    inherit inputs;
+    inherit (config.my.host) system;
+  };
 
   viaDeterminate = options ? determinateNix && config.determinateNix.enable;
 in {

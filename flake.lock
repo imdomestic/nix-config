@@ -1039,7 +1039,7 @@
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
-          "nixpkgs"
+          "nixpkgs-darwin"
         ]
       },
       "locked": {
@@ -1318,6 +1318,22 @@
         "owner": "NixOS",
         "repo": "nixpkgs",
         "rev": "a62e6edd6d5e1fa0329b8653c801147986f8d446",
+        "type": "github"
+      }
+    },
+    "nixpkgs-darwin": {
+      "locked": {
+        "lastModified": 1794217284,
+        "narHash": "sha256-Ya0ojDh1BF5zgyZRlehygC0ZvvEg2WaGZWn1xiNozmM=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "f4244ef33645badc8157562b5e80748929b396c2",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-26.05-darwin",
+        "repo": "nixpkgs",
         "type": "github"
       }
     },
@@ -1712,6 +1728,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixos-wsl": "nixos-wsl",
         "nixpkgs": "nixpkgs_6",
+        "nixpkgs-darwin": "nixpkgs-darwin",
         "nixpkgs-unstable": "nixpkgs-unstable",
         "nixvim": "nixvim",
         "nur": "nur",

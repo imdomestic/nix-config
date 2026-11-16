@@ -19,6 +19,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    # Darwin systems and homes build from this one: nixos-26.05 only waits for
+    # Linux, so its commits are often not built for darwin (lib/nixpkgs-for.nix).
+    nixpkgs-darwin.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     flake-parts = {
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
@@ -36,7 +39,9 @@
     # macos
     nix-darwin = {
       url = "github:lnl7/nix-darwin/nix-darwin-26.05";
-      inputs.nixpkgs.follows = "nixpkgs";
+      # darwinSystem takes lib and pkgs from here, so this is what moves every
+      # darwin system onto nixpkgs-darwin.
+      inputs.nixpkgs.follows = "nixpkgs-darwin";
     };
 
     determinate.url = "https://flakehub.com/f/DeterminateSystems/determinate/*";

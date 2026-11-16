@@ -6,6 +6,7 @@
   # Release branches: their maintainers promise no breaking changes.
   release = [
     "nixpkgs"
+    "nixpkgs-darwin"
     "home-manager"
     "nix-darwin"
     "nixvim"

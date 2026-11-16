@@ -20,6 +20,7 @@
   tiers = import ../_lib/tiers.nix {inherit lib;};
   hostModules = import ../_lib/host-modules.nix {inherit config lib;};
   nixpkgsConfig = import ../_lib/nixpkgs-config.nix;
+  nixpkgsFor = import ../../lib/nixpkgs-for.nix inputs;
 
   # One nixpkgs / nixpkgs-unstable eval shared by every account on a host.
   mkPkgs = host: let
@@ -29,7 +30,7 @@
       config = nixpkgsConfig;
     };
   in {
-    pkgs = import inputs.nixpkgs args;
+    pkgs = import (nixpkgsFor host.system) args;
     pkgsUnstable = import inputs.nixpkgs-unstable args;
   };
 

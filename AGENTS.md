@@ -45,7 +45,7 @@ system/modules/         # NixOS and nix-darwin modules side by side
 system/installers/      # the x86_64-rescue image
 home/<account>/         # user.nix (table entry), default.nix, <host>.nix; profiles/ (shell,
                         # interactive, dev, gui-<platform>); modules/ for what they import
-lib/                    # data and helpers modules import: nixpkgs-registry pins, wg*, model tables
+lib/                    # data and helpers modules import: nixpkgs-registry pins, nixpkgs-for, wg*, model tables
 pkgs/                   # local packages
 secrets/                # sops files: secrets.yaml, hosts/<host>.yaml, clients/, gaoji/
 scripts/                # check-* scripts behind the just recipes, plus model/bench tooling
@@ -608,6 +608,11 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   refs on purpose. The `flake = inputs.nixpkgs` shorthand resolves to
   `type = "path"`, which leaks a machine-local `path:/nix/store/...` entry into
   the flake.lock of any project whose input reads `nixpkgs.url = "nixpkgs"`.
+- **Darwin builds from a different nixpkgs.** `nixpkgs` is `nixos-26.05` (Linux),
+  `nixpkgs-darwin` is `nixpkgs-26.05-darwin`. nix-darwin follows `nixpkgs-darwin`,
+  and `lib/nixpkgs-for.nix` chooses by platform for homes and registry pins. So
+  `inputs.nixpkgs` inside a module is the Linux one; use the `pkgs` you are
+  given. Why: `docs/decisions.md#nixpkgs-darwin`.
 - **A system switch does not activate any home.** Adding a package to `home/`
   and running `just switch` changes nothing. Run `just home` (or
   `just hm <host> <user>`).
