@@ -25,6 +25,7 @@ in {
       sops
       nil
       alejandra
+      hydra-check
 
       # Network diagnostics and operations
       wireguard-tools
