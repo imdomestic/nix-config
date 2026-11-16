@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-16 · 表情入库规则改为"只排除截图和照片"；人设去掉"捏"
+
+- owner 决定除截图和照片外都留在表情库：先手工恢复 Gemini 重打后停用的 13 张（`media_analysis` 置 `is_sticker=1 / safety=safe`、启用并重建向量；原值在 `20261116-retag` 备份内），库内 357 张启用，3 张（2 截图、1 照片）停用。
+- Bot PR #129（打标签增加 `kind`，只有 `screenshot` / `photo` 不入库；表情检索与发送不再要求 `safety=safe`，以库内启用且未封禁为准）按 owner 要求未等 CI 即合并，`main` 为 `a143be2d5de464b4767ce86f96b5332b7bc08c2b`；合并后该 PR 的 CI 5 项均已通过。配置 `5a4907a7` 固定 `qq-bot`。
+- owner 要求去掉句尾"捏"：备份后修改主机 `persona.md`（语气词示例去掉"捏"并写明不在句尾加"捏"）与 `style-examples.md`（"抱歉捏"→"抱歉"），备份在 `/data/services/gaoji/media-repair-backups/20261116-persona/`；两文件不在仓库内。
+- tank 隔离构建，内核不变，`dry-activate` 仅停止/启动 `gaoji.service`，切换前无运行中的任务或回合。原系统 `/nix/store/81gkplbmxlk8mrvkiry8zahr90pf83a6-…`，现系统 `/nix/store/25lbqkgwyl23zja97z34afg7yfdkdacf-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `966475`、`NRestarts=0`；`/health/qq-official` 连续三次 ready，启动后无新错误。
+
 ## 2026-11-16 · 表情收录、近期去重、少引用发布到 tank；识图改用 Gemini
 
 - Bot PR #126（同一会话 6 小时内发过的表情排后、语境合适时主动带表情）、#127（群聊/私聊收到的 QQ 收藏表情自动打标签入库，不受图片识别开关限制，全站每日上限 200；打标签提示词改为适中偏详细并包含口语情绪词）、#128（一轮回复只有第一条、且之后有人插话时才引用原消息）各自 CI 5 项通过后合并，`main` 为 `99674144e4acd51afefc5cab556bf4946485eb53`。无数据库迁移。三者合并后本机全量 2,361 项中仅 2 项因本机缺 `TEST_OPS_POSTGRES_DSN` / `AI_POSTGRES_DSN` 报错。
