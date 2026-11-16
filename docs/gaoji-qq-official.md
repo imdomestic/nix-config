@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-16 · 全局统一模型（Gemini 3.8 flash），只有 owner 能改
+
+- 目的：成员各自 `/model` 让同一会话分散在多个模型上，三天内 luna / Gemini 输入缓存命中仅 54% / 51%。Bot PR #130：`/model` 设置全局模型且仅当前 owner 可改，其他人只读；`/model 群默认` 仍可单独设群；选择顺序为群默认 → 全局 → 配置默认；个人模型条目不再读取（未删除），推理强度仍按个人。按 owner 要求未等 CI 合并，`main` 为 `05d5ffcf1c1b167c4ed69ad0538e4d70cdb2640a`；本机相关 85 项测试通过。生产库中仅有 OneBot 时期的旧键，官方会话无群默认。
+- 配置 `863ae7e8`：`AI_MODEL_DEFAULT_PROFILE` 由 `gpt-6.1-sol` 改为 `gemini-3.8-flash-high`，`AI_SIMPLE_CHAT_PROFILE` 置空（不再把闲聊分给 `gpt-6-luna`）。
+- 闭包差异除 gaojibot 外含共享 main 上未部署的 `ollama 0.40.15 → 0.40.16`；`dry-activate` 另需重启 `ollama`、`accounts-daemon`，重启 `polkit`、重载 `dbus-broker`。owner 确认后一并切换；切换前发现运行系统已是他人部署的 `/nix/store/8qj7wmp37x3n1bcx6xqsmv5hnifvl8q7-…`，本次基于最新 main 构建，未回退其改动。
+- 现系统 `/nix/store/08hzf2r063qkria2m4fydjxb8a7jaadg-nixos-system-tank-26.05.20261113.f1e5c35`，内核不变；`gaoji` PID `2980169`、`ollama` PID `2979647` 均 `NRestarts=0`，`maxx` 未重启；`/health/qq-official` 连续三次 ready，运行环境默认模型为 Gemini，启动后无新错误。
+
 ## 2026-11-16 · 表情入库规则改为"只排除截图和照片"；人设去掉"捏"
 
 - owner 决定除截图和照片外都留在表情库：先手工恢复 Gemini 重打后停用的 13 张（`media_analysis` 置 `is_sticker=1 / safety=safe`、启用并重建向量；原值在 `20261116-retag` 备份内），库内 357 张启用，3 张（2 截图、1 照片）停用。
