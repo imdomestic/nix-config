@@ -45,8 +45,15 @@ channel 也不跑 NixOS 测试;而且常常落后:11-17 时它还停在 11-09,�
 **代价。** flake.lock 里两份 nixpkgs;Mac 比 Linux 晚几天拿到同一个修复。跟
 `nixpkgs` 走的其他 input(home-manager、nixvim、sops-nix……)在 darwin 上带进来的
 lib 仍是 nixos-26.05 的,包都来自传进去的 pkgs。`formatter` 留在 `nixpkgs`,
-`just fmt` 和 CI 用同一个 alejandra。`pkgs-unstable` 没动,各平台都是
-nixos-unstable。tank 上的 updater 只求值 darwin,不构建,推送后由 CI dry-build。
+`just fmt` 和 CI 用同一个 alejandra。tank 上的 updater 只求值 darwin,不构建,
+推送后由 CI dry-build。
+
+**unstable 是同一个问题,但一份就够。** `nixpkgs-unstable` 这个 input 跟
+nixpkgs-unstable 分支,不跟 nixos-unstable:前者等 Hydra 的 `nixpkgs:trunk`,
+Linux、darwin 四个平台都构建;后者等 `nixos:trunk-combined`,只有 Linux 的构建
+和 NixOS 测试。pkgs-unstable 在这里只当包集用,丢掉 NixOS 测试代价很小。唯一的
+例外是 praxic 的 Linux builder VM(`pkgs-unstable.darwin.linux-builder-vz`),
+它的 NixOS 现在不经 VM 测试把关。
 
 ---
 

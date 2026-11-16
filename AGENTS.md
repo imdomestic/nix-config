@@ -612,7 +612,9 @@ Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
   `nixpkgs-darwin` is `nixpkgs-26.05-darwin`. nix-darwin follows `nixpkgs-darwin`,
   and `lib/nixpkgs-for.nix` chooses by platform for homes and registry pins. So
   `inputs.nixpkgs` inside a module is the Linux one; use the `pkgs` you are
-  given. Why: `docs/decisions.md#nixpkgs-darwin`.
+  given. `nixpkgs-unstable` tracks the nixpkgs-unstable branch, not
+  nixos-unstable, because that branch waits for both platforms. Why:
+  `docs/decisions.md#nixpkgs-darwin`.
 - **A system switch does not activate any home.** Adding a package to `home/`
   and running `just switch` changes nothing. Run `just home` (or
   `just hm <host> <user>`).
