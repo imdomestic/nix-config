@@ -2259,11 +2259,11 @@
     "zsh-linwhite": {
       "flake": false,
       "locked": {
-        "lastModified": 1792658531,
-        "narHash": "sha256-FcaCTJV7tZShEF//kMkYNs0rp4RBi68pQRQx/7PNc6c=",
+        "lastModified": 1794803743,
+        "narHash": "sha256-DrpF73FWLzDgtmeXu/v8g8uS8S2/rGtjVHH/KgZmHpk=",
         "owner": "linwh1te",
         "repo": "zsh",
-        "rev": "b193dc03d3e83646300da948b5d0370c48c7ee36",
+        "rev": "349160294d6ebdc0f23df0ec13936459fd1d1313",
         "type": "github"
       },
       "original": {
