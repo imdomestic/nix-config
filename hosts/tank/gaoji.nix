@@ -12,6 +12,9 @@
   modelEnvironment = pkgs.writeText "gaoji-models.env" ''
     AI_MODEL_DEFAULT_PROFILE=gpt-6.1-sol
     AI_SIMPLE_CHAT_PROFILE=gpt-6-luna
+    # Sticker tagging and image descriptions; this file loads last, so it
+    # overrides the older value in runtime.env.
+    AI_VISION_PROFILE=gemini-3.8-flash-high
     AI_MODEL_PROFILES_JSON='${builtins.toJSON modelProfiles}'
   '';
 in {
