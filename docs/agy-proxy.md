@@ -288,10 +288,11 @@ ssh hank@gizmo.inner.imdomestic.com \
 chmod 600 ~/.local/state/agy-proxy/client-key
 ```
 
-该 key 与旧 CLIProxy key 不同。应用选 Gemini 协议，HTTP base URL 通常设
-`https://gizmo.inner.imdomestic.com/agy`（SDK 再追加 `v1beta`）；直接 REST
-请求则完整使用 `/agy/v1beta/models/...`。认证用 `X-Goog-Api-Key` 或 Bearer，
-不要放到 URL query。
+该 key 与旧 CLIProxy key 不同。应用选 Gemini 协议；base URL 是否要带
+版本前缀取决于客户端，不能假设 SDK 自动补版本。**Pi 1.5.2 实测必须设
+`https://gizmo.inner.imdomestic.com/agy/v1beta`**；设到 `/agy` 会直接请求
+`/agy/models/...` 并得到 404。直接 REST 使用 `/agy/v1beta/models/...`。
+认证用 `X-Goog-Api-Key` 或 Bearer，不要放到 URL query。
 
 ### 3. 验证账号模型目录
 
@@ -313,6 +314,59 @@ PY
 401 是客户端 key 错；未登录/凭据或 project 不可用会返回 503；Google 的
 403/429 仍需按它给出的资格/额度响应处理。离线测试覆盖登录、刷新和竞态，
 真实新账号 consent、token 到期及实机模型调用须在用户完成登录后验收。
+
+## Pi 与 Max 接入
+
+Gemini 是 Google 原生的 REST/JSON + SSE API：请求用 `contents`、`parts`、
+`systemInstruction`、`functionDeclarations`，响应用 `candidates`，工具
+历史携带 `functionCall`、`functionResponse` 与 opaque `thoughtSignature`。
+它不是 OpenAI `/v1/chat/completions` 或 `/v1/responses` 的另一个 URL。
+
+Pi 1.5.2 已有 `google-generative-ai` provider。Hank 的声明入口是
+`home/hank/modules/pi/default.nix`，也可在自己的 host home module 通过
+`my.pi.providers.agy` 增补，不要覆盖整份 `models.json`。例如只加 High：
+
+```nix
+my.pi.providers.agy = {
+  name = "AGY · gizmo";
+  baseUrl = "https://gizmo.inner.imdomestic.com/agy/v1beta";
+  api = "google-generative-ai";
+  apiKey = "!cat ${config.home.homeDirectory}/.local/state/agy-proxy/client-key";
+  models = [{
+    id = "gemini-4-hydrogen-high";
+    reasoning = true;
+    input = ["text" "image"];
+    contextWindow = 1048576;
+    maxTokens = 65536;
+    thinkingLevelMap = {
+      off = null; minimal = null; low = null; medium = null;
+      high = "high"; xhigh = null; max = null;
+    };
+    cost = { input = 1.5; output = 7.5; cacheRead = 0.075; cacheWrite = 0; };
+  }];
+};
+```
+
+上例成本是公开 API 的估算，不是订阅账单；输出预算是保守选择，目录上限
+仍是 262144。其余真实预设分别增补模型 ID，不靠 changing effort 假装
+切换预设。home 修改须单独激活，系统 switch 不生效。该声明尚未自动加入
+用户 home；已有 CLIProxy 路由不变。
+
+新账号在 gizmo 的实测：Hydrogen High JSON 200（约 5.34 秒）、Flash High
+SSE 200（约 6.22 秒）、两轮工具调用 200（约 7.12/4.16 秒，原始签名保留）。
+Pi 用隔离临时配置、`google-generative-ai`、上述完整 base URL 的单轮
+streaming 请求也成功（约 4.63 秒），未改用户配置或运行完整项目上下文。
+没有以修改 expiry 等方式强制刷新，真实 token 到期刷新仍待自然发生后验收。
+
+当前 pin 的 Rust Max **没有 Gemini-native protocol**：
+`crates/max/src/config.rs` 的 `ProtocolName`、`max-core/src/item.rs` 的
+`Protocol` 只有 Chat / Responses；`max-llm/src/client.rs` 也只发这两种
+请求。不能在 `hosts/tank/maxx.nix` 单加 `protocol = "gemini"` 就连接。
+推荐在 Max 上游增加第三种协议，完成请求编码、SSE/usage/错误解析、
+model content/signature 原样持久化及图片/视频/工具回放测试，再加独立
+`agy` provider。VM 内 Pi 的链路还要更新 `crates/max/src/service/forward.rs`
+的 `/llm` 模型描述及 Gemini 路径转发，不是只改主聊天 client。
+不要为图省事在本反代里再做默认 OpenAI 转译，重复 CLIProxy 的保真问题。
 
 ## 2026-11-16 · gizmo 部署验收
 
