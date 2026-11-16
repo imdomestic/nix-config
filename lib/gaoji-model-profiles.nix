@@ -65,7 +65,11 @@ in {
     "gpt-5.6-terra" = gpt "gpt-5.6-terra" ["terra56"];
     "gpt-5.6-luna" = gpt "gpt-5.6-luna" ["luna56"];
     "codex-auto-review" = proxy "codex-auto-review" ["review"];
-    "gemini-3.8-flash-high" = proxy "gemini-3.8-flash-high" ["gemini"];
+    # Think before answering, as Max's default does; deeper thinking needs a longer timeout.
+    "gemini-3.8-flash-high" = (proxy "gemini-3.8-flash-high" ["gemini"]) // {
+      reasoning_effort = "high";
+      timeout_seconds = 180;
+    };
     "gemini-3.5-flash-lite" = proxy "gemini-3.5-flash-lite" ["gemini-lite"];
     "gemini-3.1-flash-lite" = proxy "gemini-3.1-flash-lite" [];
     "gemini-3-flash" = proxy "gemini-3-flash" [];
