@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · h610 升级（`boot` + 重启）、`gaojiops` 移交 `gaoji@` 及容器/模型降级修复发布到 tank
+
+- **h610 升级与运维身份（A3）**：在 h610 以 `kenneth` 低负载预构建 `f060d02c`（Generation 604 `/nix/store/g7kk7l0l1ikinfr3lx6655hmb4530kkk-nixos-system-h610-26.05.20261113.f1e5c35`，内核 `6.18.57 → 6.18.63`）。挂载重启前后 15 分钟自动回滚保护与 `systemd-boot` oneshot 引导后执行 `switch-to-configuration boot` + `reboot`；约 5 分钟完成拨号与 DDNS 恢复，`pppd-telecom`、`headscale`、`tailscaled`、`dae`、`nginx`、`qq-bot-postgres-node`（`lag=0`）全部 `active`，创建 `gaoji` 账户（uid 1006），随即解除回滚定时器并将 Generation 604 设为默认启动项。清理 `headscale.service` 上残留的 `50-tokyo-cutover.conf` 临时覆盖以使声明式 `gaoji@imdomestic.com` 组策略生效；因 Headscale 0.29.4 无 `nodes move` 子命令，删除旧节点 53 并用 `gaoji@imdomestic.com` 一次性短效 preauthkey 将 `gaojiops` 重新登记到 `gaoji@imdomestic.com`（节点 55，仍为 `100.64.0.10`，`online`）。
+- **tank 修复发布（#155、#156）**：Bot PR #155（补充识别真实 `cliproxy` 对不存在模型返回的 `400 model_not_found / unknown provider` 以触发模型链降级）与 PR #156（`gaoji-ct-ops@` 改为由 systemd 服务单元先进入 `/run/netns/gaoji-ops` 再运行 `--private-users=pick` 容器）合并至 `main`（`c3b3d12`），配置 `f4c23135` 固定并切换 tank 至 `/nix/store/pk9l5cy26g81j63cc97b3dzhw81q98kk-nixos-system-tank-26.05.20261113.f1e5c35`（`gaoji` PID `2817362`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready`）。
+- **真机复测**：真实 `cliproxy` 模型降级（`nonexistent-test-model-000 → gpt-6.1-sol`）与运行中任务 `cancel` 中止及吊销 token 均实测通过；`gaoji-ct-ops@` 容器启动成功，实测 `ssh` 时发现容器用户命名空间下 NixOS 26.05 默认 `ssh_config` 引用的 `/nix/store/.../20-systemd-ssh-proxy.conf` 属主映射为 `nobody` 被 OpenSSH 拒绝（已另开修复关闭容器内 `systemd-ssh-proxy`）。
+
 ## 2026-11-17 · 启用 `pi` 后台引擎与模型链降级（`AI_BACKGROUND_ENGINE=pi`）
 
 - 配置 `d0f910c0` 在 `hosts/tank/gaoji.nix` 最后加载的 `gaoji-models.env` 中设置 `AI_BACKGROUND_ENGINE=pi`、`AI_BACKGROUND_MODELS=gpt-6.1-sol,gpt-6-astra,gpt-6-luna`、`AI_BACKGROUND_CONTEXT_WINDOW=200000`（D2、D3 由 owner 指定）。
