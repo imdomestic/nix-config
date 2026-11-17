@@ -1,5 +1,18 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 删除 Debian KVM 后端与 Codex 引擎（A4）发布到 tank 并完成真机复验
+
+- **Bot 合并（`ed216a7`）**：
+  - A4-1：PR #163（`+830 / -2,188`，将上层会话工作区生命周期抽为 `container_sandbox.py` 中的 `WorkspaceSandboxManager`，删除 `vm_sandbox.py`、`sandbox_tools_setup.py`、`src/sandbox_runtime/vm_network.py`、`tools/migrate_vm_workspaces.sh`、`tools/vm_smoke.py`、`tools/vm_manager_smoke.py` 及 `gaoji-vm` / `gaoji-ops-vm` 单元，`sandbox.backend` 固定为 `"container"`，净减 `1,358` 行）。
+  - A4-2：PR #164（`+208 / -694`，模型链与常量迁入 `pi_engine.py`，删除 `codex_engine.py`、`sandbox_codex_bridge.py` 与 `AI_BACKGROUND_ENGINE` 开关，`CodexGateway` 改名为 `JobGateway`，后台固定为 `PiEngine`，同步更新 `README*`、SVG 架构图与技能说明，净减 `486` 行）。
+  - 另含 T10 文件链路重写（PR #162）与容器内 `ssh_config` 普通文件修复（PR #159，`0644` 关闭 `systemd-ssh-proxy`）。
+- **tank 切换**：配置 `de6cc917` 移除 `hosts/tank/gaoji.nix` 中已废弃的 `sandbox.vmImage` 与 `AI_BACKGROUND_ENGINE` 并固定 `qq-bot`。隔离构建内核保持 `/nix/store/ppm8487552xic16bdqzq9792px66ra37-linux-6.18.63/bzImage` 不变，闭包仅变更 `gaojibot`（`-181.4 KiB`）与 `gaoji-ops-guest-resolv.conf`，切换前确认在途回合为 `0`。原系统 `/nix/store/62kpycx70ifxjsbhga7q5qjbpiawz4if-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/zvhbkxqbkfyzwl8sna88919zibcgav2v-nixos-system-tank-26.05.20261113.f1e5c35`；`gaoji` PID `2920468`，`gaoji-vm.service` 与 `gaoji-ops-vm.service` 均为 `not-found`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`（切换中观察到 `gaoji-ops-network.service` 因默认 `After=basic.target` 与 `sockets.target` 下的 `gaoji-ops-relay-*.socket` 产生一次依赖环告警，服务本身全部正常启动，已在 Bot PR #166 补加 `DefaultDependencies = false` 消除）。
+- **h610 Headscale 声明式修复**：配置 `bcdd886b` 将 `hosts/h610/system.nix` 的 `headscale 0.29.4` 显式覆盖为 `buildGo127Module = pkgs.buildGo126Module` 并登记于 `docs/incidents.md#h610-headscale-go127-mapresponse`；按 owner 指示保持 h610 当前稳定的临时 Go 1.26 drop-in 与 GC root，留待下次维护窗口 `boot` + 重启时一并清理。
+- **tank 真机验收（第 10–17 条及运维 SSH）**：
+  - 容器沙盒（第 10–13 条、大文件、隔离）：`uname -a`（NixOS `6.18.60`）与 `pi --version`（`1.5.0`）正常；`/work/hello.txt` 跨容器停启保留而 `/tmp` 重置；`gaoji-python` 生成正弦曲线 PNG 导出校验通过；`packages` 参数按预期拒绝并提示使用 `pip/npm/uv`；`12 MiB` 写入与 `15 MiB` 导出 SHA-256 一致；公网 HTTPS `200`、中继未授权 `401`、宿主与 tailnet 端口阻断全部符合预期。
+  - 运维容器 SSH：在 `gaoji-ct-ops@` 容器内不带额外参数直接执行 `ssh tank 'whoami && sudo -n whoami && uptime'` 与 `ssh h610 'whoami && sudo -n whoami && uptime'`，均以 `gaoji` 免密登录并拿到 `root` 权限。
+  - `PiEngine` + `JobGateway` 真实 `cliproxy` 验收（第 14–17 条）：真实 `pi 1.5.0` 经 `JobGateway` 调宿主 `history` 工具并生成 Markdown 文件、中途 `steer` 补充来源链接生效、运行中 `cancel` 中止并吊销任务 token、不存在模型链首项触发 HTTP 400 自动降级至 `gpt-6.1-sol` 并在报告末尾附上降级说明，全部实测通过；真实 QQ 测试群端到端聊天验收留给 owner。
+
 ## 2026-11-17 · 删常驻程序/后台命令/额度提醒（T7）与重写发送器及清理旧发件箱（T9）发布到 tank
 
 - **Bot 合并（`8a1a45f`）**：
