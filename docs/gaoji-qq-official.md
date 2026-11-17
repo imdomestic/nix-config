@@ -1,5 +1,14 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 自动运维上线；删掉未使用的集群、运维与 Docker 沙箱代码
+
+- Bot PR #135–#138 合并（`main` 为 `f0014a7`），配置 `6fbba0fc`、`e73f3b7f` 固定：删除 QQ 探针、Docker 沙箱、gaoji 集群控制/worker/部署器/主机控制/SSH 运维、运维审批和宿主 API 代理（10-30 后未使用）；新增仿 Max 的自动运维。nix-config 同步撤掉 h610 的 cluster.nix、tank/h310 的 gaoji-worker、2224 端口 SSH、相关密钥、placement、监控与告警。
+- 自动运维：tank 上 `gaoji-ops` 网络命名空间跑独立 Tailscale 节点 `gaojiops`（100.64.0.10）；owner 私聊和一个可信群的 VM 由命名空间里的第二个 libvirt（`gaoji-ops-vm`）启动，VM 内 `ssh <主机>` 以 `gaoji`（免密 sudo）登录，Tailscale SSH 认证，VM 不放密钥。中继端口 18640/18641 经命名空间内 socket 转发回宿主。
+- tank 切换：内核不变，`dry-activate` 停 gaoji-cluster-worker，重启 sshd/polkit，重载 nftables，重启 gaoji。现系统 `/nix/store/50achshyp32bx135imj6p57kgqhz0bvn-nixos-system-tank-26.05.20261113.f1e5c35`，`/health/qq-official` 连续三次 ready。从命名空间 `ssh gaoji@tank` 与 `sudo -n` 验证通过，公网可达。
+- Headscale 已建用户 `gaoji@imdomestic.com`，但组成员需 h610 部署。h610 升级（10-20→11-13 nixpkgs）在 20:27 失败：tailscaled 被替换导致 Tailscale SSH 会话断开，`switch-to-configuration` 在逐个重载用户单元时遇到 hank 会话刚好消失（`Failed to get GID for hank` / `Unknown object .../user/_1000`）后退出，已停止的拨号等服务未重启，断网约 15 分钟，由预先设置的 15 分钟自动回滚恢复（新公网 IP，DDNS 已更新）。h610 仍为 `/nix/store/gy75xq1rz48nrjr15a239y381yk2abhv-…`。建议改用 `switch-to-configuration boot` 加重启升级 h610。
+- 因此 `gaojiops` 暂登记在 `kenneth@imdomestic.com` 下；h610 升级后用 `headscale nodes move` 挪到 `gaoji@`。`gaoji` 账户目前只在 tank 存在，其他主机要各自部署后才有。
+- 迁移这两个会话的 VM 时，群 VM 已关机；owner 私聊 VM 不响应 ACPI/agent 关机，最终强制断电。两者已从普通 libvirt 进程 undefine，下次使用在运维网络启动。真实群聊中的运维对话尚未验证。
+
 ## 2026-11-17 · 能看到群里其他机器人的消息；机器人之间适时停下
 
 - 发现问题：QQ 对其他机器人的消息带 `author.bot=true`，编解码器将其记为 `bot_origin` 并跳过，不进账本；自 10-30 起共跳过 299 条（全部在同一群，仅 4 条与 gaoji 自己发送时间相近，且从未出现 gaoji 自身回声），因此 gaoji 看不到 Max 的发言。
