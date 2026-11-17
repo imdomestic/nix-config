@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 容器沙盒代码（#146）合入并先按默认 VM 模式发布到 tank
+
+- Bot PR #146（新增 NixOS 容器沙盒后端 `sandbox.backend = "container"`、`gaoji-ct-broker`、隔离网桥与 nftables、工作区迁移脚本与手册，默认仍为 `vm`）基于 `d593f89` rebase 后本机隔离全套 2,009 项测试通过、CI 5 项全绿，合并至 `main`（`bb1320503387e20c41a08fd2f841dead2ea54236`）。
+- 配置 `0eb10d93` 固定 `qq-bot`，先保持 `sandbox.backend = "vm"` 验证线上无回归；tank 隔离构建，内核保持 `linux-6.18.63` 不变，闭包差异仅 `gaojibot`（+30.1 KiB），切换前无运行中回合或后台任务，`dry-activate` 仅重启 `gaoji-ops-network.service` 与 `gaoji.service`。
+- 原系统 `/nix/store/kswk9fkvzs9yrzysjd2gwrgkfkwy1nhk-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/999ablanyvkz08sxzfh9rwyv745na7jv-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `2500265`、`NRestarts=0`；`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，启动后无新错误。容器后端尚未启用。
+
 ## 2026-11-17 · A 阶段热修、D2 网页抓取后备及 A0 空回答去重发布到 tank
 
 - Bot PR #133（大文件分块导出、QGA 通道损坏自动重启 VM）、#139（来源仅列回答引用的编号、清理跟踪参数）、#140（工具已发出内容时空回答不算失败）、#141（跳过被拦的 DuckDuckGo、过滤无关结果）、#142（提示词收紧搜索原词、直开链接、视频区分、找图路由、文字不说"听错"）、#143（后台报告首行写明成败、后台能读 `use_skill`）、#144（预算竞态测试修复）、#145（D2 网页被拦换浏览器请求头重试并回退搜索摘要）及 #148（A0 删除 `platform_chat.py` 冲突合并残留的 13 行重复空回答检查）全部合并至 `main`（`d593f8967da59397b3e1f5f46006929a268fea79`）。整合树本机全套 2,001 项通过，#148 CI 5 项全绿。无数据库迁移。
