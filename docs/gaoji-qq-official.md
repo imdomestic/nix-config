@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 启用 `pi` 后台引擎与模型链降级（`AI_BACKGROUND_ENGINE=pi`）
+
+- 配置 `d0f910c0` 在 `hosts/tank/gaoji.nix` 最后加载的 `gaoji-models.env` 中设置 `AI_BACKGROUND_ENGINE=pi`、`AI_BACKGROUND_MODELS=gpt-6.1-sol,gpt-6-astra,gpt-6-luna`、`AI_BACKGROUND_CONTEXT_WINDOW=200000`（D2、D3 由 owner 指定）。
+- tank 隔离构建，内核保持 `linux-6.18.63` 不变，无包闭包新增，切换前无活跃回合或后台任务，`dry-activate` 仅停止/启动 `gaoji.service`。
+- 原系统 `/nix/store/1mgs4nl8k1dmrpg1mzyzn9q2bircswsk-…`，现系统 `/nix/store/nwbhw0hgji9yascv1ia3hb8v3sgv4im9-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `2709803`、`NRestarts=0`；`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`。
+- 用运行包代码与进程实际环境核对生效配置：`engine=pi`、`chain=['gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-luna']`、`effort=high`、`context_window=200000`、`upstream_provider=cliproxy (configured=True)`，数据库 `state_blobs` 无旧覆盖项。真实测试群验收（第 9 节第 14–17 条）由 owner 进行；如遇异常将 `AI_BACKGROUND_ENGINE` 改回 `codex` 即可一键回退。
+
 ## 2026-11-17 · pi 后台、模型链降级与 `/job` 工具路由（#147）合入并先按默认 Codex 发布到 tank
 
 - Bot PR #147（中转 `/job/tools` 与 `/job/tool` 流式心跳路由、后台模型链按序降级与分次计费、`pi` 插件/RPC 桥接/`PiEngine` 及容器系统内置 `pi`，默认仍为 `AI_BACKGROUND_ENGINE=codex`）连同 #151、#152、#153 合入 `main`（`d8a83e6bbf7dac7443b4f9bbc997aaf39816d235`）。本机全套 1,821 项测试通过，`check_pi_job.py` 16 项全通，CI 5 项全绿。
