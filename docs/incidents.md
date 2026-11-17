@@ -4,6 +4,27 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-17 · h610 升级后 Headscale 0.29.4 在 Go 1.27 下编码 MapResponse 失败 {#h610-headscale-go127-mapresponse}
+
+h610 升到 `nixos-26.05.20261113.f1e5c35` 后，最初 `headscale.service`
+表面正常，但新写入声明式 `headscale-policy.json` 的 `gaoji@imdomestic.com`
+没有拿到 `group:imdomestic` ACL：原因是 `/etc/systemd/system.control/headscale.service.d/50-tokyo-cutover.conf`
+仍把 `ExecStart` 指在 Tokyo 迁机时的旧二进制与旧配置上。
+
+移走这份过期的 runtime drop-in 后，新代的 `headscale 0.29.4`（随 nixpkgs
+`headscale` 切到了 `buildGo127Module` / Go `1.27.4`）在 `/machine/map`
+全部返回 HTTP 500：
+`marshalling map response: json: unsupported value: Go struct field SessionDuration has unsupported 'format' tag option`。
+0.29.4 依赖的 `tailcfg.MapResponse` 使用了 Go 1.27 标准库 `encoding/json`
+拒绝的 `format` tag 选项，编译期不报错，只有下发 netmap 时才触发。
+
+现场先用 runtime drop-in `50-go126-headscale-bin.conf` 配合 GC root
+`/nix/var/nix/gcroots/headscale-working-bin` 指回上一代 Go `1.26.8` 构建的
+`headscale 0.29.4`，同时读取新声明式配置以立即恢复全网 netmap 与 ACL；
+仓库里将 `hosts/h610/system.nix` 的 `services.headscale.package` 显式覆盖为
+`buildGo127Module = pkgs.buildGo126Module`，下次切换 h610 时一并清掉临时
+runtime drop-in 和 GC root。
+
 ## 2026-11-18 · Tokyo 迁机后 WireGuard 仍拨旧 IP {#tokyo-wireguard-shared-identity}
 
 阿里云放行端口后，Tokyo 的 DERP HTTPS、Tailscale STUN 和 TCP 入口均通，
