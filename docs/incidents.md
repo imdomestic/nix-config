@@ -4,6 +4,24 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-18 · Tokyo 迁机后 WireGuard 仍拨旧 IP {#tokyo-wireguard-shared-identity}
+
+阿里云放行端口后，Tokyo 的 DERP HTTPS、Tailscale STUN 和 TCP 入口均通，
+但 WireGuard 没有握手。最初容易以为还是云防火墙：实际 tank 和 h610 的
+`wg0` 都缓存着旧公网 IP，更新 DNS 不会重写已经解析进内核的 endpoint。
+对 tank、h610、r6s 和 rpi4 只改现有 peer 的 endpoint 到
+`tokyo.imdomestic.com:50722`，不重启网络，随后均看到新握手。
+
+进一步检查发现 r2s 与 r5s 的 `wg0` 均使用 `10.0.0.9/24` 和同一个公钥，
+对应服务端同一个 peer。两台都刷新会让同一 peer 的 endpoint 在它们之间
+跳变，所以本次不擅自启用这两条。要同时恢复它们，先为其中一台分配独立
+WireGuard 密钥、PSK 和地址，并同步修改服务端 peer，再分别切换验收；
+不在这次 home 修复里改凭据。离线设备还需自行重新解析或重载 endpoint。
+
+STUN 探针最初也超时，但不是 UDP 被挡：Tailscale 的 derper 只回应带
+`SOFTWARE=tailnode` 和正确 fingerprint 的请求，补上后公网 UDP 3478
+通过。完整迁机与当前兼容 DNS 见 `docs/tokyo-migration.md`。
+
 ## 2026-11-17 · 原生 Gemini 入口仍拒绝 Pi 默认提示词 {#pi-agy-native-prompt-429}
 
 Hank 的 Pi Gemini 从 CLIProxy 转到 agy-proxy 的 `google-generative-ai`

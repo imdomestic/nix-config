@@ -48,8 +48,8 @@
       (rule "secrets/hosts/encore-acme\\.env$" (readersOf "encore"))
       (rule "secrets/hosts/h610-(max|ops)\\.yaml$" (readersOf "h610"))
       (rule "secrets/hosts/tank-max\\.yaml$" (readersOf "tank"))
-      # 网关的 API key:用它的人,加上网关自己。
-      (rule "secrets/clients/bonsai\\.yaml$" (readersOf config.placements.bonsai-ninfer.host))
+      # Tokyo's linwhite home also uses the Bonsai gateway.
+      (rule "secrets/clients/bonsai\\.yaml$" (readersOf config.placements.bonsai-ninfer.host ++ [(on "linwhite" "tokyo")]))
       # Hank and Max's Gemini gateway key; never distribute Google OAuth state.
       (rule "secrets/clients/agy-proxy\\.yaml$" (keysOf "hank" ++ map host [config.placements.agy-proxy.host "tank"]))
       # 系统客户端还有 h610 的 gaoji 与 SillyTavern；浏览器拿不到原始 key。

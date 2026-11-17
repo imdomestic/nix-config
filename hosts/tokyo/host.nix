@@ -14,7 +14,7 @@
     };
     ip = "10.0.0.1";
     sshUser = "root";
-    maxTier = "interactive";
+    maxTier = "dev";
     buildOn = "tank";
 
     modules = [
@@ -27,11 +27,11 @@
     ];
 
     users = {
-      # 她自己的 zsh 里有 `ls = "eza --icons"`,所以需要 interactive。
-      fendada = {};
-      linwhite = {};
-      hank = {};
-      kenneth = {};
+      # Only linwhite's home needs the dev tier; the others retain interactive.
+      fendada.tier = "interactive";
+      linwhite.ageKey = "age1mjd25w6an6jdaseuqzeld98wlh4jc365yqtr84c4xazc60nplysqaud8xe";
+      hank.tier = "interactive";
+      kenneth.tier = "interactive";
     };
   };
 }

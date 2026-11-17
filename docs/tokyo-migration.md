@@ -31,14 +31,20 @@ The declarative equivalents are in `hosts/h610/system.nix`. On the next
 planned h610 deployment, remove this override and restart Headscale after the
 new generation is active; otherwise it masks future config changes.
 
-At installation the new system booted, SSH and SOPS worked, Xray and DERP
-started, and the DERP TLS probe succeeded locally. Public TCP 3444, 3445,
-54322, 54324, 8443 and 25565 timed out despite listening: Aliyun ingress
-rules still need attention. Homes for hank, kenneth and fendada were built on
-tank and activated. Linwhite's home was not activated: the new account lacks
-its SOPS SSH identity, and its imported Pi configuration also requests Hank's
-AGY key, whose SOPS recipients do not include linwhite. Resolve those access
-boundaries before activating it; do not copy a personal private key to the VPS.
+After Aliyun ingress rules were opened on 2026-11-18, TCP 3444, 3445, 54322,
+54324, 8443 and 25565 connected; public DERP TLS and UDP STUN both passed.
+Homes for all four accounts were built on tank and activated. Linwhite's
+new, machine-local SSH key decrypts the account's Bonsai and CLIProxy
+secrets. Its independent Pi configuration matches the active Mac's providers;
+Hank's private AGY key is not distributed to linwhite. Tokyo runs linwhite's
+dev tier; the other accounts retain interactive.
+
+Existing WireGuard interfaces retained the old resolved IP even after the
+DNS update. The endpoints on tank, h610, r6s and rpi4 were refreshed at
+runtime and completed handshakes. The two remaining online routers share one
+WireGuard identity and cannot both be safely refreshed; see
+[incidents.md#tokyo-wireguard-shared-identity](incidents.md#tokyo-wireguard-shared-identity).
+Offline clients still need to reconnect or reload their endpoint.
 
 ## 2026-10-02 · replacement for Shanghai
 
