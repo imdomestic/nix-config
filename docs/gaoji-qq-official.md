@@ -1,5 +1,15 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 简化收消息入账与直接 asyncio 回合执行链路（T11）发布到 tank（Agent B 精简主线收官）
+
+- **Bot 合并（`5c9d296`）**：
+  - T10（已随上一次 `de6cc917` 合入上线，此处补齐明细）：PR #162（`+559 / -2,663`，净删 `2,104` 行；按 S3 / Max `send_file` 重写直接文件上传与 `msg_type=7` 发送：`<=5 MiB` base64 一次上传、`>5 MiB` 分片上传含 `md5`/`sha1`/`md5_10m` 与 `upload_part_finish`、`file_info` 按会话+SHA-256+文件名缓存 1 天、`50015014` 二次调 `upload_prepare` 透传腾讯真实中文错误码；删除 `file_artifacts.py`、`file_runtime.py`、`file_dispatcher.py`、`file_authority.py`、`file_generation.py`、`file_access.py`、`file_projection.py`、`blob_store.py`、`project_content.py` 及 6 个旧测试）。
+  - T11：PR #165（`+1,225 / -2,198`，净删 `973` 行；`OfficialInboxStore.accept` 单事务完成网关序号校验、去重、跳过机器人自身消息、群绑定准入、写入账本与 `/stop` 控制回执，移除 `ingest.py`、`qq_official_reply_windows` 写入与入站二次回查；移除空闲 `DurableJobWorker`、`turn_source.py` 与 `result_ready` 冻结步骤，直接用 `asyncio` 跑 `ChatOrchestrator` 并在 `finish()` 单事务结账投递唤醒 `OfficialSender`；保留重启恢复向未完结会话发送「刚才重启了，这条没处理完，麻烦再说一次」并关闭记录）。
+  - 另含运维网络单元依赖环修复：PR #166（`gaoji-ops-network.service` 显式设 `DefaultDependencies = false`）。
+  - **精简主线终盘统计**：`adapters/qq_official/` 从今日初 `120` 个模块 / `18,532` 行（轻量化前基线 `131` 个模块 / `~31,000` 行）降至 **`67` 个模块 / `13,027` 行**（适配器目录内净减 `5,505` 行 / `53` 个模块；全仓 Agent B 各 PR 累计净删 `18,129` 行）。
+- **tank 切换与核验**：配置 `2e30a688` 固定 `qq-bot`；隔离构建内核保持 `/nix/store/ppm8487552xic16bdqzq9792px66ra37-linux-6.18.63/bzImage` 不变，闭包仅缩减 `gaojibot`（`-61.2 KiB`）与 `source`（`-60.9 KiB`），切换前确认 `active_exec = 0`、`active_jobs = 0`，`dry-activate` 仅停止/启动 `gaoji-ops-network.service` 与 `gaoji.service`（此前依赖环告警已彻底消失）。
+- 原系统 `/nix/store/zvhbkxqbkfyzwl8sna88919zibcgav2v-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/0da2536sjh8nsrjp7lyq13c3j7j289g6-nixos-system-tank-26.05.20261113.f1e5c35`；`gaoji` PID `2955667`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，`journalctl -u gaoji` 零新增错误，`deliveries` 无 `pending/sending/waiting_reply_window` 记录，`agent_turns` 无残留 `running`。真实 QQ 测试群端到端聊天响应耗时（<10s）、大文件收发与重启提示验收留给 owner。
+
 ## 2026-11-17 · 删除 Debian KVM 后端与 Codex 引擎（A4）发布到 tank 并完成真机复验
 
 - **Bot 合并（`ed216a7`）**：
