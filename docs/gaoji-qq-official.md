@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 启用博查联网搜索 API（D1，`AI_SEARCH_PROVIDER=bocha`）发布到 tank
+
+- **配置变更（`fc2e948d`）**：在 `secrets/hosts/tank.yaml` 中以 SOPS 加密写入 `gaoji.bocha_api_key`，并在 `hosts/tank/gaoji.nix` 中设置 `AI_SEARCH_PROVIDER = "bocha"`，经 `sops.templates."gaoji-tank-postgres.env"` 将 `AI_SEARCH_API_KEY` 仅渲染至 `/run/secrets/rendered/gaoji-tank-postgres.env`（`0400`，`kenneth:users`），确认 `/nix/store` 产物中零明文密钥。
+- **tank 切换与核验**：隔离构建内核保持 `/nix/store/ppm8487552xic16bdqzq9792px66ra37-linux-6.18.63/bzImage` 不变，包闭包零新增差异，切换前确认 `active_exec = 0`、`running_turns = 0`、`active_jobs = 0`，`dry-activate` 仅新增 `gaoji/bocha_api_key`、更新渲染后的 `gaoji-tank-postgres.env` 并重启 `gaoji.service`。
+- 原系统 `/nix/store/0da2536sjh8nsrjp7lyq13c3j7j289g6-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/5j63ab410cjkzq24p5lxy9l8c8dzznhj-nixos-system-tank-26.05.20261113.f1e5c35`；`gaoji` PID `2977308`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，`journalctl -u gaoji` 零新增错误或空密钥告警。用线上进程环境与代码核对 `Settings.from_env` 生效值为 `search_provider='bocha'`、`api_key_configured=True`（长度 `35`），并直连博查接口实测查询「吴家村」返回 5 条真实中文地名结果。
+
 ## 2026-11-17 · 简化收消息入账与直接 asyncio 回合执行链路（T11）发布到 tank（Agent B 精简主线收官）
 
 - **Bot 合并（`5c9d296`）**：
