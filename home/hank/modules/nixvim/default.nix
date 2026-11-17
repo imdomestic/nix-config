@@ -235,8 +235,7 @@ in {
     enable = true;
     # man nixvim 要生成全部选项的 options.json,一项就占 home 求值的近三成。
     enableMan = false;
-    # $EDITOR 是 helix(../helix)。
-    defaultEditor = false;
+    defaultEditor = true;
     # viAlias = true;
     # vimAlias = true;
     # nixpkgs.pkgs = pkgs-unstable;

@@ -1,61 +1,14 @@
 let
   theme = "evergarden-winter-green";
-
-  # nvim 的 <leader> 布局原样搬到 space 上。被顶掉的 helix 默认键都还有别处可按:
-  # space w(窗口子菜单)= C-w,space c(注释)= C-c,space /(全局搜索)= space f w,
-  # space g(改动文件)= space f g,space h(选中引用)= space h h,space f = space f f。
-  space = {
-    w = ":write";
-    q = ":quit";
-    Q = ":quit-all!";
-    c = ":buffer-close";
-    "/" = "toggle_comments";
-    # lazygit 自己开 /dev/tty,所以能借 :insert-output 跑。不 :reload-all:它会
-    # 连未保存的改动一起丢掉;外部改过的文件 :w 时 helix 会拦下来。
-    g = [":new" ":insert-output lazygit" ":buffer-close!" ":redraw"];
-    f = {
-      f = "file_picker";
-      space = "file_picker";
-      F = "file_picker_in_current_directory";
-      b = "buffer_picker";
-      w = "global_search";
-      s = "workspace_symbol_picker";
-      k = "command_palette";
-      g = "changed_file_picker";
-    };
-    l = {
-      r = "rename_symbol";
-      a = "code_action";
-      f = ":format";
-      d = "diagnostics_picker";
-      D = "workspace_diagnostics_picker";
-      H = ":toggle lsp.display-inlay-hints";
-    };
-    h = {
-      r = ":reset-diff-change";
-      h = "select_references_to_symbol_under_cursor";
-    };
-  };
 in {
-  imports = [./languages.nix];
-
   programs.helix = {
     enable = true;
-    defaultEditor = true;
     settings = {
       theme = theme;
       editor = {
-        # line-number = "relative";
-        bufferline = "multiple";
+        line-number = "relative";
         cursorline = true;
         color-modes = true;
-        scrolloff = 10;
-        popup-border = "all";
-        # 同 nvim:不在保存时格式化,手动 space l f。
-        auto-format = false;
-        completion-timeout = 5;
-        # flash.nvim 的标签顺序,gw 先出主键位行。
-        jump-label-alphabet = "asdfghjklqwertyuiopzxcvbnm";
         end-of-line-diagnostics = "hint";
         cursor-shape = {
           insert = "bar";
@@ -67,44 +20,6 @@ in {
         };
         inline-diagnostics = {
           cursor-line = "warning";
-        };
-        indent-guides = {
-          render = true;
-          character = "│";
-          skip-levels = 0;
-        };
-        # nvim 默认 wrap + breakindent,不画 showbreak。
-        soft-wrap = {
-          enable = true;
-          wrap-indicator = "";
-        };
-        statusline.left = [
-          "mode"
-          "spinner"
-          "version-control"
-          "file-name"
-          "read-only-indicator"
-          "file-modification-indicator"
-        ];
-      };
-      keys = {
-        normal = {
-          inherit space;
-          # nvim 的 <Esc> 是清搜索高亮;helix 没有残留高亮,对应的是收起选区。
-          esc = ["collapse_selection" "keep_primary_selection"];
-          # ; 原本是 collapse_selection,上面的 esc 已经兼任。
-          ";" = "command_mode";
-          C-h = "jump_view_left";
-          C-j = "jump_view_down";
-          C-k = "jump_view_up";
-          C-l = "jump_view_right";
-        };
-        select = {inherit space;};
-        insert = {
-          C-space = "completion";
-          # 同 blink 的 <M-n>/<M-b>;alt-h/l 被 aerospace 占着。
-          A-n = "goto_next_tabstop";
-          A-b = "goto_prev_tabstop";
         };
       };
     };
