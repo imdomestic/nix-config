@@ -453,7 +453,7 @@ in {
 
         outbounds = [
           (peer "h610" "h610.imdomestic.com" 1444 aliyun)
-          (peer "sh" "sh.imdomestic.com" 3444 aliyun)
+          (peer "sh" "tokyo.imdomestic.com" 3444 aliyun)
           (peer "r5s" "r5s.imdomestic.com" 2444 aliyun)
           (peer "r6s" "r6s.imdomestic.com" 2444 aliyun)
           (peer "r2s" "r2s.imdomestic.com" 2444 aliyun)

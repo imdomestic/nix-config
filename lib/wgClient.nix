@@ -23,7 +23,7 @@
   presharedKeyFile ? null,
   name ? "wg0",
   serverPublicKey ? "i9ZU3WdqNxUyqtaM9F8Rbrs4ophdNpQ6wZeO/bV/jjQ=",
-  endpoint ? "sh.imdomestic.com:50722",
+  endpoint ? "tokyo.imdomestic.com:50722",
   listenPort ? 50722,
   allowedIPs ? ["10.0.0.0/24"],
   persistentKeepalive ? 25,

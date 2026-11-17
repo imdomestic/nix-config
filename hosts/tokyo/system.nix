@@ -30,8 +30,8 @@ in {
     # 走的是丢包的悉尼↔电信那段。这台到两边都干净,当 peer relay;谁能用它由
     # h610 的 headscale policy 里那条 grant 决定。见 docs/incidents.md#sydney-tank-peer-relay。
     "--relay-server-port=40000"
-    # eth0 在云厂商的 1:1 NAT 后面(10.7.4.42),本机看不到公网地址。
-    "--relay-server-static-endpoints=43.130.229.141:40000"
+    # eth0 在阿里云的 1:1 NAT 后面,本机看不到公网地址。
+    "--relay-server-static-endpoints=8.216.32.13:40000"
   ];
 
   sops.secrets =
@@ -151,17 +151,9 @@ in {
 
     networks."30-eth0" = {
       matchConfig.Name = "eth0";
-      # The provider's public IPv6 and gateway were observed on the bootstrap image.
-      address = ["240d:c000:f06e:c600:c226:13a6:264e:3/128"];
-      routes = [
-        {
-          Destination = "::/0";
-          Gateway = "fe80::feee:ffff:feff:ffff";
-          GatewayOnLink = true;
-        }
-      ];
+      # Aliyun supplies the private IPv4 and gateway via DHCP; no public IPv6.
       networkConfig = {
-        DHCP = "yes";
+        DHCP = "ipv4";
         # Public DNS stays reachable when Tailscale owns 100.64.0.0/10.
         DNS = ["1.1.1.1" "8.8.8.8"];
         IPv6AcceptRA = true;
@@ -189,7 +181,7 @@ in {
   security.acme = {
     acceptTerms = true;
     defaults.email = "hankchogan@gmail.com";
-    certs."sh.imdomestic.com" = {
+    certs."tokyo.imdomestic.com" = {
       dnsProvider = "cloudflare";
       environmentFile = config.sops.secrets."acme/cloudflare_env".path;
       group = "derper";
@@ -206,13 +198,13 @@ in {
     wants = ["network-online.target"];
     after = [
       "network-online.target"
-      "acme-sh.imdomestic.com.service"
+      "acme-tokyo.imdomestic.com.service"
     ];
-    requires = ["acme-sh.imdomestic.com.service"];
+    requires = ["acme-tokyo.imdomestic.com.service"];
     preStart = ''
       install -d -m 0750 /var/lib/derper/certs
-      ln -sfn /var/lib/acme/sh.imdomestic.com/fullchain.pem /var/lib/derper/certs/sh.imdomestic.com.crt
-      ln -sfn /var/lib/acme/sh.imdomestic.com/key.pem /var/lib/derper/certs/sh.imdomestic.com.key
+      ln -sfn /var/lib/acme/tokyo.imdomestic.com/fullchain.pem /var/lib/derper/certs/tokyo.imdomestic.com.crt
+      ln -sfn /var/lib/acme/tokyo.imdomestic.com/key.pem /var/lib/derper/certs/tokyo.imdomestic.com.key
     '';
     serviceConfig = {
       User = "derper";
@@ -230,7 +222,7 @@ in {
           "-c"
           "/var/lib/derper/derper.key"
           "-hostname"
-          "sh.imdomestic.com"
+          "tokyo.imdomestic.com"
           "-certmode"
           "manual"
           "-certdir"

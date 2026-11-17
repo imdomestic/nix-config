@@ -1,6 +1,46 @@
-# Tokyo replacement for Shanghai
+# Tokyo migrations
 
-## 2026-10-02 migration
+## 2026-11-17 · Aliyun replacement
+
+The provider reclaimed the previous Tokyo VPS. Its replacement is still the
+same `tokyo` registry host, now on Aliyun at `8.216.32.13` (2 vCPUs, 4 GiB
+RAM, 100 GiB virtio disk, UEFI, IPv4 DHCP behind 1:1 NAT). The system was
+built on tank and installed with nixos-anywhere, disko and copied host keys.
+The new machine's SSH-derived age recipient replaces the old one in the Tokyo
+and shared SOPS files; this does not revoke plaintext or old ciphertexts that
+were accessible to the reclaimed machine.
+
+The canonical public endpoint is `tokyo.imdomestic.com`; its stale AAAA
+record was removed because the new VM has no public IPv6. The old
+`sh.imdomestic.com` A record remains pointed at the new address temporarily
+for existing clients; it is not used by the current configuration. WireGuard
+and Xray credentials and internal reverse-tunnel identifiers remain unchanged.
+Existing clients need their configurations deployed before the compatibility
+record can be removed. The new DERP certificate is for the canonical name,
+so the compatibility record does not support old DERP clients using `sh`.
+
+Headscale node 47 was expired, its exit routes withdrawn and its name changed
+to `tokyo-retired-47`. The replacement is node 54 at `100.64.0.13` with
+approved exit routes. Headscale's Tokyo peer-relay grant follows that address.
+Because h610's latest system switch had just failed (see
+[gaoji-qq-official.md](gaoji-qq-official.md)), only Headscale was restarted:
+`/etc/systemd/system.control/headscale.service.d/50-tokyo-cutover.conf` points
+its unchanged binary at `/var/lib/headscale/tokyo-cutover/`, copies of the
+running config with only the DERP endpoint and relay policy address changed.
+The declarative equivalents are in `hosts/h610/system.nix`. On the next
+planned h610 deployment, remove this override and restart Headscale after the
+new generation is active; otherwise it masks future config changes.
+
+At installation the new system booted, SSH and SOPS worked, Xray and DERP
+started, and the DERP TLS probe succeeded locally. Public TCP 3444, 3445,
+54322, 54324, 8443 and 25565 timed out despite listening: Aliyun ingress
+rules still need attention. Homes for hank, kenneth and fendada were built on
+tank and activated. Linwhite's home was not activated: the new account lacks
+its SOPS SSH identity, and its imported Pi configuration also requests Hank's
+AGY key, whose SOPS recipients do not include linwhite. Resolve those access
+boundaries before activating it; do not copy a personal private key to the VPS.
+
+## 2026-10-02 · replacement for Shanghai
 
 The expired Shanghai VPS is replaced by `tokyo` at `43.130.229.141`.
 The new machine has two vCPUs, 2 GiB RAM, a 40 GiB virtio disk and a

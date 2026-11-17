@@ -29,8 +29,8 @@
     exit = "jp";
   }
   {
-    name = "sh";
-    host = "sh.imdomestic.com";
+    name = "tokyo";
+    host = "tokyo.imdomestic.com";
     port = 54322;
     secret = "sh";
     exit = "jp";
@@ -57,7 +57,7 @@
     exit = "jp";
   }
 
-  # 悉尼出口。只有 h610 和 sh 两台 —— 其余几台 portal 的 DDNS 只发 AAAA,
+  # 悉尼出口。只有 h610 和 tokyo 两台 —— 其余几台 portal 的 DDNS 只发 AAAA,
   # 而悉尼那条线没有 IPv6,rpi4 的 bridge 根本拨不过去。
   {
     name = "h610-au";
@@ -67,8 +67,8 @@
     exit = "au";
   }
   {
-    name = "sh-au";
-    host = "sh.imdomestic.com";
+    name = "tokyo-au";
+    host = "tokyo.imdomestic.com";
     port = 54324;
     secret = "sh-au";
     exit = "au";

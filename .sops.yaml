@@ -273,7 +273,7 @@ creation_rules:
           - age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7 # linwhite (personal)
           - age1ctfjwk8fkfuxq9rrsuenmqtx8l3jx5rt4hujvh525pgruxs69fls4qtj7z # fendada (personal)
           - age18glzkfyda2qcs7ffqz9pgxrqc0p9e565xpcqxe85shdfltlv2ytq5rjp4v # kenneth (personal)
-          - age1cddsqmvytfs97c898mnlncam62v0znxyn8am4zln5xv68gn4z3mqs878u9 # host tokyo
+          - age13cr4s6c0h3fpu7kpsvsym6pkah63gnrqr9ry0cr7ellehthnrupqawax9v # host tokyo
   - path_regex: 'secrets/.*\.yaml$'
     key_groups:
       - age:
@@ -295,4 +295,4 @@ creation_rules:
           - age1lghdzjwhlwssu44ptp5853e48fy0pcxrxlpf4r7ruphplxna4vzqq6e2kh # host rpi4
           - age1qpgrpyp6swk2a2hystwaryaulrvyrtjecmzzjlnjawsn50ckg3fqj8rsaf # host taipan
           - age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs # host tank
-          - age1cddsqmvytfs97c898mnlncam62v0znxyn8am4zln5xv68gn4z3mqs878u9 # host tokyo
+          - age13cr4s6c0h3fpu7kpsvsym6pkah63gnrqr9ry0cr7ellehthnrupqawax9v # host tokyo

@@ -279,7 +279,7 @@ in {
 
         outbounds = [
           (peer "h610" "h610.imdomestic.com" 1445 aliyun)
-          (peer "sh" "sh.imdomestic.com" 3445 aliyun)
+          (peer "sh" "tokyo.imdomestic.com" 3445 aliyun)
           {
             tag = "out";
             protocol = "freedom";

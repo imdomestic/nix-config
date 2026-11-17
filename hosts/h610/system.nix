@@ -45,8 +45,8 @@
         nodes:
           - name: 611a
             regionid: 611
-            hostname: sh.imdomestic.com
-            ipv4: 43.130.229.141
+            hostname: tokyo.imdomestic.com
+            ipv4: 8.216.32.13
             ipv6: none
             derpport: 8443
             stunport: 3478
@@ -1138,7 +1138,7 @@ in {
 
         # 别名 → 节点地址,只给下面的 grant 用。
         hosts =
-          {tokyo-relay = "100.64.0.41/32";}
+          {tokyo-relay = "100.64.0.13/32";}
           // lib.mapAttrs (_: ip: "${ip}/32") tsRelayClients;
 
         # src 能在 dst 上分配 peer relay 端点;对端不需要 grant。relay 本身由

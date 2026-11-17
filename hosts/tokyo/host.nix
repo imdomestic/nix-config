@@ -7,7 +7,7 @@
     # 故障域就没有意义了。见 system/modules/monitoring/gateway.nix。
     roles = ["server" "monitor-gateway"];
     tsName = "tokyo.inner.imdomestic.com";
-    ageKey = "age1cddsqmvytfs97c898mnlncam62v0znxyn8am4zln5xv68gn4z3mqs878u9";
+    ageKey = "age13cr4s6c0h3fpu7kpsvsym6pkah63gnrqr9ry0cr7ellehthnrupqawax9v";
     clusterControl = {
       enable = true;
       manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "xray.service" "derper.service"];
