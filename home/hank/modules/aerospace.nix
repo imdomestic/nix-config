@@ -85,7 +85,7 @@ in {
         # i3 的 split horizontal / vertical 没有搬过来:alt-h 已经是 focus left。
         "alt-f" = "fullscreen";
 
-        "alt-s" = "layout v_accordion"; # 对应 i3 的 'layout stacking'
+        # "alt-s" = "layout v_accordion"; # 对应 i3 的 'layout stacking'
         "alt-w" = "layout h_accordion"; # 对应 i3 的 'layout tabbed'
         "alt-e" = "layout tiles horizontal vertical"; # 对应 i3 的 'layout toggle split'
 
