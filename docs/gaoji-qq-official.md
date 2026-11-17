@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 切换至 NixOS 容器沙盒（`sandbox.backend = "container"`）并迁移工作区
+
+- 配置 `60673bf8` 在 `hosts/tank/gaoji.nix` 启用 `sandbox.backend = "container"`（保留 `vmImage` 以便一行回退）；owner 已确认 D6（`/nix/store` 无密钥）。预演时发现 `tools/migrate_vm_workspaces.sh` 需等待 `nbd` 异步识别分区并以 `ro,noload` 挂载曾断电旧盘（PR #153）；另合入 PR #151 为 `maintain_conversations` 补齐沙盒编号与错误文本日志。
+- 切换步骤：确认无活跃回合/后台任务及无运行中 VM 后停止 `gaoji.service`；先只读预演再 `--apply` 将全部 22 个沙盒 `/workspace` 复制至 `/var/lib/gaoji-ct/<id>/work`（`1000:1000`，含三个活跃官方会话 `s26b4ac` 547M、`sc373ac` 519M、`s8100c4` 112M），旧 `qcow2` 磁盘全程只读未改动。
+- 系统由 `/nix/store/999ablanyvkz08sxzfh9rwyv745na7jv-…` 切换至 `/nix/store/4vp7n8kgays1a3lrkpbyg7jcysr13j67-nixos-system-tank-26.05.20261113.f1e5c35`（内核保持 `linux-6.18.63` 不变，停掉 `gaoji-vm` / `gaoji-ops-vm`）。
+- 宿主核验：网桥 `vz-gaoji` 为 `10.0.2.2/24`；`/run/gaoji-ct/broker.sock` 为 `kenneth:users 0600`；宿主与 `gaoji-ops` 命名空间 `10.0.2.2:18640/18641` 中继监听正常；`nft list table inet gaoji-ct` 已加载；进程环境 `AI_SANDBOX_BACKEND=container`，`gaoji` PID `2583710`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`。真实群聊/运维会话验收（第 9 节第 10–12 条、>10 MiB 文件、`ssh tank uptime`、迁移旧文件检查）由 owner 进行。
+
 ## 2026-11-17 · 容器沙盒代码（#146）合入并先按默认 VM 模式发布到 tank
 
 - Bot PR #146（新增 NixOS 容器沙盒后端 `sandbox.backend = "container"`、`gaoji-ct-broker`、隔离网桥与 nftables、工作区迁移脚本与手册，默认仍为 `vm`）基于 `d593f89` rebase 后本机隔离全套 2,009 项测试通过、CI 5 项全绿，合并至 `main`（`bb1320503387e20c41a08fd2f841dead2ea54236`）。
