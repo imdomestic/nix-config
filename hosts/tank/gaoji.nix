@@ -76,8 +76,16 @@ in {
       AI_EMBEDDING_MODEL = "bge-m3";
       AI_EMBEDDING_DIMENSIONS = "1024";
       AI_EMBEDDING_TIMEOUT_SECONDS = "60";
+      AI_SEARCH_PROVIDER = "bocha";
       OTEL_SERVICE_NAME = "gaoji";
     };
+  };
+
+  sops.secrets."gaoji/bocha_api_key" = {
+    owner = "kenneth";
+    group = "users";
+    mode = "0400";
+    restartUnits = lib.optionals cfg.enable ["gaoji.service"];
   };
 
   sops.templates."gaoji-tank-postgres.env" = {
@@ -96,6 +104,8 @@ in {
       AI_SANDBOX_MAX_TOTAL=8
       AI_SANDBOX_MAX_PER_USER=1
       AI_SANDBOX_MAX_FILE_MB=100
+      AI_SEARCH_PROVIDER=bocha
+      AI_SEARCH_API_KEY=${config.sops.placeholder."gaoji/bocha_api_key"}
     '';
   };
 
