@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · A 阶段热修、D2 网页抓取后备及 A0 空回答去重发布到 tank
+
+- Bot PR #133（大文件分块导出、QGA 通道损坏自动重启 VM）、#139（来源仅列回答引用的编号、清理跟踪参数）、#140（工具已发出内容时空回答不算失败）、#141（跳过被拦的 DuckDuckGo、过滤无关结果）、#142（提示词收紧搜索原词、直开链接、视频区分、找图路由、文字不说"听错"）、#143（后台报告首行写明成败、后台能读 `use_skill`）、#144（预算竞态测试修复）、#145（D2 网页被拦换浏览器请求头重试并回退搜索摘要）及 #148（A0 删除 `platform_chat.py` 冲突合并残留的 13 行重复空回答检查）全部合并至 `main`（`d593f8967da59397b3e1f5f46006929a268fea79`）。整合树本机全套 2,001 项通过，#148 CI 5 项全绿。无数据库迁移。
+- 配置 `d1791760` 固定 `qq-bot`；在 tank 以 `kenneth` 隔离检出构建（`max-jobs=2 / cores=4`），内核保持 `/nix/store/ppm8487552xic16bdqzq9792px66ra37-linux-6.18.63/bzImage` 不变，闭包差异仅 `gaojibot`（+87.5 KiB），`dry-activate` 仅停止/启动 `gaoji.service`（及重载 `systemd-networkd`），切换前确认无 `prepared/executing` 回合、无 `queued/running` 后台任务。
+- 原系统 `/nix/store/lwj1by13xbh5h3r68wdh0k5xxd16vvl7-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/kswk9fkvzs9yrzysjd2gwrgkfkwy1nhk-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `2390132`、`NRestarts=0`；`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，启动后无新错误日志。
+- 未向真实群发送测试消息；真实 QQ 测试群按 `docs/nixos-vm-pi-plan.md` 第 9 节第 1–9 条对话验收由 owner 进行。
+
 ## 2026-11-17 · 自动运维上线；删掉未使用的集群、运维与 Docker 沙箱代码
 
 - Bot PR #135–#138 合并（`main` 为 `f0014a7`），配置 `6fbba0fc`、`e73f3b7f` 固定：删除 QQ 探针、Docker 沙箱、gaoji 集群控制/worker/部署器/主机控制/SSH 运维、运维审批和宿主 API 代理（10-30 后未使用）；新增仿 Max 的自动运维。nix-config 同步撤掉 h610 的 cluster.nix、tank/h310 的 gaoji-worker、2224 端口 SSH、相关密钥、placement、监控与告警。
