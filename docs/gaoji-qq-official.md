@@ -1,5 +1,14 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 删常驻程序/后台命令/额度提醒（T7）与重写发送器及清理旧发件箱（T9）发布到 tank
+
+- **Bot 合并（`8a1a45f`）**：
+  - T7：PR #152（`+54 / -19`，解耦 `vm_api.py` 写权限为 `VMDenied` / `VMWriteAdmission`）、PR #157（`+972 / -6,049`，删除 19 个 `program_*.py`、`vm_program_state.py`、`sandbox_units.py`、`skills/programs.md`、`admin_api/programs.py` 及对应测试，提取精简版 `vm_http.py` 保留 `gaoji say / send-file`）、PR #158（`+56 / -2,516`，删除 `background_commands.py`、`command_*.py`、`sandbox_commands*.py`、`admin_api/background_commands.py`、`budget_notice*.py` 及对应测试，保留 `daily_budgets.py`、`/config`、`/status`），合计净减 `7,502` 行。
+  - 容器 SSH 配置热修：PR #159（关闭容器内 `systemd-ssh-proxy`）。
+  - T9：PR #160（`+119 / -66`，`rate_limit.py` 改为令牌桶限速 60/min 全局、20/min 单群；`sender.py` 对齐 S1 默认主动发送、`unknown -> allowed` 晋升、`40034105` 回退 5 分钟被动窗口、不可用立即失败不挂起 24 小时、移除本地每日 1000 条计数扫描、完善 `40034006`/`401`/`429`/Markdown 降级/`ambiguous` 错误处理）与 PR #161（`+364 / -1,039`，删除无调用方的 `protected_plans.py`、`protected_payload.py`、`delivery_configuration.py`、`send_ledger.py` 及旧测试），合计净减 `622` 行。
+- **tank 切换与核验**：配置 `9d19b80e` 固定 `qq-bot`；隔离构建内核保持 `/nix/store/ppm8487552xic16bdqzq9792px66ra37-linux-6.18.63/bzImage` 不变，闭包体积减少（`gaojibot: -479.9 KiB`、`gaoji-sandbox: -29.5 KiB`），切换前确认 `active_exec = 0`、`active_jobs = 0`，`dry-activate` 仅停止/启动 `gaoji.service`。
+- 原系统 `/nix/store/pk9l5cy26g81j63cc97b3dzhw81q98kk-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/62kpycx70ifxjsbhga7q5qjbpiawz4if-nixos-system-tank-26.05.20261113.f1e5c35`；`gaoji` PID `2874546`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，启动后无新错误日志，`deliveries` 无 `pending/sending` 或新增 `waiting_reply_window`。真实测试群端到端聊天、后台 `gaoji say / send-file`、`/config`、`/status` 验收待实测。
+
 ## 2026-11-17 · h610 升级（`boot` + 重启）、`gaojiops` 移交 `gaoji@` 及容器/模型降级修复发布到 tank
 
 - **h610 升级与运维身份（A3）**：在 h610 以 `kenneth` 低负载预构建 `f060d02c`（Generation 604 `/nix/store/g7kk7l0l1ikinfr3lx6655hmb4530kkk-nixos-system-h610-26.05.20261113.f1e5c35`，内核 `6.18.57 → 6.18.63`）。挂载重启前后 15 分钟自动回滚保护与 `systemd-boot` oneshot 引导后执行 `switch-to-configuration boot` + `reboot`；约 5 分钟完成拨号与 DDNS 恢复，`pppd-telecom`、`headscale`、`tailscaled`、`dae`、`nginx`、`qq-bot-postgres-node`（`lag=0`）全部 `active`，创建 `gaoji` 账户（uid 1006），随即解除回滚定时器并将 Generation 604 设为默认启动项。清理 `headscale.service` 上残留的 `50-tokyo-cutover.conf` 临时覆盖以使声明式 `gaoji@imdomestic.com` 组策略生效；因 Headscale 0.29.4 无 `nodes move` 子命令，删除旧节点 53 并用 `gaoji@imdomestic.com` 一次性短效 preauthkey 将 `gaojiops` 重新登记到 `gaoji@imdomestic.com`（节点 55，仍为 `100.64.0.10`，`online`）。
