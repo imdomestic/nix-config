@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · 删跨群关联/跨群提问代码（T2）并删掉已无代码的 34 张旧表（T3）
+
+- Bot PR #150（T2：删除跨群关联 `link_*.py`、`linking.py` 与跨群提问 `question_*.py`、`questions.py` 及调用点与测试，共 `-6,928 / +52` 行，保留库表待后续统一迁移删除）与 PR #149（T3：新增迁移 `0107_drop_dead_tables` 删除 `fleet_*`、`alert_*`、`diagnostic_*`、`ops_actions`、`ops_replies`、`host_api_calls`、`host_api_quota`、`admin_fleet_watches`、`turn_reaction_votes` 共 34 张无代码引用表，并清理 `reaction_feedback.py` 死文件，共 `+255 / -173` 行；降级仅重建空表结构、不恢复数据）各自本机隔离全套测试与 CI 5 项全绿后合并至 `main`（`1a01c37ea4434def273a4626fcd42cd9ed55260a`）。
+- 切换前先在 tank 完成全库备份 `/data/services/gaoji/backups/pre-drop-dead-tables-20261117T1926Z/qq_bot.dump`（PostgreSQL 17.11 custom 格式，`99M`、`0600`、`1,086` 个归档条目，SHA256 `06d2c75cb44db0978a8dcc58c9ab5a4f4f70233dc892736355ff2f86f91aa821`），并确认无 `prepared/executing` 回合、无 `queued/running` 后台任务。
+- 配置 `b3150c50` 固定 `qq-bot`；在 tank 隔离检出构建（`max-jobs=2 / cores=4`），内核保持 `/nix/store/ppm8487552xic16bdqzq9792px66ra37-linux-6.18.63/bzImage` 不变，闭包差异仅 `gaojibot`（`-496.8 KiB`），`dry-activate` 仅停止/启动 `gaoji.service`。
+- 原系统 `/nix/store/4vp7n8kgays1a3lrkpbyg7jcysr13j67-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/036rav9rxy3qh7vg64w7zgiaa1zjxm56-nixos-system-tank-26.05.20261113.f1e5c35`，启动前自动执行 `0106_question_notices -> 0107_drop_dead_tables` 迁移，`gaoji-db check` 返回 `PostgreSQL ready: schema=qq_bot revision=0107_drop_dead_tables`；`gaoji` PID `2647617`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，启动后无新错误日志。未向真实群发送测试消息；真实测试群普通聊天、发文件、后台任务验收由 owner 进行。
+
 ## 2026-11-17 · 切换至 NixOS 容器沙盒（`sandbox.backend = "container"`）并迁移工作区
 
 - 配置 `60673bf8` 在 `hosts/tank/gaoji.nix` 启用 `sandbox.backend = "container"`（保留 `vmImage` 以便一行回退）；owner 已确认 D6（`/nix/store` 无密钥）。预演时发现 `tools/migrate_vm_workspaces.sh` 需等待 `nbd` 异步识别分区并以 `ro,noload` 挂载曾断电旧盘（PR #153）；另合入 PR #151 为 `maintain_conversations` 补齐沙盒编号与错误文本日志。
