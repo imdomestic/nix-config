@@ -778,6 +778,13 @@ in {
   # don't load from here. Pin domestic resolvers for containers instead.
   virtualisation.docker.daemon.settings.dns = ["223.5.5.5" "119.29.29.29"];
 
+  sops.secrets."gaoji/authorization_key" = {
+    sopsFile = ../../secrets/gaoji/account-auth.yaml;
+    key = "authorization_key";
+    mode = "0400";
+    restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service";
+  };
+
   services.gaoji = {
     enable = true;
     runBot = false;
@@ -808,7 +815,6 @@ in {
     };
     runtimePackages = [pkgs.ffmpeg-headless];
     sandbox.enable = false;
-    sandbox.nixCacheVolume = "kennethbot-nix-v2";
   };
 
   my.monitoring.extraScrapeConfigs = [
@@ -823,17 +829,6 @@ in {
             if config.services.gaoji.runBot
             then "h610"
             else "tank";
-        }
-      ];
-    }
-    {
-      job_name = "gaoji-cluster-control";
-      metrics_path = "/metrics/";
-      scrape_interval = "15s";
-      static_configs = [
-        {
-          targets = ["${config.my.host.tsName}:8091"];
-          labels.instance = "h610";
         }
       ];
     }
@@ -860,16 +855,6 @@ in {
           annotations = {
             summary = "Gaoji metrics endpoint is unavailable";
             description = "Prometheus cannot scrape the Gaoji process on tank.";
-          };
-        }
-        {
-          alert = "GaojiClusterControlUnavailable";
-          expr = ''up{job="gaoji-cluster-control"} == 0'';
-          "for" = "2m";
-          labels.severity = "warning";
-          annotations = {
-            summary = "Gaoji cluster control is unavailable";
-            description = "The bot cannot perform trusted fleet queries while its local control service is unavailable.";
           };
         }
         {
@@ -1105,6 +1090,7 @@ in {
             "kenneth@imdomestic.com"
             "genisys@imdomestic.com"
             "max@imdomestic.com"
+            "gaoji@imdomestic.com"
           ];
         };
 

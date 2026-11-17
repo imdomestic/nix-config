@@ -68,7 +68,7 @@
   # uid > 501 的账户动手。(见 nix-darwin modules/users/default.nix。)
   darwinKnownUsers = lib.filter (n: (users.${n}.nixos or {}) ? uid) allUsers;
 in {
-  imports = [./max-operator.nix];
+  imports = [./max-operator.nix ./gaoji-operator.nix];
   users =
     {
       users = lib.genAttrs allUsers mkUser;

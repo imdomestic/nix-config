@@ -12,12 +12,11 @@
     ageKey = "age1a2j0kukmv638aeuyskcw6xa0sgejvmhja5p6etnn70h93270ap8q0dn6vt";
     clusterControl = {
       enable = true;
-      manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "gaoji-cluster-worker.service"];
+      manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service"];
     };
     maxTier = "interactive";
 
     modules = [
-      ../../system/modules/gaoji-worker.nix
     ];
 
     users = {

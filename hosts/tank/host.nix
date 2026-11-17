@@ -11,7 +11,7 @@
     ageKey = "age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs";
     clusterControl = {
       enable = true;
-      manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service" "gaoji-cluster-worker.service"];
+      manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service"];
     };
     ip = "10.0.0.66";
     sshUser = "root";
@@ -24,7 +24,6 @@
       ./gaoji-web.nix
       ./maxx.nix
       ./macos-vm
-      ../../system/modules/gaoji-worker.nix
     ];
 
     externalModules = [

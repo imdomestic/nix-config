@@ -40,7 +40,6 @@
   readersOf = n: (hostAdmins.${n} or admins) ++ [(host n)];
 
   keyed = lib.attrNames (lib.filterAttrs (_: h: h.ageKey != null) hosts);
-  gaojiControl = config.placements.gaoji-control.host;
 
   rule = path_regex: age: {inherit path_regex age;};
   rules =
@@ -57,10 +56,8 @@
       (rule "secrets/clients/cliproxy\\.yaml$" (everyone ++ map host (lib.unique ["h610" config.placements.cliproxy.host config.placements.sillytavern.host])))
       # tank 集群的 cluster-admin token,只给 hank 自己的机器(home/hank/modules/kube)。
       (rule "secrets/clients/kube-tank\\.yaml$" (keysOf "hank"))
-      (rule "secrets/gaoji/(account-auth|control)\\.yaml$" (admins ++ [(host gaojiControl)]))
+      (rule "secrets/gaoji/account-auth\\.yaml$" (admins ++ [(host "h610")]))
     ]
-    ++ map (w: rule "secrets/gaoji/worker-${lib.escapeRegex w}\\.yaml$" (admins ++ lib.unique (map host [gaojiControl w])))
-    (lib.attrNames (import ../lib/gaoji-workers.nix))
     ++ map (n: rule "secrets/hosts/${lib.escapeRegex n}\\.yaml$" (readersOf n)) keyed
     ++ [
       # Shared secrets: every admin and every host they administer.

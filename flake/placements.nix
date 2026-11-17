@@ -19,11 +19,6 @@
       host = "gizmo";
       port = 443;
     };
-    # gaoji 集群控制面(hosts/h610/cluster.nix),worker 和 tank 上的 bot 连它。
-    gaoji-control = {
-      host = "h610";
-      port = 8091;
-    };
     # Bonsai NInfer 网关,端口在 lib/bonsai-models.nix。
     bonsai-ninfer.host = "seraph";
     sillytavern = {

@@ -43,22 +43,28 @@ in {
       origin = "https://gaoji.inner.imdomestic.com";
       botId = "3580515978";
     };
-    opsRead = {
-      baseUrl = let
-        p = config.my.fleet.placements.gaoji-control;
-      in "http://${p.tsName}:${toString p.port}";
-      tokenFile = "${runtimeDir}/fleet-token";
-    };
     sandbox = {
       enable = true;
-      backend = "vm";
       vmImage = pkgs.fetchurl {
         url = "https://cloud.debian.org/images/cloud/trixie/20260525-2489/debian-13-genericcloud-amd64-20260525-2489.qcow2";
         hash = "sha256-YpoEI+UD4rkvuKVpHTMguTphOd7IYYkPhGCPp2tTixA=";
       };
       vmRoot = "/data/services/gaoji/vms";
+      # 自动运维 (2026-11-17): these conversations' VMs reach the fleet with
+      # `ssh <host>` as gaoji through the gaojiops tailnet node, like Max's
+      # operations network. Owners are VM owner ids (sha256 of the QQ
+      # endpoint key): the owner's private chat and one trusted group.
+      # The node logs in once by hand (headscale register); no key here.
+      operations = {
+        enable = true;
+        owners = [
+          "qqo:conversation:050c72346da46b92c26c363d4f513d22cb895fe8e7c64925e43855c586a04797"
+          "qqo:conversation:e5a1f0462ebd578c1b2dd78ece2d61152f679ab915b1ff11c52abfac89acb637"
+        ];
+        loginServer = "https://tailscale.imdomestic.com:8443";
+        domain = "inner.imdomestic.com";
+      };
     };
-    sandbox.nixCacheVolume = "gaoji-tank-nix-v1";
     voiceAsr.enable = true;
     runtimePackages = [pkgs.ffmpeg-headless];
     environment = {

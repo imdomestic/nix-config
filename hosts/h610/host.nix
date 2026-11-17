@@ -13,8 +13,6 @@
       manageableUnits = [
         "docker-qwen35-sycl.service"
         "qwen35-sycl-warmup.service"
-        "gaoji-cluster-control.service"
-        "gaoji-cluster-worker.service"
         "gaoji.service"
         "qq-bot-postgres-node.service"
         "docker-napcat.service"
@@ -29,16 +27,12 @@
 
     modules = [
       ./tailscale-names.nix
-      ./cluster.nix
       ./qwen35-sycl.nix
     ];
 
     externalModules = [
       # inputs.headplane.nixosModules.headplane
       inputs.qq-bot.nixosModules.gaoji
-      inputs.qq-bot.nixosModules.cluster-control
-      inputs.qq-bot.nixosModules.cluster-worker
-      inputs.qq-bot.nixosModules.host-control
     ];
 
     users = {
