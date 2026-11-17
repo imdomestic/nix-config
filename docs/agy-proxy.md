@@ -4,8 +4,8 @@
 translator/executor。后端只监听 loopback；gizmo 的独立 NixOS 服务经现有
 Tailscale HTTPS 暴露 `/agy/v1beta/`，不替换 CLIProxy 的 `/v1/`，也不修改
 Pi / Max 路由。v0.2 增加独立浏览器 OAuth 登录与服务自己凭据的原子刷新。
-v0.3 的可选 [OpenAI Chat Completions 兼容层](agy-chat-completions.md) 已实现，
-默认关闭且尚未部署；原生 Gemini 入口不变。
+v0.3 的可选 [OpenAI Chat Completions 兼容层](agy-chat-completions.md) 已在
+gizmo 开启，Max 已加载独立 `agy-completions/*`，原生 Gemini 入口不变。
 
 ## 2026-11-16 · 本机原生协议画像
 
@@ -374,8 +374,10 @@ model content/signature 原样持久化及图片/视频/工具回放测试，再
 的 `/llm` 模型描述及 Gemini 路径转发，不是只改主聊天 client。
 另一路是 v0.3 的显式 [Chat Completions 兼容入口](agy-chat-completions.md)：
 Max 可继续使用现有 Chat 协议和 opaque fields，不必先改 Gemini-native。
-该入口默认关闭、尚未部署/接入 Max；它会明确拒绝不支持或丢失签名的历史，
-不是把 OpenAI 格式冒充成无损 native 透传。
+该入口的模块默认关闭，gizmo 显式开启且 Max 已加入 `agy-completions/*`；
+它会明确拒绝不支持或丢失签名的历史，不是把 OpenAI 格式冒充成无损 native
+透传。Hank Pi 也加入同名声明，但 1.5.2 Chat provider 丢签名的工具回放边界
+尚待适配，见兼容层文档，不应据此把 Pi 默认切到 Chat。
 
 ## 2026-11-17 · Hank Pi 的 provider 迁移
 

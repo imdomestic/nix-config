@@ -10,6 +10,53 @@ gizmo 配置已开启生产兼容入口；Pi 配置新增 `agy-completions/*`，
 新增同名 provider。具体部署结果见文末。Pi 的现有 native Gemini provider、
 Max 的默认模型和旧 CLIProxy 都不变。
 
+## 2026-11-18 · agy-completions 客户端接入与部署
+
+配置提交 `b5cf3150`：Hank Pi 通过 `my.pi.providers.agy-completions` 新增 8 个
+`agy-completions/gemini-…`，与原生 `agy` 并存，不恢复 CLIProxy Gemini；
+Max 同名 provider 的 8 个 ID 已加载。SOPS 为 tank 增加代理 key 的解密权，
+key 本身未轮换；Google OAuth 仍只存在 gizmo。
+
+- gizmo 在 r6s 构建（max-jobs=1、cores=2），加载 v0.3.0 与 `/agy/v1/`。
+  实际 HTTPS `/agy/v1/models` 带 key 200（账号当时目录 25 条 Gemini），
+  无 key 401；旧 CLIProxy PID `3761129` 未改变。
+- gizmo 未重启或整套切换，运行代仍 `kxnnv8p7…`，加载内核 6.18.57。
+  完整最新声明设为启动默认：
+  `/nix/store/rddv6laixmbw3fcz8h4ils2rsycdpb45-nixos-system-gizmo-26.05.20261113.f1e5c35`。
+  本次 runtime drop-ins 为 `/run/systemd/system/agy-proxy.service.d/90-agy-proxy.conf`
+  和 nginx 同名 drop-in，引用该声明产物。重启后由已设默认的新系统接管。
+- tank 构建只产生配置/unit/manifest；新旧软件/内核闭包没有变化，
+  etc 仅 Max / vm-check 的 config path 改变。先 test 激活，再设 boot 默认，
+  当前运行与启动均为：
+  `/nix/store/lwj1by13xbh5h3r68wdh0k5xxd16vvl7-nixos-system-tank-26.05.20261113.f1e5c35`。
+  内核未重启，仍 6.18.60；Max 原二进制不变，重新加载配置后 PID `1705818`，
+  QQ gateway resumed=true。
+- 原有 8 台 VM、8 个 forwarder 的 PID 全部保持不变；每个 `/llm` 目录都
+  出现 8 条新 provider 模型，job 默认仍 `cliproxy-responses/gpt-6.1-sol`。
+- 从 VM 3 的真实 Max forwarder 请求 `agy-completions/gemini-4-hydrogen-high`：
+  流式工具第一轮 HTTP 200（21.03 秒，usage/DONE 和 native signature 在），
+  第二轮原样回放 HTTP 200（11.40 秒），返回指定 `MAX_AGY_COMPLETIONS_OK`。
+  只执行固定结果 stub，没有给 VM 配真实 key，也没有改真实群聊的选型。
+- Main chat / intent / dreamer / caption / job 默认均未改；新 provider
+  retries=0。切换单个 Max 会话可用
+  `/model agy-completions/gemini-4-hydrogen-high`，其他预设同样按真实 ID。
+- 两边回退 timers 都已取消；tank 第一次保护验收过早读取 forwarder 的
+  旧目录而触发回退，补上有界 readiness 后重新部署成功。不能把进程
+  active 当作两秒刷新周期的目录已更新。
+
+### Pi 兼容边界：仅加入声明，未激活
+
+当前 Pi 1.5.2 的 `openai-completions` provider 不保留这个转换层返回的
+`extra_content`，小型自定义提示词的真实 read-tool 测试第一轮后在第二轮
+返回 400（缺少 signature metadata）。Max 的 opaque fields 则保留，以上
+Max 转发回放测试已通过。**Pi 的新条目目前只是用户要求的声明，不应宣称
+完整工具回放兼容**；本机未激活 home、未切默认。后续要给 Pi 增加明确的
+签名 metadata 适配，不能放宽服务器检查或伪造签名来绕过。
+
+原生 `agy/*` 配置不受影响；既有 Pi 默认 prompt 429 仍按单独问题处理。
+提示词身份 scope/session header 已同时覆盖两 provider，但它们不等于
+解决 metadata 丢失或证明 Max 长群聊上下文不会遇到 429。
+
 ## 开启方式与地址
 
 CLI 显式加 `--openai-compat`，并同时配置现有的本机 Keychain / 独立 OAuth
@@ -24,9 +71,9 @@ services.agy-proxy.openaiCompat = true;
 
 默认 false。gizmo 的 host 模块仅在 true 时增加 HTTPS `/agy/v1/`；后端
 仍只监听 loopback 8319，不额外开放防火墙、native API 或 OAuth 控制面。
-需要按正常的 r6s 构建 → gizmo 部署流程激活后，以下地址才可使用：
+当前 gizmo 已按 r6s 构建 → gizmo 部署流程启用，地址如下：
 
-| 用途 | 本地后端 | gizmo HTTPS（开启并部署后） |
+| 用途 | 本地后端 | gizmo HTTPS |
 | --- | --- | --- |
 | Chat | `/v1/chat/completions` | `/agy/v1/chat/completions` |
 | 模型列表 | `/v1/models` | `/agy/v1/models` |
