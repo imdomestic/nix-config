@@ -20,6 +20,7 @@ import (
 
 func run() error {
 	listen := flag.String("listen", "127.0.0.1:8319", "loopback listen address")
+	openaiCompat := flag.Bool("openai-compat", false, "enable the explicitly translating /v1/chat/completions and /v1/models endpoints")
 	keyFile := flag.String("client-key-file", "", "private file containing the proxy client Bearer key")
 	credentialFile := flag.String("credential-file", "", "private OAuth JSON file; never in the Nix store")
 	refreshFile := flag.Bool("refresh-credentials", false, "refresh and atomically persist this service's own OAuth credential file")
@@ -85,7 +86,11 @@ func run() error {
 	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
 	transport.ResponseHeaderTimeout = 45 * time.Second
 	transport.MaxIdleConnsPerHost = 8
+	if *openaiCompat && source == nil {
+		return errors.New("openai-compat requires keychain or credential-file and a proxy client key")
+	}
 	p := newProxy(origin, transport, source, key, *ua, *maxBody)
+	p.openaiCompat = *openaiCompat
 	server := &http.Server{Handler: p, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second, MaxHeaderBytes: 64 << 10}
 	listener, err := net.Listen("tcp", *listen)
 	if err != nil {

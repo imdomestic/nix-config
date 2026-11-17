@@ -4,7 +4,7 @@
 }:
 buildGoModule {
   pname = "agy-proxy";
-  version = "0.2.1";
+  version = "0.3.0";
   src = lib.cleanSource ./.;
   vendorHash = null;
   env.CGO_ENABLED = "0";

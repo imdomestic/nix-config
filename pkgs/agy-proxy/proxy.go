@@ -32,17 +32,18 @@ var nativeMethods = map[string]bool{
 }
 
 type proxy struct {
-	origin    *url.URL
-	client    *http.Client
-	native    *httputil.ReverseProxy
-	source    credentialSource
-	key       string
-	userAgent string
-	maxBody   int64
-	mu        sync.Mutex
-	project   string
-	identity  [32]byte
-	projectAt time.Time
+	origin       *url.URL
+	client       *http.Client
+	native       *httputil.ReverseProxy
+	source       credentialSource
+	key          string
+	userAgent    string
+	maxBody      int64
+	openaiCompat bool
+	mu           sync.Mutex
+	project      string
+	identity     [32]byte
+	projectAt    time.Time
 }
 
 func newProxy(origin *url.URL, transport http.RoundTripper, source credentialSource, key, ua string, maxBody int64) *proxy {
@@ -107,6 +108,10 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.ContentLength = int64(len(body))
 		r.TransferEncoding = nil
 		p.native.ServeHTTP(w, r)
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/v1/") && p.openaiCompat && p.source != nil {
+		p.chatRoute(w, r)
 		return
 	}
 	if !strings.HasPrefix(r.URL.Path, "/v1beta/models") || p.source == nil {

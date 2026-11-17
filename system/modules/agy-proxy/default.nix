@@ -23,6 +23,7 @@
       "%d/oauth-client"
     ]
     ++ lib.optional cfg.refreshCredentials "--refresh-credentials"
+    ++ lib.optional cfg.openaiCompat "--openai-compat"
     ++ lib.optionals (cfg.userAgent != null) ["--user-agent" cfg.userAgent];
 in {
   options.services.agy-proxy = {
@@ -50,6 +51,11 @@ in {
       default = "/var/lib/agy-proxy/oauth.json";
       readOnly = true;
       description = "Private runtime OAuth state owned and refreshed only by agy-proxy.";
+    };
+    openaiCompat = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Enable explicitly translating OpenAI Chat Completions and model discovery; native Gemini remains unchanged.";
     };
     refreshCredentials = lib.mkOption {
       type = lib.types.bool;
