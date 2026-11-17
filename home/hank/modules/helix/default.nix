@@ -1,12 +1,23 @@
-let
+{
+  config,
+  pkgs-unstable,
+  ...
+}: let
   theme = "evergarden-winter-green";
 in {
+  home.packages = [pkgs-unstable.steel];
+  home.sessionVariables = {
+    STEEL_HOME = "${config.home.homeDirectory}/.steel";
+  };
   programs.helix = {
     enable = true;
+    package = pkgs-unstable.steelix;
     settings = {
       theme = theme;
       editor = {
-        line-number = "relative";
+        # line-number = "relative";
+        popup-border = "menu";
+        bufferline = "multiple";
         cursorline = true;
         color-modes = true;
         end-of-line-diagnostics = "hint";
@@ -20,6 +31,11 @@ in {
         };
         inline-diagnostics = {
           cursor-line = "warning";
+        };
+        indent-guides = {
+          render = true;
+          character = "│";
+          skip-levels = 0;
         };
       };
     };
@@ -58,7 +74,7 @@ in {
       "punctuation.special" = "aqua";
       keyword = {
         fg = "red";
-        modifiers = ["italic"];
+        # modifiers = ["bold"];
       };
       "keyword.operator" = "orange";
       "keyword.directive" = "cherry";
