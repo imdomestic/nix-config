@@ -188,8 +188,8 @@ export default function (pi: ExtensionAPI) {
         const promptSuffix = "\n\n<rules>Keep rules.</rules>\n<project_context>Keep AGENTS.md.</project_context>";
         const modelPrompt = { systemPrompt: identity + promptSuffix };
         const promptHandlers = handlers.get("before_agent_start") ?? [];
-        for (const id of ["gemini-3.8-flash-high", "gemini-4-hydrogen-high"]) {
-          const rewrites = await Promise.all(promptHandlers.map(handler => handler(modelPrompt, { ...ctx, model: { provider: "agy", id }, mode: "print" })));
+        for (const provider of ["agy", "agy-completions"]) for (const id of ["gemini-3.8-flash-high", "gemini-4-hydrogen-high"]) {
+          const rewrites = await Promise.all(promptHandlers.map(handler => handler(modelPrompt, { ...ctx, model: { provider, id }, mode: "print" })));
           const result = rewrites.find(result => result?.systemPrompt);
           assert(result?.systemPrompt.startsWith("You are Antigravity Agent"), "The Nix bootstrap must configure the Antigravity prompt scope");
           assert(result.systemPrompt.endsWith(promptSuffix), "The bootstrap must retain rules and project context");

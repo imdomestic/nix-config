@@ -7,6 +7,7 @@
 in {
   services.agy-proxy = {
     enable = true;
+    openaiCompat = true;
     clientKeyFile = config.sops.secrets."agy-proxy/api_key".path;
     oauthClientFile = config.sops.secrets."agy-proxy/oauth_client".path;
   };

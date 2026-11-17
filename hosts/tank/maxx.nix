@@ -9,6 +9,7 @@
   ...
 }: let
   cliproxy = import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
+  agyPlacement = config.my.fleet.placements.agy-proxy;
   # owners: `qq:<user_openid>` per line, from the private chat's endpoint.
   # github-token: maxxagent's classic token, public_repo only;
   # github-git-auth: base64 of x-access-token:<the same token>, the basic
@@ -22,6 +23,9 @@
   prices = {
     # Promotional until 2026-12-31, then 1.50 / 0.15 / 7.50.
     gemini-flash = price 0.75 0.075 3.75;
+    gemini-3-flash = price 0.5 0.05 3;
+    gemini-3-1-flash-lite = price 0.25 0.025 1.5;
+    gemini-3-5-flash-lite = price 0.3 0.03 2.5;
     # Vertex's global endpoint; promotional until 2026-11-30, then twice.
     gemini-4 = price 2 0.1 10;
     gemini-4-hydrogen = price 1.5 0.075 7.5;
@@ -55,6 +59,12 @@ in {
       restartUnits = ["maxx.service"];
     })
     // {
+      "maxx/agy-completions-api-key" = {
+        sopsFile = ../../secrets/clients/agy-proxy.yaml;
+        key = "agy-proxy/api_key";
+        owner = "maxx";
+        restartUnits = ["maxx.service"];
+      };
       # The key the Haskell max had for cliproxy, still under its name.
       "maxx/cliproxy-api-key" = {
         sopsFile = ../../secrets/hosts/tank-max.yaml;
@@ -165,6 +175,30 @@ in {
         # takes every model to see them. A window nobody wrote down is the
         # Haskell max's default, 131072.
         providers = {
+          agy-completions = {
+            base_url = "https://${agyPlacement.tsName}/agy/v1";
+            protocol = "chat";
+            api_key_file = secret "agy-completions-api-key";
+            retries = 0;
+            stream_idle_timeout_secs = 240;
+            models =
+              lib.mapAttrs (id: model: {
+                context_window = cliproxy.gemini.context;
+                max_output = model.output;
+                price =
+                  {
+                    "gemini-3-flash" = prices.gemini-3-flash;
+                    "gemini-3.1-flash-lite" = prices.gemini-3-1-flash-lite;
+                    "gemini-3.5-flash-lite" = prices.gemini-3-5-flash-lite;
+                    "gemini-3.8-flash-high" = prices.gemini-flash;
+                  }
+                  .${
+                    id
+                  };
+              })
+              cliproxy.gemini.models
+              // lib.genAttrs cliproxy.antigravityHydrogen.ids (_: googleHydrogen // {video = false;});
+          };
           cliproxy = {
             base_url = cliproxy.baseUrl;
             protocol = "chat";

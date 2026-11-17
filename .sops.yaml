@@ -77,6 +77,7 @@ creation_rules:
           - age175594x5r5ngze8rs5n2ga0976e0flh0xq2aqjq3xaldr28e703sqlcy9n6 # hank (2)
           - age1f0ch7vfsqs3u5c4mzqs4m228wge5vulz0s0yj30gkapk7nlk3g2s43x42l # hank (3)
           - age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq # host gizmo
+          - age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs # host tank
   - path_regex: 'secrets/clients/cliproxy\.yaml$'
     key_groups:
       - age:

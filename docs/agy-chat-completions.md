@@ -6,8 +6,9 @@ v0.3.0 在原生 Gemini 之外增加**显式转换**的 `/v1/chat/completions`�
 [agy-proxy](agy-proxy.md) 和
 [Pi 的原生入口 429](incidents.md#pi-agy-native-prompt-429)。
 
-**当前代码已实现，但 gizmo 的生产兼容开关仍关闭，未做此次部署。**
-Pi 的现有 native Gemini provider、Max 的默认模型和旧 CLIProxy 都不变。
+gizmo 配置已开启生产兼容入口；Pi 配置新增 `agy-completions/*`，Max 配置
+新增同名 provider。具体部署结果见文末。Pi 的现有 native Gemini provider、
+Max 的默认模型和旧 CLIProxy 都不变。
 
 ## 开启方式与地址
 
@@ -140,15 +141,18 @@ metadata），最多 32 candidates、65536 native parts、128 tools。输出媒�
 Max 当前的 `protocol = "chat"` 可以使用这个入口，不再需要先给 Max 写
 Gemini-native serializer；但仍须实际验证它的上下文和完整工具轮次。
 当前 Max 的 Chat parser 已保留 message / tool_call 上的未知字段，因此
-设计与它的 opaque replay 相容。新的 Max provider 应使用独立名字、真实
-Gemini IDs、这里的 base URL 和本服务的调用 key；先不改变 default /
-caption / dreamer / job。
+设计与它的 opaque replay 相容。Max provider 名为 `agy-completions`，使用
+真实 Gemini IDs、这里的 base URL 和本服务的调用 key；不改变 default /
+caption / dreamer / job，provider retries=0，避免把已知 429 自动多次重播。
 
-代理 key 当前 SOPS 只授权 Hank 与 gizmo。将来接入 Max 时还须显式授权
-tank、注入 maxx 可读 secret；不能拿现有 CLIProxy key 冒充新 key，更不能
-把 Google OAuth 复制给 VM。VM Pi 可以继续用既有 Chat forwarder，但须
-做真实回放验收。Pi 本机已有 native `agy`，没有必要为了兼容 Max 把它
-也改回 OpenAI 协议。
+代理 key 的 SOPS readers 是 Hank、gizmo 和 tank；Max 使用
+`/run/secrets/maxx/agy-completions-api-key`。没有复用旧 CLIProxy key，
+Google OAuth 不分发给 tank 或 VM。VM Pi 继续使用既有 Chat forwarder。
+Pi 本机同时保留 native `agy/*` 与独立 `agy-completions/*`，后者共用相同
+8 个实际型号和价格/预算，api 为 openai-completions，身份 scope 和稳定
+session header 对这两个 provider 都生效，不影响 GPT 等其他 provider。
+Max 的 Hydrogen 仍用既有的 256K 会话预算；新 provider 的视频能力暂不
+标为已验收。
 
 ## 2026-11-17 · 实现验收
 
@@ -172,5 +176,4 @@ AGY_CHAT_LIVE_KEY_FILE="$HOME/.local/state/agy-proxy/client-key" \
 ```
 
 这些结果只证明已测转换和签名回放有效。没有通过删减 Pi 默认规则来测过，
-也没有证明转换能消除已记录的 Pi prompt 429；生产部署与 Max 实际接入仍待
-授权与验收。
+也没有证明转换能消除已记录的 Pi prompt 429。

@@ -16,4 +16,22 @@ in {
     apiKey = "!${pkgs.coreutils}/bin/cat ${lib.escapeShellArg config.sops.secrets."agy-proxy/api_key".path}";
     models = import ./agy-models.nix {inherit lib;};
   };
+
+  my.pi.providers.agy-completions = {
+    name = "agy-completions";
+    baseUrl = "https://${placement.tsName}/agy/v1";
+    api = "openai-completions";
+    apiKey = config.my.pi.providers.agy.apiKey;
+    models = map (model:
+      model
+      // {
+        name = "agy-completions/${model.id}";
+        compat = {
+          supportsDeveloperRole = false;
+          supportsReasoningEffort = true;
+          thinkingFormat = "openai";
+        };
+      })
+    config.my.pi.providers.agy.models;
+  };
 }

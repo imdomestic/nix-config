@@ -20,14 +20,14 @@ export default function (pi: ExtensionAPI): void {
       const event = (systemPrompt = prompt) => ({ systemPrompt, systemPromptOptions: { sections: { rules: "Keep all tool rules." } } });
       const target = (id: string, provider = "agy") => ({ model: { id, provider } });
 
-      for (const id of models) {
+      for (const provider of ["agy", "agy-completions"]) for (const id of models) {
         const input = event();
         const snapshot = JSON.stringify(input);
-        const result = run(input, target(id));
+        const result = run(input, target(id, provider));
         assert(result.systemPrompt.startsWith("You are Antigravity Agent, a powerful agentic AI coding assistant designed by the Google engineering team.\nYou are pair programming with a USER"));
         assert.equal(result.systemPrompt.slice(result.systemPrompt.indexOf("\n\n")), suffix, "Only the opening identity may change");
         assert.equal(JSON.stringify(input), snapshot, "Do not mutate base prompt options or context");
-        assert.equal(run(event(result.systemPrompt), target(id)), undefined, "Never duplicate the agy opening");
+        assert.equal(run(event(result.systemPrompt), target(id, provider)), undefined, "Never duplicate the agy opening");
       }
       for (const [provider, id] of [
         ["cliproxy", "gpt-6.1-sol"], ["cliproxy", "rewind/gpt-6-astra"], ["cliproxy", "rewind2/gpt-6-astra"],
@@ -40,6 +40,9 @@ export default function (pi: ExtensionAPI): void {
       const sessionContext = { ...target(models[0]), sessionManager: { getSessionId: () => "native-session-one" } };
       handlers.before_provider_headers({ headers }, sessionContext);
       assert.deepEqual(headers, { "X-Keep": "untouched", "X-Agy-Session-Id": "native-session-one" });
+      const chatHeaders = {};
+      handlers.before_provider_headers({ headers: chatHeaders }, { ...sessionContext, ...target(models[0], "agy-completions") });
+      assert.deepEqual(chatHeaders, { "X-Agy-Session-Id": "native-session-one" });
       for (const provider of ["cliproxy", "google", "ninfer"]) {
         const otherHeaders = { "X-Keep": "untouched" };
         handlers.before_provider_headers({ headers: otherHeaders }, { ...sessionContext, ...target(models[0], provider) });
