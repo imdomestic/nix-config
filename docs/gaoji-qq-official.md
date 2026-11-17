@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-17 · pi 后台、模型链降级与 `/job` 工具路由（#147）合入并先按默认 Codex 发布到 tank
+
+- Bot PR #147（中转 `/job/tools` 与 `/job/tool` 流式心跳路由、后台模型链按序降级与分次计费、`pi` 插件/RPC 桥接/`PiEngine` 及容器系统内置 `pi`，默认仍为 `AI_BACKGROUND_ENGINE=codex`）连同 #151、#152、#153 合入 `main`（`d8a83e6bbf7dac7443b4f9bbc997aaf39816d235`）。本机全套 1,821 项测试通过，`check_pi_job.py` 16 项全通，CI 5 项全绿。
+- 配置 `72adb086` 固定 `qq-bot`；tank 隔离构建，内核保持 `linux-6.18.63` 不变，闭包差异仅 `gaojibot` 与 `gaoji-pi`，切换前无活跃回合或后台任务，`dry-activate` 仅停止/启动 `gaoji.service`。
+- 原系统 `/nix/store/036rav9rxy3qh7vg64w7zgiaa1zjxm56-…`，现系统 `/nix/store/1mgs4nl8k1dmrpg1mzyzn9q2bircswsk-nixos-system-tank-26.05.20261113.f1e5c35`，`gaoji` PID `2693631`、`NRestarts=0`；`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，启动后无新错误。`AI_BACKGROUND_ENGINE=pi` 尚未开启。
+
 ## 2026-11-17 · 删跨群关联/跨群提问代码（T2）并删掉已无代码的 34 张旧表（T3）
 
 - Bot PR #150（T2：删除跨群关联 `link_*.py`、`linking.py` 与跨群提问 `question_*.py`、`questions.py` 及调用点与测试，共 `-6,928 / +52` 行，保留库表待后续统一迁移删除）与 PR #149（T3：新增迁移 `0107_drop_dead_tables` 删除 `fleet_*`、`alert_*`、`diagnostic_*`、`ops_actions`、`ops_replies`、`host_api_calls`、`host_api_quota`、`admin_fleet_watches`、`turn_reaction_votes` 共 34 张无代码引用表，并清理 `reaction_feedback.py` 死文件，共 `+255 / -173` 行；降级仅重建空表结构、不恢复数据）各自本机隔离全套测试与 CI 5 项全绿后合并至 `main`（`1a01c37ea4434def273a4626fcd42cd9ed55260a`）。
