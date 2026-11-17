@@ -17,13 +17,12 @@
     # Sticker tagging and image descriptions; this file loads last, so it
     # overrides the older value in runtime.env.
     AI_VISION_PROFILE=gemini-3.8-flash-high
-    AI_BACKGROUND_ENGINE=pi
     AI_BACKGROUND_MODELS=gpt-6.1-sol,gpt-6-astra,gpt-6-luna
     AI_BACKGROUND_CONTEXT_WINDOW=200000
     AI_MODEL_PROFILES_JSON='${builtins.toJSON modelProfiles}'
   '';
 in {
-  # Bot, QQ transport and KVM workspaces run together on tank.
+  # Bot, QQ transport and NixOS container workspaces run together on tank.
   services.gaoji = {
     enable = true;
     qqOfficial = {
@@ -49,12 +48,8 @@ in {
     sandbox = {
       enable = true;
       backend = "container";
-      vmImage = pkgs.fetchurl {
-        url = "https://cloud.debian.org/images/cloud/trixie/20260525-2489/debian-13-genericcloud-amd64-20260525-2489.qcow2";
-        hash = "sha256-YpoEI+UD4rkvuKVpHTMguTphOd7IYYkPhGCPp2tTixA=";
-      };
       vmRoot = "/data/services/gaoji/vms";
-      # 自动运维 (2026-11-17): these conversations' VMs reach the fleet with
+      # 自动运维 (2026-11-17): these conversations' containers reach the fleet with
       # `ssh <host>` as gaoji through the gaojiops tailnet node, like Max's
       # operations network. Owners are VM owner ids (sha256 of the QQ
       # endpoint key): the owner's private chat and one trusted group.
