@@ -1,5 +1,9 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-19 · 0116 切换前第二份全备和还原演练（07:22 HKT）
+
+- 完整归档 `/data/services/gaoji/backups/inline-digests-20261118T225958Z/pre-switch-20261118T232201Z.dump`，95,487,671 字节，0600，SHA256 `58fec0d78a11399be9f7755e01dc99ba69b9d676425411749bc078cf5f8c9a9b`。两份归档均在断网、生产 PG socket 不可见的独立 PG 17 完整还原；分别用首版和最终包 upgrade/check，按 turn_id 排序的 ID/两段文本/原时间戳的二进制 COPY 在迁移前后 SHA256 相同。首次 1,277 份摘要；第二份 1,278，消息 11,835、回合 1,278、归档 103 均不变，业务表 82→81。未输出摘要正文。最终候选 `4d6ffda1` / 配置 `16ac2fb2`，内核不变，dry-activate 只启停应用。当前仍未切换。
+
 ## 2026-11-19 · 0116 摘要合并删表前完整备份（06:59 HKT）
 
 - 生产仍为 `df212046` / 0115。在持有部署锁时使用 PG 17.11 `pg_dump -Fc` 对整个 `qq_bot` 归档，无表过滤。`/data/services/gaoji/backups/inline-digests-20261118T225958Z/qq_bot.dump`，95,423,811 字节，目录 0700、归档 0600，SHA256 `f184582c8dc2ff3bc83a3e3656a5b08d86cc4e14b8f444152fb623864aa6bfea`，全归档解码通过。此记录不是迁移结果。
