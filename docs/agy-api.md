@@ -133,6 +133,20 @@ CLI 用 `--upstream-header-timeout`（1s–10m）；超时仍是失败，不自�
 开启 GCP 产品、花费 credits、购买套餐或把 Antigravity OAuth 转发到
 客户端指定的任意 URL。未知接口仍可能返回 404。
 
+## 传输错误的诊断版本
+
+v0.4.1 在线上会把所有 `Client.Do` error 合成同一条通用 502，不能据此
+区分等待响应头超时、DNS、TLS、断连或客户端取消。v0.4.2 源码增加
+`diagnostic_id`、`failure_class`、`upstream_phase`、`elapsed_ms` 扩展字段，
+与无 URL/prompt/token 的 httptrace 日志关联；HTTP status 仍是 502，
+不改自动重放策略。分类日志使用 journal priority 前缀，适配 gizmo
+只持久化 notice/warning 的设置。
+
+**v0.4.2 尚未加载到线上，当前运行仍为 v0.4.1**，并不声称已经修复偶发
+网络失败。加载后再据实际类别决定是否调整超时/连接策略，不能先猜 HTTP/2
+或清冷却。历史证据与误判见
+[传输 502 排查](incidents.md#agy-transport-generic-502)。
+
 ## 2026-11-18 · v0.4.1 上线与真实验收
 
 实现提交 `f339a4cd`，实测 header wait 修复 `65406410`。在 r6s 以

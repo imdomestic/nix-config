@@ -88,9 +88,9 @@ func (p *proxy) chatRoute(w http.ResponseWriter, r *http.Request) {
 	if input.Stream {
 		action = "streamGenerateContent"
 	}
-	response, err := p.upstream(r.Context(), action, envelope, credential.AccessToken)
+	response, err := p.upstream(r.Context(), action, envelope, credential.AccessToken, input.Model)
 	if err != nil {
-		chatError(w, 502, "upstream transport failed; request was not replayed", "server_error")
+		writeUpstreamFailure(w, err, true)
 		return
 	}
 	defer response.Body.Close()

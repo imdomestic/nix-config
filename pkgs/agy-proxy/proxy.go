@@ -40,6 +40,7 @@ type proxy struct {
 	userAgent    string
 	maxBody      int64
 	openaiCompat bool
+	transportLog *log.Logger
 	mu           sync.Mutex
 	project      string
 	identity     [32]byte
@@ -47,7 +48,7 @@ type proxy struct {
 }
 
 func newProxy(origin *url.URL, transport http.RoundTripper, source credentialSource, key, ua string, maxBody int64) *proxy {
-	p := &proxy{origin: origin, source: source, key: key, userAgent: ua, maxBody: maxBody}
+	p := &proxy{origin: origin, source: source, key: key, userAgent: ua, maxBody: maxBody, transportLog: newUpstreamLogger()}
 	p.client = &http.Client{Transport: transport, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	p.native = &httputil.ReverseProxy{
 		Rewrite: func(r *httputil.ProxyRequest) {
@@ -209,7 +210,7 @@ func readBody(w http.ResponseWriter, r *http.Request, limit int64) ([]byte, erro
 	return body, err
 }
 
-func (p *proxy) upstream(ctx context.Context, action string, body []byte, token string) (*http.Response, error) {
+func (p *proxy) upstream(ctx context.Context, action string, body []byte, token string, models ...string) (*http.Response, error) {
 	u := *p.origin
 	u.Path = "/v1internal:" + action
 	if action == "streamGenerateContent" {
@@ -223,7 +224,11 @@ func (p *proxy) upstream(ctx context.Context, action string, body []byte, token 
 	r.Header.Set("Content-Type", "application/json")
 	r.Header.Set("Authorization", "Bearer "+token)
 	r.Header.Set("User-Agent", p.userAgent)
-	return p.client.Do(r)
+	model := ""
+	if len(models) > 0 {
+		model = models[0]
+	}
+	return p.doUpstream(r, action, len(body), model)
 }
 
 func (p *proxy) projectFor(ctx context.Context, c credential) (string, error) {
@@ -374,9 +379,9 @@ func (p *proxy) generate(w http.ResponseWriter, r *http.Request, model, action s
 	_ = json.Unmarshal(envelope, &outer)
 	outer["project"], _ = json.Marshal(project)
 	envelope, _ = json.Marshal(outer)
-	resp, err := p.upstream(r.Context(), action, envelope, c.AccessToken)
+	resp, err := p.upstream(r.Context(), action, envelope, c.AccessToken, model)
 	if err != nil {
-		writeError(w, 502, "upstream transport failed; request was not replayed")
+		writeUpstreamFailure(w, err, false)
 		return
 	}
 	defer resp.Body.Close()

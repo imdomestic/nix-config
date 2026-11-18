@@ -101,9 +101,9 @@ func (p *proxy) mediaRoute(w http.ResponseWriter, r *http.Request) {
 	var outer map[string]json.RawMessage
 	_ = json.Unmarshal(envelope, &outer)
 	outer["project"] = chatRaw(project)
-	response, err := p.upstream(r.Context(), "generateContent", chatRaw(outer), c.AccessToken)
+	response, err := p.upstream(r.Context(), "generateContent", chatRaw(outer), c.AccessToken, input.model)
 	if err != nil {
-		chatError(w, 502, "upstream transport failed; request was not replayed", "server_error")
+		writeUpstreamFailure(w, err, true)
 		return
 	}
 	defer response.Body.Close()

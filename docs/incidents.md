@@ -48,6 +48,37 @@ STUN 探针最初也超时，但不是 UDP 被挡：Tailscale 的 derper 只回�
 `SOFTWARE=tailnode` 和正确 fingerprint 的请求，补上后公网 UDP 3478
 通过。完整迁机与当前兼容 DNS 见 `docs/tokyo-migration.md`。
 
+## 2026-11-18 · agy 的通用 502 吞掉了传输失败原因 {#agy-transport-generic-502}
+
+Max 偶发收到 `upstream transport failed; request was not replayed`。
+代码路径确认这是 agy-proxy 的 `http.Client.Do` 返回 error、尚未获得可
+正常处理的 response，而非 Google HTTP 403/429、签名解析或工具参数错误。
+旧 handler 未记录 err 的类别，统一回 502，因此历史记录无法还原成
+DNS / TCP / TLS / EOF / headers timeout 中的某一项。
+
+Max 记录到 21:49:13、22:52:45 和 23:38:06 三次该错误；最后一次已经是
+v0.4.1、120 秒 header wait。该进程 NRestarts=0，内存峰值约 11 MiB，
+没有 OOM/崩溃证据。同一轮内前面的多次生成成功，失败是后续单次调用。
+Max 的 llm_usage 只为成功结果留下 timing；例如 turn 2923 的前两次为
+11.131 / 7.818 秒，失败调用没有 timing。
+
+最容易误判的是把整轮对话的几分钟跨度当作单次 HTTP timeout，或认为
+「更新到 120 秒后仍有 502」就能排除所有超时。轮次里包括工具和等待，
+不能这样推断；之前也确有成功请求约 112 秒，120 秒并非足以排除长等待。
+没有证据就不能把连接复用或 HTTP/2 定为根因。
+
+v0.4.2 源码增加有界、无 payload 的 httptrace 诊断：失败类别、阶段、
+elapsed_ms、请求是否写完、是否收到首字节、连接复用/idle、协议及底层
+错误类型，另有公开 diagnostic_id 对应日志。不会记录 err.Error()、URL、
+headers、OAuth、账号、prompt 或工具结果；警告前缀能被 gizmo 的
+notice-only journald 保留。客户端取消单独标记，不混作模型拒绝。
+
+离线故障注入覆盖 DNS/TLS/超时/EOF/连接重置、真实 header timeout、
+复用连接中断及日志防泄漏；非幂等 generation 仍只发一次。未调整 120 秒
+上限、HTTP/2、连接池或 Max 的 retries=0。**本次只提交诊断版本，未重启
+线上 v0.4.1**；需要加载该版本后捕获实际失败，才能进一步定根因。
+`not replayed` 只表示代理没有重发，不表示 Google 肯定没执行该请求。
+
 ## 2026-11-18 · CLIProxy Flash：精简真实身份提示词可保留项目上下文与工具 {#pi-cliproxy-flash-compact-prompt}
 
 用户要求先复测 `cliproxy/gemini-3.8-flash-high`，不再处理 seraph。

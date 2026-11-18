@@ -75,9 +75,9 @@ func (p *proxy) countTokens(w http.ResponseWriter, r *http.Request, model string
 		writeError(w, 503, errCredentials.Error())
 		return
 	}
-	response, err := p.upstream(ctx, "countTokens", body, credential.AccessToken)
+	response, err := p.upstream(ctx, "countTokens", body, credential.AccessToken, model)
 	if err != nil {
-		writeError(w, 502, "upstream token-count transport failed")
+		writeUpstreamFailure(w, err, false)
 		return
 	}
 	defer response.Body.Close()
