@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-19 · 阶段 2 上线（03:57:15 HKT）
+
+- Bot：#196 行租约；#197 工具循环检查点；#203 `aef27838` 引用、延迟表情和搜索预算；#204 `b78a82d1` READY 后续跑。实际运行 `34ec1a53` 与 #204 合并树完全一致。PR CI `44383292455`、独立发布检查 `44382850662` 全绿。CI 真实子进程 SIGKILL，第二个进程等握手才重领，沿用原 journal，三份回执未重复。无法安全恢复的副作用不盲目重发；没有在生产强杀用户回合。
+- 备份演练：下述原始完整归档以 PrivateNetwork、独立临时 Unix socket、真实生产 socket 不可见的 PostgreSQL 17.11 实还原。候选 `gaoji-db upgrade/check` 将隔离副本从 0110 升到 0111，消息数 11,661 → 11,661。正式切换前再做一次完整备份 `/data/services/gaoji/backups/turn-checkpoint-20261118T192757Z/pre-switch-20261118T195533Z.dump`（93,248,603 字节，0600，SHA256 `18033613333278ceea65caf67e514bfa201ccd7a696b9b9334dfe0ad079aa74c`；全归档解码通过）。
+- 发布配置 `65f57080`；内核不变、dry-activate 仅启停 bot，独立确认 0 活动执行 / 0 运行回合 / 0 排队或运行任务、无活动群容器。切换后生产 schema `0111_scope_leases_checkpoints`，进程 commit 正确、三次连续 ready / healthy / 无 gap、零异常重启、error journal 为空。改前 72h（滚动采样）：192 回合、成功或静默 188、crashed 3、完成延迟 p95 176.25s、旧 restart_notified 1。改后窗口未满，不报告成功率提升。
+
 ## 2026-11-19 · 阶段 2：迁移 0111 前的完整备份
 
 - 19:27:57 UTC（11-18），生产仍为搜索 S4 `c2c08dad`、schema `0110_drop_remaining_dead_tables`。获取部署锁后从当前 PostgreSQL 主库执行全库 `pg_dump -Fc`；未按表或 schema 过滤。默认客户端 16.16 因版本不符拒绝执行，改用运行中 PostgreSQL 的 17.11 二进制重做。
