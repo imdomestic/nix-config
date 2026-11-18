@@ -1,5 +1,18 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-18 · 整体方案 v2 阶段 1（#193–#195：状态行、印象卡、承诺回访）发布到 tank
+
+- **Bot 合并（`0b2c973`）**：
+  - PR #193（10 分钟状态行）：`status_line.py` 从消息账本现场计算最近 10 分钟发言数、@ 次数与被夸/被怼倾向，写入动态用户上下文 `[状态]`（窗口过去自动恢复；系统提示词前缀保持完全可缓存）。
+  - PR #194（分群印象卡与定期整理）：`self_files.py` 管理每群独立的 `/work/.gaoji/self/people/*.md`（git 提交，宿主 `AI_STATE_DIR/self/` 快读镜像不唤醒休眠容器，文件损坏或缺失自动忽略）；新增 `impression` 工具（`read` / `note` / `forget`）；`turn_window` 仅注入当前批消息里出现的人的印象卡（最多 6 张）；`ApplicationMaintenance` 扩展每 4 小时用 `dream_profile` 整理活跃群印象卡与随口提及的近期安排。
+  - PR #195（承诺回访）：新增 `promise` 工具（`create` / `list` / `done`），记录在 `/work/.gaoji/self/promises.md` 并在容器 `/work/.gaoji/systemd/` 安装一次性 `.timer` + `.service` 单元（延续 Rust 版 Max 容器单元架构，到点执行 `gaoji wake` 唤醒前台并清理单元）；`turn_window` 在动态上下文注入 `[未兑现的承诺]`；无宿主新增数据库表。
+- **阶段 1 指标（改前基准，72h）**：
+  - 171 个回合（167 成功/静默），8 次 `[silence]`，avg 154,555 tokens，p95 176.50s；438 条入站消息中被叫"闭嘴/别说了/别吵" 1 次。
+  - 改后线上服务零报错重启，群友接话率与"闭嘴"次数变化列为 owner QQ 验收清单持续观测。
+- **tank 切换与核验**：
+  - 配置 `f8eec3a4` 将 `qq-bot` 更新至 `0b2c973`。现系统 `/nix/store/kj4irmjc7w1zkc9l34cg02dhk6f31k7f-nixos-system-tank-26.05.20261113.f1e5c35`，内核不变。
+  - 切换前确认运行回合 `0`、`running_jobs = 0`。`gaoji.service` PID `4142162`，`NRestarts=0`，`/health/qq-official` 连续 3 次 `ready`，`GAOJI_COMMIT=0b2c97382795f7f6d0545b075c67b61ef23ece89`，`journalctl -u gaoji` 零报错。已重启容器 `gaoji-ct-ops@sc373ac`。
+
 ## 2026-11-18 · 整体方案 v2 阶段 0（#189–#192）发布到 tank
 
 - **Bot 合并（`5635eb4`）**：
