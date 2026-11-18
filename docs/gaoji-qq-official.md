@@ -1,5 +1,10 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-19 · 阶段 2：迁移 0111 前的完整备份
+
+- 19:27:57 UTC（11-18），生产仍为搜索 S4 `c2c08dad`、schema `0110_drop_remaining_dead_tables`。获取部署锁后从当前 PostgreSQL 主库执行全库 `pg_dump -Fc`；未按表或 schema 过滤。默认客户端 16.16 因版本不符拒绝执行，改用运行中 PostgreSQL 的 17.11 二进制重做。
+- 完整归档：`/data/services/gaoji/backups/turn-checkpoint-20261118T192757Z/qq_bot.dump`，93,248,604 字节，权限 `0600`、目录 `0700`。SHA256 `b77016b54a0ebd710eb4804817522f8c7791448d17d8660c6494cdb1470aed61`，校验通过。`pg_restore -l` 包含消息表数据，全归档 `pg_restore --file=/dev/null` 成功；这验证了归档解码，不是实际还原演练。未迁移，未重启。
+
 ## 2026-11-19 · 搜索分阶段上线（HKT）
 
 - **S1 03:11:54**：#198；只含搜索的发布 `2f0a1adb`，配置构建 `814297cf`。Gitleaks 8.24.3 对三个历史测试误报逐条核对，限定原提交、路径、规则、行号；本地全史扫描及发布 [44375516734](https://github.com/zty20040403/gaojibot/actions/runs/44375516734) 全绿，主线登记 #202。切换前 0 活动执行 / 0 回合 / 0 任务；无活动会话容器。首次启动瞬间端口未监听，随后连续三次 ready / healthy / 无 gap，进程 `GAOJI_COMMIT` 与发布一致、`NRestarts=0`、启动后 error journal 为空，schema `0110`。无迁移。S1 的 72h 观察自 11-18 19:11:54 UTC 起算。
