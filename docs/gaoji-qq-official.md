@@ -1,5 +1,13 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-18 · 后台架构对齐 Max：无桥接 `pi --print`、笔记与 `--fork` 续做、重启不断、固定版本扩展与轻量常驻单元（#174–#176）发布到 tank
+
+- **Bot 合并（`d9c6c52`）**：
+  - PR #174（`pf#15`）：移除 `sandbox_agent_bridge.py` 与 `port+1` RPC 通道，`pi` 改为 `--print` 从 stdin 读任务、经 `sandbox_pi_agent.ts` 在轮次间读取收件箱补充要求（`gaoji agent ask` 挂起最多 10 分钟、到点前 5 分钟收尾、`SIGUSR2` 中止、原子写 `result.json`）；对齐 Max 参数（`thinkingLevelMap` 透传 `xhigh`/`max`、`/work/.gaoji/projects/<slug>.md` ≤16 KiB 目录笔记自动注入、`--fork` 续做、加载工作区 `AGENTS.md`/`CLAUDE.md`、同会话成员均可 `agent_steer`）；`gaoji-ct@`/`gaoji-ct-ops@` 设 `restartIfChanged = false`，`BackgroundJobs.recover` 与 `PiEngine` 在宿主重启后直接重连运行中的容器任务单元。
+  - PR #175（`pf#14`）：容器镜像内固定打包 `@juicesharp/rpiv-todo@2.15.0` 与 `pi-web-access@0.46.0`（`buildNpmPackage` + `importNpmLock`），保持 `--no-extensions` 并按 `--extension` 显式加载，仅启用无需密钥的 `fetchContent`/`getSearchContent`，联网搜索继续走宿主博查中继，密钥不进容器。
+  - PR #176（`pf#17.6`）：新增 `gaoji units {start,apply,list,stop}` 与 `gaoji wake`、容器内 `gaoji-jobs.slice` / `gaoji-units.slice`（`CPUWeight=20`、`IOWeight=20`、`MemoryMax=50%`）、开机自动恢复 `gaoji-units.service`、重试唤醒 `gaoji-notify@.service` 与 20 分钟空闲关闭 `gaoji-browser-idle.timer`，宿主最多保留 12 个常驻容器。
+- **tank 切换与真机容器全链路验收**：配置 `042de53d` 将 `AI_SANDBOX_MAX_TOTAL` 调至 `12`、为 Gemini 模型启用 `video = true` 并更新 `qq-bot` 至 `d9c6c52`。原系统 `/nix/store/ij9wid0wf93g76b6s9zlnbg26r4nsy85-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/9pjzdhc2xvc8fwrnca3c7vdqkkpn4xa9-nixos-system-tank-26.05.20261113.f1e5c35`；`gaoji` PID `3270817`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`。在真实容器 `s3d8026` 内跑通全部 5 项验收：`pi --print` 调用 `todo` + 宿主工具 + 写目录笔记、运行中途 `steer` 注入生效、`resume_job_id` `--fork` 续做读取上轮上下文与目录笔记、模拟宿主网关与引擎中断重启后容器单元持续运行并无损重连收尾、`/work/.gaoji/systemd/s4-persist.service` 经 `gaoji units apply` 安装后跨容器冷重启自动恢复 `active`（累计启动计数 `2`）。
+
 ## 2026-11-18 · 修复容器内后台任务独立单元启动（#170 / #173）、后台模型 Rewind 降级链（#171）与统一 `/job/tool` CLI（#172）发布到 tank
 
 - **Bot 合并（`965b2e6`）**：
