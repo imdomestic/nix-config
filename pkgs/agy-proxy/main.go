@@ -21,6 +21,7 @@ import (
 func run() error {
 	listen := flag.String("listen", "127.0.0.1:8319", "loopback listen address")
 	openaiCompat := flag.Bool("openai-compat", false, "enable stateless OpenAI-compatible Chat, Responses, image and file-audio endpoints")
+	headerTimeout := flag.Duration("upstream-header-timeout", 120*time.Second, "maximum wait for upstream response headers (1s to 10m)")
 	keyFile := flag.String("client-key-file", "", "private file containing the proxy client Bearer key")
 	credentialFile := flag.String("credential-file", "", "private OAuth JSON file; never in the Nix store")
 	refreshFile := flag.Bool("refresh-credentials", false, "refresh and atomically persist this service's own OAuth credential file")
@@ -36,6 +37,9 @@ func run() error {
 	host, _, err := net.SplitHostPort(*listen)
 	if err != nil || !(host == "localhost" || net.ParseIP(host).IsLoopback()) {
 		return errors.New("listen must be a loopback address; use an authenticated TLS frontend for remote access")
+	}
+	if *headerTimeout < time.Second || *headerTimeout > 10*time.Minute {
+		return errors.New("upstream-header-timeout must be between 1s and 10m")
 	}
 	if *maxBody <= 0 || *maxBody > 1<<30 {
 		return errors.New("max-body-bytes must be between 1 and 1073741824")
@@ -84,7 +88,7 @@ func run() error {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ForceAttemptHTTP2 = true
 	transport.TLSClientConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-	transport.ResponseHeaderTimeout = 45 * time.Second
+	transport.ResponseHeaderTimeout = *headerTimeout
 	transport.MaxIdleConnsPerHost = 8
 	if *openaiCompat && source == nil {
 		return errors.New("openai-compat requires keychain or credential-file and a proxy client key")

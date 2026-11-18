@@ -19,6 +19,8 @@
       "%d/client-key"
       "--credential-file"
       cfg.credentialsFile
+      "--upstream-header-timeout"
+      "${toString cfg.upstreamHeaderTimeoutSeconds}s"
       "--oauth-client-file"
       "%d/oauth-client"
     ]
@@ -37,6 +39,11 @@ in {
       type = lib.types.port;
       default = 8319;
       description = "Loopback-only HTTP port; expose Gemini through an authenticated TLS frontend.";
+    };
+    upstreamHeaderTimeoutSeconds = lib.mkOption {
+      type = lib.types.ints.between 1 600;
+      default = 120;
+      description = "Bounded upstream header wait; non-streaming image/audio jobs can exceed 45 seconds.";
     };
     clientKeyFile = lib.mkOption {
       type = lib.types.str;

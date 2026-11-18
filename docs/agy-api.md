@@ -116,7 +116,9 @@ multipart `file`，必须明确指定可用 Gemini 文本型号；不是 Whisper
 请求总上限由 `max-body-bytes` 控制，默认 64 MiB JSON。multipart 另有
 每文件 20 MiB、总内容 32 MiB、字段 64 KiB 和数量限制，上传在内存有界
 处理，不把用户媒体临时落盘。base64 会膨胀，请不要将 JSON 上限当成
-原始视频大小上限。upstream media response 和 replay/event 同样有界。
+原始视频大小上限。upstream media response 和 replay/event 同样有界。v0.4.1 将等待上游响应头
+的默认上限从 45 秒改为 120 秒，NixOS 用 upstreamHeaderTimeoutSeconds，
+CLI 用 `--upstream-header-timeout`（1s–10m）；超时仍是失败，不自动重试。
 
 ## 明确不支持的上游能力
 
