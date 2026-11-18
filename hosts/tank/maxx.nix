@@ -151,11 +151,6 @@ in {
         # once cached (2026-11-11). OpenCode's DeepSeek V4.1 Flash, which
         # had judged since 11-04, answered 503 auth_unavailable that day.
         intent.model = "h610/qwen3.5-4b-q4_k_m";
-        # Tidies each memory file Max wrote in the day, at 05:00.
-        dreamer = {
-          model = "cliproxy/gemini-3.8-flash-high";
-          effort = "high";
-        };
         # Says what each new picture and sticker shows; the Haskell max's
         # captioner too.
         caption = {
