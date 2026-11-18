@@ -1,5 +1,14 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-18 · 回复流程照 Max（#179）、新功能 A/B/C/E/F（#180–#183）、文件与图片上限提至 200 MiB / 10 MiB（#184）及收尾清理（#185–#186）发布到 tank
+
+- **Bot 合并（`fa849df`）**：
+  - PR #179（`pf#4`、`pf#19`、`pf#13`）：去掉 `MessageBatcher`，回合进行中新消息在下一次模型调用前直接并入（沿用初始思考档位）；主动插话改为小模型输出 `{trigger, reason}` 唤醒主模型完整回合（`0108_proactive_wake_state`，每会话每小时最多 8 次，运行中直接并入）；上下文提供 `[上下文里的人]`（`[mention#id] 名字`）并把 `[mention#id]` 渲染为真 `<qqbot-at-user id="..." />`。
+  - PR #180–#183（§8 新功能）：`recall_message` 撤回 2 分钟内自身消息（#180）；每群 `/persona` 命令与手动 `/effort` 思考档位覆盖（#181）；经 `cliproxy` 的 `generate_image` 工具（`gemini-3.1-flash-image` 主用 + `gpt-image-2.5` 兜底，#182）；`schedule_set(kind='turn')` 到点完整回复/群日报（`0109_schedule_turn_kind`，#183）。
+  - PR #184（`pf#20`）：实测腾讯上传接口边界（`200 MiB` 完整分片上传成功耗时 `100.64s`，`>=250 MiB` 报 `40093006`），将图片上限提至 `10 MiB`、文件上限提至 `200 MiB`，去掉每日 `2 GiB` 上限，修复 1-based 分片切片偏移、>=10 片数值排序与大图分片 `file_name="picture"`，并补充 `>=20 MB` 大文件上传前 `say` 预告规则。
+  - PR #185–#186（`pf#8`、`pf#9`、`pf#19`）：移除管理后台 4 个死页面（常驻程序旧版、会话问答审计、数据库主备、运维操作审计）并更新沙盒后端标识为 `NixOS 容器`（#185）；在全量备份生产库（`/data/services/gaoji/backups/pre-s10-cleanup-20261118/qq_bot.dump`，`83M`、`874` TOC 项）后，以迁移 `0110_drop_remaining_dead_tables` 无 `CASCADE` 删除 18 张零引用遗留表（`102 -> 84` 张表，#186）。另已清理 `tank` `base.env`/`runtime.env` 中 55 个废弃环境变量（备份于同目录 `env/`），并在 `h610` Headscale 删除离线的旧 `gaoji` 节点（ID `48` / `100.64.0.42`），在线 `gaojiops`（ID `55` / `100.64.0.10`）保持完好。
+- **tank 切换与核验**：配置 `56f2dcb9` 将 `AI_SANDBOX_MAX_FILE_MB` 升至 `200` 并更新 `qq-bot` 至 `fa849df`。原系统 `/nix/store/nv0xhlx8w6ni1gaw18n22hhp1wnwj4b2-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/wbcxlrz1yn8kpcgbb4ryy18ghbizw27y-nixos-system-tank-26.05.20261113.f1e5c35`（运行包 `/nix/store/s2qr9n0yfg1wb71v5x0aqi49w4j0rzx6-gaojibot-0.20.0`，内核不变）；`gaoji-db` 自动完成 `0107 -> 0108 -> 0109 -> 0110` 迁移，`gaoji` PID `3436596`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，`journalctl -u gaoji` 零报错，线上 `Settings.from_env` 核对 `sandbox_max_file_bytes=209715200`、`MAX_IMAGE_BYTES=10485760`、表数量 `84`。
+
 ## 2026-11-18 · 前台直接动手执行（#177）与提示词/毒舌假小子人设清理（#178）发布到 tank
 
 - **Bot 合并（`255b7a6`）**：
