@@ -25,5 +25,9 @@ in {
       peer = "telecom";
       lanReachableFromWan = "its forward chain accepts everything (docs/decisions.md#router-tests)";
     };
+    # Max's own nested VM test, not tank's configuration: maxx follows this
+    # flake's nixpkgs, so only here is it what tank builds. The updater takes
+    # the host from after the first hyphen (docs/decisions.md#maxx-fleet-test).
+    maxvm-tank = inputs.maxx.nestedChecks.x86_64-linux.vm;
   };
 }

@@ -11,6 +11,31 @@
 
 ---
 
+## 2026-11-19 · tank 的 fleetTests 里跑 max 自己的嵌套 VM 测试 {#maxx-fleet-test}
+
+`fleetTests.x86_64-linux.maxvm-tank` 就是 `inputs.maxx.nestedChecks.x86_64-linux.vm`:
+max 仓库自己的测试,在一台 NixOS 测试机里装上 maxx 模块,嵌套启动 guest,跑工具调用、
+max 重启和停止、guest 换镜像这几条路。flake-updater 在 tank 变了的那些晚上跑它,
+不过就把那个 input 剔掉。
+
+**为什么要有。** `maxx` 的 nixpkgs follows 这个 flake 的 `nixpkgs`,所以每晚 nixpkgs
+一动,tank 上的 max 和 guest 镜像都用新的 nixpkgs 重新构建。updater 以前对 tank 只
+构建:编不过会拦住,行为变了不会。max 仓库自己的 CI 用它自己钉的 nixpkgs(到这天还
+停在 10-21),测的不是 tank 上线的组合;只有在这份 lock 下求值才是。
+
+**为什么不合 [#fleet-tests](#fleet-tests) 的规矩。** 它启动的不是 tank 的真实配置,
+判据是 max 自己的断言,没有快照。tank 没有 smoke 测试,这一条也不是在补它:它测的是
+max 这一个部件,连同它起的 VM。
+
+- 名字只能是「一个词加 `-tank`」:updater 用第一个 `-` 之后的部分当主机名
+  (`flake-updater.sh` 的 `vm_tests`)。
+- 没有加 `inputs.maxx.checks.x86_64-linux.jobs`:它 11-18 在 max 的 CI 上偶发失败过
+  一次(「调用方先走了」那个子测试),夜间关卡里一次偶发失败就会剔掉当晚的 nixpkgs。
+  等 max 那边修了再加。
+- updater 只在自己挪 input 时跑测试。手动升 `maxx` 部署前,自己在带新 lock 的工作
+  树里构建这个测试,再切换。
+- 要嵌套 KVM,只能在 tank 上构建;11-19 在这份 lock 下(内核 6.18.63)连构建跑了 13 分钟,通过。
+
 ## 2026-11-17 · darwin 用 nixpkgs-26.05-darwin,Linux 留在 nixos-26.05 {#nixpkgs-darwin}
 
 darwin 的系统(nix-darwin 的 `inputs.nixpkgs.follows`)、darwin 上的 home 和
