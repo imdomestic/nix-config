@@ -1,5 +1,14 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-18 · 修复容器内后台任务独立单元启动（#170 / #173）、后台模型 Rewind 降级链（#171）与统一 `/job/tool` CLI（#172）发布到 tank
+
+- **Bot 合并（`965b2e6`）**：
+  - PR #170 + #173（`pf#10`）：`pi_engine.py` 在容器内以独立 `systemd-run --unit=gaoji-job-<id> --collect --service-type=exec` 启动后台桥接与 `pi`，修复 `setsid nohup ... &` 随临时 `guest_exec` 单元退出被 cgroup 清理的问题，并在启用 `set -u` 前加载 NixOS `/etc/set-environment`；`channel.wait(120)` 超时独立报「后台进程没能启动」，不再误报为 6 小时总截止时间；容器镜像新增常驻 `gaoji-browser.service`（`MemoryMax=2G`）。
+  - PR #171（`pf#11`）：`JobGateway` 与 `ResponsesUsage` 对 HTTP 400/422 及 HTTP 200 SSE 流内 `high demand` / `overloaded` / `quota` / `exhausted` / `rate limit` / `server_error` 自动推进 `model_index` 降级。
+  - PR #172（`pf#17.6`）：统一宿主 `/job/tool` 工具入口，打通任务凭据与容器 `gvm_` 凭据，重构容器 `gaoji` CLI（含 `history`、`web-search`、`web-fetch`、`use-skill`、`say`、`send-file`、`send-image`、`agent ask` 及宿主代持 `AI_GITHUB_TOKEN` 的 `github` 接入点）。
+- **tank 切换与真机容器验收**：配置 `c63a920e`..`5b6f6718` 将 `AI_BACKGROUND_MODELS` 设为 `gpt-6-astra,rewind/gpt-6-astra,rewind2/gpt-6-astra,rewind3/gpt-6-astra,rewind4/gpt-6-astra,rewind/gpt-6.1-sol,rewind2/gpt-6.1-sol,gpt-6.1-sol`（上线前逐个实测 Responses API `200 OK` 并核对 Rewind 余额可用），更新 `qq-bot` 至 `965b2e6`。
+- 原系统 `/nix/store/4lqmirdiy20rl0g6flb66c4x2lw5dd57-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/ij9wid0wf93g76b6s9zlnbg26r4nsy85-nixos-system-tank-26.05.20261113.f1e5c35`；`gaoji` PID `3198120`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`。在真实容器 `se9af02` 内跑通完整后台任务 `job#999901`：首模型 `nonexistent-pf11-probe` 触发 HTTP 400 自动降级到 `gpt-6-astra`，经 `/job/tool` 调博查 `web_search("吴家村")` 并将结果写入 `/work/pf10_verified.txt`，交回完整报告；同时实测 `gaoji-browser.service` 跨临时命令单元保持 `active`。
+
 ## 2026-11-18 · 表情包跟在文字后发送（#167）与闲聊 medium / 专业问题 high 自动切档（#169）发布到 tank
 
 - **Bot 合并（`9078837`）**：PR #167（表情包跟在回复正文后入队发送、回复末尾 `[表情：意思]` 单轮内直接匹配发送、提示词改为偶尔使用、修复 T10 后近期已发表情排序）与 PR #169（回复前由小模型分类闲聊 `medium` / 专业问题保留原档位 `high`，异常或超时保守回退原档位）。
