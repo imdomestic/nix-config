@@ -3,6 +3,7 @@
 ## 2026-11-19 · 分群兴趣：0115 迁移前完整备份（06:12 HKT）
 
 - 生产仍为 0114。PG 17.11 全库 `pg_dump -Fc`（无表过滤）已完整解码：`/data/services/gaoji/backups/group-interest-20261118T221207Z/qq_bot.dump`，95,127,745 字节，0600，SHA256 `db2ec0c37394b3fc553f2ca0f9a80c889f96012f2fd964afbd51b81fb94a9b33`。此记录不是切换结果。
+- 切换前再次完整归档：`/data/services/gaoji/backups/group-interest-20261118T221207Z/pre-switch-20261118T223419Z.dump`，95,224,013 字节、0600、全归档解码成功，SHA256 `d01591f90459396e0388ee31a7662e2de81228f1df6454fa1d26e2c63c5c36cf`。首次归档已在 PrivateNetwork、生产 socket 不可见的独立 PG 17 实际还原，候选 0114→0115 upgrade/check 后消息 11,793、主动观察 119、端点 3、任务 21、业务表 82 均不变，无历史兴趣预约。最终配置 `54a4903f` 显式禁止采集账号访问宿主 `/data`、私有 PG socket 及凭据目录，重新构建与 dry-activate 通过。
 - 配置 `56971a79`、候选 `df212046` 以普通账户构建；内核不变，dry-activate 预告应用和 accounts-daemon 停启，polkit 重启（新增独立采集账号）。未手动触发采集或向群发消息。
 
 ## 2026-11-19 · 阶段 5 首批瘦身上线（05:27:24 HKT）
