@@ -27,8 +27,8 @@ runtime drop-in 和 GC root。
 
 **2026-11-18 更新：** 根因在 Tailscale（`82cfea90` 去掉了 `SessionDuration` 的
 `format:nano`），headscale 0.29.6 起带上；nixos-26.05 已是 Go 1.27 构建的 0.29.7，
-覆盖已删除。切换 h610 后仍要清 drop-in 与 GC root，并用带 SSH 规则的节点确认
-`/machine/map` 不再 500。
+覆盖已删除。同日部署 h610 时删掉了 drop-in 与 GC root；0.29.7 重启后
+`/machine/map` 全部 200，在线节点无掉线。
 
 ## 2026-11-18 · Tokyo 迁机后 WireGuard 仍拨旧 IP {#tokyo-wireguard-shared-identity}
 
