@@ -15,6 +15,8 @@
     AI_MODEL_DEFAULT_PROFILE=gemini-3.8-flash-high
     AI_SIMPLE_CHAT_PROFILE=
     AI_REASONING_ROUTER_PROFILE=gemini-3.5-flash-lite
+    AI_SYSTEM_PROMPT=
+    AI_SYSTEM_PROMPT_FILE=
     # Sticker tagging and image descriptions; this file loads last, so it
     # overrides the older value in runtime.env.
     AI_VISION_PROFILE=gemini-3.8-flash-high
