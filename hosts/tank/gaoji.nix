@@ -79,6 +79,8 @@ in {
       AI_EMBEDDING_MODEL = "bge-m3";
       AI_EMBEDDING_DIMENSIONS = "1024";
       AI_EMBEDDING_TIMEOUT_SECONDS = "60";
+      AI_GITHUB_LOGIN = "gaoji-ji";
+      AI_GITHUB_USER_ID = "358294790";
       AI_SEARCH_PROVIDER = "bocha";
       OTEL_SERVICE_NAME = "gaoji";
     };
