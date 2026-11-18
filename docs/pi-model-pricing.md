@@ -1,11 +1,13 @@
 # Pi 模型费用估算
 
-核对日期：2026-10-18。配置在 `home/hank/modules/pi/pricing.nix`，单位均为
+基线核对日期：2026-10-18；GPT 6.2 于 2026-11-18 单独核对。配置在 `home/hank/modules/pi/pricing.nix`，单位均为
 **美元 / 百万 token**，采用公开 API 的 Standard 付费价。
 CLIProxy 的订阅额度和实际账单与这个估算金额并不等价。
 
 | Pi 模型 ID | 输入 | 缓存读取 | 缓存写入 | 输出 |
 | --- | ---: | ---: | ---: | ---: |
+| gpt-6.2-sol | 2.00 | 0.10 | 2.50 | 10.00 |
+| gpt-6.2-astra | 8.00 | 0.40 | 10.00 | 40.00 |
 | gpt-6.1-sol | 2.00 | 0.10 | 2.50 | 10.00 |
 | gpt-6-astra | 10.00 | 1.00 | 12.50 | 50.00 |
 | gpt-6-sol | 2.00 | 0.20 | 2.50 | 10.00 |
@@ -24,6 +26,8 @@ CLIProxy 的订阅额度和实际账单与这个估算金额并不等价。
 | gemini-4-hydrogen-xhigh | 1.50 | 0.075 | 0 | 7.50 |
 
 GPT 价格来源：[OpenAI 官方价目](https://developers.openai.com/api/docs/pricing)、
+[GPT-6.2 Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol.md)、
+[GPT-6.2 Astra](https://developers.openai.com/api/docs/models/gpt-6.2-astra.md)、
 [GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol)、
 [GPT-5.6 Sol](https://developers.openai.com/api/docs/models/gpt-5.6-sol)、
 [Terra](https://developers.openai.com/api/docs/models/gpt-5.6-terra)、

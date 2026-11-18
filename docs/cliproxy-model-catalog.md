@@ -18,6 +18,48 @@ ID 先移除再写入。不能把一个只含新增三个型号的 JSON 当完�
 和文件 SHA-256，并检查其他 provider 没有丢失，不能只更新这三条补充记录。
 更新 CLIProxy 软件包不会自动更新这个固定快照。
 
+## 2026-11-18 · Codex GPT 6.2 Sol / Astra
+
+通过线上 CLIProxy 管理端的认证代理，分别读取四份 Codex 凭据的原生
+`/backend-api/codex/models?client_version=0.169.1`。每份都成功返回 200；
+两份 Free 目录没有 GPT 6.2，Plus 与 Prolite 目录都有下列真实 ID，
+visibility=list、supported_in_api=true：
+
+```text
+gpt-6.2-sol
+gpt-6.2-astra
+```
+
+`lib/codex-6.2.nix` 保存账号 discovery 默认上下文与目录补充定义。
+只向 codex-plus/pro/team 分组合并，不加到 codex-free，也不替换整个基线
+或创建指向旧型号的别名。现有 8.0.74 会把 Prolite 按 Pro 模型表处理。
+因此不会让 Free 凭据误接这两条请求。Vertex 凭据已退役，不因目录补充
+恢复，也没有新增 Rewind 6.2 别名。
+
+| 型号 | Codex 默认上下文预算 | 原生目录 max_context_window | 输出预算 |
+| --- | --- | --- | --- |
+| gpt-6.2-sol | 500000 | 872000 | 128000 |
+| gpt-6.2-astra | 272000 | 872000 | 128000 |
+
+公开 API 说明的上限是 1.05M，但这里连的是 Codex 账号链路，Pi 先使用
+实际客户端默认预算，不暗中启用 extended-context beta。原生目录含 ultra
+（自动任务委派），Pi 只有到 max 的七档，当前 CLIProxy 目录也只公开
+low/medium/high/xhigh/max；不把 ultra 错标成 max，不给 none/off 假支持。
+Sol 原生目录出现 audio，但公开 API 当前只声明 text/image，Pi 也只具备
+这两种输入，因此不未经验证扩大公开的模态声明。
+
+Hank Pi 的两个新条目独立加入，不改变其他账户、Max、旧 GPT 或 Gemini
+的默认型号。公开 API 价格仅用于 Pi 估算（不是订阅账单）：Sol 输入 /
+缓存读 / 30m 缓存写 / 输出为 $2 / $0.10 / $2.50 / $10；Astra 为
+$8 / $0.40 / $10 / $40，每百万 tokens。>272K input 的长上下文规则
+沿用官方价目，不套用旧 Astra 的 $10/$50。
+
+依据：[官方发布](https://openai.com/index/introducing-gpt-6-2-astra-sol/)、
+[Sol](https://developers.openai.com/api/docs/models/gpt-6.2-sol.md)、
+[Astra](https://developers.openai.com/api/docs/models/gpt-6.2-astra.md)。
+`bash scripts/check-pi-codex62.sh` 检查实际 Pi 模型定义及完整目录的 tier
+分组、上下文、输出、档位与价格。
+
 ## Hydrogen 的四个预设
 
 `lib/antigravity-hydrogen.nix` 是服务端、Pi 和 Max 共用的型号数据。它定义

@@ -25,6 +25,18 @@ let
     cacheRead = 0.075;
   };
 in {
+  "gpt-6.2-sol" = gpt {
+    input = 2;
+    output = 10;
+    cacheRead = 0.1;
+    cacheWrite = 2.5;
+  };
+  "gpt-6.2-astra" = gpt {
+    input = 8;
+    output = 40;
+    cacheRead = 0.4;
+    cacheWrite = 10;
+  };
   "gpt-6.1-sol" = gpt {
     input = 2;
     output = 10;

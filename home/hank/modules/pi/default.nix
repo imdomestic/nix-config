@@ -7,6 +7,7 @@
   cliproxy = import ../../../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
   balancePlacement = config.my.fleet.placements.rewind-balance;
   pricing = import ./pricing.nix;
+  codex62 = import ../../../../lib/codex-6.2.nix;
   themes = import ./themes.nix;
   ccExtensions = pkgs.callPackage ../../../../pkgs/pi-cc-extensions {};
   betterRender = pkgs.callPackage ../../../../pkgs/pi-better-render {};
@@ -34,7 +35,7 @@
   # 档位照 pi 内置 openai / google provider 里同名模型的 thinkingLevelMap。
   gptLevels = id: {
     off =
-      if lib.elem id ["gpt-6.1-sol" "gpt-6-astra"]
+      if lib.elem id (["gpt-6.1-sol" "gpt-6-astra"] ++ codex62.ids)
       then null
       else "none";
     minimal = null;
@@ -196,6 +197,7 @@ in {
             rewindModels = lib.mapAttrsToList (id: gpt (cliproxy.rewind.modelLimits.${id} or cliproxy.rewind) id) cliproxy.rewind.models;
           in
             map (id: gpt cliproxy.gpt id id) cliproxy.gpt.ids
+            ++ map (id: (gpt codex62.models.${id} id id) // {name = codex62.models.${id}.name;}) codex62.ids
             ++ rewindModels
             ++ lib.concatMap (prefix:
               map (model:

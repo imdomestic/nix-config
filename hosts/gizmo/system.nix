@@ -6,9 +6,12 @@
   ...
 }: let
   cliproxy = import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
+  codex62 = import ../../lib/codex-6.2.nix;
   modelCatalog = import ../../lib/cliproxy-catalog.nix {
     inherit pkgs;
-    extraModels.antigravity = cliproxy.antigravityHydrogen.catalog;
+    extraModels =
+      {antigravity = cliproxy.antigravityHydrogen.catalog;}
+      // lib.genAttrs ["codex-plus" "codex-pro" "codex-team"] (_: codex62.catalog);
   };
 in {
   imports = [

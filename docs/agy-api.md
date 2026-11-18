@@ -133,6 +133,51 @@ CLI 用 `--upstream-header-timeout`（1s–10m）；超时仍是失败，不自�
 开启 GCP 产品、花费 credits、购买套餐或把 Antigravity OAuth 转发到
 客户端指定的任意 URL。未知接口仍可能返回 404。
 
+## 2026-11-18 · v0.4.1 上线与真实验收
+
+实现提交 `f339a4cd`，实测 header wait 修复 `65406410`。在 r6s 以
+max-jobs=1 / cores=2 构建，先启动 gizmo loopback 8320 的限时预检实例，
+经 SSH 隧道验证，Google OAuth 始终留在 gizmo，未复制到测试端。
+
+| 真实调用 | 结果 |
+| --- | --- |
+| 新号 Flash High 生成 | 200，验证文本正确 |
+| contents-only countTokens | 200，hello world=2，scope header 正确 |
+| Responses JSON + encrypted_content | 200，输出文本正确，真实 AES-GCM blob |
+| Responses SSE 函数调用 + encrypted blob 第二轮回放 | 两轮 200，增量/生命周期正确，最终文本正确 |
+| Chat 图片输入（合成红色 PNG） | 200，正确辨认红色 |
+| Chat 视频输入（合成 2 秒红色 MP4） | 200，正确辨认颜色，约 84.55 秒 |
+| Chat WAV 音频输入（本机合成语音） | 200，识别验证语句 |
+| multipart 音频转写 | 200，识别 verification code，约 81.92 秒 |
+| multipart 音频翻译 | 200，返回正确英文验证语句 |
+| 图片生成 | 200，返回 443502 bytes 的实际 JPEG，主色为红色 |
+| 图片编辑（红方块改蓝） | 200，返回 204142 bytes JPEG，解码后的主色已变蓝 |
+| 原生 functionResponse.parts 图片工具结果 | 两轮 200，正确辨认工具返回图片的红色 |
+| 真实 Pi + 本网关 Responses + 完整仓库上下文 | 两轮 HTTP 成功，1 次实际 read，约 121.46 秒，签名 blob 完成回放 |
+
+Pi 的临时 Responses 验收禁用了客户端的 prompt-cache hint / long-retention
+参数（这个上游不提供对应的显式缓存语义），并使用已验证的简短真实
+系统提示词；没有更改用户的持久 provider。测试 compatibility 是：
+`supportsDeveloperRole=false`、`supportsStrictMode=false`、
+`promptCacheKeyMode="disabled"`、`supportsLongCacheRetention=false`。
+
+45 秒旧 timeout 曾让合法视频和转写请求变成 transport 502；不是模型
+拒绝。改成有界 120 秒后两项均通过。没有给 generation 加自动重试。
+测试素材均为本机合成 PNG、MP4、TTS WAV，不含用户图片/声音；结果日志
+不保存原始请求、签名 blob、token 或音频。
+
+生产只替换 `agy-proxy.service` 的 runtime ExecStart drop-in，PID `159427`，
+版本 **0.4.1**；nginx / CLIProxy 的 PID 保持不变。现有 HTTPS 的
+`/agy/v1/` 和 `/agy/v1beta/` 无需重启 nginx 即覆盖新路径。
+实际 HTTPS Responses 验收 200 / 指定文本正确 / encrypted carrier 存在；
+Files、embeddings、audio/speech 的已知未实现接口实测均为 501。
+预检实例、8320 监听、SSH 隧道与回退 timer 均已清理。
+
+运行系统仍是 `kxnnv8p7…`，加载内核仍 6.18.57；没有整套 switch 或重启。
+完整声明已设为下次启动默认：
+`/nix/store/5qj10w8iqh2g03ngfj2z1vjxlls2j4p2-nixos-system-gizmo-26.05.20261113.f1e5c35`。
+当前服务 drop-in 引用该声明的新二进制与 120 秒参数，不是未提交手工代码。
+
 ## 验证
 
 默认测试不联网、不读取实际 OAuth，不把语音/图片或 blob 打进日志：
