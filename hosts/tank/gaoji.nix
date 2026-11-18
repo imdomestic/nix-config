@@ -106,7 +106,7 @@ in {
       AI_ARCHIVE_ROOT=/data/services/kennethbot-archive
       AI_SANDBOX_MAX_TOTAL=12
       AI_SANDBOX_MAX_PER_USER=1
-      AI_SANDBOX_MAX_FILE_MB=100
+      AI_SANDBOX_MAX_FILE_MB=200
       AI_SEARCH_PROVIDER=bocha
       AI_SEARCH_API_KEY=${config.sops.placeholder."gaoji/bocha_api_key"}
     '';
