@@ -11,7 +11,7 @@ in {
   };
   programs.helix = {
     enable = true;
-    package = pkgs-unstable.steelix;
+    # package = pkgs-unstable.steelix;
     settings = {
       theme = theme;
       editor = {
