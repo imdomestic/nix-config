@@ -368,8 +368,11 @@ Transport **只设了 `DialTLSContext`，没设 `DialContext`**。一旦某次�
 
 `StatusTest` 是 vernesong fork 独有的，上游 MetaCubeX 没有这个函数；fork 里最后
 一次改 `adapter/adapter.go` 是 2026-07-24，早于我们钉的 commit，所以上游没修。
-补丁在 `pkgs/mihomo-smart/statustest-dialcontext.patch`，让跳转那一跳也走代理。
-**下次 bump `rev` 时要确认这个补丁还需不需要**（上游修了就删掉）。
+当时用本地补丁 `pkgs/mihomo-smart/statustest-dialcontext.patch` 让跳转那一跳也走代理。
+
+**2026-11-18 更新：** fork 在 2026-08-02 用 vernesong/mihomo#12（`a866d768`）修了
+同一处，并且每一跳都按目标重新取拨号地址和 SNI。`rev` 已 bump 到这个 commit，
+本地补丁删除。以后 bump 不能早于它。
 
 同时补上了 `Restart=always` / `RestartSec=5s` / `startLimitIntervalSec=0`。nixpkgs
 的 mihomo 单元默认 `Restart=no`，崩了就一直躺着；router 模式下 resolved 指向

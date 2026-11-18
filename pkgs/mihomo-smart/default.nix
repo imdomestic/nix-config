@@ -22,32 +22,19 @@ buildGoModule rec {
   pname = "mihomo-smart";
   # 上游只发一个滚动的 `Prerelease-Alpha` tag,所以钉 commit 而不是 tag ——
   # 否则每次求值都可能拿到不同的代码。版本号取自它 merge 上游时的基线。
-  version = "1.19.24-smart-unstable-2026-07-29";
-  rev = "880847d582560df82ef7a36f858d42c8b64f7c66";
+  version = "1.19.24-smart-unstable-2026-08-02";
+  # 至少要到这个 commit:StatusTest 的明文跳转经代理拨号(vernesong/mihomo#12),
+  # 之前的会让 mihomo 跑几个小时就 exit 2,见 docs/proxy-todo.md 第 10 节。
+  rev = "a866d76895b0865874900b8edb832991515bc6e3";
 
   src = fetchFromGitHub {
     owner = "vernesong";
     repo = "mihomo";
     inherit rev;
-    hash = "sha256-oOmSq1v1yPuKnaEFyuF9wDW/Vs+H4eDBVbCflRhY7ng=";
+    hash = "sha256-iIjMrSHsqt7YEtRIKKER1GMw03kaEoUJiucCESzx4c4=";
   };
 
-  vendorHash = "sha256-P8EO47MMTpHkB9xceYWdZXWA560FDPfmO8JDLdwPKgk=";
-
-  # smart 组的「异常状态码检测」会崩掉整个进程。链路(见 2026-08-01 r6s 的两次
-  # panic):某条走代理的 443 连接下行不足 0.03MB 时,checkNodeQuality 会拿这个
-  # 连接的 Host 现场发一个 https 探测(smart.go:1686 → StatusTest);探测用的
-  # http.Client 允许跟 3 次跳转,而它的 Transport 只设了 DialTLSContext,没设
-  # DialContext。一旦某次跳转落到 http:// 上,net/http 就退回 Go 的零值 Dialer
-  # → net.DefaultResolver → main.go:82 那个 "should never be called" 守卫
-  # → os.Exit(2),整个 mihomo 直接没。
-  #
-  # 触发条件依赖具体流量,所以是「跑几个小时死一次」而不是启动就炸。
-  #
-  # 这段 StatusTest 是 vernesong fork 独有的(上游 MetaCubeX 里没有这个函数),
-  # 而 fork 里最后一次动 adapter/adapter.go 是 2026-07-24,早于我们钉的 commit,
-  # 所以上游没修。补丁把跳转那一跳也走代理 —— 这本来就是它的意图。
-  patches = [./statustest-dialcontext.patch];
+  vendorHash = "sha256-db2/7HEYUNtU1B3T+T9bYDnwRxxZshGR3EOK51Ut0Q4=";
 
   excludedPackages = ["./test"];
 

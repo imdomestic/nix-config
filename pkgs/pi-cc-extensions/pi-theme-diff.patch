@@ -1,17 +1,6 @@
 --- a/extensions/renderer/tool/diff/diff-highlight.ts
 +++ b/extensions/renderer/tool/diff/diff-highlight.ts
-@@ -32,7 +32,9 @@
- 		return undefined;
- 	}
- 	try {
--		return getLanguageFromPath(normalizedPath);
-+		// Pi 1.4's extension map omits Nix, although its highlighter supports it.
-+		return getLanguageFromPath(normalizedPath) ??
-+			(normalizedPath.toLowerCase().endsWith(".nix") ? "nix" : undefined);
- 	} catch {
- 		return undefined;
- 	}
-@@ -62,7 +64,10 @@
+@@ -62,7 +62,10 @@
  	const fallbackByEntry = new WeakMap(
  		codeEntries.map((entry, index) => [entry, fallbackLines[index] ?? cleanLines[index] ?? ""]),
  	);
@@ -20,12 +9,12 @@
 +	if (!shouldHighlight || !process.env.DIFF_THEME) {
 +		return (_line, entry) => fallbackByEntry.get(entry) ?? "";
 +	}
- 
+
  	const shikiTheme = resolveShikiTheme(theme);
  	let highlightedByEntry: WeakMap<DiffLineEntry, string> | undefined;
-@@ -92,9 +97,8 @@
+@@ -92,9 +95,8 @@
  }
- 
+
  /**
 - * 通用代码块着色（codemode 的 `code` 字段等）：先用 pi 的同步 highlightCode 打底，
 - * 首帧就有颜色；再用 shiki 异步升级（与 diff 共用缓存与主题解析），落地后回调
@@ -35,7 +24,7 @@
   */
  export function createCodeBlockHighlighter(
  	code: string,
-@@ -113,6 +117,7 @@
+@@ -113,6 +115,7 @@
  	} catch {
  		fallback = cleanLines.map(sanitizeAnsiForThemedOutput);
  	}

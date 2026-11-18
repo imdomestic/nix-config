@@ -1,34 +1,14 @@
 {
   config,
   inputs,
-  lib,
   pkgs,
   ...
 }: let
   tuicr = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.tuicr;
   toml = pkgs.formats.toml {};
+  skill = "${tuicr}/share/skills/tuicr/tuicr";
 
-  # tuicr 0.28.0's agent skill has no Rex wrapper; upstream main added it after
-  # that release (agavra/tuicr#821, #829). Any later release ships it, and then
-  # the packaged copy takes over on its own.
-  skill =
-    if lib.versionAtLeast tuicr.version "0.28.1"
-    then "${tuicr}/share/skills/tuicr/tuicr"
-    else
-      pkgs.runCommand "tuicr-skill" {buildInputs = [pkgs.bash];} ''
-        cp -r ${pkgs.fetchFromGitHub {
-          owner = "agavra";
-          repo = "tuicr";
-          rev = "928a536e5c939ed3c3217703c06f140ee5d9a258";
-          sparseCheckout = ["skills/tuicr"];
-          hash = "sha256-MtdigFT6ntQ+5mTgmblRwkSOxO9UkH13zYG3JpgaMcI=";
-        }}/skills/tuicr $out
-        chmod -R u+w $out
-        patchShebangs --host $out
-      '';
-
-  # Evergarden Winter / Green, like Hank's nixvim, helix and lazygit; the diff
-  # roles follow the opencode theme (modules/opencode/default.nix).
+  # Evergarden Winter / Green, like Hank's nixvim, helix and lazygit.
   evergardenWinter = with (import ./palettes/evergarden-winter.nix).colors; {
     panel_bg = base;
     bg_highlight = surface1;

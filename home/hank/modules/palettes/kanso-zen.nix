@@ -1,4 +1,4 @@
-# 不是模块,是被 claude-code / opencode 等 import 的数据。
+# 不是模块,是被 claude-code / codex / pi 等 import 的数据。
 # colors 是 kanso.nvim lua/kanso/colors.lua 里 zen 用得到的那部分;ghostty 的 kanso 也是 zen。
 let
   colors = {

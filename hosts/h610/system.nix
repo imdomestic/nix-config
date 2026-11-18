@@ -1062,28 +1062,6 @@ in {
 
   services.headscale = {
     enable = true;
-    # nixpkgs 26.05 still has 0.28.0 (built with Go 1.27); pin upstream 0.29.4
-    # for the incremental-map fix, and stay on Go 1.26 because 0.29.4's
-    # tailcfg.MapResponse SessionDuration `format:` json tag errors under Go 1.27
-    # (docs/incidents.md#h610-headscale-go127-mapresponse).
-    package =
-      (pkgs.headscale.override {
-        buildGo127Module = pkgs.buildGo126Module;
-      }).overrideAttrs (_old: {
-        version = "0.29.4";
-        src = pkgs.fetchFromGitHub {
-          owner = "juanfont";
-          repo = "headscale";
-          tag = "v0.29.4";
-          hash = "sha256-oBl8oQuZ8LUhK6FsGZkTXCJtwqmegmUDreeIILH4wRg=";
-        };
-        vendorHash = "sha256-fzKyXNMw/2yAEhaTZu0n1NXatPO2IP0HFA2ey1vZIYM=";
-        postPatch = ''
-          substituteInPlace hscontrol/types/version.go \
-            --replace-fail 'Version:   "dev"' 'Version: "0.29.4"' \
-            --replace-fail 'Commit:    "unknown"' 'Commit: "v0.29.4"'
-        '';
-      });
     address = "127.0.0.1";
     port = 8080;
     settings = {

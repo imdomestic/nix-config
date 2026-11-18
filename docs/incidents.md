@@ -25,6 +25,11 @@ h610 升到 `nixos-26.05.20261113.f1e5c35` 后，最初 `headscale.service`
 `buildGo127Module = pkgs.buildGo126Module`，下次切换 h610 时一并清掉临时
 runtime drop-in 和 GC root。
 
+**2026-11-18 更新：** 根因在 Tailscale（`82cfea90` 去掉了 `SessionDuration` 的
+`format:nano`），headscale 0.29.6 起带上；nixos-26.05 已是 Go 1.27 构建的 0.29.7，
+覆盖已删除。切换 h610 后仍要清 drop-in 与 GC root，并用带 SSH 规则的节点确认
+`/machine/map` 不再 500。
+
 ## 2026-11-18 · Tokyo 迁机后 WireGuard 仍拨旧 IP {#tokyo-wireguard-shared-identity}
 
 阿里云放行端口后，Tokyo 的 DERP HTTPS、Tailscale STUN 和 TCP 入口均通，
