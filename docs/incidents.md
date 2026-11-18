@@ -43,6 +43,55 @@ STUN 探针最初也超时，但不是 UDP 被挡：Tailscale 的 derper 只回�
 `SOFTWARE=tailnode` 和正确 fingerprint 的请求，补上后公网 UDP 3478
 通过。完整迁机与当前兼容 DNS 见 `docs/tokyo-migration.md`。
 
+## 2026-11-18 · CLIProxy Flash：精简真实身份提示词可保留项目上下文与工具 {#pi-cliproxy-flash-compact-prompt}
+
+用户要求先复测 `cliproxy/gemini-3.8-flash-high`，不再处理 seraph。
+Pi 1.5.2、线上 CLIProxy 8.0.74，临时恢复该型号到隔离的 models.json，
+用同一凭据池与模型测试；未更改正式 Pi 配置、网关配置或账号，未清
+cooldown。Pi agent/provider retry 均关闭，统计实际 HTTP 次数。
+
+| 实际 Pi 对照 | 协议 | 结果 |
+| --- | --- | --- |
+| 默认 Pi prompt，无工具、无项目上下文 | Responses / Chat | 均为 Google 429 RESOURCE_EXHAUSTED |
+| 简单 helpful-assistant prompt，无工具 | Chat，分别 developer / system | 均为 200 |
+| 精简、真实 coding-assistant prompt，read 工具 | Chat / Responses | 两种协议各两轮均 200，读到 fixture 后正确回复 |
+| 同上，保留完整仓库 AGENTS.md | Chat | 两轮 200，系统文本 35168 字符，body 37926/38261 bytes |
+| 同上，加载已安装 Hank 扩展及实际 8 工具、保留 AGENTS.md | Chat | 两轮 200，body 68734/69067 bytes，约 14.54 秒 |
+| 同上完整上下文与扩展 | Responses | 两轮 200，body 68713/71032 bytes，约 13.71 秒 |
+
+成功实验的系统开头是普通、真实的助手说明，不声称自己是 Google 产品：
+
+```text
+You are a coding assistant. Use the provided tools only as requested, preserve user data, and report results truthfully.
+```
+
+这用的是 Pi 的 `--system-prompt`，它替换 Pi 默认段，但仍加载仓库上下文
+和当前工具 schemas；没有通过删除 AGENTS.md、编造签名或搬用 agy 内部
+工具定义来通过。本次显式关闭 MCP / skill discovery 以限制测试变量，
+没有声称所有资源组合或长会话都已验收；测试任务只读私有临时 fixture，
+不改项目文件。临时目录退出时清理，日志只保留字段、大小、状态与时序。
+
+误导排查的两个因素：一次 Google 429 后，CLIProxy 后续有的请求只返回
+本地 model_cooldown，这些不能拿来比较提示词；另一次七工具测试首轮
+200、次轮 Google 503 UNAVAILABLE，紧跟的请求被本地 auth_unavailable
+拦下。等其自然恢复、确认 cooldown=0 后，完整项目上下文才获得有效
+200 对照。未 reset quota、重启网关或换账号。
+
+管理面没有此凭据的 quota provider（501），generic quota 探针又返回
+SUBSCRIPTION_REQUIRED / #3501；这不是同一生成请求的具体拒绝理由，
+也未据此断言真实额度或许可证状态。同模型最小请求随后 200，足以反驳
+「这个账号/型号一概不可用」。
+
+结论限定为：默认 Pi prompt 内容与拒绝相关，单换 Chat/Responses 或
+只换 developer/system 不是必要修复；项目上下文很长和工具存在本身也
+不足以解释失败。成功版本只是一个已测的不同提示词，不证明长度阈值
+或某个词被封。未做敏感词穷举、不可见字符或身份伪装。
+
+正式 Pi 此时默认走 agy/Hydrogen，且 CLIProxy Gemini 已按此前指令从
+模型表移除；本次只做用户指定的 CLIProxy Flash 临时试验，尚未将结果
+应用到 agy、Hydrogen 或持久配置。agy-completions 的 Pi 签名丢失也是
+另一问题，不因这里通过两轮工具而视为已修复。
+
 ## 2026-11-17 · 原生 Gemini 入口仍拒绝 Pi 默认提示词 {#pi-agy-native-prompt-429}
 
 Hank 的 Pi Gemini 从 CLIProxy 转到 agy-proxy 的 `google-generative-ai`
