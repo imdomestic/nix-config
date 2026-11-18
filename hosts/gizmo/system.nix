@@ -60,6 +60,18 @@ in {
       };
     };
   };
+  # Retired routes must not reappear when an old runtime auth file is restored.
+  systemd.services.cliproxy.preStart = lib.mkAfter ''
+    install -d -m700 /var/lib/cli-proxy-api/retired-vertex
+    retired=""
+    for credential in /var/lib/cli-proxy-api/auths/vertex-*.json; do
+      [ -f "$credential" ] || continue
+      if [ -z "$retired" ]; then
+        retired=$(mktemp -d /var/lib/cli-proxy-api/retired-vertex/retired.XXXXXX)
+      fi
+      mv -- "$credential" "$retired/"
+    done
+  '';
   my.tailscale.bindServices = ["cliproxy"];
   my.tailscale.exitNode = true;
   sops.secrets."rewind/api_key" = {

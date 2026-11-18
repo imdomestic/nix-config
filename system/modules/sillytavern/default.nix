@@ -102,13 +102,6 @@
         })
       (cloud
         // {
-          id = "fleet-vertex";
-          name = "CLIProxy · Vertex Gemini 4 Argon";
-          model = "vertex/gemini-4-argon";
-          maxTokens = 8192;
-        })
-      (cloud
-        // {
           id = "fleet-deepseek";
           name = "CLIProxy · DeepSeek V4.1 Flash";
           model = "opencode/deepseek-v4.1-flash";

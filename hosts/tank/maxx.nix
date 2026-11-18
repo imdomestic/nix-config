@@ -26,7 +26,7 @@
     gemini-3-flash = price 0.5 0.05 3;
     gemini-3-1-flash-lite = price 0.25 0.025 1.5;
     gemini-3-5-flash-lite = price 0.3 0.03 2.5;
-    # Vertex's global endpoint; promotional until 2026-11-30, then twice.
+    # Existing public-API estimate for Argon/Carbon, not the AGY subscription bill.
     gemini-4 = price 2 0.1 10;
     gemini-4-hydrogen = price 1.5 0.075 7.5;
     # As docs/pi-model-pricing.md has it, checked 2026-10-18.
@@ -197,7 +197,14 @@ in {
                   };
               })
               cliproxy.gemini.models
-              // lib.genAttrs cliproxy.antigravityHydrogen.ids (_: googleHydrogen // {video = false;});
+              // lib.genAttrs cliproxy.antigravityHydrogen.ids (_: googleHydrogen // {video = false;})
+              // lib.genAttrs (lib.concatMap
+                (family: map (level: "gemini-4-${family}-${level}") ["low" "medium" "high"])
+                ["argon" "carbon"]) (_: {
+                context_window = 262144;
+                max_output = 65536;
+                price = prices.gemini-4;
+              });
           };
           cliproxy = {
             base_url = cliproxy.baseUrl;
@@ -216,23 +223,6 @@ in {
                   video = true;
                   price = prices.gemini-flash;
                 };
-                # Vertex AI; cap Max's budget at 256k for a 32k/16k chat tail.
-                "vertex/gemini-4-argon" = {
-                  context_window = 262144;
-                  video = true;
-                  price = prices.gemini-4;
-                };
-                "vertex-c820/gemini-4-argon" = {
-                  context_window = 262144;
-                  video = true;
-                  price = prices.gemini-4;
-                };
-                "vertex-c820/gemini-4-carbon" = {
-                  context_window = 262144;
-                  video = true;
-                  price = prices.gemini-4;
-                };
-                "vertex-c820/gemini-4-hydrogen" = googleHydrogen;
               }
               // lib.genAttrs cliproxy.antigravityHydrogen.ids (_: googleHydrogen)
               // lib.mapAttrs' (id: model:

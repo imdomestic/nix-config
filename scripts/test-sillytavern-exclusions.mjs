@@ -24,7 +24,7 @@ const excluded = context.isExcludedModel;
 for (const id of ['rewind/gpt-6-astra', 'rewind/gpt-chat-latest', ' rewind/gpt-6-astra ']) {
     assert.equal(excluded(id), true, id);
 }
-for (const id of ['gpt-6-astra', 'vertex/gemini-4-argon', 'bonsai-hikari', 'qwen3.8-27b', null, {}, 42]) {
+for (const id of ['gpt-6-astra', 'unrelated/gemini-4-argon', 'bonsai-hikari', 'qwen3.8-27b', null, {}, 42]) {
     assert.equal(excluded(id), false);
 }
 const models = [{ id: 'rewind/gpt-6-astra' }, { id: 'gpt-6-astra' }, { id: 'bonsai-main' }];

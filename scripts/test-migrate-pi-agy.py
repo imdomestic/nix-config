@@ -30,7 +30,7 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(migration.migrate(after, models), after)
 
     def test_custom_defaults_and_other_providers_are_untouched(self):
-        for provider, model in [("agy", "gemini-4-hydrogen-high"), ("google", "gemini-4-hydrogen-high"), ("cliproxy", "gpt-6.1-sol"), ("cliproxy", "vertex/gemini-4-argon"), ("cliproxy", "gemini-unlisted")]:
+        for provider, model in [("agy", "gemini-4-hydrogen-high"), ("google", "gemini-4-hydrogen-high"), ("cliproxy", "gpt-6.1-sol"), ("cliproxy", "other/gemini-4-argon"), ("cliproxy", "gemini-unlisted")]:
             before = {"defaultProvider": provider, "defaultModel": model, "defaultThinkingLevel": "xhigh"}
             self.assertEqual(migration.migrate(before, models), before)
         self.assertEqual(migration.migrate({}, models), {})

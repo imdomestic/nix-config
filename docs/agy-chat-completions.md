@@ -10,6 +10,43 @@ gizmo 配置已开启生产兼容入口；Pi 配置新增 `agy-completions/*`，
 新增同名 provider。具体部署结果见文末。Pi 的现有 native Gemini provider、
 Max 的默认模型和旧 CLIProxy 都不变。
 
+## 2026-11-18 · Max 加入 Argon / Carbon，并退役 Vertex
+
+Max 的 `agy-completions` 在原 8 型号上增加六个真实预设，合计 14 个：
+
+```text
+agy-completions/gemini-4-argon-low
+agy-completions/gemini-4-argon-medium
+agy-completions/gemini-4-argon-high
+agy-completions/gemini-4-carbon-low
+agy-completions/gemini-4-carbon-medium
+agy-completions/gemini-4-carbon-high
+```
+
+这六条来自账号实际目录，逐一使用对应 reasoning_effort 的短 Chat 请求
+验证 HTTP 200 / 指定文本返回正确。Argon / Carbon 当前没有 XHigh，
+不创建假别名，也不把四档 Hydrogen 的能力移植过来。Max /model 选真实
+ID；若显式用 /effort，按对应 Low / Medium / High 设置，Max 尚没有
+每模型默认 effort 机制，原有会话/全局 effort 不是实际预设切换的证据。
+
+新六条沿用 Max 之前的 262144 会话预算与公开 API 价格估算，输出预算
+65536，不将目录的 Carbon 262144 输出上限当作每次必须输出这么多。
+视频能力未独立验收，暂不声明。Hank Pi 的两个 provider 仍各是原来
+8 个型号，没有顺便扩充或改变默认；主聊天、intent、dreamer、caption、
+job 默认也不变。
+
+两个 CLIProxy namespace `vertex/*`、`vertex-c820/*` 一并退役：Max 四条
+旧模型配置和 SillyTavern 的 fleet-vertex 快捷项移除。Max 会话选型与
+VM 持久化 agent 配置也要检查，不只从下拉列表删掉名称。gizmo 的
+CLIProxy preStart 会将 runtime `auths/vertex-*.json` 移出加载目录，放进
+private `retired-vertex/retired.*` 归档；不会删除其他账号、撤销 GCP
+service-account key 或修改历史用量/聊天。原目录中两份 Vertex 描述文件
+对应公开目录的 48 个带前缀模型，部署后需验证两个前缀均为零。
+
+回归检查：`bash scripts/check-max-agy.sh`，确保新增六档、无假 XHigh、
+无两组 Vertex 路由、其他默认未变。历史事故条目和负向退休检查里的
+字符串不是生效模型，不为“零搜索结果”篡改历史。
+
 ## 2026-11-18 · agy-completions 客户端接入与部署
 
 配置提交 `b5cf3150`：Hank Pi 通过 `my.pi.providers.agy-completions` 新增 8 个

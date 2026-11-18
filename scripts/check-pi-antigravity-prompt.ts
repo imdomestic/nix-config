@@ -32,7 +32,7 @@ export default function (pi: ExtensionAPI): void {
       for (const [provider, id] of [
         ["cliproxy", "gpt-6.1-sol"], ["cliproxy", "rewind/gpt-6-astra"], ["cliproxy", "rewind2/gpt-6-astra"],
         ["cliproxy", "gemini-4-hydrogen-high"], ["cliproxy", "gemini-3.8-flash-high"],
-        ["cliproxy", "vertex/gemini-4-hydrogen-high"], ["agy", "gemini-unlisted"],
+        ["cliproxy", "other/gemini-4-hydrogen-high"], ["agy", "gemini-unlisted"],
         ["google", models[0]], ["ninfer", "qwen3.8-27b"],
       ]) assert.equal(run(event(), target(id, provider)), undefined, `${provider}/${id} must stay unchanged`);
       assert.equal(run(event(), {}), undefined, "No selected model must stay unchanged");
