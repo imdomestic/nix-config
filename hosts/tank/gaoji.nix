@@ -112,6 +112,10 @@ in {
     '';
   };
 
+  systemd.services.gaoji-interest = lib.mkIf (cfg.enable && cfg.runBot) {
+    serviceConfig.InaccessiblePaths = ["-/data" "-/run/qq-bot-postgres-node" "-/run/secrets" "-/run/secrets-rendered"];
+  };
+
   systemd.services.gaoji = lib.mkIf cfg.enable {
     after = ["tailscaled.service" "qq-bot-postgres-node.service"];
     wants = ["tailscaled.service" "qq-bot-postgres-node.service"];
