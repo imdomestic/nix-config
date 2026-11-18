@@ -16,6 +16,11 @@
     };
   };
   gpt = model: aliases: (proxy model aliases) // {reasoning_effort = "low";};
+  gemini = model: aliases:
+    (proxy model aliases)
+    // {
+      capabilities = (proxy model aliases).capabilities // {video = true;};
+    };
 in {
   # This embedded default wins over AI_MODEL_DEFAULT_PROFILE in gaoji's catalog.
   default = "gemini-3.8-flash-high";
@@ -68,14 +73,14 @@ in {
     "codex-auto-review" = proxy "codex-auto-review" ["review"];
     # Think before answering, as Max's default does; deeper thinking needs a longer timeout.
     "gemini-3.8-flash-high" =
-      (proxy "gemini-3.8-flash-high" ["gemini"])
+      (gemini "gemini-3.8-flash-high" ["gemini"])
       // {
         reasoning_effort = "high";
         timeout_seconds = 180;
       };
-    "gemini-3.5-flash-lite" = proxy "gemini-3.5-flash-lite" ["gemini-lite"];
-    "gemini-3.1-flash-lite" = proxy "gemini-3.1-flash-lite" [];
-    "gemini-3-flash" = proxy "gemini-3-flash" [];
+    "gemini-3.5-flash-lite" = gemini "gemini-3.5-flash-lite" ["gemini-lite"];
+    "gemini-3.1-flash-lite" = gemini "gemini-3.1-flash-lite" [];
+    "gemini-3-flash" = gemini "gemini-3-flash" [];
     "claude-sonnet-4-6" = proxy "claude-sonnet-4-6" ["sonnet"];
     "claude-opus-4-6-thinking" = proxy "claude-opus-4-6-thinking" ["opus"];
   };

@@ -102,7 +102,7 @@ in {
       AI_POSTGRES_POOL_MAX_SIZE=24
       AI_MEDIA_ROOT=/data/services/gaoji/media
       AI_ARCHIVE_ROOT=/data/services/kennethbot-archive
-      AI_SANDBOX_MAX_TOTAL=8
+      AI_SANDBOX_MAX_TOTAL=12
       AI_SANDBOX_MAX_PER_USER=1
       AI_SANDBOX_MAX_FILE_MB=100
       AI_SEARCH_PROVIDER=bocha
