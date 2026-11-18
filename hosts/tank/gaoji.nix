@@ -18,7 +18,7 @@
     # Sticker tagging and image descriptions; this file loads last, so it
     # overrides the older value in runtime.env.
     AI_VISION_PROFILE=gemini-3.8-flash-high
-    AI_BACKGROUND_MODELS=gpt-6.1-sol,gpt-6-astra,gpt-6-luna
+    AI_BACKGROUND_MODELS=gpt-6-astra,rewind/gpt-6-astra,rewind2/gpt-6-astra,rewind3/gpt-6-astra,rewind4/gpt-6-astra,rewind/gpt-6.1-sol,rewind2/gpt-6.1-sol,gpt-6.1-sol
     AI_BACKGROUND_CONTEXT_WINDOW=200000
     AI_MODEL_PROFILES_JSON='${builtins.toJSON modelProfiles}'
   '';
