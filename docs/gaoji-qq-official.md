@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-18 · 表情包跟在文字后发送（#167）与闲聊 medium / 专业问题 high 自动切档（#169）发布到 tank
+
+- **Bot 合并（`9078837`）**：PR #167（表情包跟在回复正文后入队发送、回复末尾 `[表情：意思]` 单轮内直接匹配发送、提示词改为偶尔使用、修复 T10 后近期已发表情排序）与 PR #169（回复前由小模型分类闲聊 `medium` / 专业问题保留原档位 `high`，异常或超时保守回退原档位）。
+- **tank 切换与核验**：配置 `6b9c955f` 更新 `qq-bot` 并在 `hosts/tank/gaoji.nix` 的 `gaoji-models.env` 设置 `AI_REASONING_ROUTER_PROFILE=gemini-3.5-flash-lite`。隔离构建内核保持 `/nix/store/ppm8487552xic16bdqzq9792px66ra37-linux-6.18.63/bzImage` 不变，闭包仅变更 `gaojibot`（`+10.0 KiB`），切换前确认在途回合与后台任务均为 `0`。
+- 原系统 `/nix/store/5j63ab410cjkzq24p5lxy9l8c8dzznhj-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/4lqmirdiy20rl0g6flb66c4x2lw5dd57-nixos-system-tank-26.05.20261113.f1e5c35`；`gaoji` PID `3111793`、`NRestarts=0`，`/health/qq-official` 连续三次 `ready / healthy=true / message_gap=false`，`journalctl -u gaoji` 零报错，线上进程环境经 `Settings.from_env` 核对 `reasoning_router_profile='gemini-3.5-flash-lite'`。
+
 ## 2026-11-17 · 启用博查联网搜索 API（D1，`AI_SEARCH_PROVIDER=bocha`）发布到 tank
 
 - **配置变更（`fc2e948d`）**：在 `secrets/hosts/tank.yaml` 中以 SOPS 加密写入 `gaoji.bocha_api_key`，并在 `hosts/tank/gaoji.nix` 中设置 `AI_SEARCH_PROVIDER = "bocha"`，经 `sops.templates."gaoji-tank-postgres.env"` 将 `AI_SEARCH_API_KEY` 仅渲染至 `/run/secrets/rendered/gaoji-tank-postgres.env`（`0400`，`kenneth:users`），确认 `/nix/store` 产物中零明文密钥。
