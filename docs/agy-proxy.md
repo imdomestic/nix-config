@@ -317,6 +317,43 @@ PY
 403/429 仍需按它给出的资格/额度响应处理。离线测试覆盖登录、刷新和竞态，
 真实新账号 consent、token 到期及实机模型调用须在用户完成登录后验收。
 
+## 2026-11-18 · Gemini 默认开场改为一句
+
+Hank 的 `agy/*`、`agy-completions/*` 使用 Pi 原生结构化
+`systemPromptOptions.customPrompt` 设置默认开场：
+
+```text
+you are a coding assistant
+```
+
+不再使用此前的两段 Antigravity 身份。这里与已实测的 `--system-prompt`
+走同一条构建路径，而不是只改首句却保留 Pi 原来那套默认段。Pi 自带的
+默认 tools/rules/docs 文本模板由 customPrompt 替代，**实际 provider tool
+schemas 不变**；AGENTS.md、skills、appendSystemPrompt 和其他扩展添加的
+custom sections 仍由 Pi 构建器保留。
+
+仅匹配 Hank 配置中的这两组 provider/模型；GPT、Rewind、NInfer、其他
+provider 和其他账户不改。显式 `--system-prompt`、SYSTEM.md 或先前扩展
+设置的 forceSystemPrompt 都尊重，即使文本恰好与 Pi 默认身份相同。
+稳定 session header 不变，没有添加签名、UA 或不可见字符。
+
+验证：作用域/显式覆盖/上下文对象单测、组合扩展两代测试通过；新增
+`check-pi-compact-prompt.py` 用真实 Pi 向 loopback mock 发 HTTP，核对
+Gemini/Chat 最终 payload 的准确开头、项目/追加/自定义 sections、read
+工具声明及其他 provider 不受影响，全程离线。
+
+临时加载 Nix 新生成的正式扩展（没有额外传 `--system-prompt`），原生
+`agy/gemini-3.8-flash-high` 在完整仓库上下文中 read fixture 两轮均成功，
+约 12.58 秒。未做完整 Home Manager 激活、未手工更换扩展 symlink、
+未改用户默认型号；后续 home 激活并 reload/重开 Pi 才持久生效。
+
+**同次发现独立的模型目录变化：** 原生 `gemini-4-hydrogen-high` 返回
+Google 404 / NOT_FOUND。目录当时有 16 条 Gemini，已不列 Hydrogen 四档，
+只剩 `gemini-4-hydrogen-disabled`、`gemini-4-hydrogen-sonar`。这里不替用户
+切换默认、不把 disabled 当可用、不猜 sonar 的能力，也不把 404 归咎于
+提示词。用户若仍选旧 Hydrogen，单改开场无法恢复一个上游已不再列出的
+型号；目前已实际通过该配置验证的是 Flash High。
+
 ## Pi 与 Max 接入
 
 Gemini 是 Google 原生的 REST/JSON + SSE API：请求用 `contents`、`parts`、

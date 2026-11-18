@@ -16,26 +16,55 @@ export default function (pi: ExtensionAPI): void {
       const run = handlers.before_agent_start;
       const identity = "You are a coding assistant running inside pi, a coding agent harness. Help users inspect files, run commands, and modify code.";
       const suffix = `\n\n<tools>read, bash, edit, write, Agent</tools>\n<rules>Keep all tool rules.</rules>\n<project_context>AGENTS.md: ${identity}</project_context>\n<skills>Keep skills.</skills>\n<cwd>/tmp/project</cwd>\nAppended custom guidance.`;
-      const prompt = identity + suffix;
-      const event = (systemPrompt = prompt) => ({ systemPrompt, systemPromptOptions: { sections: { rules: "Keep all tool rules." } } });
+      const event = (systemPrompt = identity + suffix): any => ({
+        systemPrompt,
+        systemPromptOptions: {
+          selectedTools: ["read", "bash", "edit", "write", "Agent"],
+          sections: { rules: "Keep all custom rules.", custom: "Keep extra sections." },
+          contextFiles: [{ path: "/tmp/project/AGENTS.md", content: `Keep project text: ${identity}` }],
+          skills: [{ name: "fixture", filePath: "/tmp/skill/SKILL.md", description: "Keep skills." }],
+          appendSystemPrompt: "Appended custom guidance.",
+          cwd: "/tmp/project",
+        },
+      });
       const target = (id: string, provider = "agy") => ({ model: { id, provider } });
 
       for (const provider of ["agy", "agy-completions"]) for (const id of models) {
         const input = event();
-        const snapshot = JSON.stringify(input);
-        const result = run(input, target(id, provider));
-        assert(result.systemPrompt.startsWith("You are Antigravity Agent, a powerful agentic AI coding assistant designed by the Google engineering team.\nYou are pair programming with a USER"));
-        assert.equal(result.systemPrompt.slice(result.systemPrompt.indexOf("\n\n")), suffix, "Only the opening identity may change");
-        assert.equal(JSON.stringify(input), snapshot, "Do not mutate base prompt options or context");
-        assert.equal(run(event(result.systemPrompt), target(id, provider)), undefined, "Never duplicate the agy opening");
+        const snapshot = JSON.parse(JSON.stringify(input));
+        assert.equal(run(input, target(id, provider)), undefined, "Use structured customPrompt, not a forced full prompt");
+        assert.equal(input.systemPromptOptions.customPrompt, "you are a coding assistant");
+        assert.equal(input.systemPromptOptions.forceSystemPrompt, undefined);
+        assert.deepEqual(input, { ...snapshot, systemPromptOptions: { ...snapshot.systemPromptOptions, customPrompt: "you are a coding assistant" } }, "Only customPrompt may change; context, tools and custom sections stay intact");
+        const changed = JSON.stringify(input);
+        run(input, target(id, provider));
+        assert.equal(JSON.stringify(input), changed, "Repeated hooks must be idempotent");
       }
       for (const [provider, id] of [
         ["cliproxy", "gpt-6.1-sol"], ["cliproxy", "rewind/gpt-6-astra"], ["cliproxy", "rewind2/gpt-6-astra"],
         ["cliproxy", "gemini-4-hydrogen-high"], ["cliproxy", "gemini-3.8-flash-high"],
         ["cliproxy", "other/gemini-4-hydrogen-high"], ["agy", "gemini-unlisted"],
         ["google", models[0]], ["ninfer", "qwen3.8-27b"],
-      ]) assert.equal(run(event(), target(id, provider)), undefined, `${provider}/${id} must stay unchanged`);
-      assert.equal(run(event(), {}), undefined, "No selected model must stay unchanged");
+      ]) {
+        const input = event(), snapshot = JSON.stringify(input);
+        run(input, target(id, provider));
+        assert.equal(JSON.stringify(input), snapshot, `${provider}/${id} must stay unchanged`);
+      }
+      const noModel = event(), noModelSnapshot = JSON.stringify(noModel);
+      run(noModel, {});
+      assert.equal(JSON.stringify(noModel), noModelSnapshot);
+      for (const custom of ["User-defined persona", `User-defined persona\n\n${identity}`, `${identity} extra custom persona`]) {
+        const input = event(custom), snapshot = JSON.stringify(input);
+        run(input, target(models[0]));
+        assert.equal(JSON.stringify(input), snapshot, "Do not overwrite another extension's prompt");
+      }
+      for (const field of ["customPrompt", "forceSystemPrompt"]) for (const custom of ["", identity, "Custom persona"]) {
+        const input = event();
+        input.systemPromptOptions[field] = custom;
+        const snapshot = JSON.stringify(input);
+        run(input, target(models[0]));
+        assert.equal(JSON.stringify(input), snapshot, "Respect explicit custom/forced prompts, even matching Pi's identity");
+      }
       const headers = { "X-Keep": "untouched" };
       const sessionContext = { ...target(models[0]), sessionManager: { getSessionId: () => "native-session-one" } };
       handlers.before_provider_headers({ headers }, sessionContext);
@@ -46,19 +75,14 @@ export default function (pi: ExtensionAPI): void {
       for (const provider of ["cliproxy", "google", "ninfer"]) {
         const otherHeaders = { "X-Keep": "untouched" };
         handlers.before_provider_headers({ headers: otherHeaders }, { ...sessionContext, ...target(models[0], provider) });
-        assert.deepEqual(otherHeaders, { "X-Keep": "untouched" }, "Session affinity is scoped to agy only");
+        assert.deepEqual(otherHeaders, { "X-Keep": "untouched" });
       }
-      for (const custom of ["User-defined persona", `User-defined persona\n\n${prompt}`, `${identity} extra custom persona\n\n${suffix}`]) {
-        assert.equal(run(event(custom), target(models[0])), undefined, "Respect explicit custom prompts and only match the opening");
-      }
-      assert(run(event(identity), target(models[0])).systemPrompt.startsWith("You are Antigravity Agent"));
-      assert(run(event(), target(models[0])));
-      assert.equal(run(event(), target("gpt-6.1-sol")), undefined, "Switching away must not leave model-specific state");
-      assert(run(event(), target(models[0])), "Switching back must apply again");
       const disabled: Record<string, any> = {};
       installAntigravityPrompt({ on(name: string, handler: any) { disabled[name] = handler; } } as any);
-      assert.equal(disabled.before_agent_start(event(), target(models[0])), undefined, "No configured models means no rewrites");
-      console.error(`Antigravity prompt: ${models.length} scoped models, exact prefix, preserved context, custom prompts, idempotence and model switches passed`);
+      const input = event(), snapshot = JSON.stringify(input);
+      disabled.before_agent_start(input, target(models[0]));
+      assert.equal(JSON.stringify(input), snapshot, "No configured models means no prompt changes");
+      console.error(`Gemini compact prompt: ${models.length} models in two providers; exact phrase, retained structured context/tools, explicit prompts and session headers passed`);
     } catch (error) {
       console.error(error);
       process.exitCode = 1;

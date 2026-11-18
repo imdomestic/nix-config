@@ -14,3 +14,4 @@ PI_CODING_AGENT_DIR="$agent" PI_TEST_ANTIGRAVITY_MODELS="$agent/antigravity-mode
   pi --offline --no-extensions --no-skills --no-prompt-templates \
     --no-context-files --no-approve --no-session --mode rpc \
     -e "$PWD/scripts/check-pi-antigravity-prompt.ts" </dev/null
+python3 -B scripts/check-pi-compact-prompt.py
