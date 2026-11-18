@@ -1,5 +1,20 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-18 · 整体方案 v2 阶段 0（#189–#192）发布到 tank
+
+- **Bot 合并（`5635eb4`）**：
+  - PR #189（#189）：修复容器 `gaoji` CLI 解码宿主 HTTP/1.1 分块 `/job/tool` 流的问题。
+  - PR #190（GitHub 推送中转）：宿主 `JobGateway` 增加 `/git/identity` 与 `/git/github/{owner}/{repo}.git` 推送代理（仅允许推自己仓库；延续 Max 宿主持密钥隔离思路），容器 `gaoji git` 通过 `GIT_CONFIG_*` 注入身份与 `pushInsteadOf`，`skills/github.md` 精简为 3 条核心提醒。
+  - PR #191（自我版本与线上源码挂载）：构建写入 `GAOJI_COMMIT`（`self.rev`）到 `.gaoji-commit` 与包装脚本环境变量、`/status` 固定输出 `版本：0.20.0 (<commit>)`、`inspect_source` 补充 `nix/*.nix` 与 `commit` 字段，容器内通过 `/etc/gaoji/source` 与 `/run/gaoji/source` 只读暴露当前版本源码。
+  - PR #192（提示词实话与不确定性规则）：补充“拿不准时怎么说”（查证附出处、推断明说理由、被质疑反问后最多一次针对查证或挂小后台回访、不编 commit/文件名/历史）、禁止翻找 `/nix/store`，并明确标注借鉴 Max（Rust 版 `pi --print`/目录笔记/`--fork`/steer/`gaoji agent ask`/`gaoji units` 与 Haskell 版账本机制）。
+- **基准与阶段 0 指标**：
+  - 改前 72h 基准：84 张表；宿主 Python 源码 55,419 行（QQ 接入层 13,852 行）；`agent_turns` 149 次（成功/静默 145、crashed 3、p95 129.80s、avg tokens 99,996、max tokens 933,347；11-18 高消耗回合达 641,839–1,473,540 tokens）。
+  - 改后核验：线上已生效；群内 GitHub 推送实测与被质疑后单回合 token 变化留入 owner QQ 验收清单继续采样。
+- **tank 切换与核验**：
+  - 配置 `542e7f60` 在 `hosts/tank/gaoji.nix` 配置 `AI_GITHUB_LOGIN=gaoji-ji`、`AI_GITHUB_USER_ID=358294790` 并更新 `qq-bot` 至 `5635eb4`。现系统 `/nix/store/lc91m1j79yrklzzqybyw6njp1hzkmx6s-nixos-system-tank-26.05.20261113.f1e5c35`，内核不变。
+  - 切换前确认运行回合数 `0`、`running_jobs = 0`（等待正在运行的回合 2119 完成后才切换）。`gaoji.service` PID `4076367`，`NRestarts=0`，`/health/qq-official` 连续 3 次 `ready`，`journalctl -u gaoji` 无报错。
+  - 重启容器 `gaoji-ct-ops@{s26b4ac,sc373ac}` 后在 `gct-s26b4ac` 内核验：`GAOJI_COMMIT=5635eb4e93a105dc53695f0fc327011f1387e8f1`、`/run/gaoji/source/.gaoji-commit` 一致、`GAOJI_LIVE_SOURCE=/run/gaoji/source`、`gaoji --help` 含 `git` / `github` / `units` / `wake`。
+
 ## 2026-11-18 · 容器预装常用 Python 库（#188）发布到 tank
 
 - **原因**：容器里的 Python 在只读的 Nix store 里，`pip install` 装不进去；装到 `/tmp` 的 wheel 又和 Nix 的 numpy 冲突。群里一次"用 Python 画正弦图"因此绕了 10 轮命令、花了约 32.6 万 token。
