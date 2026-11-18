@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-19 · 阶段 5 首批瘦身上线（05:27:24 HKT）
+
+- #211 `7ce3aa91`，部署 `e79cbe78`（同树），全量 PR 检查 `44399062742` 五项全绿。下方全库归档在隔离、断网且无生产 Unix socket 的 PG 17 实际还原；候选包 upgrade/check 通过。演练和正式迁移后均为 82 张业务表（原 84），两张被删表原为空。保留消息 11,687、导入审计 1、历史话题关联 1,645、配额关联 6。严格禁止将这些非空历史数据当无用数据丢弃。
+- 正式切换前单独核实 0 活动执行 / 0 运行回合 / 0 排队或运行任务，无活动群容器；普通账户构建、内核不变、dry-activate 仅改 gaoji.service。正式切换后进程 commit 正确、schema `0114_retire_legacy_import`、连续三次 QQ ready / healthy / 无 gap、`NRestarts=0`、error journal 为空。
+- 同口径 Git 源码行数（`src/**/*.py`、含空行、排除测试和迁移）：本批 57,635 → 57,026，QQ 目录仍 14,203。阶段 5 硬目标 **尚未达成**，不要将移除两个空表和一次性 CLI 说成代码减半或已缩至 25 表。
+
 ## 2026-11-19 · 退役旧导入器：0114 删表前完整备份（05:16 HKT）
 
 - 生产仍为 `82bfe5ea` / 0113；只读计数 `maintenance_state=0`、`embeddings=0`。采用 PG 17.11 对 `qq_bot` 全库备份（无表过滤）：`/data/services/gaoji/backups/legacy-retirement-20261118T211615Z/qq_bot.dump`，93,618,165 字节，目录 0700、归档 0600，SHA256 `bc7f92d324d25c73505a51caaec0312d89d71e688abcff069fa76ef830871aba`，归档完整解码通过。此时尚未删除生产表。
