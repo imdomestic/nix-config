@@ -34,7 +34,8 @@ Hank 的 Pi 将四条作为独立型号显示，每条只开放对应档位；�
 图片输入，保留 65,536 的客户端输出预算。四条共用同一公开 Hydrogen 价格
 估算，而非 Antigravity 订阅账单。
 
-Max 的四条共用已有 Vertex Hydrogen 的 `googleHydrogen` 配置，包括
+当次 Max 的四条共用已有 Vertex Hydrogen 的 `googleHydrogen` 配置（两组
+Vertex 路由后来已退役，见 [AGY 迁移](agy-chat-completions.md)），包括
 262,144 会话预算、视频开关和价格，不另设输出上限。默认聊天、任务、
 caption、dreamer 型号均不改变。切换预设通过 `/model` 选择真实 ID，
 而不是指望 `/effort` 改变型号 ID。

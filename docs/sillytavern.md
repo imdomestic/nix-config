@@ -48,9 +48,14 @@ HTTP 流量在 Tailnet 的 WireGuard 隧道内传输；没有启用 Funnel、公
 | Bonsai Hikari / Bonsai 2 | seraph 本机的两个 27B 模型，174080 上下文；互斥加载 |
 | Qwen3.8 Swift / Aligned | taipan 的两个 27B 模型，262144 上下文；主机需启动到 NixOS |
 | CLIProxy · 全部模型 | 动态读取 CLIProxy 的 `/v1/models`，过滤 Rewind；默认 Gemini 3.8 Flash High |
-| CLIProxy · GPT / Claude / Vertex / DeepSeek | 同一网关的常用模型快捷连接；仍可在模型下拉框选择其他模型 |
+| CLIProxy · GPT / Claude / DeepSeek | 同一网关的常用模型快捷连接；仍可在模型下拉框选择其他模型 |
 | Qwen3.5 4B | h610 的 llama.cpp，当前运行窗口为 32768 |
 | Ollama · Qwen3 8B / Gemma 4 E4B | tank 的两个小模型，使用保守的 4096 客户端窗口 |
+
+2026-11-18：两组 Vertex 路由已从网关退役，配置也删除了旧快捷项。
+seraph 当时 SSH 不通，因此本机持久化 profile/preset 的定向清理尚待部署；
+旧 UI 名称可能仍在，但已无法调用上游。恢复后运行新声明的 bootstrap，
+不删除用户聊天或其他连接；细节见 [部署记录](agy-chat-completions.md)。
 
 CLIProxy 的新模型会随重新连接 / 刷新模型列表出现，不需要修改 Nix 列出每个模型。
 网关目录也包含 `gpt-image-*`、Imagen 等生图模型；它们**不是 Chat Completion
@@ -64,7 +69,7 @@ CLIProxy 的新模型会随重新连接 / 刷新模型列表出现，不需要�
 该提供商使用条件的证明。
 
 云端快捷连接默认采用 131072 或 262144 的保守客户端上下文预算，回复预算为
-4096（GPT、Argon 为 8192）；这不是对上游最大能力的声明。按需在
+4096（GPT 为 8192）；这不是对上游最大能力的声明。按需在
 SillyTavern 的 Chat Completion 预设里修改，不会改变模型服务器本身的容量。
 本机的两个 Bonsai 预设分别保留 Hikari 的 medium / Bonsai 2 的 high 思考设置。
 

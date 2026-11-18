@@ -47,6 +47,47 @@ service-account key 或修改历史用量/聊天。原目录中两份 Vertex 描
 无两组 Vertex 路由、其他默认未变。历史事故条目和负向退休检查里的
 字符串不是生效模型，不为“零搜索结果”篡改历史。
 
+### 本次部署结果与未完成项
+
+声明提交 `59e92bc5`，SillyTavern 定向迁移 `24cfb8d4`。先同步远端再在
+tank / r6s 分别构建，max-jobs=1、cores=2；gizmo 不编译。
+
+- tank 实际运行及启动默认均为
+  `/nix/store/jwxkyisfn73blrakxcp40ivh9i8rzxyb-nixos-system-tank-26.05.20261113.f1e5c35`。
+  仅 Max 与 vm-check 的配置路径变化，没有软件/内核闭包变化。Max PID
+  `3493028`，配置 `/nix/store/vl0w2inkrnw8dhy08mj37h6jlby1cain-maxx.toml`。
+- 当前 9 台 VM、9 个 forwarder 的已有 PID 保持不变；包括 dormant 槽位在内
+  的 12 个 `forward.config` 都指向新配置。逐个运行中 forwarder 的 `/llm`
+  验证 14 条 AGY 型号且无两组 Vertex；数据库 conversation_settings 的
+  Vertex 选型为 0，未改历史账单、消息或 transcript。
+- 六条新模型均从 Max 真实 VM 转发通道发起短请求、带对应 effort，全部
+  HTTP 200 / 指定文本正确；约 7.6–17.5 秒。不是仅看列表或只验证一个档。
+- gizmo 的运行系统仍 `kxnnv8p7…`，加载内核仍 6.18.57。启动默认已设为
+  `/nix/store/hk6z55997y9c6xv4yjc40yizdbjwrkkk-nixos-system-gizmo-26.05.20261113.f1e5c35`。
+  当前只用 `/run/systemd/system/cliproxy.service.d/90-retire-vertex.conf`
+  引用该声明的 preStart；CLIProxy 重启后仍用原 **8.0.74** 二进制，没有
+  顺便加载 staging 中的 8.0.77，也未重启 agy/nginx 或机器。
+- 两份 runtime Vertex descriptor 移入
+  `/var/lib/cli-proxy-api/retired-vertex/retired.*`，父目录 0700、cliproxy 属主，
+  active auths 中为 0。CLIProxy 公开目录从 48 条 Vertex 前缀降到 0，仍有
+  61 条其他型号；两个旧 namespace 的直接生成请求均为 HTTP 400。
+- 两边的回退 timers 均已取消；源码与部署改动都已推送。
+
+**seraph 的在线 UI 清理尚未完成。** 只读检查时发现 fleet-vertex profile
+及 preset 都未被用户改动，也非当前选择；Lumiverse 的 7 个连接均无
+Vertex 默认/活动选型。SillyTavern migration 会移除这两个 managed artifacts
+并保持其他用户设置，但构建完整 seraph 启动代时先遇到 tank 的 GitHub
+sandbox DNS 下载失败，后续 seraph 的 SSH 又从 Mac/tank 均超时。
+因此没有声称其持久状态已修改，也没有重启或切换 seraph；旧快捷项即使
+仍留在离线机器数据里，也已无法通过网关调用两组退役模型。
+
+SillyTavern 新 bootstrap 单元已在 tank 构建：
+`/nix/store/rizqdr7xk78j4c6cnk24p4ypq97q12pq-unit-sillytavern-bootstrap.service`。
+后续 seraph 恢复连接后，从提交后的声明构建/部署其 bootstrap 单元与不含
+fleet-vertex 的 manifest，再通过原生 API 跑一次迁移并复核 UI 选型。不要
+直接删除用户整个 settings、secret store 或聊天来清除单个旧快捷项。
+迁移单测 42 项通过；并发修改、幂等重跑、保留用户编辑均有覆盖。
+
 ## 2026-11-18 · agy-completions 客户端接入与部署
 
 配置提交 `b5cf3150`：Hank Pi 通过 `my.pi.providers.agy-completions` 新增 8 个
