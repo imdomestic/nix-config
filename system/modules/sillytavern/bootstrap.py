@@ -26,12 +26,20 @@ Manifest (unknown fields are rejected):
 
 All profiles are Chat Completion / Custom, including Ollama's /v1 interface.
 Presets are cloned from an API-returned preset, never from a vendored file.
-Existing presets are NEVER overwritten. A missing managed preset is recreated
+Existing presets are never overwritten except for the explicit retirement's
+model-only migration described below. A missing managed preset is recreated
 from its original seed, not from whichever preset the user now has selected.
 Profile connection fields are updated together only while still unmodified;
 renames, exclusions, preset choices and other user edits survive. A credential
 rotation can repair an unmodified secret binding on a user-edited model, but
-never on a user-edited endpoint. Old secrets/profiles/presets are not deleted.
+never on a user-edited endpoint. Old secrets/profiles/presets are not pruned.
+The sole retirement migration is fleet-vertex when absent from the manifest:
+unchanged managed artifacts are removed, edited/shared artifacts are retained,
+and Vertex models on explicitly managed CLIProxy connections are replaced only
+in connection/model fields. An active CLIProxy Vertex selection falls back to
+an intact non-Vertex managed connection. User-authored artifacts are not edited;
+remaining references produce value-free, location-specific warnings. Secrets,
+chat histories, prompts and unrelated selections are never deleted or scanned.
 Use a new profile ID when changing between keyed and keyless: existing presets
 must retain their original Authorization behavior without being overwritten.
 
@@ -80,7 +88,7 @@ CREDENTIAL_NAME = re.compile(r"[a-z][a-z0-9_-]{0,63}\Z")
 BINDING_FIELDS = ("mode", "api", "api-url", "model", "secret-id")
 API_PATHS = {
     "/csrf-token", "/version", "/api/settings/get", "/api/settings/save",
-    "/api/presets/restore", "/api/presets/save", "/api/secrets/read",
+    "/api/presets/restore", "/api/presets/save", "/api/presets/delete", "/api/secrets/read",
     "/api/secrets/write", "/api/secrets/rotate",
 }
 
@@ -226,7 +234,8 @@ class Client:
         request = urllib.request.Request(self.endpoint + path, data=data, headers=headers)
         try:
             with self.opener.open(request, timeout=timeout) as response:
-                if response.status == 204:
+                # /presets/delete uses Express sendStatus(200), not JSON.
+                if response.status == 204 or (path == "/api/presets/delete" and response.status == 200):
                     return None
                 raw = response.read(32 * 1024 * 1024 + 1)
                 require(len(raw) <= 32 * 1024 * 1024, "API response too large")
@@ -348,6 +357,159 @@ def ensure_secret(client, states, label, value):
     return secret_id
 
 
+def save_settings(client, settings, original):
+    if settings != original:
+        latest = object_value(client.request("/api/settings/get", {})).get("settings")
+        require(object_value(latest) == original, "Settings changed concurrently; rerun bootstrap before opening the UI")
+        saved = object_value(client.request("/api/settings/save", settings))
+        require(saved.get("result") == "ok", "Settings save did not acknowledge success")
+    return copy.deepcopy(settings)
+
+
+def vertex_model(value):
+    return isinstance(value, str) and value.strip().lower().startswith(("vertex/", "vertex-c820/"))
+
+
+def select_profile(settings, manager, profile, spec, presets):
+    manager["selectedProfile"] = profile["id"]
+    settings["main_api"] = "openai"
+    oai = settings.setdefault("oai_settings", {})
+    require(isinstance(oai, dict), "Invalid Chat Completion settings")
+    aliases = {"temperature": "temp_openai", "top_p": "top_p_openai",
+               "frequency_penalty": "freq_pen_openai", "presence_penalty": "pres_pen_openai",
+               "top_k": "top_k_openai", "top_a": "top_a_openai",
+               "min_p": "min_p_openai", "repetition_penalty": "repetition_penalty_openai"}
+    for key, value in presets[profile["preset"]].items():
+        oai.setdefault(aliases.get(key, key), copy.deepcopy(value))
+    oai.update({aliases.get(key, key): value for key, value in make_preset({}, spec).items()})
+    oai["preset_settings_openai"] = profile["preset"]
+
+
+def retire_vertex(settings, manifest, presets):
+    """Plan one explicit retirement; no generic pruning or user-artifact edits."""
+    retired = "fleet-vertex"
+    specs = {spec["id"]: spec for spec in manifest["profiles"]}
+    if retired in specs:
+        return [], None, []
+    extension = settings["extension_settings"]
+    manager = extension["connectionManager"]
+    profiles = manager["profiles"]
+    records = extension[MARKER]["profiles"]
+    record = records.get(retired)
+    urls = set()
+    cloud = specs.get("fleet-cliproxy")
+    if cloud is not None:
+        urls.add(cloud["url"].rstrip("/"))
+    if record is not None:
+        require(isinstance(record, dict) and isinstance(record.get("profile"), dict) and
+                isinstance(record.get("preset"), dict), "Unsupported retired fleet-vertex state")
+        seed = record["profile"]
+        require(seed.get("id") == retired and seed.get("mode") == "cc" and seed.get("api") == "custom" and
+                valid_url(seed.get("api-url")) and vertex_model(seed.get("model")) and
+                seed.get("preset") == preset_name(retired) and owned_preset(record["preset"], retired),
+                "Unsupported retired fleet-vertex ownership state")
+        urls.add(seed["api-url"])
+
+    warnings, changes = [], []
+    current = next((profile for profile in profiles if profile["id"] == retired), None)
+    if record is not None and current is None and manager.get("selectedProfile") == retired:
+        manager["selectedProfile"] = None
+    if record is not None and current is not None:
+        if current == record["profile"]:
+            profiles.remove(current)
+            if manager.get("selectedProfile") == retired:
+                manager["selectedProfile"] = None
+        else:
+            warnings.append("Retained edited fleet-vertex at extension_settings.connectionManager.profiles; detached from bootstrap")
+
+    def cli_profile(profile):
+        return profile.get("mode") == "cc" and profile.get("api") == "custom" and profile.get("api-url") in urls
+
+    def cli_preset(preset):
+        return preset.get("chat_completion_source") == "custom" and preset.get("custom_url") in urls
+
+    # Only managed entries on the exact CLIProxy endpoint get a model-only
+    # replacement. Renames, custom prompts, exclusions and credentials survive.
+    def replacement_model(profile_id, url):
+        candidates = sorted(manifest["profiles"], key=lambda spec: (
+            spec["id"] != profile_id, spec["id"] != "fleet-cliproxy"))
+        replacement = next((spec["model"] for spec in candidates if spec["url"].rstrip("/") == url and
+                            not vertex_model(spec["model"])), None)
+        require(replacement is not None, "Unsupported Vertex retirement: no non-Vertex CLIProxy model")
+        return replacement
+
+    for profile in profiles:
+        if profile["id"] not in records or not cli_profile(profile) or not vertex_model(profile.get("model")):
+            continue
+        profile["model"] = replacement_model(profile["id"], profile["api-url"])
+
+    for profile_id, managed in records.items():
+        name = preset_name(profile_id)
+        preset = presets.get(name)
+        if profile_id == retired and preset is not None and preset == managed["preset"] and owned_preset(preset, retired):
+            referenced = (any(profile.get("preset") == name for profile in profiles) or
+                          settings.get("oai_settings", {}).get("preset_settings_openai") == name)
+            if not referenced:
+                changes.append((name, preset, None))
+                continue
+        if preset is not None and owned_preset(preset, profile_id) and cli_preset(preset) and vertex_model(preset.get("custom_model")):
+            updated = copy.deepcopy(preset)
+            updated["custom_model"] = replacement_model(profile_id, preset["custom_url"])
+            changes.append((name, preset, updated))
+        if profile_id != retired:
+            baseline = managed["profile"]
+            if cli_profile(baseline) and vertex_model(baseline.get("model")):
+                baseline["model"] = replacement_model(profile_id, baseline["api-url"])
+            if cli_preset(managed["preset"]) and vertex_model(managed["preset"].get("custom_model")):
+                managed["preset"]["custom_model"] = replacement_model(profile_id, managed["preset"]["custom_url"])
+
+    oai = settings.get("oai_settings", {})
+    fallback_secret = None
+    if settings.get("main_api") == "openai" and cli_preset(oai) and vertex_model(oai.get("custom_model")):
+        # Never activate a modified endpoint or unknown preset as a fallback.
+        candidates = sorted(manifest["profiles"], key=lambda spec: spec["id"] != manifest["defaultProfile"])
+        for spec in candidates:
+            profile = next((entry for entry in profiles if entry["id"] == spec["id"]), None)
+            seed = records[spec["id"]]
+            preset = presets.get(preset_name(spec["id"]))
+            if (profile == seed["profile"] and preset == seed["preset"] and
+                    profile.get("preset") == preset_name(spec["id"]) and
+                    profile.get("model") == spec["model"] and not vertex_model(spec["model"]) and
+                    preset.get("custom_model") == spec["model"] and
+                    preset.get("custom_url") == profile.get("api-url")):
+                select_profile(settings, manager, profile, spec, presets)
+                fallback_secret = profile["secret-id"]
+                break
+        require(fallback_secret is not None, "Unsupported Vertex retirement: no intact non-Vertex fallback profile")
+
+    # Re-evaluate deletion after moving a live Vertex selection off its preset.
+    name = preset_name(retired)
+    if record is not None and name in presets:
+        referenced = (any(profile.get("preset") == name for profile in profiles) or
+                      settings.get("oai_settings", {}).get("preset_settings_openai") == name)
+        if not referenced and presets[name] == record["preset"] and owned_preset(presets[name], retired):
+            changes = [change for change in changes if change[0] != name]
+            changes.append((name, presets[name], None))
+        else:
+            warnings.append("Retained edited or referenced preset Fleet - fleet-vertex; only its owned CLIProxy Vertex model may be replaced")
+    effective_presets = dict(presets)
+    for name, _previous, updated in changes:
+        effective_presets.pop(name, None)
+        if updated is not None:
+            effective_presets[name] = updated
+    if any(vertex_model(profile.get("model")) for profile in profiles):
+        warnings.append("Unsupported automatic cleanup: Vertex model remains in edited/user-authored extension_settings.connectionManager.profiles; user edits were preserved")
+    if any(vertex_model(preset.get("custom_model")) for preset in effective_presets.values()):
+        warnings.append("Unsupported automatic cleanup: Vertex model remains in edited/user-authored Chat Completion presets (openai_settings catalog); user edits were preserved")
+    if any(profile_id != retired and (vertex_model(managed["profile"].get("model")) or
+                                     vertex_model(managed["preset"].get("custom_model")))
+           for profile_id, managed in records.items()):
+        warnings.append("Unsupported automatic cleanup: Vertex model remains in extension_settings.fleetBootstrap.profiles seeds outside recognized CLIProxy connections")
+    if vertex_model(settings.get("oai_settings", {}).get("custom_model")):
+        warnings.append("Unsupported automatic cleanup: Vertex model remains at oai_settings.custom_model outside an active recognized CLIProxy connection")
+    return changes, fallback_secret, warnings
+
+
 def bootstrap(client, manifest, password, credentials):
     catalog = client.ready(manifest.get("readinessTimeoutSeconds", 120))
     require(catalog.get("enable_accounts") is False, "Bootstrap requires disabled user accounts")
@@ -457,36 +619,39 @@ def bootstrap(client, manifest, password, credentials):
             if profile_id == manifest["defaultProfile"]:
                 default_secret = secret_id
                 if select_default:
-                    manager["selectedProfile"] = profile_id
-                    settings["main_api"] = "openai"
-                    oai = settings.setdefault("oai_settings", {})
-                    require(isinstance(oai, dict), "Invalid Chat Completion settings")
-                    # Preserve original prompts/formatting; only apply the small
-                    # connection/sampling delta, with upstream's sampler aliases.
-                    delta = make_preset({}, spec)
-                    aliases = {"temperature": "temp_openai", "top_p": "top_p_openai",
-                               "frequency_penalty": "freq_pen_openai", "presence_penalty": "pres_pen_openai",
-                               "top_k": "top_k_openai", "top_a": "top_a_openai",
-                               "min_p": "min_p_openai", "repetition_penalty": "repetition_penalty_openai"}
-                    for key, value in presets[current["preset"]].items():
-                        oai.setdefault(aliases.get(key, key), copy.deepcopy(value))
-                    oai.update({aliases.get(key, key): value for key, value in delta.items()})
-                    oai["preset_settings_openai"] = current["preset"]
+                    select_profile(settings, manager, current, spec, presets)
 
-        if settings != original:
-            latest = object_value(client.request("/api/settings/get", {})).get("settings")
-            require(object_value(latest) == original, "Settings changed concurrently; rerun bootstrap before opening the UI")
-            saved = object_value(client.request("/api/settings/save", settings))
-            require(saved.get("result") == "ok", "Settings save did not acknowledge success")
-        if select_default:
+        changes, fallback_secret, warnings = retire_vertex(settings, manifest, presets)
+        original = save_settings(client, settings, original)
+        if fallback_secret is not None:
+            restore_active = fallback_secret
+        elif select_default:
             restore_active = default_secret
+        if changes:
+            latest = object_value(client.request("/api/settings/get", {}))
+            require(object_value(latest.get("settings")) == settings, "Settings changed concurrently during Vertex retirement; rerun before opening the UI")
+            live_presets = catalog_presets(latest)
+            for name, previous, updated in changes:
+                require(live_presets.get(name) == previous, "Preset changed concurrently during Vertex retirement; rerun before opening the UI")
+                if updated is None:
+                    client.request("/api/presets/delete", {"apiId": "openai", "name": name})
+                else:
+                    result = object_value(client.request("/api/presets/save", {"apiId": "openai", "name": name, "preset": updated}))
+                    require(result.get("name") == name, "Preset save returned a different name")
+        # Keep the retirement seed until API cleanup succeeds so an interrupted
+        # run can retry; a missing preset is never recreated for a retired ID.
+        if "fleet-vertex" not in {spec["id"] for spec in manifest["profiles"]}:
+            records.pop("fleet-vertex", None)
+            save_settings(client, settings, original)
     finally:
         # write auto-activates each new secret. Restore the user's active key
-        # even after partial failure; only first provisioning selects a default.
+        # even after partial failure, unless a saved Vertex fallback selected
+        # its replacement connection (or this was pristine provisioning).
         if restore_active is not None:
             live = secret_states(client.request("/api/secrets/read", {}))
             if not any(state["id"] == restore_active and state["active"] for state in live):
                 client.request("/api/secrets/rotate", {"key": SECRET_KEY, "id": restore_active})
+    return warnings
 
 
 def main(argv=None):
@@ -503,7 +668,9 @@ def main(argv=None):
         password = read_credential(manifest["passwordFile"])
         credentials = {name: read_credential(path) for name, path in manifest["credentials"].items()}
         client = Client(manifest["endpoint"], manifest["username"], password)
-        bootstrap(client, manifest, password, credentials)
+        warnings = bootstrap(client, manifest, password, credentials)
+        for warning in warnings:
+            print(f"SillyTavern bootstrap: {warning}", file=sys.stderr)
     except BootstrapError as error:
         print(f"SillyTavern bootstrap: {error}", file=sys.stderr)
         return 1

@@ -140,6 +140,14 @@ class MockTavern:
                         state.failures.append("invalid preset save schema")
                     state.presets[body["name"]] = copy.deepcopy(body["preset"])
                     self.send(200, {"name": body["name"]})
+                elif self.path == "/api/presets/delete" and self.command == "POST":
+                    if set(body) != {"apiId", "name"} or body["apiId"] != "openai":
+                        state.failures.append("invalid preset delete schema")
+                    if body["name"] not in state.presets:
+                        self.error(404)
+                    else:
+                        del state.presets[body["name"]]
+                        self.send(200, "OK", raw=True)  # Express sendStatus, not JSON
                 elif self.path == "/api/secrets/read" and self.command == "POST":
                     # /read exposes IDs, labels, active flags, and *masked* values.
                     self.send(200, {
@@ -193,7 +201,7 @@ class MockTavern:
         return {profile["id"]: profile for profile in self.settings["extension_settings"]["connectionManager"]["profiles"]}
 
     def writes(self):
-        return [path for method, path, _body in self.calls if method == "POST" and path.endswith(("/save", "/write", "/rotate"))]
+        return [path for method, path, _body in self.calls if method == "POST" and path.endswith(("/save", "/write", "/rotate", "/delete"))]
 
 
 class BootstrapTests(unittest.TestCase):
@@ -598,6 +606,285 @@ class BootstrapTests(unittest.TestCase):
         self.run_helper(expected=1)
         self.assertEqual(self.tavern.calls, [])
 
+    def provision_retired_vertex(self, selected=False, model="vertex/gemini-4-argon"):
+        spec = {**self.manifest["profiles"][1], "id": "fleet-vertex", "name": "CLIProxy Vertex", "model": model}
+        self.manifest["profiles"].append(spec)
+        if selected:
+            self.manifest["defaultProfile"] = "fleet-vertex"
+        self.run_helper()
+        self.manifest["profiles"].remove(spec)
+        self.manifest["defaultProfile"] = "fleet-bonsai-hikari"
+        self.tavern.calls.clear()
+        return self.tavern.settings["extension_settings"]["connectionManager"]
+
+    def test_retired_vertex_is_removed_once_without_touching_non_vertex_user(self):
+        self.provision_retired_vertex()
+        before = copy.deepcopy(self.tavern.settings)
+        before_secrets = copy.deepcopy(self.tavern.secrets)
+        before_presets = copy.deepcopy(self.tavern.presets)
+        # Other removed managed IDs must not be generically pruned.
+        self.manifest["profiles"] = [spec for spec in self.manifest["profiles"] if spec["id"] != "fleet-ollama"]
+        _out, err = self.run_helper()
+        self.assertEqual(err, "")
+        expected = copy.deepcopy(before)
+        extension = expected["extension_settings"]
+        extension["connectionManager"]["profiles"] = [profile for profile in extension["connectionManager"]["profiles"] if profile["id"] != "fleet-vertex"]
+        del extension["fleetBootstrap"]["profiles"]["fleet-vertex"]
+        self.assertEqual(self.tavern.settings, expected)
+        del before_presets["Fleet - fleet-vertex"]
+        self.assertEqual(self.tavern.presets, before_presets)
+        self.assertEqual(self.tavern.secrets, before_secrets)
+        self.assertIn("fleet-ollama", self.tavern.profiles())
+        self.tavern.calls.clear()
+        self.run_helper()
+        self.assertEqual(self.tavern.writes(), [])
+
+    def test_retired_vertex_active_selection_falls_back_and_preserves_prompts(self):
+        self.provision_retired_vertex(selected=True)
+        prompts = copy.deepcopy(self.tavern.settings["oai_settings"]["prompts"])
+        self.tavern.settings["power_user"]["theme"] = "keep-theme"
+        self.run_helper()
+        oai = self.tavern.settings["oai_settings"]
+        self.assertEqual(oai["custom_model"], "bonsai-hikari")
+        self.assertEqual(oai["prompts"], prompts)
+        self.assertEqual(oai["preset_settings_openai"], "Fleet - fleet-bonsai-hikari")
+        self.assertEqual(self.tavern.settings["power_user"]["theme"], "keep-theme")
+        manager = self.tavern.settings["extension_settings"]["connectionManager"]
+        self.assertEqual(manager["selectedProfile"], "fleet-bonsai-hikari")
+        self.assertEqual(self.tavern.active()["id"], self.tavern.profiles()["fleet-bonsai-hikari"]["secret-id"])
+        self.assertNotIn("Fleet - fleet-vertex", self.tavern.presets)
+        self.tavern.calls.clear()
+        self.run_helper()
+        self.assertEqual(self.tavern.writes(), [])
+
+    def test_stale_retired_selection_without_a_vertex_live_model_is_only_deselected(self):
+        manager = self.provision_retired_vertex()
+        manager["selectedProfile"] = "fleet-vertex"
+        before = copy.deepcopy(self.tavern.settings["oai_settings"])
+        active = self.tavern.active()["id"]
+        self.run_helper()
+        self.assertIsNone(self.tavern.settings["extension_settings"]["connectionManager"]["selectedProfile"])
+        self.assertEqual(self.tavern.settings["oai_settings"], before)
+        self.assertEqual(self.tavern.active()["id"], active)
+
+    def test_edited_retired_profile_and_preset_keep_edits_but_not_vertex_model(self):
+        self.provision_retired_vertex(selected=True, model="vertex-c820/gemini-4-argon")
+        profile = self.tavern.profiles()["fleet-vertex"]
+        profile.update({"name": "My custom title", "exclude": ["proxy"], "user-extra": 42})
+        preset = self.tavern.presets["Fleet - fleet-vertex"]
+        preset["temperature"] = 1.7
+        preset["prompts"][0]["content"] = "Private user prompt: leave verbatim"
+        before_profile, before_preset = copy.deepcopy(profile), copy.deepcopy(preset)
+        _out, err = self.run_helper()
+        replacement = self.manifest["profiles"][1]["model"]
+        before_profile["model"] = replacement
+        before_preset["custom_model"] = replacement
+        self.assertEqual(self.tavern.profiles()["fleet-vertex"], before_profile)
+        self.assertEqual(self.tavern.presets["Fleet - fleet-vertex"], before_preset)
+        self.assertNotIn("fleet-vertex", self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"])
+        self.assertEqual(self.tavern.settings["oai_settings"]["custom_model"], "bonsai-hikari")
+        self.assertIn("Retained edited fleet-vertex", err)
+        self.assertIn("Retained edited or referenced preset", err)
+        self.tavern.calls.clear()
+        self.run_helper()
+        self.assertEqual(self.tavern.writes(), [])
+
+    def test_repurposed_retired_endpoint_and_unowned_preset_are_not_overwritten(self):
+        self.provision_retired_vertex()
+        profile = self.tavern.profiles()["fleet-vertex"]
+        profile.update({"api-url": "http://user-provider.invalid/v1", "model": "user-model"})
+        preset = self.tavern.presets["Fleet - fleet-vertex"]
+        del preset["extensions"]["fleetBootstrap"]
+        preset["custom_url"] = "http://user-provider.invalid/v1"
+        before = copy.deepcopy((profile, preset))
+        _out, err = self.run_helper()
+        self.assertEqual((self.tavern.profiles()["fleet-vertex"], self.tavern.presets["Fleet - fleet-vertex"]), before)
+        self.assertIn("Unsupported automatic cleanup", err)
+        self.assertIn("openai_settings catalog", err)
+
+    def test_retired_preset_referenced_by_user_profile_is_not_deleted(self):
+        manager = self.provision_retired_vertex()
+        user = {"id": "user-profile", "name": "Mine", "preset": "Fleet - fleet-vertex", "model": "user-model"}
+        manager["profiles"].append(user)
+        before = copy.deepcopy(self.tavern.presets["Fleet - fleet-vertex"])
+        self.run_helper()
+        before["custom_model"] = self.manifest["profiles"][1]["model"]
+        self.assertEqual(self.tavern.presets["Fleet - fleet-vertex"], before)
+        self.assertEqual(self.tavern.profiles()["user-profile"], user)
+        self.assertNotIn("fleet-vertex", self.tavern.profiles())
+
+    def test_vertex_c820_active_cliproxy_without_retired_record_is_migrated(self):
+        self.run_helper()
+        profile = self.tavern.profiles()["fleet-cliproxy"]
+        profile["model"] = "vertex-c820/gemini-4-carbon6"
+        name = profile["preset"]
+        self.tavern.presets[name]["custom_model"] = profile["model"]
+        self.tavern.presets[name]["temperature"] = 1.6
+        oai = self.tavern.settings["oai_settings"]
+        oai.update({"chat_completion_source": "custom", "custom_url": profile["api-url"],
+                    "custom_model": profile["model"], "preset_settings_openai": name})
+        self.tavern.settings["extension_settings"]["connectionManager"]["selectedProfile"] = profile["id"]
+        self.run_helper()
+        self.assertEqual(self.tavern.profiles()["fleet-cliproxy"]["model"], "initial-model")
+        self.assertEqual(self.tavern.presets[name]["custom_model"], "initial-model")
+        self.assertEqual(self.tavern.presets[name]["temperature"], 1.6)
+        self.assertEqual(self.tavern.settings["oai_settings"]["custom_model"], "bonsai-hikari")
+        self.tavern.calls.clear()
+        self.run_helper()
+        self.assertEqual(self.tavern.writes(), [])
+
+    def test_user_vertex_artifacts_are_preserved_and_locations_reported(self):
+        self.run_helper()
+        manager = self.tavern.settings["extension_settings"]["connectionManager"]
+        user = {**copy.deepcopy(self.tavern.profiles()["fleet-cliproxy"]), "id": "user-vertex", "name": "My Vertex", "model": "vertex-c820/custom"}
+        manager["profiles"].append(user)
+        manager["selectedProfile"] = user["id"]
+        self.tavern.presets["User Vertex"] = {"custom_model": "vertex-c820/custom", "custom_url": user["api-url"], "chat_completion_source": "custom"}
+        before = copy.deepcopy((user, self.tavern.presets["User Vertex"]))
+        self.tavern.settings["oai_settings"].update({"custom_url": user["api-url"], "custom_model": user["model"]})
+        _out, err = self.run_helper()
+        self.assertEqual((self.tavern.profiles()[user["id"]], self.tavern.presets["User Vertex"]), before)
+        self.assertEqual(self.tavern.settings["oai_settings"]["custom_model"], "bonsai-hikari")
+        self.assertIn("user-authored extension_settings.connectionManager.profiles", err)
+        self.assertIn("openai_settings catalog", err)
+        self.assertNotIn("My Vertex", err)
+
+    def test_unrecognized_vertex_endpoint_is_reported_not_rebound(self):
+        self.run_helper()
+        self.tavern.settings["oai_settings"].update({"custom_url": "http://user-provider.invalid/v1", "custom_model": "vertex-c820/mine"})
+        before = copy.deepcopy((self.tavern.settings, self.tavern.presets, self.tavern.secrets))
+        self.tavern.calls.clear()
+        _out, err = self.run_helper()
+        self.assertEqual((self.tavern.settings, self.tavern.presets, self.tavern.secrets), before)
+        self.assertEqual(self.tavern.writes(), [])
+        self.assertIn("oai_settings.custom_model outside", err)
+
+    def test_modified_default_falls_back_to_another_intact_managed_profile(self):
+        self.provision_retired_vertex(selected=True)
+        self.tavern.profiles()["fleet-bonsai-hikari"]["api-url"] = "http://user-provider.invalid/v1"
+        self.run_helper()
+        manager = self.tavern.settings["extension_settings"]["connectionManager"]
+        self.assertEqual(manager["selectedProfile"], "fleet-cliproxy")
+        self.assertEqual(self.tavern.settings["oai_settings"]["custom_model"], "initial-model")
+        self.assertEqual(self.tavern.profiles()["fleet-bonsai-hikari"]["api-url"], "http://user-provider.invalid/v1")
+
+    def test_no_safe_vertex_fallback_is_explicitly_unsupported_without_changes(self):
+        self.provision_retired_vertex(selected=True)
+        for profile in self.tavern.profiles().values():
+            if profile["id"] != "fleet-vertex":
+                profile["api-url"] = "http://user-provider.invalid/v1"
+        before = copy.deepcopy((self.tavern.settings, self.tavern.presets, self.tavern.secrets))
+        _out, err = self.run_helper(expected=1)
+        self.assertIn("Unsupported Vertex retirement: no intact non-Vertex fallback", err)
+        self.assertEqual((self.tavern.settings, self.tavern.presets, self.tavern.secrets), before)
+        self.assertEqual(self.tavern.writes(), [])
+
+    def test_interrupted_retired_preset_delete_retries_without_recreation(self):
+        self.provision_retired_vertex(selected=True)
+        self.tavern.fail_path = "/api/presets/delete"
+        self.run_helper(expected=1)
+        self.assertEqual(self.tavern.settings["oai_settings"]["custom_model"], "bonsai-hikari")
+        self.assertNotIn("fleet-vertex", self.tavern.profiles())
+        self.assertIn("fleet-vertex", self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"])
+        self.assertEqual(self.tavern.active()["id"], self.tavern.profiles()["fleet-bonsai-hikari"]["secret-id"])
+        self.tavern.fail_path = None
+        self.run_helper()
+        self.assertNotIn("Fleet - fleet-vertex", self.tavern.presets)
+        self.assertNotIn("fleet-vertex", self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"])
+        self.tavern.calls.clear()
+        self.run_helper()
+        self.assertEqual(self.tavern.writes(), [])
+
+    def test_missing_retired_artifacts_do_not_reappear(self):
+        manager = self.provision_retired_vertex(selected=True)
+        manager["profiles"] = [profile for profile in manager["profiles"] if profile["id"] != "fleet-vertex"]
+        del self.tavern.presets["Fleet - fleet-vertex"]
+        self.run_helper()
+        self.assertNotIn("fleet-vertex", self.tavern.profiles())
+        self.assertNotIn("Fleet - fleet-vertex", self.tavern.presets)
+        self.assertEqual(self.tavern.settings["oai_settings"]["custom_model"], "bonsai-hikari")
+        self.assertEqual(self.tavern.settings["extension_settings"]["connectionManager"]["selectedProfile"], "fleet-bonsai-hikari")
+
+    def test_user_profile_named_fleet_vertex_without_marker_is_not_adopted(self):
+        self.run_helper()
+        manager = self.tavern.settings["extension_settings"]["connectionManager"]
+        profile = {"id": "fleet-vertex", "name": "User choice", "mode": "cc", "api": "custom", "api-url": "http://other-offline.invalid:8317/v1", "model": "vertex-c820/mine"}
+        manager["profiles"].append(profile)
+        before = copy.deepcopy(profile)
+        _out, err = self.run_helper()
+        self.assertEqual(self.tavern.profiles()["fleet-vertex"], before)
+        self.assertIn("Unsupported automatic cleanup", err)
+
+    def test_managed_vertex_seed_is_scrubbed_without_resetting_live_non_vertex_user(self):
+        self.run_helper()
+        record = self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"]["fleet-cliproxy"]
+        record["profile"]["model"] = "vertex-c820/old-model"
+        record["preset"]["custom_model"] = "vertex-c820/old-model"
+        profile = self.tavern.profiles()["fleet-cliproxy"]
+        profile["model"] = "user-non-vertex-model"
+        self.tavern.presets[profile["preset"]]["custom_model"] = "user-non-vertex-model"
+        before = copy.deepcopy((profile, self.tavern.presets, self.tavern.settings["oai_settings"], self.tavern.active()))
+        self.run_helper()
+        updated = self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"]["fleet-cliproxy"]
+        self.assertEqual(updated["profile"]["model"], "initial-model")
+        self.assertEqual(updated["preset"]["custom_model"], "initial-model")
+        self.assertEqual((self.tavern.profiles()["fleet-cliproxy"], self.tavern.presets, self.tavern.settings["oai_settings"], self.tavern.active()), before)
+
+    def test_concurrently_edited_retired_preset_is_not_deleted_and_retry_keeps_edits(self):
+        self.provision_retired_vertex()
+        real_retire = bootstrap.retire_vertex
+
+        def edit_after_plan(*args):
+            result = real_retire(*args)
+            self.tavern.presets["Fleet - fleet-vertex"]["temperature"] = 1.75
+            return result
+
+        with mock.patch.object(bootstrap, "retire_vertex", side_effect=edit_after_plan):
+            _out, err = self.run_helper(expected=1)
+        self.assertIn("Preset changed concurrently", err)
+        self.assertIn("Fleet - fleet-vertex", self.tavern.presets)
+        self.assertNotIn("/api/presets/delete", self.tavern.writes())
+        self.run_helper()
+        self.assertEqual(self.tavern.presets["Fleet - fleet-vertex"]["temperature"], 1.75)
+        self.assertEqual(self.tavern.presets["Fleet - fleet-vertex"]["custom_model"], "initial-model")
+        self.assertNotIn("fleet-vertex", self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"])
+
+    def test_retry_after_delete_and_interrupted_marker_save_does_not_recreate_preset(self):
+        self.provision_retired_vertex()
+        request = bootstrap.Client.request
+
+        def interrupt_marker_save(client, path, body=None, timeout=10):
+            if path == "/api/settings/save" and "fleet-vertex" not in body["extension_settings"]["fleetBootstrap"]["profiles"]:
+                raise bootstrap.APIError(path, 503)
+            return request(client, path, body, timeout)
+
+        with mock.patch.object(bootstrap.Client, "request", new=interrupt_marker_save):
+            self.run_helper(expected=1)
+        self.assertNotIn("Fleet - fleet-vertex", self.tavern.presets)
+        self.assertIn("fleet-vertex", self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"])
+        self.tavern.calls.clear()
+        self.run_helper()
+        self.assertNotIn("/api/presets/save", self.tavern.writes())
+        self.assertNotIn("fleet-vertex", self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"])
+
+    def test_missing_retired_profile_with_stale_selection_does_not_reset_live_non_vertex_model(self):
+        manager = self.provision_retired_vertex()
+        manager["profiles"] = [profile for profile in manager["profiles"] if profile["id"] != "fleet-vertex"]
+        manager["selectedProfile"] = "fleet-vertex"
+        before = copy.deepcopy(self.tavern.settings["oai_settings"])
+        self.run_helper()
+        self.assertIsNone(self.tavern.settings["extension_settings"]["connectionManager"]["selectedProfile"])
+        self.assertEqual(self.tavern.settings["oai_settings"], before)
+
+    def test_retirement_refuses_ambiguous_ownership_before_deletion(self):
+        self.provision_retired_vertex()
+        self.tavern.settings["extension_settings"]["fleetBootstrap"]["profiles"]["fleet-vertex"]["preset"].pop("extensions")
+        before = copy.deepcopy((self.tavern.settings, self.tavern.presets, self.tavern.secrets))
+        _out, err = self.run_helper(expected=1)
+        self.assertIn("Unsupported retired fleet-vertex ownership", err)
+        self.assertEqual((self.tavern.settings, self.tavern.presets, self.tavern.secrets), before)
+        self.assertEqual(self.tavern.writes(), [])
+
     def test_pinned_source_oracle_confirms_profile_and_settings_aliases(self):
         manager = (SOURCE / "public/scripts/extensions/connection-manager/index.js").read_text()
         secret_server = (SOURCE / "src/endpoints/secrets.js").read_text()
@@ -614,6 +901,9 @@ class BootstrapTests(unittest.TestCase):
         self.assertIn("fileContents.push(file);", settings_server)
         self.assertIn("openai_setting_names", settings_server)
         self.assertIn("apiId", presets_server)
+        self.assertIn("router.post('/delete'", presets_server)
+        self.assertIn("fs.unlinkSync(fullpath);", presets_server)
+        self.assertIn("return response.sendStatus(200);", presets_server)
         self.assertIn("temperature: ['#temp_openai', 'temp_openai'", openai)
         self.assertIn("reasoning_effort: ['#openai_reasoning_effort', 'reasoning_effort'", openai)
         self.assertIn("mergeObjectWithYaml(bodyParams, request.body.custom_include_body);", backend)
