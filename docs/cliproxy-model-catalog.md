@@ -60,6 +60,34 @@ $8 / $0.40 / $10 / $40，每百万 tokens。>272K input 的长上下文规则
 `bash scripts/check-pi-codex62.sh` 检查实际 Pi 模型定义及完整目录的 tier
 分组、上下文、输出、档位与价格。
 
+### 上线与 Pi 发布
+
+配置提交 `d15712f9`，没有更换或轮换 Codex 凭据。r6s 只构建新增目录、
+模板和 manifest，安装 manifest 后重启现有 CLIProxy，仍为 **8.0.74**，
+PID `165944`。agy-proxy PID `159427`、nginx PID `3982168` 保持不变，
+Vertex 两个前缀仍为零。SOPS 同时渲染了当前声明的 xray-config.json，
+但 xray 未重启（进程启动时间仍为 2026-11-08），没有顺便激活网络改动。
+
+实际公开 `/v1/models` 含两个新 ID；所有旧 ID 均保留，另外观察到目录
+刷新后多出内置 `gpt-6-chat-thinking`，它不是本次代码添加的 6.2 定义，
+也未因此加入 Pi。Sol / Astra 各自 Responses low 短请求均 HTTP 200 /
+response.completed / 文本正确，response.model 分别为对应原始 ID，约
+3.92 / 2.83 秒；没有路由到旧型号别名。
+
+真实 Pi 使用 Nix 生成的新 models.json、默认 Pi 提示词和完整仓库上下文，
+两款分别完成 read fixture 两轮调用，均 exit 0 / 2 requests / 1 read，
+约 8.36 / 13.45 秒。随后只原子发布了该模型文件到本机：
+`/nix/store/1wndxpckdy9fwj3i1bcvbcx76ajbg8jq-hm_.piagentmodels.json`，
+GC root 为 `~/.local/state/home-manager/gcroots/codex62-models`。
+发布前逐项比较，除新增这两个模型外，原有模型/provider 都与当前文件
+一致；用户 settings/default 没有改变。`pi --list-models gpt-6.2` 已列出
+两款，打开 /model 会重新加载，无需整套 home 激活。以后 home 激活追上
+声明后，可清理这个额外 GC root。
+
+未做系统 switch 或重启。完整声明的启动默认为
+`/nix/store/dk69ic1kxslw9hs777sib9f1af1jk7xd-nixos-system-gizmo-26.05.20261113.f1e5c35`；
+运行系统仍 `kxnnv8p7…`，loaded kernel 仍 6.18.57。回退 timer 已取消。
+
 ## Hydrogen 的四个预设
 
 `lib/antigravity-hydrogen.nix` 是服务端、Pi 和 Max 共用的型号数据。它定义
