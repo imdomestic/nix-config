@@ -6,6 +6,8 @@ Tailscale HTTPS 暴露 `/agy/v1beta/`，不替换 CLIProxy 的 `/v1/`，也不�
 Pi / Max 路由。v0.2 增加独立浏览器 OAuth 登录与服务自己凭据的原子刷新。
 v0.3 的可选 [OpenAI Chat Completions 兼容层](agy-chat-completions.md) 已在
 gizmo 开启，Max 已加载独立 `agy-completions/*`，原生 Gemini 入口不变。
+v0.4 新增 Responses、token 计数与图片/文件音频接口，支持范围和实际
+验收状态统一见 [API 能力表](agy-api.md)。
 
 ## 2026-11-16 · 本机原生协议画像
 
@@ -108,7 +110,7 @@ nixpkgs。对应公开源码 commit：
 [之前的记录](incidents.md#pi-antigravity-prompt-429)。本程序不替换用户身份
 段、不添加隐形字符、不制造签名绕过；不能承诺消除所有 429。
 
-## 两种入口
+## 原生与兼容入口
 
 ### 原生透传：不读取本机凭据
 

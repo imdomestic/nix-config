@@ -55,7 +55,7 @@ in {
     openaiCompat = lib.mkOption {
       type = lib.types.bool;
       default = false;
-      description = "Enable explicitly translating OpenAI Chat Completions and model discovery; native Gemini remains unchanged.";
+      description = "Enable stateless OpenAI-compatible Chat, Responses, image and file-audio endpoints; native Gemini remains available.";
     };
     refreshCredentials = lib.mkOption {
       type = lib.types.bool;

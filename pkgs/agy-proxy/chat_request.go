@@ -274,17 +274,29 @@ func decodeChatRequest(data []byte) (chatInput, error) {
 			}
 			delete(pending, message.CallID)
 			var text string
+			var media []json.RawMessage
 			for _, part := range parts {
 				var p struct {
-					Text *string `json:"text"`
+					Text   *string `json:"text"`
+					Inline *struct {
+						MIME string `json:"mimeType"`
+					} `json:"inlineData"`
 				}
 				_ = json.Unmarshal(part, &p)
-				if p.Text == nil {
-					return input, chatBad("tool results currently support text only; send media in a following user message")
+				if p.Text != nil {
+					text += *p.Text
+					continue
 				}
-				text += *p.Text
+				if p.Inline == nil || !strings.HasPrefix(p.Inline.MIME, "image/") {
+					return input, errUnsupportedMultimodalTool
+				}
+				media = append(media, part)
+				text += fmt.Sprintf("[image %d]", len(media))
 			}
 			result := map[string]any{"name": name, "response": map[string]any{"result": text}}
+			if len(media) > 0 {
+				result["parts"] = media
+			}
 			if id := nativeIDs[message.CallID]; id != "" {
 				result["id"] = id
 				delete(nativeIDs, message.CallID)

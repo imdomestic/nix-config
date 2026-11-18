@@ -28,7 +28,7 @@ var nativeMethods = map[string]bool{
 	"loadCodeAssist": true, "fetchAvailableModels": true,
 	"fetchAdminControls": true, "fetchUserInfo": true, "listExperiments": true,
 	"retrieveUserQuotaSummary": true, "writeTrajectoryAcls": true,
-	"generateContent": true, "streamGenerateContent": true,
+	"generateContent": true, "streamGenerateContent": true, "countTokens": true,
 }
 
 type proxy struct {
@@ -110,8 +110,33 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.native.ServeHTTP(w, r)
 		return
 	}
+	if p.source != nil && r.URL.Path == "/v1beta/capabilities" {
+		p.capabilities(w, r)
+		return
+	}
+	if p.source != nil && strings.HasPrefix(r.URL.Path, "/v1beta/") {
+		if feature := unavailableAPI(r.URL.Path); feature != "" {
+			p.unavailableRoute(w, r, feature)
+			return
+		}
+	}
 	if strings.HasPrefix(r.URL.Path, "/v1/") && p.openaiCompat && p.source != nil {
-		p.chatRoute(w, r)
+		if r.URL.Path == "/v1/capabilities" {
+			p.capabilities(w, r)
+			return
+		}
+		if feature := unavailableAPI(r.URL.Path); feature != "" {
+			p.unavailableRoute(w, r, feature)
+			return
+		}
+		switch r.URL.Path {
+		case "/v1/responses":
+			p.responsesRoute(w, r)
+		case "/v1/images/generations", "/v1/images/edits", "/v1/audio/transcriptions", "/v1/audio/translations":
+			p.mediaRoute(w, r)
+		default:
+			p.chatRoute(w, r)
+		}
 		return
 	}
 	if !strings.HasPrefix(r.URL.Path, "/v1beta/models") || p.source == nil {
@@ -148,12 +173,16 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p.models(w, r, model)
 		return
 	}
-	if r.Method != "POST" || !hasAction || (action != "generateContent" && action != "streamGenerateContent") {
+	if r.Method != "POST" || !hasAction || (action != "generateContent" && action != "streamGenerateContent" && action != "countTokens") {
 		writeError(w, 404, "unknown route")
 		return
 	}
 	if r.URL.RawQuery != "" && !(action == "streamGenerateContent" && r.URL.RawQuery == "alt=sse") {
 		writeError(w, 400, "unsupported query")
+		return
+	}
+	if action == "countTokens" {
+		p.countTokens(w, r, model)
 		return
 	}
 	p.generate(w, r, model, action)
@@ -286,6 +315,22 @@ func buildEnvelope(body []byte, model, project, session, requestID string) ([]by
 	if len(requestID) > 512 || strings.ContainsAny(requestID, "\r\n") {
 		return nil, fmt.Errorf("invalid request ID")
 	}
+	requestType := "agent"
+	if strings.Contains(model, "-image") {
+		requestType = "image_gen"
+	} else {
+		var generation struct {
+			Modalities []string `json:"responseModalities"`
+		}
+		if json.Unmarshal(fields["generationConfig"], &generation) == nil {
+			for _, modality := range generation.Modalities {
+				if modality == "IMAGE" {
+					requestType = "image_gen"
+					break
+				}
+			}
+		}
+	}
 	return json.Marshal(struct {
 		Project     string          `json:"project"`
 		RequestID   string          `json:"requestId"`
@@ -293,7 +338,7 @@ func buildEnvelope(body []byte, model, project, session, requestID string) ([]by
 		Model       string          `json:"model"`
 		UserAgent   string          `json:"userAgent"`
 		RequestType string          `json:"requestType"`
-	}{project, requestID, body, model, "antigravity", "agent"})
+	}{project, requestID, body, model, "antigravity", requestType})
 }
 
 func uuid() (string, error) {
@@ -426,7 +471,7 @@ func (p *proxy) models(w http.ResponseWriter, r *http.Request, model string) {
 	models := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
 		info := catalog.Models[id]
-		item := map[string]any{"name": "models/" + id, "displayName": info.DisplayName, "supportedGenerationMethods": []string{"generateContent", "streamGenerateContent"}}
+		item := map[string]any{"name": "models/" + id, "displayName": info.DisplayName, "supportedGenerationMethods": []string{"generateContent", "streamGenerateContent", "countTokens"}}
 		if len(info.InputTokenLimit) != 0 {
 			item["inputTokenLimit"] = info.InputTokenLimit
 		}

@@ -1,5 +1,8 @@
 # agy-proxy 的 OpenAI Chat Completions 兼容入口
 
+v0.4 的新增 Responses、图片/文件音频与 contents-only token 计数见
+[完整接口能力表](agy-api.md)；本页主要说明 Chat 格式转换与历史部署。
+
 v0.3.0 在原生 Gemini 之外增加**显式转换**的 `/v1/chat/completions`。
 它不声称 OpenAI 与 Gemini 语义完全相同，不复制 agy 的系统提示词，也不
 声称能解决 Pi 默认提示词引起的泛化 429。协议与已知问题见
@@ -157,8 +160,9 @@ services.agy-proxy.openaiCompat = true;
 | 模型列表 | `/v1/models` | `/agy/v1/models` |
 | 单模型 | `/v1/models/<real-id>` | `/agy/v1/models/<real-id>` |
 
-这是 **Chat Completions**，不实现旧文本 `/v1/completions`、Responses、
-embeddings 或 OpenAI hosted tools。模型 ID 是 `gemini-4-hydrogen-high`
+这个入口是 **Chat Completions**；旧文本 `/v1/completions`、embeddings
+和 OpenAI hosted tools 不在范围内。v0.4 另有独立的无状态 Responses
+入口，不是用同一个路径猜测协议。模型 ID 是 `gemini-4-hydrogen-high`
 这样的 Google 真实 ID，不是带 UI provider 前缀的 `agy/gemini-…`。
 
 开启后，普通 OpenAI SDK 的 base URL 填到 `/agy/v1`，例如：
@@ -196,7 +200,8 @@ print(answer.choices[0].message.content)
   或中间插入其他消息会明确拒绝。
 - 支持 image_url / video_url 的 base64 data URL，input_audio 的 mp3/wav。
   **不主动下载远程媒体 URL**，避免向内网、元数据地址或任意站点发请求。
-  工具结果当前只支持文本；其媒体应作为下一条 user 消息。
+  v0.4 的工具结果支持文本和 inline 图片，图片进入 functionResponse.parts；
+  音频/视频工具结果仍不支持默认转换，需要时使用原生 Gemini。
 - temperature、top_p、seed、stop、n、max_tokens / max_completion_tokens；
   两种输出上限冲突时报错。reasoning_effort 支持 minimal / low / medium /
   high / xhigh，对应 native thinkingLevel，仍应按真实预设选模型 ID。

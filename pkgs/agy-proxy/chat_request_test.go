@@ -113,6 +113,24 @@ func TestChatInputSignatureIsNeverInvented(t *testing.T) {
 	}
 }
 
+func TestChatToolResultImagesAreNativeParts(t *testing.T) {
+	const image = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg=="
+	body := decodeInputFixture(t, `{"model":"gemini-test","messages":[{"role":"user","content":"look"},{"role":"assistant","content":null,"tool_calls":[{"id":"c","type":"function","function":{"name":"capture","arguments":"{}"},"extra_content":{"google":{"thought_signature":"native-fixture"}}}]},{"role":"tool","tool_call_id":"c","content":[{"type":"text","text":"Screenshot: "},{"type":"image_url","image_url":{"url":"data:image/png;base64,`+image+`"}}]}]}`)
+	contents := body["contents"].([]any)
+	response := contents[2].(map[string]any)["parts"].([]any)[0].(map[string]any)["functionResponse"].(map[string]any)
+	if response["response"].(map[string]any)["result"] != "Screenshot: [image 1]" {
+		t.Fatal("tool text/image association lost")
+	}
+	inline := response["parts"].([]any)[0].(map[string]any)["inlineData"].(map[string]any)
+	if inline["mimeType"] != "image/png" || inline["data"] != image {
+		t.Fatal("tool result image was not preserved")
+	}
+	bad := `{"model":"gemini-test","messages":[{"role":"assistant","tool_calls":[{"id":"c","type":"function","function":{"name":"capture","arguments":"{}"},"extra_content":{"google":{"thought_signature":"native-fixture"}}}]},{"role":"tool","tool_call_id":"c","content":[{"type":"input_audio","input_audio":{"data":"aGk=","format":"wav"}}]}]}`
+	if _, err := decodeChatRequest([]byte(bad)); err == nil {
+		t.Fatal("unsupported tool audio silently accepted")
+	}
+}
+
 func TestChatInputRejectsAmbiguousAndUnsupportedSemantics(t *testing.T) {
 	base := `"model":"gemini-test","messages":[{"role":"user","content":"hello"}]`
 	for _, field := range []string{`"logprobs":true`, `"functions":[]`, `"frequency_penalty":1`, `"parallel_tool_calls":false`, `"store":true`, `"reasoning_effort":"none"`, `"n":0`, `"temperature":3`, `"top_p":0`, `"max_tokens":0`, `"max_tokens":1,"max_completion_tokens":2`, `"stop":[""]`, `"stream_options":{"include_usage":true}`, `"response_format":{"type":"unknown"}`, `"tool_choice":"required"`} {
