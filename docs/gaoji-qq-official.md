@@ -1,5 +1,15 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-18 · 容器预装常用 Python 库（#188）发布到 tank
+
+- **原因**：容器里的 Python 在只读的 Nix store 里，`pip install` 装不进去；装到 `/tmp` 的 wheel 又和 Nix 的 numpy 冲突。群里一次"用 Python 画正弦图"因此绕了 10 轮命令、花了约 32.6 万 token。
+- **Bot 合并（`ee56b9b`）**：PR #188 在 `nix/guest/tools.nix` 预装 numpy、pandas、scipy、matplotlib、seaborn、sympy、scikit-learn、scikit-image、statsmodels、networkx、plotly、pyarrow、opencv、imageio，以及 qrcode、tabulate、tqdm、rich、markdown、pydantic、python-dateutil、regex、chardet。另外通过 `MATPLOTLIBRC`、`MPLBACKEND` 让 matplotlib 默认用 Agg 后端和 WenQuanYi Micro Hei 字体。#187 只加了文档。
+- **tank 切换与核验**：
+  - 配置 `a8632371` 把 `qq-bot` 更新到 `ee56b9b`。现系统是 `/nix/store/wq12nlhsqsb24shzm1lccij21gcjg3lj-nixos-system-tank-26.05.20261113.f1e5c35`，内核不变。闭包差异只有 gaojibot 和新增的 Python 依赖，全部来自二进制缓存。
+  - dry-activate 显示只重启 `gaoji.service`。`gaoji` 在 20:22 HKT 重启，`NRestarts=0`；`/health/qq-official` 连续三次 `ready`；日志没有报错。
+  - 切换时正在跑的后台任务 67091 正常完成（`completed`）。
+- **容器生效**：已经在运行的群容器不会被 switch 重启，否则只能等闲置 2 小时后自动停、下次启动时才换上新环境。确认 `gct-s26b4ac`、`gct-sc373ac` 里没有回合、常驻单元或后台任务后，手动 `systemctl restart gaoji-ct-ops@{s26b4ac,sc373ac}`。之后在两个容器内用 `-W error::UserWarning` 导入全部新库，并画了一张带中文标题的图：后端 `Agg`，字体 `WenQuanYi Micro Hei`，没有缺字。
+
 ## 2026-11-18 · 回复流程照 Max（#179）、新功能 A/B/C/E/F（#180–#183）、文件与图片上限提至 200 MiB / 10 MiB（#184）及收尾清理（#185–#186）发布到 tank
 
 - **Bot 合并（`fa849df`）**：
