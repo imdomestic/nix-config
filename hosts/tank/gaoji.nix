@@ -81,7 +81,6 @@ in {
       AI_EMBEDDING_TIMEOUT_SECONDS = "60";
       AI_GITHUB_LOGIN = "gaoji-ji";
       AI_GITHUB_USER_ID = "358294790";
-      AI_SEARCH_PROVIDER = "bocha";
       OTEL_SERVICE_NAME = "gaoji";
     };
   };
@@ -109,7 +108,6 @@ in {
       AI_SANDBOX_MAX_TOTAL=12
       AI_SANDBOX_MAX_PER_USER=1
       AI_SANDBOX_MAX_FILE_MB=200
-      AI_SEARCH_PROVIDER=bocha
       AI_SEARCH_API_KEY=${config.sops.placeholder."gaoji/bocha_api_key"}
     '';
   };
