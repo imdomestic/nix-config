@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-18 · 前台直接动手执行（#177）与提示词/毒舌假小子人设清理（#178）发布到 tank
+
+- **Bot 合并（`255b7a6`）**：
+  - PR #177（`pf#6`、`pf#17.1-3`、`pf#18`）：新增前台容器直连工具 `shell`（含 `background=true` 调 `gaoji units start` 完成后回调通知）、`send_image`（支持 `/work` 图片发送与 WebP 自动转 PNG）、`video`（容器内 `ffprobe`+`ffmpeg` 抽帧 1fps、最长边 640、单声道 AAC ≤10 分钟 / ≤32 MiB，经 `video_url` 直接喂给 Gemini，宿主不解码视频）、`run_code`（`/etc/gaoji/runner/runner.js` + `playwright-core@1.59.0`，支持 `Promise.all` 并发调 `/job/tool`、`tools.show`/`tools.video` 与常驻 Chromium `gaoji.page()`/`gaoji.snapshot()`/`gaoji.wait_for_login()`，严格保持 `skills/browser.md` 只扫码登录规则），以及运维会话 `[运维会话安全守则]` 执行前 `say` 报备与历史消息多模态 base64 自动脱敏。
+  - PR #178（`pf#16`、`pf#17.5/8`、功能 G）：原样替换 `prompt.py` 的 `PERSONA` 为确认版毒舌假小子人设；删除内部状态术语与旧 `[常驻程序]` 块，保留 `say`，精简后台规则并补充同轮并发多工具 / `run_code` 规则及「刚才聊到哪了」用 `history` 总结规则（功能 G）。
+- **tank 切换与真机容器全链路验收**：配置 `98cafdce` 在 `gaoji-models.env` 显式置空 `AI_SYSTEM_PROMPT=` 与 `AI_SYSTEM_PROMPT_FILE=`（消除旧 `base.env`/`runtime.env` 对默认人设的覆盖）并更新 `qq-bot` 至 `255b7a6`。原系统 `/nix/store/9pjzdhc2xvc8fwrnca3c7vdqkkpn4xa9-nixos-system-tank-26.05.20261113.f1e5c35`，现系统 `/nix/store/nv0xhlx8w6ni1gaw18n22hhp1wnwj4b2-nixos-system-tank-26.05.20261113.f1e5c35`；`gaoji` PID `3334685`，`/health/qq-official` 连续 `ready / healthy=true / message_gap=false`，`journalctl -u gaoji` 零报错。在真实容器 `s536bad` 内单轮跑通全部验收：HTTPS 下载 WebP 图片经 `send_image` 自动转为有效 PNG（`39,447` 字节）、容器合成视频经 `video` 抽帧压缩（`18,681` 字节）直喂线上 `gemini-3.8-flash-high` 单轮准确读出画面数字 `7429`、生成并提取 PDF 文本、`run_code` `Promise.all` 并发调宿主 `/job/tool` + 常驻 Chromium `gaoji.page()`/`gaoji.snapshot()` 截图 `tools.show`，以及 `shell(background=true)` 启动独立容器单元落盘成功。
+
 ## 2026-11-18 · 后台架构对齐 Max：无桥接 `pi --print`、笔记与 `--fork` 续做、重启不断、固定版本扩展与轻量常驻单元（#174–#176）发布到 tank
 
 - **Bot 合并（`d9c6c52`）**：
