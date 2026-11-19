@@ -79,7 +79,6 @@ in {
   # (extlinux.conf 里引用的是 rk3328-nanopi-r2s.dtb),382M 死重,占了 ESP 的
   # 三分之二。generic-extlinux-compatible 已经是 false、不再生成,所以搬走即可,
   # 搬到了 /var/lib/stale-boot-backup。清理后 /boot 从 91% 降到 28%。
-  boot.loader.systemd-boot.configurationLimit = 5;
   powerManagement.cpuFreqGovernor = "performance";
 
   networking = {

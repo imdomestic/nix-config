@@ -79,7 +79,6 @@ in {
     grub.enable = false;
     systemd-boot = {
       enable = true;
-      configurationLimit = 5;
       editor = false;
       xbootldrMountPoint = "/boot";
       extraInstallCommands = prepareWindowsLoader;

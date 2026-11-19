@@ -616,7 +616,7 @@
       if [ -d "$data_dir/log" ]; then
         find "$data_dir/log" -type f -mtime +${toString cfg.logRetentionDays} -delete
       fi
-      find "$backup_dir" -type f -name 'qq_bot-*.dump' -mtime +${toString cfg.backup.retentionDays} -delete
+      find "$backup_dir" -maxdepth 1 -type f -name 'qq_bot-*.dump' -mtime +${toString cfg.backup.retentionDays} -delete
 
       prune_backup_count() {
         find "$backup_dir" -maxdepth 1 -type f -name 'qq_bot-*.dump' -printf '%f\n' \

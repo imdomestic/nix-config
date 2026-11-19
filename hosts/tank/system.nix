@@ -84,7 +84,6 @@ in {
   boot.loader.systemd-boot = {
     enable = true;
     # ESP 只有 1G，systemd initrd + bcachefs-tools 的 initrd 不小，别留太多代。
-    configurationLimit = 5;
   };
   boot.loader.efi.canTouchEfiVariables = true;
 

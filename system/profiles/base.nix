@@ -25,6 +25,12 @@
   nixpkgs.hostPlatform = lib.mkDefault system;
   networking.hostName = lib.mkDefault config.my.host.name;
 
+  boot.loader = {
+    systemd-boot.configurationLimit = lib.mkIf config.boot.loader.systemd-boot.enable 10;
+    grub.configurationLimit = lib.mkIf config.boot.loader.grub.enable 10;
+    generic-extlinux-compatible.configurationLimit = lib.mkIf config.boot.loader.generic-extlinux-compatible.enable 10;
+  };
+
   # Per-host secrets live in secrets/hosts/<name>.yaml (encrypted to that
   # host's ssh-derived age key, see .sops.yaml); fall back to the shared file.
   sops = {
