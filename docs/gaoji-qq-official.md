@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-20 · 实时事件失效提示合并（#235）
+
+- #235 CI `44571329452` 与精确候选 `f9d6dc53a378ac0e86bc00fa43bcf5de595343a3` CI `44588851390` 各五项通过。正式合并 `b83eee4b` 与候选同树。相邻 `src/**/*.py` 57,401→57,371，测试 Python 37,998→38,026，合计净减 2 行。`migrations/` 与 `src/bot_storage/schema.py` 均无差异，无迁移、未另做备份。
+- owner 以 kenneth 从配置 `ec94e596` 构建，保留现场 maxx 输入 `4bcb28a5`；交接后独立复核内核和 maxx 单元相同，整机 dry-activate 仅启停 gaoji。19:57:29 UTC 持久任务未清空，没有切换；19:57:33 独立复查四类计数皆 0，19:57:42–52 才切换。
+- 两轮各三次 QQ ready/healthy/无 gap，线上版本正确，`NRestarts=0`、零错误，maxx PID/启动时间未变。生产仍为 `0120_retire_context_feedback` / 75 表。19:58:37 独立检查队列空且无活动客体，没有冷启或重启。运行及启动 profile 同为 `/nix/store/dvalm20x3dgz8f34j17rjcrzjizfcg4i-nixos-system-tank-26.05.20261113.f1e5c35`。未向真实群发测试消息。
+
 ## 2026-11-20 · PostgreSQL 业务表写入者 CI（#226）
 
 - #226 CI `44587220814` 与精确候选 `46cba60a8910271d79588f922dd41adb56a2b192` CI `44588842070` 各五项通过，正式合并 `e1f89f9f` 与候选同树。`src/**/*.py` 57,401 不变，测试 Python 38,040→37,998，合计净减 42 行。相邻树的 `migrations/` 与 `src/bot_storage/schema.py` 无差异；无迁移、未另做备份，实际保持 `0120_retire_context_feedback` / 75 表。
