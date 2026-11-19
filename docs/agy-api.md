@@ -142,13 +142,12 @@ v0.4.1 在线上会把所有 `Client.Do` error 合成同一条通用 502，不�
 不改自动重放策略。分类日志使用 journal priority 前缀，适配 gizmo
 只持久化 notice/warning 的设置。
 
-**v0.4.2 尚未加载到线上，当前运行仍为 v0.4.1**。2026-11-19 已将含
-v0.4.2 的完整配置设为默认启动代，等待重启，详见下一节。这不声称已经
-修复偶发网络失败；加载后再据实际类别决定是否调整超时/连接策略，不能
-先猜 HTTP/2 或清冷却。历史证据与误判见
+**v0.4.2 已于 2026-11-19 随完整配置重启生效**，真实 API 和诊断日志
+验收见下一节。这不声称已经修复偶发网络失败；仍需按实际失败类别决定
+是否调整超时/连接策略，不能先猜 HTTP/2 或清冷却。历史证据与误判见
 [传输 502 排查](incidents.md#agy-transport-generic-502)。
 
-## 2026-11-19 · 最新完整配置已写入启动代，等待重启
+## 2026-11-19 · 最新完整配置重启生效与验收
 
 按用户要求，不再只替换 AGY runtime overlay，改为部署 gizmo 的完整最新
 声明。同步到 main `0c23a3a9`，在 r6s 以 max-jobs=1 / cores=2 构建，并
@@ -162,21 +161,58 @@ v0.4.2 的完整配置设为默认启动代，等待重启，详见下一节。�
 runtime overlay 实际运行的 0.4.1。与原启动默认 `dk69ic1k…` 相比，
 包级差异仅 AGY 0.4.1 → 0.4.2。
 
-15:08 HKT 已执行 `switch-to-configuration boot`，默认变为 **117**，
-未执行 system switch 或 reboot。机器自 11 月 6 日启动仍加载 **6.18.57**，
+15:08 HKT 先执行 `switch-to-configuration boot`，默认变为 **117**，
+未先执行 system switch。当时机器自 11 月 6 日启动仍加载 **6.18.57**，
 完整目标是 **6.18.63**；这是已经存在的未重启漂移，不是本次新改了内核
-输入。gizmo 是出口节点，先等待重启确认，不继续混用新用户态与旧内核。
+输入。gizmo 是出口节点，因此先等待重启确认，不继续混用新用户态与旧内核。
 
-当前 `/run/current-system` 仍为 `kxnnv8p7…`；AGY / nginx / CLIProxy
-PID 仍是 159427 / 3982168 / 165944，healthz 正常，三项临时 runtime
-覆盖均保留，以免在真正启动新版前撤掉正在工作的 API。重启后 `/run`
-覆盖自然消失，使用新启动代声明的服务；无需留下持久手写 drop-in。
+写 boot 时 `/run/current-system` 仍为 `kxnnv8p7…`；AGY / nginx / CLIProxy
+PID 是 159427 / 3982168 / 165944，healthz 正常，三项临时 runtime
+覆盖均保留，以免在真正启动新版前撤掉正在工作的 API。
 OAuth 和客户端 key 均未轮换、未备份或分发；未激活任何 home。
 
 24 台系统配置的 drvPath 求值全部通过。旧默认代 **116** 与已知可启动的
 **98**（`mj8cgahc…`，内核 6.18.57）仍在 extlinux，已核对后者的内核
-文件保留。**尚未声称 0.4.2 已线上生效**；重启后仍需确认内核、清空的
-runtime 覆盖、实际 ExecStart 和原生/Chat/Responses 生成。
+文件保留。
+
+随后用户明确批准，15:46 HKT 发出 reboot，约 **67.1 秒**后 SSH 以新
+boot ID 恢复。加载内核为 **6.18.63**，`/run/booted-system`、
+`/run/current-system`、启动默认均为上述 `0zh2qqg3…`。AGY PID **763**，
+实际 ExecStart 为 `/nix/store/354y5g34bcl9wf48hfc5d6brw7wgb02l-agy-proxy-0.4.2/bin/agy-proxy`；
+nginx / CLIProxy PID 为 **1014 / 949**，后者实际运行 **8.0.77**。
+三项旧 runtime override 随重启清空，不再依赖临时补丁。AGY header wait
+仍为 120 秒，没有新增 generation 重试。
+
+重启后经真实 HTTPS 验收，输出只保留状态/耗时/fixture 是否匹配，不保存
+凭据、签名或密文内容：
+
+| 验收 | 结果 |
+| --- | --- |
+| capabilities 与 CLIProxy models | 200；兼容层启用，Sol/Astra 两项在目录，Vertex 两组退役前缀为零 |
+| contents-only countTokens | 200，hello world=2，scope header 正确，1.61 秒 |
+| 原生 Flash High 生成 | 200，指定 fixture 正确，5.15 秒 |
+| Hydrogen High Chat 工具第一轮 / 第二轮 | 两轮 200，6.12 / 3.59 秒，完整 native metadata 回放，返回固定 stub 结果 |
+| AGY Responses | 200，指定 fixture 与 encrypted native carrier 存在，4.69 秒 |
+| CLIProxy GPT 6.2 Sol Responses | 200，指定 fixture 与真实返回模型 ID 正确，4.45 秒 |
+| tank 的 Max 共享 forwarder | `/var/lib/maxx/vm/max.sock` 的 `/llm` 含 14 个 AGY 模型；Hydrogen High SSE 的 fixture / DONE 均正确 |
+
+Max 验收实际使用正在监听的共享 socket，不是已经闲置的历史 VM 3 socket；
+后者仅 connect 失败，未发出模型调用。没有重启 Max、修改用户默认模型
+或给 VM 配真实 key。
+
+另外仅对 loopback countTokens 发起一次**合成、非生成**取消探针：在
+40ms 主动断开客户端后，真实 AGY 日志记录 `class=client_canceled`、
+`phase=response_headers`、`elapsed_ms=39`、`protocol=h2`、
+`request_written=true`、`replayed=false` 及关联 ID，journal priority 为 **5**，
+证明 notice-only 的日志策略可以保留诊断。这是受控取消，**不是复现原来的
+自然 502，也不证明其根因已修复**。客户端已经断开，因此此项只验收日志；
+502 JSON 扩展字段仍以离线故障注入测试为证。
+
+最终系统 `running`，失败系统单元为零，AGY / nginx / CLIProxy /
+Tailscale / Rex login server 均 active，IPv4/IPv6 forwarding 开启。启动期间
+Rex/SOPS 的短暂失败已自行恢复（Hank 用户 sops-nix Result=success）；
+快速 SSH 探针曾留下空 cgroup 的 scope resources 记录，核对 No PIDs
+left 后只清除了这些瞬时 scope 的 failed 状态，未重启或掩盖实际服务失败。
 
 ## 2026-11-18 · v0.4.1 上线与真实验收
 

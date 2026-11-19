@@ -79,6 +79,10 @@ notice-only journald 保留。客户端取消单独标记，不混作模型拒�
 线上 v0.4.1**；需要加载该版本后捕获实际失败，才能进一步定根因。
 `not replayed` 只表示代理没有重发，不表示 Google 肯定没执行该请求。
 
+2026-11-19 更新：用户批准后已随完整系统重启加载 0.4.2；真实生成、
+工具回放、Max forwarder 和受控取消日志均验收通过，详见
+[API 部署记录](agy-api.md)。尚未复现原来的自然传输失败，不能据此补写根因。
+
 ## 2026-11-18 · CLIProxy Flash：精简真实身份提示词可保留项目上下文与工具 {#pi-cliproxy-flash-compact-prompt}
 
 用户要求先复测 `cliproxy/gemini-3.8-flash-high`，不再处理 seraph。
