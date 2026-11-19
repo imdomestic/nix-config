@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-20 · PostgreSQL 业务表写入者 CI（#226）
+
+- #226 CI `44587220814` 与精确候选 `46cba60a8910271d79588f922dd41adb56a2b192` CI `44588842070` 各五项通过，正式合并 `e1f89f9f` 与候选同树。`src/**/*.py` 57,401 不变，测试 Python 38,040→37,998，合计净减 42 行。相邻树的 `migrations/` 与 `src/bot_storage/schema.py` 无差异；无迁移、未另做备份，实际保持 `0120_retire_context_feedback` / 75 表。
+- 以 kenneth 从配置 `6396f863` 构建，保留现场 maxx `4bcb28a5`；内核及 maxx 单元相同，整机 dry-activate 仅启停 gaoji。19:19:48 UTC 单独核对四类工作均为 0，19:19:56–19:20:06 切换。19:20:49 独立客体门禁全零、无活动容器，未冷启或重启。
+- 两轮各三次 QQ ready/healthy/无 gap，线上 `GAOJI_COMMIT` 正确、`NRestarts=0`、错误日志为空，maxx PID/启动时间未变。运行与启动 profile 同为 `/nix/store/851rr4g6s9x5f7hafbfgb54vlal16c6x-nixos-system-tank-26.05.20261113.f1e5c35`。未向真实群发送测试消息。
+
 ## 2026-11-20 · 0120 退役旧上下文反馈表（#234）
 
 - 生产仍为 `fb9997f5` / `0119_retire_import_residue` 时执行 PG 17.11 全库 `pg_dump -Fc`，无表过滤，全归档解码通过。备份 `/data/services/gaoji/backups/v3-0120-20261119T190403Z/qq_bot.dump`，93,558,320 字节，0600，SHA256 `f632d0cd9a51a67272eb36bbb56b2befac9c8b27b954f805f972d8671a27ba3f`。仅存于 tank，保留 30 天，本次未发现过期备份。
