@@ -1,5 +1,9 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-19 · 0117 最终全库归档与逐值还原核验（08:03 HKT）
+
+- `/data/services/gaoji/backups/history-floor-20261118T235047Z/pre-switch-20261119T000338Z.dump`，95,260,007 字节、0600，SHA256 `63c7cea70be57a6cd53fc0c1ad13ca99fd6afe673445c54fc018034746b95b1c`。首次和最终归档均在禁止访问生产 socket、断网的独立 PG 17 实际还原升级；按 ID 排序对比所有会话游标（含缺行、清除时间）和全部可见消息 ID，两组二进制 COPY 均逐字节一致，未输出私聊或群内容。前后均为 11,835 条消息、4 个会话、1,278 份摘要，业务表 81→80。最终配置 `fb75f2b9` / 候选 `6be14b7a`，内核不变，dry-activate 仅启停 gaoji。仍未切换。
+
 ## 2026-11-19 · 会话可见下界合并前全库备份（07:50 HKT）
 
 - 生产 `4d6ffda1` / 0116；PG 17.11 完整 `pg_dump -Fc`（无表过滤）保存到 `/data/services/gaoji/backups/history-floor-20261118T235047Z/qq_bot.dump`，95,260,492 字节、0600、目录 0700，SHA256 `77ccd87148e51e8ce7721c37d10ad84df284ce2854ab838549202cfa12d14e42`。全归档解码通过。`f1fe7e65` / bot `9edc54ff` 普通账户构建，内核未变，dry-activate 只启停 gaoji；当前未迁移或切换。
