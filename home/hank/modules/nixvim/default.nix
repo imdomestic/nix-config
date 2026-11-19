@@ -467,7 +467,7 @@ in {
           pattern = "rust";
           callback = mkRaw ''
             function(args)
-              vim.keymap.set("n", "<leader>a", function()
+              vim.keymap.set("n", "<leader>la", function()
                 vim.cmd.RustLsp("codeAction")
               end, { silent = true, buffer = args.buf, desc = "Code action (rust-analyzer)" })
             end

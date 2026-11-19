@@ -107,12 +107,6 @@ in {
       options.desc = "Clear search highlight";
     }
     {
-      mode = "n";
-      key = ";";
-      action = ":";
-      options.desc = "Command line";
-    }
-    {
       mode = ["n" "x" "o"];
       key = "s";
       action = mkRaw ''function() require("flash").jump() end'';
