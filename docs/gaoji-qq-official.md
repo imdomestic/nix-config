@@ -1,5 +1,12 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-20 · 0119 退役三张旧导入残留表（#225）
+
+- 生产仍为 `27d58f5c` / `0118_retire_semantic_state` 时执行 PG 17.11 全库 `pg_dump -Fc`，无表过滤、全归档解码通过。备份 `/data/services/gaoji/backups/v3-0119-20261119T184948Z/qq_bot.dump`，93,762,359 字节，0600，SHA256 `454446398d9f7427002ab838e5d8c869e7789a629a56dfe8034b0d4db0813a5f`。仅存于 tank，保留 30 天；本次未发现过期备份。
+- 在断网且生产 socket 和 `/data` 不可见的独立 PG 17 中实还原并升级至 0119。只退役 `message_topic_edges`（1,645 行）、`delivery_attempt_quotas`（6 行）、`storage_migration_runs`（1 行）；79→76 张业务表，全体保留表行数及完整二进制行的 SHA256 多重集逐表一致，清单 `972fed4c6135b0b7dbc9a2a73275df366e9d886f0edb379ce666f63a3962e19c`。其中消息 11,944、语义文档 11,558。
+- #225 自身 CI `44528705488`、精确发布 `fb9997f5837319d6e4f9fe71970a9506383ba1e9` CI `44588815644` 均五项通过；正式合并 `1f6dd6e9` 的树与该发布相同。`src/**/*.py` 57,490→57,489，测试 Python 37,969→37,961，净减 9 行。以 kenneth 从配置 `c740188f` 构建，仅保留现场 maxx 输入 `4bcb28a5`；内核及 maxx 单元相同，整机 dry-activate 仅启停 gaoji。
+- 18:52:11 UTC 持久队列未空，没有切换；18:54:29 单独复查四类工作计数全为 0，18:54:39–49 切换。启动连接期间先返回 503，随后两轮各连续三次 QQ ready/healthy/无 gap，`NRestarts=0`、错误日志为零，maxx PID/启动时间未变。生产 `0119_retire_import_residue`、76 张表，三张退役表均不在。原活动会话容器 18:43:39 已正常停止；18:55:34 独立查空闲并确认无活动客体，不冷启、不重启。运行与启动 profile 同为 `/nix/store/7mfcxpi77889j1iihaxcjxdq2vzyw8kq-nixos-system-tank-26.05.20261113.f1e5c35`。未向真实群发测试消息。
+
 ## 2026-11-20 · 0118 退役旧语义缓存
 
 - 完整生产库备份（无表过滤）`/data/services/gaoji/backups/v3-semantic-20261119T181722Z/qq_bot.dump`，96,420,448 字节，权限 0600；SHA256 `d9ae94ce59635ce6f50efeaab642ec07e1c15ab1e3d01706744958fdb77d87bc`。PG 17.11 全归档解码通过；备份目录中没有超过 30 天的批次。备份时生产仍是 `a121d837` / 0117。
