@@ -39,7 +39,6 @@ in {
     # 开启 Lanzaboote 时，它会替代原生 systemd-boot 安装器。
     systemd-boot = {
       enable = !config.boot.lanzaboote.enable;
-      configurationLimit = 5;
       editor = false;
       extraInstallCommands = prepareWindowsLoader;
       extraEntries."windows.conf" = ''

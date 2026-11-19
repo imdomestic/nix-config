@@ -54,7 +54,6 @@ in {
       grub.enable = false;
       generic-extlinux-compatible = {
         enable = true;
-        configurationLimit = 15;
       };
     };
     kernelModules = [
