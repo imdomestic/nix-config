@@ -128,6 +128,10 @@ in {
       conversations = [8 13];
       loginServer = "https://tailscale.imdomestic.com:8443";
       domain = "inner.imdomestic.com";
+      # tank's own tailnet address, so these VMs reach tank too, as max
+      # through Tailscale SSH like every other machine: root on the
+      # machine running max, which these groups are trusted with.
+      hostAddress = "100.64.0.4";
     };
     settings = {
       # Each VM's size, up from maxx's default of 2 vCPUs and 4 GiB
