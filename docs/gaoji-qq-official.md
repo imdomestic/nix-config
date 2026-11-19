@@ -1,5 +1,11 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-20 · v3 #236–#248 单次组合发布（不含 #249）
+
+- 精确业务候选 `551322b2cd1ac16ed9b53d990aafe4fe5fd2f073`，与正式合并 `8ca4766075d60b4e72db6e61ba45f774cafd6499` 同树 `2cacbbd6b9ade7728388bf2f402a6555acbedad3`。13 个原 PR、#250 及候选完整 CI 均五项通过；相邻已发布 #235 的 src+tests 总行数 95,397→94,530（净减 867）。
+- 一次 PostgreSQL 全库归档 `/data/services/gaoji/backups/v3-combined-20261119T210011Z/qq_bot.dump`：88,161,166 字节，SHA256 `9395b2b83b5205806f13696809b37d55eb4b43a90640bb231ccb3ffac0cc3f2e`，0600；整目录文件归档 `/data/services/gaoji/backups/v3-combined-20261119T210011Z/qq-official-files.tar`：1,269,760 字节，SHA256 `a0b9ebed3692abeae8f8edac4aee11efafed02fd4dc6f02cb367d8c358faf734`，0600，批目录 0700，保留 30 天。文件归档已完整解包核对目录/文件元数据；13 个普通文件各自 SHA256 与数据库摘要匹配，去重字节数 1,145,755；15 条过期且终态阻断记录均无未过期引用。备份路径/大小/hash 在隔离还原及清理之前写入本工作树。
+- 同一全库归档经 PostgreSQL 17.11 在断网、生产 socket 和 `/data` 均不可见的隔离进程内实还原；仅在还原库模拟授权 15 行/13 键墓碑，再运行未修改的 0121→0123 迁移和守卫。退役 `admin_security_lock`（1 行）、`qq_official_file_artifacts`（78）、`qq_official_file_deliveries`（78）、`qq_official_quota_periods`（1）；75→71 张业务表。全体保留表原列全行 SHA256 多重集及行数逐表相同，清单 SHA256 `59231f22ee433be0defc6c107f51ee037d5081b54e3068c892fd15aa5a1b11ff`；消息 11,944 条。空闲门禁一度显示语义持久任务实际运行、待执行且已到期，非未来定时项；未清队列/抢占，等待期间先释放部署锁。自然清空后重新取锁，21:19:28 UTC 独立空闲四项全零；复核归档和 live/DB 一致，逐个删除且仅删除 13 个普通文件，并以各文件实际删除秒数将对应 15 行标记 `deleted`、清除 `cleanup_pending`。生产 0123 原守卫三项均零，15 行近期墓碑，剩余原文件 0。21:20:12 UTC 再次单独确认四项全零，21:20:22–32 一次切换到 `551322b2` / `0123_retire_outbox_diagnostics` / 71 表。内核及 maxx unit 不变，dry-activate 仅启停 Gaoji；运行与启动系统均为 `/nix/store/vamb8550k0cqcfsirc730ldhzk06lp14-nixos-system-tank-26.05.20261113.f1e5c35`。两轮各连续三次 QQ ready/healthy/no-gap，`GAOJI_COMMIT` 匹配，错误日志 0、`NRestarts=0`，maxx PID 2113844 / 启动时间不变；事务回滚式临时表插入证明主库可写且无持久写入。21:21:05 UTC 单独客体空闲检查全零且活动客体 0，不冷启。无真实 QQ 消息注入。
+
 ## 2026-11-20 · 实时事件失效提示合并（#235）
 
 - #235 CI `44571329452` 与精确候选 `f9d6dc53a378ac0e86bc00fa43bcf5de595343a3` CI `44588851390` 各五项通过。正式合并 `b83eee4b` 与候选同树。相邻 `src/**/*.py` 57,401→57,371，测试 Python 37,998→38,026，合计净减 2 行。`migrations/` 与 `src/bot_storage/schema.py` 均无差异，无迁移、未另做备份。
