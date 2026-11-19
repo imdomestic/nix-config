@@ -1,5 +1,10 @@
 # Gaoji 官方 QQ 接入
 
+## 2026-11-20 · 0126→0129 单次发布（仅 #283 受检主线）
+
+- 生产基线 `c27877fc` / `0126_retire_turn_edges` / 68 张业务表。唯一发布 pin `df5bb0e902c1499f71c3bbb002c5c188f461c56d`，树 `d2c2798702b07e8e6b010cca6f6d867f0d624af9`；精确 main/push CI `44634661533` 五项全绿。相邻 src+tests 净减 3,169 行。只读前置计数：`vision_jobs` 0、`content_sources` 221、`message_sources` 162；后两张原表及字段、行与关联必须保留，不读取正文或身份。0127 为保留性空操作，0128 只退役空的 vision_jobs，0128b 拒绝丢失分享表，0129 新绑定列初始为 NULL，目标 67 张表。
+- 一次 PostgreSQL 17.11 全库归档 `/data/services/gaoji/backups/v3-main0129-20261119T232335Z/qq_bot.dump`，84,356,881 字节，SHA256 `04ae55ab8033f15630ad368d25dcd1b34745ef7be25081af6a2603373d48a3dd`；批目录 0700，归档 0600，仅在私有备份目录保留 30 天，完整归档可解码。备份路径、大小和 hash 已先写入配置工作树，断网且生产 PostgreSQL socket 与 `/data` 不可见的 PG 17.11 实还原、升级及原样迁移检查通过：`0126→0129`，68→67，只退役 0 行 `vision_jobs`。包括 `content_sources` 221 行和 `message_sources` 162 行在内的全部 67 张保留表，升级前原列逐表行数及二进制行 SHA256 多重集一致，清单 SHA256 `8439efd33997676b962322170cc89ef415840b1af83b72b7ffe12d87d4d72613`；新绑定列初始全 NULL，未隐式提升权限。以 kenneth 从配置 `e4abae05` 构建并保留现场 maxx 输入；新旧内核和 maxx unit 同一 store path，整机 dry-activate 仅启停 Gaoji。23:25:11 UTC 独立 host+guest 空闲检查四项全零，23:25:24–34 UTC 单次切换；活动客体 0，23:26:08 UTC 再次独立空闲四项全零，未冷启客体。两轮各三次 QQ ready/healthy/no-gap，线上 `GAOJI_COMMIT` 正确、schema 0129 / 67 表，`NRestarts=0`、错误日志 0，maxx PID 2113844 / 启动时间不变。运行与启动 profile 均为 `/nix/store/iprbdpnsd8mbgcddi8x1ikl6ipl52hk7-nixos-system-tank-26.05.20261113.f1e5c35`；独立临时表写入后回滚验证主库可写且无持久写入，分享两表仍为 221/162 行、vision_jobs 不存在，新绑定列仍全 NULL。不向真实 QQ 发送测试消息；不触及密钥或其他组件。
+
 ## 2026-11-20 · v3 #249/#251/#252/#254 组合发布（不含 #253/#255）
 
 - 精确候选 `c27877fc1b55a9a38dc7e4aa2e7d06d2651fd2b0` 与正式合并 `0340a8408dd4b8f164e06860955c042c4ed6110f` 同树 `02ec12307020e07cba57ba50c0779ac5caa417fa`；四个业务 PR 自身各五项全绿，候选 workflow_dispatch `44617732556` 自身五项全绿。相邻上线树 src+tests 净减 411 行，只有 0124–0126 三个迁移。发布前生产 `0123_retire_outbox_diagnostics` / 71 表，待退役三表行数分别为 0、614、84。
