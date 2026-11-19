@@ -142,10 +142,41 @@ v0.4.1 在线上会把所有 `Client.Do` error 合成同一条通用 502，不�
 不改自动重放策略。分类日志使用 journal priority 前缀，适配 gizmo
 只持久化 notice/warning 的设置。
 
-**v0.4.2 尚未加载到线上，当前运行仍为 v0.4.1**，并不声称已经修复偶发
-网络失败。加载后再据实际类别决定是否调整超时/连接策略，不能先猜 HTTP/2
-或清冷却。历史证据与误判见
+**v0.4.2 尚未加载到线上，当前运行仍为 v0.4.1**。2026-11-19 已将含
+v0.4.2 的完整配置设为默认启动代，等待重启，详见下一节。这不声称已经
+修复偶发网络失败；加载后再据实际类别决定是否调整超时/连接策略，不能
+先猜 HTTP/2 或清冷却。历史证据与误判见
 [传输 502 排查](incidents.md#agy-transport-generic-502)。
+
+## 2026-11-19 · 最新完整配置已写入启动代，等待重启
+
+按用户要求，不再只替换 AGY runtime overlay，改为部署 gizmo 的完整最新
+声明。同步到 main `0c23a3a9`，在 r6s 以 max-jobs=1 / cores=2 构建，并
+通过 root SSH 将自己构建的闭包传到 gizmo；没有在 gizmo 上编译。
+传输只对此次闭包使用 `--no-check-sigs`，未修改全局信任或签名检查设置。
+
+完整目标为
+`/nix/store/0zh2qqg3babgpdklnnp45jwjqjilgrmj-nixos-system-gizmo-26.05.20261113.f1e5c35`。
+与 `/run/current-system` 相比，包级差异是 AGY 0.2.1 → 0.4.2、CLIProxy
+8.0.74 → 8.0.77 和 tzdata 2026f；其中 AGY 的旧闭包版本不等于当前
+runtime overlay 实际运行的 0.4.1。与原启动默认 `dk69ic1k…` 相比，
+包级差异仅 AGY 0.4.1 → 0.4.2。
+
+15:08 HKT 已执行 `switch-to-configuration boot`，默认变为 **117**，
+未执行 system switch 或 reboot。机器自 11 月 6 日启动仍加载 **6.18.57**，
+完整目标是 **6.18.63**；这是已经存在的未重启漂移，不是本次新改了内核
+输入。gizmo 是出口节点，先等待重启确认，不继续混用新用户态与旧内核。
+
+当前 `/run/current-system` 仍为 `kxnnv8p7…`；AGY / nginx / CLIProxy
+PID 仍是 159427 / 3982168 / 165944，healthz 正常，三项临时 runtime
+覆盖均保留，以免在真正启动新版前撤掉正在工作的 API。重启后 `/run`
+覆盖自然消失，使用新启动代声明的服务；无需留下持久手写 drop-in。
+OAuth 和客户端 key 均未轮换、未备份或分发；未激活任何 home。
+
+24 台系统配置的 drvPath 求值全部通过。旧默认代 **116** 与已知可启动的
+**98**（`mj8cgahc…`，内核 6.18.57）仍在 extlinux，已核对后者的内核
+文件保留。**尚未声称 0.4.2 已线上生效**；重启后仍需确认内核、清空的
+runtime 覆盖、实际 ExecStart 和原生/Chat/Responses 生成。
 
 ## 2026-11-18 · v0.4.1 上线与真实验收
 
