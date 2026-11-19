@@ -53,9 +53,3 @@ sudo -u postgres psql -h /run/qq-bot-postgres-node -p 55432 -d postgres \
 - Bot 租约恢复补丁无迁移，可独立回滚应用包；不需要恢复数据库。
 - 数据库管理方式不能盲目切旧 Nix generation：迁移前的 generation 会重新启用 monitor/keeper，遗留 HA 状态可能触发不期望的降级或提升。
 - 出现迁移问题时先保持 monitor 和 keeper 停止、Gaoji 停写；优先在已经核验的唯一主库上恢复固定角色 PostgreSQL。需要恢复自动 HA 时，必须重新核对实际角色/时间线与 monitor 状态，再按受控 enroll/rejoin 流程恢复，不能同时启动旧控制器。
-
-## 隔离测试
-
-`scripts/test-qq-bot-postgres-manual.py` 在非 postgres 的非 root 账号下使用两个临时 PostgreSQL；推荐以 systemd PrivateNetwork/PrivateTmp 运行。实测覆盖复制中断、主库停机超过旧分区超时、角色不自动变化、连接恢复追平、启动护栏和两库重启。测试不会连接生产端口，不依赖真实 QQ 或运营商链路。
-
-`scripts/test-gaoji-alerts.py --rules /nix/store/…-gaoji-readiness.rules --promtool /nix/store/…-prometheus-…-cli/bin/promtool` 对实际生成的规则文件测试正常就绪、租约失败、历史缺口、采集失败、短暂中断后恢复。完全使用合成指标，不触发生产告警或操作真实租约。

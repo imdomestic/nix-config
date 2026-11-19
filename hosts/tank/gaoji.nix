@@ -34,7 +34,6 @@ in {
       appSecretFile = "${runtimeDir}/qq-official/app-secret";
       bindPepperFile = "${runtimeDir}/qq-official/bind-pepper";
       hostConfigFile = "${runtimeDir}/qq-official/host.json";
-      certification = "certified";
     };
     user = "kenneth";
     group = "users";
@@ -46,7 +45,6 @@ in {
     admin = {
       secretFile = "${runtimeDir}/admin-key";
       origin = "https://gaoji.inner.imdomestic.com";
-      botId = "3580515978";
     };
     sandbox = {
       enable = true;
