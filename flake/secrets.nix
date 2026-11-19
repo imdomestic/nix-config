@@ -50,8 +50,8 @@
       (rule "secrets/hosts/tank-max\\.yaml$" (readersOf "tank"))
       # Tokyo's linwhite home also uses the Bonsai gateway.
       (rule "secrets/clients/bonsai\\.yaml$" (readersOf config.placements.bonsai-ninfer.host ++ [(on "linwhite" "tokyo")]))
-      # Hank and Max's Gemini gateway key; never distribute Google OAuth state.
-      (rule "secrets/clients/agy-proxy\\.yaml$" (keysOf "hank" ++ map host [config.placements.agy-proxy.host "tank"]))
+      # Hank, linwhite and Max's Gemini gateway key; never distribute Google OAuth state.
+      (rule "secrets/clients/agy-proxy\\.yaml$" (keysOf "hank" ++ keysOf "linwhite" ++ map host [config.placements.agy-proxy.host "tank"]))
       # 系统客户端还有 h610 的 gaoji 与 SillyTavern；浏览器拿不到原始 key。
       (rule "secrets/clients/cliproxy\\.yaml$" (everyone ++ map host (lib.unique ["h610" config.placements.cliproxy.host config.placements.sillytavern.host])))
       # tank 集群的 cluster-admin token,只给 hank 自己的机器(home/hank/modules/kube)。

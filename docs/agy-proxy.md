@@ -9,6 +9,22 @@ gizmo 开启，Max 已加载独立 `agy-completions/*`，原生 Gemini 入口不
 v0.4 新增 Responses、token 计数与图片/文件音频接口，支持范围和实际
 验收状态统一见 [API 能力表](agy-api.md)。
 
+## 2026-11-19 · linwhite 接入共享网关
+
+linwhite 的独立 home 新增 `agy/*` 原生 Gemini provider，保留原有 CLIProxy
+型号和默认选型；没有新增 Pi Chat 兼容入口。`secrets/clients/agy-proxy.yaml`
+增加 linwhite 的 age 收件人，既有网关 key 未轮换，Google OAuth 仍只在 gizmo。
+Pi 扩展对 agy 模型使用简短默认开场与稳定 session header，同时保留原有
+CLIProxy 提示词行为。简短开场替代 Pi 默认工具规则文本，但项目上下文和
+实际工具声明保留；显式自定义提示词不覆盖。
+
+实测账号目录返回 30 个 Gemini ID，包括 Hydrogen 四档；静态声明仍是与
+Hank 对应的 8 款，以实时目录为准。用生成的正式 Pi 扩展、完整仓库上下文
+和只读 `read` 工具测试，Flash High 两轮成功；关闭了 MCP、skills 和 prompt
+templates。Hydrogen High 返回上游 503 `MODEL_CAPACITY_EXHAUSTED`，不能把
+目录中出现视为容量可用。未激活 home；后续单独激活并重开或 reload Pi。
+回归检查：`bash scripts/check-pi-linwhite-agy.sh`。
+
 ## 2026-11-16 · 本机原生协议画像
 
 实测对象：Nix 安装的 `agy` **1.5.9**，macOS arm64。另有桌面 App

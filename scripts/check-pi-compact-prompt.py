@@ -3,6 +3,7 @@
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -11,7 +12,10 @@ from pathlib import Path
 IDENTITY = "You are a coding assistant running inside pi, a coding agent harness. Help users inspect files, run commands, and modify code."
 COMPACT = "you are a coding assistant"
 MODEL = "gemini-3.8-flash-high"
-MODULE = Path(__file__).resolve().parents[1] / "home/hank/modules/pi/antigravity-prompt.ts"
+LINWHITE = sys.argv[1:] == ["--linwhite"]
+if sys.argv[1:] not in ([], ["--linwhite"]):
+    raise SystemExit("usage: check-pi-compact-prompt.py [--linwhite]")
+MODULE = Path(__file__).resolve().parents[1] / f"home/{'linwhite' if LINWHITE else 'hank'}/modules/pi/antigravity-prompt.ts"
 requests = []
 
 
@@ -43,14 +47,19 @@ def main():
             (root / "AGENTS.md").write_text("PROJECT_RULE_SENTINEL: Preserve this entire project instruction.\n")
             (root / "settings.json").write_text(json.dumps({"retry": {"enabled": False, "provider": {"maxRetries": 0}}}))
             extension = root / "probe.ts"
-            extension.write_text("import install from " + json.dumps(str(MODULE)) + ";\nexport default function(pi) { install(pi, [" + json.dumps(MODEL) + "]); pi.on('before_agent_start', e => { e.systemPromptOptions.sections.fixture = 'CUSTOM_SECTION_SENTINEL'; }); }\n")
+            arguments = "[], [" + json.dumps(MODEL) + "]" if LINWHITE else "[" + json.dumps(MODEL) + "]"
+            extension.write_text("import install from " + json.dumps(str(MODULE)) + ";\nexport default function(pi) { install(pi, " + arguments + "); pi.on('before_agent_start', e => { e.systemPromptOptions.sections.fixture = 'CUSTOM_SECTION_SENTINEL'; }); }\n")
             cases = [
                 ("agy", "google-generative-ai", None, COMPACT),
-                ("agy-completions", "openai-completions", None, COMPACT),
                 ("other", "openai-completions", None, IDENTITY),
                 ("agy", "google-generative-ai", "Explicit custom persona", "Explicit custom persona"),
-                ("agy-completions", "openai-completions", IDENTITY, IDENTITY),
+                ("agy", "google-generative-ai", IDENTITY, IDENTITY),
             ]
+            if not LINWHITE:
+                cases += [
+                    ("agy-completions", "openai-completions", None, COMPACT),
+                    ("agy-completions", "openai-completions", IDENTITY, IDENTITY),
+                ]
             for provider, api, explicit, expected in cases:
                 base = f"http://127.0.0.1:{server.server_port}/" + ("v1beta" if api == "google-generative-ai" else "v1")
                 definition = {"baseUrl": base, "api": api, "apiKey": "offline-fixture-not-a-real-key", "models": [{"id": MODEL, "reasoning": True, "maxTokens": 8192}]}
@@ -78,7 +87,7 @@ def main():
                 assert has_session == (provider in ("agy", "agy-completions"))
                 if explicit is None and provider in ("agy", "agy-completions"):
                     assert IDENTITY not in prompt and "Pi documentation (" not in prompt and "You are Antigravity Agent" not in prompt, "The old default prompt body was retained"
-            print("Pi compact HTTP: native Gemini/Chat exact preamble, project/custom/appended sections and tool schemas preserved; other providers and explicit prompts untouched")
+            print(f"Pi compact HTTP ({'linwhite' if LINWHITE else 'hank'}): exact preamble, project/custom/appended sections and tool schemas preserved; other providers and explicit prompts untouched")
     finally:
         server.shutdown()
         server.server_close()

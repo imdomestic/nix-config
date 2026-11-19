@@ -63,6 +63,7 @@ in {
   imports = [
     ../sops
     ./options.nix
+    ./agy.nix
   ];
 
   sops.secrets."cliproxy/api_key".sopsFile = ../../../../secrets/clients/cliproxy.yaml;
@@ -110,6 +111,7 @@ in {
       bootstrap(pi, { cc, better, subagents }, ${builtins.toJSON {
       showTokenRate = false;
       antigravityModels = lib.attrNames cliproxy.gemini.models ++ cliproxy.antigravityHydrogen.ids;
+      agyModels = map (model: model.id) config.my.pi.providers.agy.models;
       balance = {
         url = "http://${balancePlacement.tsName}:${toString balancePlacement.port}/rewind/balance";
         apiKeyFile = config.sops.secrets."cliproxy/api_key".path;
