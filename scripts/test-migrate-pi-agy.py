@@ -43,6 +43,24 @@ class MigrationTests(unittest.TestCase):
         before = {"enabledModels": ["cliproxy/gemini-*", "cliproxy/gemini-4-hydrogen-high:high", "cliproxy/*", "google/*", "gemini-3-flash"]}
         self.assertEqual(migration.migrate(before, models)["enabledModels"], ["agy/gemini-*", "agy/gemini-4-hydrogen-high:high", "cliproxy/*", "google/*", "gemini-3-flash"])
 
+    def test_hydrogen_only_migration_leaves_other_gemini_unchanged(self):
+        hydrogen = [m for m in models if m["id"].startswith("gemini-4-hydrogen-")]
+        before = {"defaultProvider": "cliproxy", "defaultModel": "gemini-4-hydrogen-high", "defaultThinkingLevel": "xhigh", "enabledModels": ["cliproxy/gemini-4-hydrogen-*:high", "cliproxy/gemini-3-flash", "cliproxy/gemini-*", "cliproxy/*"]}
+        after = migration.migrate(before, hydrogen, "gemini-4-hydrogen-")
+        self.assertEqual(after["defaultProvider"], "agy")
+        self.assertEqual(after["defaultThinkingLevel"], "high")
+        self.assertEqual(after["enabledModels"], ["agy/gemini-4-hydrogen-*:high", "cliproxy/gemini-3-flash", "cliproxy/gemini-*", "cliproxy/*"])
+        self.assertEqual(migration.migrate(after, hydrogen, "gemini-4-hydrogen-"), after)
+        flash = {"defaultProvider": "cliproxy", "defaultModel": "gemini-3-flash"}
+        self.assertEqual(migration.migrate(flash, hydrogen, "gemini-4-hydrogen-"), flash)
+        xhigh = [{"id": "gemini-4-hydrogen-xhigh", "levels": ["xhigh"]}]
+        before = {"defaultProvider": "cliproxy", "defaultModel": xhigh[0]["id"], "defaultThinkingLevel": "high"}
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "settings.json"
+            path.write_text(json.dumps(before))
+            subprocess.run([sys.executable, str(source), str(path), json.dumps(xhigh), "gemini-4-hydrogen-"], check=True)
+            self.assertEqual(json.loads(path.read_text()), {**before, "defaultProvider": "agy", "defaultThinkingLevel": "xhigh"})
+
     def test_atomic_cli_is_private_idempotent_and_missing_file_is_not_created(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "settings.json"

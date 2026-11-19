@@ -9,6 +9,26 @@ gizmo 开启，Max 已加载独立 `agy-completions/*`，原生 Gemini 入口不
 v0.4 新增 Responses、token 计数与图片/文件音频接口，支持范围和实际
 验收状态统一见 [API 能力表](agy-api.md)。
 
+## 2026-11-19 · linwhite Pi 的 Hydrogen XHigh 映射
+
+encore 已加载 linwhite 的 agy 配置，但仍显示旧 CLIProxy Hydrogen 四档；
+该网关当前目录不含这些型号，选择它们会报 400 unknown provider。linwhite
+现从 CLIProxy 只移除这四条，保留 Flash 和其他模型；激活时仅迁移明确
+指向旧 Hydrogen 的默认模型与 scoped patterns，不改其他选择或历史会话。
+
+先前只验证了 Flash，误以为 Pi 的 Google 适配器能发送 XHIGH。Pi 1.5.2
+实际上只接受 minimal/low/medium/high，静态的 `xhigh -> xhigh` 在发送前
+就抛错。linwhite 的 `agy-google-xhigh` 适配器限定于 agy Hydrogen XHigh，
+借用 Pi 原生 Google 流处理和签名回放，仅在请求中发送真实 `XHIGH`；
+扩展未加载时明确失败，不静默降为 High。离线真实 Pi 两轮工具测试验证了
+请求与签名回放、其他 High 型号不变及无扩展时不发请求。
+
+真实 gizmo 请求已越过 Pi 错误，但 Google 返回 503
+`MODEL_CAPACITY_EXHAUSTED`；这不是适配器或认证错误，暂不能声称模型可用。
+Flash High 的此前真实工具测试通过；账号目录和上游容量仍会变化。
+`bash scripts/check-pi-linwhite-agy.sh` 覆盖上述回归。修改须等待独立 home
+激活及 Pi reload/重启，已保存的历史会话需重新选 `agy/*`。
+
 ## 2026-11-19 · linwhite 接入共享网关
 
 linwhite 的独立 home 新增 `agy/*` 原生 Gemini provider，保留原有 CLIProxy

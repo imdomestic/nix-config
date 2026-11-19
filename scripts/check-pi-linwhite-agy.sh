@@ -23,14 +23,20 @@ for id, model in models.items():
 for level in ('low', 'medium', 'high', 'xhigh'):
     model = models['gemini-4-hydrogen-' + level]
     assert {k: v for k, v in model['thinkingLevelMap'].items() if v is not None} == {level: level}
-assert {m['id'] for m in providers['cliproxy']['models']} >= set(models)
+    assert model.get('api', agy['api']) == ('agy-google-xhigh' if level == 'xhigh' else 'google-generative-ai')
+cliproxy = {m['id'] for m in providers['cliproxy']['models']}
+assert cliproxy >= {'gemini-3-flash', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash-high'}
+assert not any(id.startswith('gemini-4-hydrogen-') for id in cliproxy)
 assert 'agy-completions' not in providers
 with open(sys.argv[2], 'w') as f:
     json.dump(list(models), f)
-print('linwhite agy: 8 native models; existing CLIProxy models retained')
+print('linwhite agy: 8 native models; CLIProxy Flash retained and retired Hydrogen removed')
 PY
 PI_CODING_AGENT_DIR="$agent" PI_TEST_AGY_MODELS="$agent/agy-ids.json" \
   pi --offline --no-extensions --no-mcp --no-skills --no-prompt-templates \
     --no-context-files --no-approve --no-session --mode rpc \
     -e "$PWD/scripts/check-pi-linwhite-agy.ts" </dev/null
 python3 -B scripts/check-pi-compact-prompt.py --linwhite
+python3 -B scripts/test-migrate-pi-agy.py
+nix eval --raw '.#homeConfigurations."linwhite@aegis".config.home.file.".pi/agent/extensions/hank-pi.ts".text' > "$agent/extension.ts"
+python3 -B scripts/check-pi-linwhite-xhigh.py "$agent/models.json" "$agent/extension.ts"

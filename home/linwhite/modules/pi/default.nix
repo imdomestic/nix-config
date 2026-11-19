@@ -14,7 +14,7 @@
   subagentsSettings = import ./subagents-settings.nix;
   extensionSource = lib.fileset.toSource {
     root = ./.;
-    fileset = lib.fileset.unions [./bootstrap.ts ./antigravity-prompt.ts ./prompt-prefix.ts ./render.ts ./statusline.ts ./balance.ts ./subagents.ts];
+    fileset = lib.fileset.unions [./bootstrap.ts ./antigravity-prompt.ts ./agy-xhigh.ts ./prompt-prefix.ts ./render.ts ./statusline.ts ./balance.ts ./subagents.ts];
   };
   free = {
     input = 0;
@@ -77,6 +77,13 @@ in {
       terminal.images = "kitty";
       compaction.enabled = true;
     })}
+    run ${pkgs.python3}/bin/python ${../../../../scripts/migrate-pi-agy.py} \
+      ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/settings.json"} \
+      ${lib.escapeShellArg (builtins.toJSON (map (model: {
+      inherit (model) id;
+      levels = lib.attrNames (lib.filterAttrs (_: value: value != null) model.thinkingLevelMap);
+    }) (lib.filter (model: lib.hasPrefix "gemini-4-hydrogen-" model.id) config.my.pi.providers.agy.models)))} \
+      gemini-4-hydrogen-
     run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
       ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/mcp.json"} \
       ${lib.escapeShellArg (builtins.toJSON {
@@ -110,7 +117,7 @@ in {
     export default function (pi) {
       bootstrap(pi, { cc, better, subagents }, ${builtins.toJSON {
       showTokenRate = false;
-      antigravityModels = lib.attrNames cliproxy.gemini.models ++ cliproxy.antigravityHydrogen.ids;
+      antigravityModels = lib.attrNames cliproxy.gemini.models;
       agyModels = map (model: model.id) config.my.pi.providers.agy.models;
       balance = {
         url = "http://${balancePlacement.tsName}:${toString balancePlacement.port}/rewind/balance";
@@ -221,25 +228,6 @@ in {
               cost = pricing.${id};
             })
             cliproxy.gemini.models
-            ++ map (model: {
-              inherit (model) id;
-              name = "${model.name} · Antigravity";
-              api = "openai-completions";
-              reasoning = true;
-              thinkingLevelMap = lib.genAttrs ["off" "minimal" "low" "medium" "high" "xhigh" "max"] (level:
-                if level == model.level
-                then level
-                else null);
-              input = ["text" "image"];
-              contextWindow = cliproxy.antigravityHydrogen.context;
-              maxTokens = 65536;
-              cost = pricing.${model.id};
-              compat = {
-                supportsReasoningEffort = true;
-                thinkingFormat = "openai";
-              };
-            })
-            cliproxy.antigravityHydrogen.models
             ++ lib.mapAttrsToList (id: model: {
               id = "opencode/${id}";
               inherit (model) name;

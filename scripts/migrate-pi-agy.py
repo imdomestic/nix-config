@@ -7,7 +7,7 @@ import tempfile
 from pathlib import Path
 
 
-def migrate(document, models):
+def migrate(document, models, prefix="gemini-"):
     migrated = document.copy()
     by_id = {model["id"]: model["levels"] for model in models}
     if document.get("defaultProvider") == "cliproxy" and document.get("defaultModel") in by_id:
@@ -18,7 +18,7 @@ def migrate(document, models):
     if isinstance(document.get("enabledModels"), list):
         migrated["enabledModels"] = [
             "agy/" + pattern.removeprefix("cliproxy/")
-            if isinstance(pattern, str) and pattern.startswith("cliproxy/gemini-")
+            if isinstance(pattern, str) and pattern.startswith("cliproxy/" + prefix)
             else pattern
             for pattern in document["enabledModels"]
         ]
@@ -32,7 +32,7 @@ def main():
     document = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(document, dict):
         raise ValueError("Pi settings must be a JSON object")
-    migrated = migrate(document, json.loads(sys.argv[2]))
+    migrated = migrate(document, json.loads(sys.argv[2]), sys.argv[3] if len(sys.argv) > 3 else "gemini-")
     if migrated == document:
         return
     fd, temporary = tempfile.mkstemp(prefix=".settings-agy-", dir=path.parent)

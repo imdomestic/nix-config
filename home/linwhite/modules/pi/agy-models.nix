@@ -33,4 +33,8 @@ in
     (model "gemini-3.8-flash-high" 65536 (fixedLevel "high"))
   ]
   # Distinct presets, not effort aliases; docs/incidents.md#antigravity-hydrogen-effort.
-  ++ map (preset: model preset.id 65536 (fixedLevel preset.level)) hydrogen.models
+  ++ map (preset:
+    (model preset.id 65536 (fixedLevel preset.level))
+    # Pi 1.5.2's Google adapter rejects XHIGH; the scoped adapter retains native semantics.
+    // lib.optionalAttrs (preset.level == "xhigh") {api = "agy-google-xhigh";})
+  hydrogen.models

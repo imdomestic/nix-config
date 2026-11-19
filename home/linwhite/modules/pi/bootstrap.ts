@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import installAntigravityPrompt from "./antigravity-prompt.ts";
+import installAgyXHigh from "./agy-xhigh.ts";
 import installPrompt from "./prompt-prefix.ts";
 import { installRenderers } from "./render.ts";
 import installStatusline from "./statusline.ts";
@@ -17,6 +18,7 @@ export default function bootstrap(pi: ExtensionAPI, extensions: Extensions, opti
   installRenderers(pi, extensions.cc, extensions.better);
   installPrompt(pi);
   installAntigravityPrompt(pi, options.antigravityModels, options.agyModels);
+  installAgyXHigh(pi);
   // Below-editor widgets retain registration order: statusline, then FleetView.
   installStatusline(pi, options);
   installSubagents(pi, extensions.subagents);
