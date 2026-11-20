@@ -201,9 +201,9 @@
   sops.secrets."xray/peers/h610/uuid" = {};
   sops.secrets."xray/peers/h610/public_key" = {};
   sops.secrets."xray/peers/h610/short_id" = {};
-  sops.secrets."xray/peers/sh/uuid" = {};
-  sops.secrets."xray/peers/sh/public_key" = {};
-  sops.secrets."xray/peers/sh/short_id" = {};
+  sops.secrets."xray/peers/tokyo/uuid" = {};
+  sops.secrets."xray/peers/tokyo/public_key" = {};
+  sops.secrets."xray/peers/tokyo/short_id" = {};
 
   services.xray.enable = true;
   services.xray.settingsFile = config.sops.templates."xray-config.json".path;
@@ -249,7 +249,7 @@
 
       # 只有这两台。其余几台 portal 的 ddns-go 只发 AAAA,而悉尼这条线没有
       # IPv6 —— 拨不过去,加进来只会得到一条一直重试的死链。
-      hosts = ["h610" "sh"];
+      hosts = ["h610" "tokyo"];
     in
       builtins.toJSON {
         log.loglevel = "warning";
@@ -265,7 +265,7 @@
 
         outbounds = [
           (peer "h610" "h610.imdomestic.com" 1445 aliyun)
-          (peer "sh" "tokyo.imdomestic.com" 3445 aliyun)
+          (peer "tokyo" "tokyo.imdomestic.com" 3445 aliyun)
           {
             tag = "out";
             protocol = "freedom";

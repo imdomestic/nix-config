@@ -16,7 +16,7 @@ in {
     # 角色在 ./host.nix 的 roles 里("monitor-gateway"),主后端见下面的
     # my.monitoring.gateway.primary。
     ../../system/modules/monitoring
-    ../../system/modules/minecraft/sh.nix
+    ../../system/modules/minecraft/gate.nix
   ];
 
   # Host traffic is direct; Xray entries retain the Japan and Sydney reverse tunnels.
@@ -305,15 +305,14 @@ in {
         # 两条反向隧道,两个 portal。domain 是它们唯一的区分。
         reverse.portals = [
           {
-            tag = "portal-sh";
-            # 这台的目录名是 tokyo,但隧道两端一直用短名 sh：gizmo 的
-            # bridge-sh 注册的是 reverse-sh.hank.internal,两边必须一字不差。
-            domain = "reverse-sh.hank.internal";
+            tag = "portal-tokyo";
+            # gizmo 的 bridge-tokyo 注册的就是这个域名,两边必须一字不差。
+            domain = "reverse-tokyo.hank.internal";
           }
           # rpi4(悉尼)。它没有公网入口,所以由它拨进来。
           {
-            tag = "portal-sh-au";
-            domain = "reverse-sh-au.hank.internal";
+            tag = "portal-tokyo-au";
+            domain = "reverse-tokyo-au.hank.internal";
           }
         ];
 
@@ -355,12 +354,12 @@ in {
           {
             type = "field";
             inboundTag = ["interconn2" "client-in2"];
-            outboundTag = "portal-sh";
+            outboundTag = "portal-tokyo";
           }
           {
             type = "field";
             inboundTag = ["interconn-au" "client-au"];
-            outboundTag = "portal-sh-au";
+            outboundTag = "portal-tokyo-au";
           }
         ];
       };

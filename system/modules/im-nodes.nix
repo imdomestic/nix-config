@@ -32,7 +32,7 @@
     name = "tokyo";
     host = "tokyo.imdomestic.com";
     port = 54322;
-    secret = "sh";
+    secret = "tokyo";
     exit = "jp";
   }
   {
