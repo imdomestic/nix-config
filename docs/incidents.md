@@ -101,7 +101,7 @@ WireGuard 密钥、PSK 和地址，并同步修改服务端 peer，再分别切�
 
 STUN 探针最初也超时，但不是 UDP 被挡：Tailscale 的 derper 只回应带
 `SOFTWARE=tailnode` 和正确 fingerprint 的请求，补上后公网 UDP 3478
-通过。完整迁机与当前兼容 DNS 见 `docs/tokyo-migration.md`。
+通过。机器现状见 `docs/hosts/tokyo.md`。
 
 ## 2026-11-18 · agy 的通用 502 吞掉了传输失败原因 {#agy-transport-generic-502}
 
@@ -135,8 +135,8 @@ notice-only journald 保留。客户端取消单独标记，不混作模型拒�
 `not replayed` 只表示代理没有重发，不表示 Google 肯定没执行该请求。
 
 2026-11-19 更新：用户批准后已随完整系统重启加载 0.4.2；真实生成、
-工具回放、Max forwarder 和受控取消日志均验收通过，详见
-[API 部署记录](agy-api.md)。尚未复现原来的自然传输失败，不能据此补写根因。
+工具回放、Max forwarder 和受控取消日志均验收通过（接口见
+[agy-proxy](agy-proxy.md)）。尚未复现原来的自然传输失败，不能据此补写根因。
 
 ## 2026-11-18 · CLIProxy Flash：精简真实身份提示词可保留项目上下文与工具 {#pi-cliproxy-flash-compact-prompt}
 
@@ -322,13 +322,12 @@ Pi 用目录的 1,048,576 上下文和保守的 65,536 输出预算；Max 按用
 `lib/cliproxy-catalog.nix` 在完整官方目录快照上合并
 `lib/antigravity-hydrogen.nix` 的定义；Pi 每个型号只开放对应档位，Max
 四条共用已有 Google Hydrogen 设置。不创建转向 XHigh 的别名。
-目录快照维护与生效方式见 `docs/cliproxy-model-catalog.md`。
+目录快照维护与生效方式见 `docs/services/cliproxy.md#catalog`。
 
 最初按用户要求不再编译或运行 `nix check`，这里只修改配置。随后用户授权
 部署：仅生成配置产物，gizmo 的四条已可调用，Max 已加载同样四条且原有
 8 台 VM 未重启。Pi 只发布模型文件并加 GC root，未运行会编译 Node/PostgreSQL
-的完整 home 激活；gizmo 的完整新系统留待下次启动。实际 store 路径、root
-logind 激活中断与回退计时器处理见 `docs/cliproxy-model-catalog.md`。
+的完整 home 激活；gizmo 的完整新系统留待下次启动。
 
 ## 2026-11-11 · tank 被 bambu-studio 的源码编译拖进 swap 两个半小时 {#bambu-studio-build-oom}
 
@@ -519,7 +518,7 @@ seraph 首次部署 SillyTavern 1.18.0 时，Nix 求值、构建、SOPS 与 boot
 中间请求 `/models`。不同 Secret ID 不是完整的凭据隔离。部署因此让真实
 Bonsai / CLIProxy Key 只存在于 nginx 的 SOPS 私有 header 片段，固定路由注入；
 SillyTavern 全部使用无权限占位 Secret。没有 patch 前端，也没有把管理接口
-或模型 Key 暴露给浏览器。使用与最终上线验收见 [SillyTavern](sillytavern.md)。
+或模型 Key 暴露给浏览器。使用见 [SillyTavern](services/sillytavern.md)。
 
 ## 2026-11-09 · Rex 归属工作区 2，却覆盖其他工作区 {#rex-aerospace-visibility}
 
@@ -739,8 +738,8 @@ Cloudflare DNS-01 上。此主机仅有这个 DNS-01 vhost，清除原生 nginx 
 将来若在 gizmo 增加 HTTP-01 vhost，要重新审视这个主机级排序覆盖。
 
 未部署有环的版本；首次正式签发与测试激活成功，随后设置 boot 默认并取消回退
-timer。HTTP/HTTPS、鉴权、SSE、WebSocket 与 fx 真实工具调用证据见
-[上线记录](cliproxy-https.md#2026-11-05-上线验收)。
+timer。HTTP/HTTPS、鉴权、SSE、WebSocket 与 fx 真实工具调用均已验收；端到端检查方法见
+[CLIProxy](services/cliproxy.md#entrypoints)。
 
 ## 2026-11-04 · 跨网 HA 反复接管，改固定 tank 主库并修复 QQ 自恢复 {#gaoji-fixed-primary-20261104}
 
@@ -750,7 +749,7 @@ timer。HTTP/HTTPS、鉴权、SSE、WebSocket 与 fx 真实工具调用证据见
 
 停止 Bot/控制写入并验证复制差为 0，关闭旧 monitor，持久隔离 h610 并确认干净停库。tank 回放超过旧主最后关闭 checkpoint 后才提升到 timeline 30；两边切换为直接 PostgreSQL 17.11 的 systemd unit，h610 从 tank 异步复制，客户端 DSN 只指向 tank。旧控制器不再运行；固定角色护栏、WAL 容量限制、备份/恢复检查和只读复制告警保留。代价是灾难时人工处置和非零 RPO，不是“修好了运营商”。
 
-Bot PR #73 `d39d040` 安全退避重获租约，保留人工暂停/禁用/防双实例边界；历史 message_gap 不再覆盖实际 ready，仍提示可能漏消息。22:43:54 恢复 Bot，持续 ready；新主备健康，复制追平。新主库另做备份并真实恢复到隔离实例验证 0077，通过。完整备份位置、系统路径、测试与操作证据见 [本次部署记录](gaoji-qq-official.md)，人工灾备/回滚约束见 [runbook](runbooks/qq-fixed-primary.md)。
+Bot PR #73 `d39d040` 安全退避重获租约，保留人工暂停/禁用/防双实例边界；历史 message_gap 不再覆盖实际 ready，仍提示可能漏消息。22:43:54 恢复 Bot，持续 ready；新主备健康，复制追平。新主库另做备份并真实恢复到隔离实例验证 0077，通过。人工灾备/回滚约束见 [runbook](runbooks/qq-fixed-primary.md)。
 
 **这次误导过验证的地方：**隔离 PostgreSQL 演练通过，不代表 Nix 生成的 Python bootstrap 也正确。上线时发现可选多行插值破坏缩进，保持安全单主/暂停业务，修复并增加生成脚本 build-time compile 检查后才继续。Prometheus 配置检查通过也不代表新增规则已加载；既有 extraRules 把多份 JSON 拼在一起，后续文档被忽略，与 [GPU 旧事故](#gpu-rule-files) 相同。此次三条 QQ 告警改成独立 ruleFiles，增加五类 promtool 离线语义测试，并在两台运行中的 `/api/v1/rules` 核对三个组内规则 health=ok；其他既有 extraRules 的全局修复另待处理。不能因 restart 清掉内存缺口标记就说历史消息已补齐。
 
@@ -912,7 +911,7 @@ NixOS / nix-darwin toplevel drvPath 求值通过；全部 363 个 git 跟踪的 
 格式及 deadnix 通过。`just lint` 被本机忽略的 `.work/` 历史工作树格式问题拦住，
 不修改那些文件。
 尚未激活、迁移现有 `-1` 卷，未做真实断网/睡眠复现或文件写入测试；不能把这些
-离线测试说成已验证 macOS 实际重挂。后续操作见 `docs/linwhite-file-sharing.md`。
+离线测试说成已验证 macOS 实际重挂。后续操作见 `docs/services/linwhite-smb.md`。
 
 ## 2026-11-02 · Pi 子代理退出卸载主窗口的正文渲染 {#pi-subagent-renderer-lifecycle}
 
@@ -1517,7 +1516,7 @@ GPU 峰值 22,254 MiB、最低空闲 1,720 MiB。32 个问题通过；超限请�
 
 探测脚本、三个档位的原始 JSON、100 ms GPU 采样及容器日志保存在 Taipan 的
 `/var/lib/clef-ollama/deployment-20261015-8k/`。正式部署后的验收见同目录
-`validation.json`；复测方法见 [Clef runbook](clef.md)。
+`validation.json`；复测方法见 [Clef runbook](services/clef.md)。
 
 ## 2026-10-15 · Taipan 部署 Clef 27B：运行时版本、就绪检查与显存实测 {#taipan-clef-decision-startup}
 
@@ -1527,7 +1526,7 @@ Taipan 已在 Linux 在线，实测为 Ryzen 7 9800X3D、RTX 5090 D v2
 通过现有 Tailnet 网关的 `POST http://taipan:8000/v1/systemone` 调用，
 模型名 `clef-27b`，初始 4,096 输入 token、单并发，与两个 Qwen 档位互斥加载；
 后续提高到 8K，见[输入上限测试](#taipan-clef-context-limit)。
-配置、初始化方法和请求示例见 [Clef runbook](clef.md)。
+配置、初始化方法和请求示例见 [Clef runbook](services/clef.md)。
 
 **误导点一：模型页的最低版本不能代替真实拉取验证。** 页面写 Ollama 0.35.1
 可用，但实际拉取当前 Q4_K_M 包返回 HTTP 412，要求更新版本。它的 manifest
@@ -1587,130 +1586,6 @@ GPU 每 100 ms 采样，可能漏掉更短的峰值。
 `scripts/test-clef-deployment.py`。Nix 求值、远端构建、dry-activate、真实 activation
 均完成。大上下文、高并发以及更大图片的峰值未由这次测试证明。
 
-## 2026-10-15 · macOS 原生视频壁纸解锁黑屏与减速末段卡顿 {#macos-native-aerial-temporal-ramp}
-
-M1 Pro、macOS 27.0.1（26A434），把 Dreaming City 4K240 视频替换进苹果原生
-Landscape → **Golden Gate Sunset** 槽位，希望屏保播放、解锁后平滑减速并停在当时
-画面，不依赖 Aerial。最终用户实测确认：**减速顺滑，停帧正常，不再黑屏**。
-这是本机用户媒体目录的实际修改，不是 Nix 配置或 flake 输出。
-
-**第一层问题：240 fps 不等于符合原生播放器的取帧要求。** 原始 MOV 是
-3840×2160、240 fps、Main10，但没有 `tscl` / `tsas` sample groups。屏保能播放，
-解锁时原生播放器报 `WallpaperExtensionKit.VideoSampleReadingErrors Code=4`
-（`noTemporalInfo`），桌面变黑。`tscl` 描述帧的时域层和依赖约束，`tsas` 描述时域
-子层访问点；这些在 MOV 内部，不是资源清单旁边的一份播放参数。
-[已有的逆向与编码复现](https://github.com/AlexisBCD/macos-custom-video-wallpaper-fix)
-提供了线索，本机日志、文件结构和后续解锁测试与之吻合。
-
-**第二层问题：有时域层也不代表减速顺滑。** 用 VideoToolbox 开启层级编码后，
-4 层版本解决黑屏，但减速最后几秒仍明显逐帧跳动。修正容器层数声明后用户感觉有所
-改善，仍不及苹果原片。苹果原片和转换版都是 300 秒、72,000 帧、240 fps；通过
-`AVAssetReader` 读完整段，排序后的 PTS 间隔都是 1/240 秒，重复接缝也连续。
-因此总长度、标称帧率和时间戳缺口不能解释这个对照结果。
-
-本机 `WallpaperExtensionKit` 的分析副本可见 `rampDownCurrentTSALevel`、
-`rampDownTargetTSALevel`、读取 temporal/TSA/STSA 附件的路径，运行日志也有
-`RAMP-DOWN switch from level … to level …`。原生减速包含按时域层选帧，不只是
-改变播放时钟。[Aerial 4.1.7 的 renderer](https://github.com/AerialScreensaver/Aerial/blob/v4.1.7/WallpaperExtension/Rendering/VideoRenderer.swift)
-则自行控制时钟，高帧率内容约 3 秒减速、120 Hz 更新速率，并在减速时关闭按刷新率
-主动丢帧；不能把它的实现直接当成苹果私有播放器的算法。
-
-做过一个关键对照：原视频实际所有 VCL NAL 的 temporal ID 都为 0，给它补上真实
-对应的单层 `tscl`，不改压缩画面，重复成同样的 5 分钟。五段画面数据的 SHA-256
-都与原视频一致。用户确认**减速丝滑了，但最后切静止画面时黑屏**。这次没有
-`Code=4`；日志显示播放器完成暂停并把独立的 still layer 移到最上方。单层文件没有
-TSA 帧，可能使交接失效；这是推测，不能把缺少 TSA 认定为已独立证明的唯一原因。
-
-**本机验证有效的组合：两层编码、真实 TSA 标记、正确的容器描述。**
-
-| 项目 | 最终值 / 做法 |
-| --- | --- |
-| 画面 | 3840×2160，240 fps，HEVC Main10，10-bit 4:2:0，约 24.093 Mbit/s |
-| 颜色 | 保留源视频 BT.709 primaries/matrix、sRGB transfer；不盲目改成苹果原片的 transfer |
-| 时域结构 | `BaseLayerFrameRate = 120`，实际 NAL / sample 附件均为层 0、1 |
-| 切换点 | 层 1 有真实 `TSA_N`（NAL type 2），附件 `HEVCTemporalSubLayerAccess = true` |
-| 编码选项 | 硬件 HEVC、`RealTime = false`、允许帧重排、关键帧间隔 1200、平均码率 24 Mbit/s |
-| 请求层数 | 本机 supported-property dictionary 支持 `NumberOfTemporalLayers`，设为 2；它是私有键，必须验证实际输出 |
-| 封装 | `AVAssetWriterInput(outputSettings: nil, sourceFormatHint: …)`，保留压缩 sample 附件，`mediaTimeScale = 240000` |
-| 总长 | 编码 60 秒一次，再复制压缩 sample 五次；300 秒、72,000 帧，不是把内容放慢五倍 |
-
-原生减速的取样路径能保留这两层中的帧，同时文件具有真实的时域访问标记。与单层
-试验相比，这一组合既顺滑又能停帧。但不要推导成「层数越少越好」或「5 层有问题」：
-苹果 5 层原片本身很顺滑，本轮没有隔离每个编码选项的独立贡献。
-
-**封装后还有两处必须检查，不能只看编码 API 返回成功：**
-
-- 本次 `VTCompressionSession → AVAssetWriter` 产物的 VPS/SPS 和 NAL 实际是 2 层，
-  `hvcC.numTemporalLayers` 却写成 1。按 VPS/SPS 验证真实层数后，修正 `hvcC`
-  配置字节的第 3–5 位：`(old & ~0x38) | (actualLayers << 3)`。不能只改声明成
-  5 层来假装拥有苹果的结构。曾请求 5 层、API 返回成功，实际仍只有 4 层。
-- `tscl` 的 profile compatibility / constraint 字段也出现不符合本片 VPS/SPS 的值。
-  在确认各子层继承同一 profile/tier/level 后，按**本片**参数集重建这些字段，保留
-  每帧真实层归属。不要复制金门桥的 sample-group 表。此项单独修正没有改善卡顿，
-  因此不能把它记录成卡顿的根因。修正前后 `mdat` 哈希相同，画面未被这一步重新压缩。
-
-拼接时 PTS 和 DTS 一起偏移并保留重排关系，消除源时间原点，再对齐到 1/240 秒。
-用视频 track 的时间范围和实际帧数确定循环长度；不要直接使用可能包含 edit / 起始
-偏移的 asset 总时长。本次原素材通过 reader 读出的首帧 PTS 为 0.0125 秒，直接复制
-asset duration 的中间版累计出了 300.05 秒，已丢弃。跳过 `numSamples == 0` 的
-结束标记，否则会报 `No sample format`。最终用苹果 reader 验证：首帧 PTS 0、末帧
-299.995833…，全部 71,999 个间隔均为 1/240 秒，四个内部接缝连续。不要把直接解析
-`ctts` 时的有符号偏移误读成缺帧，应用媒体 API 复核。
-
-**本机复用材料与命令。** 源码、可执行文件、参数检查、sample-group 审计和日志保留在：
-
-```text
-~/Library/Application Support/native-wallpaper-backups/20261015-104745-v2/repair/
-```
-
-`encode_native_experiment.swift` 编码；`remux_flat.swift` 的 **`repeat` 模式**复制
-压缩帧；`fix_temporal_descriptions.py` 根据本片 VPS/SPS 修正声明。
-`repeat-flat` 是导致最终停帧黑屏的单层诊断模式，不是最终方案。复用示例（使用独立
-临时目录，输入原始视频，不对既有输出原地重复处理）：
-
-```sh
-aerial_repair="$HOME/Library/Application Support/native-wallpaper-backups/20261015-104745-v2/repair"
-aerial_source="$HOME/Downloads/Dreaming-City-macOS-4K240-v2/Dreaming-City-Orbit-4K240-v2.mov"
-aerial_work=$(mktemp -d)
-"$aerial_repair/encode_native_experiment" encode "$aerial_source" \
-  "$aerial_work/60s.mov" 24 120 0 com.apple.videotoolbox.videoencoder.ave.hevc 2
-"$aerial_repair/remux_flat" repeat "$aerial_work/60s.mov" "$aerial_work/5min-unfixed.mov" 5
-python3 "$aerial_repair/fix_temporal_descriptions.py" \
-  "$aerial_work/5min-unfixed.mov" "$aerial_work/5min.mov"
-python3 "$aerial_repair/inspect_mov.py" "$aerial_work/5min.mov"
-"$aerial_repair/audit_sample_groups" "$aerial_work/5min.mov"
-```
-
-需要重编译 Swift 工具时，先取消 Nix shell 带入的 `SDKROOT` / `DEVELOPER_DIR`，
-再用 `/Library/Developer/CommandLineTools/usr/bin/swiftc -swift-version 5 -O`
-和当前 Command Line Tools 的 macOS SDK；本次是 `MacOSX27.0.sdk`。混用 Nix 的旧
-SDK 和新 Swift 编译器会先在系统模块导入阶段失败。
-
-**安装与恢复。** 本次槽位 UUID 是 `4207734D-74FE-4F92-B5E1-6EC8DEE24A15`，
-不是「Dynamic Wallpapers」里的另一个 Golden Gate。安装到
-`~/Library/Application Support/com.apple.wallpaper/aerials/videos/<UUID>.mov`，先写
-同目录临时文件再原子替换，随后依次 `killall -KILL WallpaperAerialsExtension`、
-`killall -KILL WallpaperAgent`。检查 `Store/Index.plist` 的 all-Spaces / system-default
-选择仍是 `com.apple.wallpaper.choice.aerials`，配置里的 assetID 是上述 UUID；用
-`lsof` 确认新播放器确实打开这个槽位。资源清单中只查到名称、分类、预览图、URL 等，
-没有找到须随视频替换的减速参数；受保护容器缓存未完整读取，不能据此声称排除了
-所有外部缓存影响。
-
-最终视频在原下载目录的 `Dreaming-City-Orbit-4K240-native-two-layer-5min.mov`。
-上述备份目录保留苹果 `GoldenGateSunset.original.mov`、`Tahoe.original.mov` 和
-`Restore original Golden Gate Sunset.command`；恢复脚本只恢复金门桥槽位。Tahoe
-已恢复苹果原片，原始输入视频保留。系统更新或重新下载资源可能覆盖手工替换。
-
-**容易误判的点与验收边界：**
-
-- 预览能播，不代表解锁能停帧；有 `tscl` / `tsas`，也不代表描述和实际 NAL 相符。
-- 延长视频解决不了每次解锁末段的顿挫；短片的片尾循环失败应单独排查。
-- 本次以用户实际触发屏保、解锁后的「顺滑，而且停帧正常」作为验收，不把静态元数据
-  检查或无错误日志当成视觉验收。静止时观察到原生 agent / extension CPU 为 0%，
-  但未测功耗；动画期间保留更多帧可能增加解码负载，不能承诺与苹果原片耗电相同。
-- Aerial 应用、启动项、扩展注册及约 21 GB 应用数据已清理。保留的 Aerial 源码只是
-  调查材料；最终没有新增壁纸扩展、常驻播放器或定时重启脚本，也没有改系统框架。
-
 ## 2026-10-14 · Max 晚上回复慢:tank 到 h610 的移动↔电信互联丢包,cliproxy 搬到 tank {#max-evening-cross-carrier}
 
 Max 的回复每晚 20–22 点变慢。近 7 天 gemini-3.8-flash 一轮回复的中位数平时约 20 秒,
@@ -1733,7 +1608,7 @@ Max 把它放大了:流式请求一个字节都没收到时最多尝试 6 次,�
 面的消息都排队。
 
 处理:cliproxy 搬到 tank,和 Max 在同一台机器上;出境走网关 r5s 的 dae(gizmo 打
-r5s 的 portal 是 131 Mbit/s,h610 是 4.8 Mbit/s,见 [proxy-todo.md](proxy-todo.md))。
+r5s 的 portal 是 131 Mbit/s,h610 是 4.8 Mbit/s,见 [代理链路](services/proxy.md#tunnel-root-cause))。
 h610:8317 保留一个 TCP 转发给没改配置的客户端。代价是电信那边的客户端(h610 本机、
 r6s 后面的机器)现在要反过来跨这段互联。
 
@@ -1758,7 +1633,7 @@ in name resolution`:12:29、18:29 的清单同步和 19 点、23:08 的玩家调
 tokyo:54322 → gizmo)这段时间 9 成以上是 NOT ALIVE,`au-sh` 同样。tokyo 的 xray
 8 天没重启,四个端口都在听,别家的 222.191.x、27.122.x、116.147.x 一直连得进来。
 r5s 自己经 dae 解析 `sh.imdomestic.com` 得到的是 **`45.67.223.32`(TTL 0)**,
-也就是 10-02 迁走的上海 VPS([tokyo-migration.md](tokyo-migration.md));权威 NS、1.1.1.1、223.5.5.5、
+也就是 10-02 迁走的上海 VPS([tokyo](hosts/tokyo.md));权威 NS、1.1.1.1、223.5.5.5、
 114、移动下发的两台 DNS 绕过 dae 查都是 `43.130.229.141`。LAN 上的 tank 经 dae 查
 也是新地址,h610 的 dae(09-27 起一直没重启)本机查也是新地址。坏的只有 r5s 这一
 个 dae 实例的本机解析,dae 拨 sh 节点用的正是这一份。
@@ -1878,35 +1753,6 @@ LLDB)同一套配置一次就通。
   代理,一运行就报 "Unknown binary",Rust 的 LSP 在这台机器上一直没起来过。当天用
   `rustup component add rust-analyzer` 补上(机器本地状态,不在仓库里),之后用正常
   PATH 重跑 Rust 调试也通过。新的 Mac 上同样要先装这个组件。
-
-## 2026-10-06 · seraph 通过 SSH 使用计算服务 {#seraph-compute-node}
-
-系统使用 `multi-user.target`，停用两张显卡的显示驱动、固件显示缓冲区和
-全部桌面服务，保留 SSH、NVIDIA CUDA 与 Bonsai 推理服务。
-
-系统切换后完成整机重启，SSH 伪终端实际取得 `/dev/pts/0`。
-系统没有 DRM 显示设备、framebuffer 设备或图形进程，NVIDIA 核心驱动
-与 UVM 正常加载。两个 Bonsai 模型的 10 次推理请求及真实主机名称
-工具调用通过。模型卸载后，显存 Used 为 0 MiB，Free 为 11752 MiB，
-Reserved 为 476 MiB；系统没有失败服务。
-
-配置、系统版本和检查证据见 [计算节点记录](seraph-gpu.md)。
-
-## 2026-10-05 · seraph 的 5070 显示设备停用 {#seraph-display-isolation}
-
-`graphics.nix` 使用 `initcall_blacklist=sysfb_init` 停用 Linux 固件显示设备，
-通过 `module_blacklist=nvidia_drm,nvidia_modeset` 阻止加载 NVIDIA 显示模块，
-并让 Mutter 忽略 PCI `0000:01:00.0` 下的 DRM 设备。AMD 核显承担图形工作，
-NVIDIA 的核心驱动与 UVM 提供 CUDA。
-
-系统构建、切换及整机重启通过。当前 GNOME 只打开 AMD 的设备，
-NVIDIA 显示模块均未加载，5070 下没有 `simple-framebuffer` 设备。
-主力与 Hikari 的 10 次真实 API 请求、4 组问答及工具调用断言通过。
-模型卸载后，显存 Used 从 1 MiB 变为 0 MiB，Free 从 11751 MiB 变为
-11752 MiB，Reserved 保持 476 MiB。显存统计不能只检查 Used：
-完整验收同时检查 DRM 设备归属、进程设备句柄和内核模块。
-
-配置、测量与恢复方式见 [显卡分工](seraph-gpu.md)。
 
 ## 2026-10-05 · Bonsai NInfer 网关进度接口验证 {#bonsai-prefill-display}
 
@@ -2114,7 +1960,7 @@ After activation, fresh local Xray clients returned `219.104.128.80` through
 port 54322 (gizmo) and `27.122.122.170` through port 54324 (rpi4).
 The host itself returned `43.130.229.141`; DAE is absent.
 
-Installation and acceptance: [tokyo-migration.md](tokyo-migration.md).
+Installation: [tokyo](hosts/tokyo.md).
 
 ## 2026-10-02 · Swift 四并发、模型改名及单路测速 {#b650-swift15-concurrency-four}
 
@@ -2663,7 +2509,7 @@ h310 已切换到新系统，switch 却返回 4：multi-user.target 重试了原
 Gaoji 安装 oneshot，后者拉取 whisper.cpp 超过 180 秒。误导点是把非零 switch
 直接理解成“旧系统仍在运行”；运行闭包、profile 和 SSH 权限必须分别核对。
 保留失败证据，没有反复重试安装或伪造健康状态。具体版本、构建分工和证据位置见
-[发布记录](max-ssh-operations.md#2026-09-15-fleet-rollout)。
+[发布记录](services/max-ssh-operations.md#2026-09-15-fleet-rollout)。
 
 ## 2026-09-15 · Max SSH 运维首次切换 {#max-ssh-first-activation}
 
@@ -2783,7 +2629,7 @@ metrics 200 再次验证通过。命名为 release/验收的两个目录实际�
 宿主机 DNS 行为”、“active 就代表导出成功”和“本地配置等于监控器元数据”。
 后续验收应检查实际监听、容器内解析、`exportfs -v` 和 `pg_autoctl show state`，
 而不只看求值或服务 active。持续运行后的地址变更边界见
-[域名迁移说明](tailscale-names.md)。
+[域名迁移说明](services/tailscale-names.md)。
 
 ## 2026-09-13 · 灰色建议出现 `_=` 等变量赋值候选 {#zsh-inline-variable-assignments}
 
@@ -3099,22 +2945,6 @@ tank 提升，h610 进入 `demote_timeout -> demoted -> catchingup`，并运行 
 永久修复去掉 health 的节点启动依赖，只保留排序关系和实际健康验证。维护后须恢复
 timer，并用连续检查成功及告警源的实际状态验收，不能只清除 systemd failed 标记。
 
-## 2026-09-07 · gaoji 三节点 Worker 与统一 Ops 部署 {#gaoji-three-host-ops}
-
-h310、h610、tank 的计算任务使用独立 Worker 凭据和 Tailscale 接口；QQ 管理员身份
-只作为服务端配置的所有者别名，其他用户仍须限时授权。两份新增 SOPS 加密凭据的
-共享仓库发布已获 Kenneth 明确同意，不发布明文。三节点均纳入控制面资产和健康目标。
-
-P6 受限修复和 P7 两阶段部署共用 Ops 操作账本。部署目标固定各自的 repository/profile，
-系统切换前需审阅完整预检，切换后核对运行与持久 profile，并检查 Worker 服务。
-未配置第二套 SSH 部署器。Ops 精确源码兼容补丁只用于这三台 executor 与 h610 hub。
-
-最初以为工作区必须再做一次 commit 才能部署；实际上这会改变指定提交的身份。
-补丁允许初始干净工作区使用已有 base commit，旧版本必须是已检查远端分支的祖先；
-脏工作区、错误源码、远端或运行状态漂移仍会被拒绝。补丁在 gaojibot 仓库内独立保存，
-上游原生支持后应移除。实际配置使用的 Linux 包通过全部 74 项 Nextest 测试；
-共享 17 台 NixOS 主机均已评估通过。这些是构建证据，不替代逐台生产切换与功能验收。
-
 ## 2026-09-07 · Max 状态目录、账号与声明式配置迁移 {#max-unified-state}
 
 Max 的持久目录统一到 `/var/lib/max`，主进程、PostgreSQL role/database 均改名为
@@ -3246,7 +3076,7 @@ hub 对完整标签对象做相等比较,导致采样时间匹配失败。之前
 
 root 直接以 Git flake 重建还会碰到 hank 工作树的所有权检查。此次由 hank 构建
 固定的系统 store closure,root 对该闭包执行 dry-activate,核对后设置 system profile
-并 switch;仓库权限保持原样。当时的 API 部署入口已退役；当前操作与验收见 [SSH 运维](max-ssh-operations.md)。
+并 switch;仓库权限保持原样。当时的 API 部署入口已退役；当前操作见 [SSH 运维](services/max-ssh-operations.md)。
 
 ## 2026-09-05 · NInfer 满 catalog 时漏算逻辑准入,搜索超时清空缓存 {#b650-ninfer-catalog-admission}
 

@@ -31,7 +31,7 @@
   bot 用 kenneth 手放在 `/home/kenneth/services/gaoji/` 的文件，不走 sops。
   tank 上 gaoji-web 容器里的 `kennethbot.inner` 证书名和跳转也一起删了。
 - **singbox 模块**、`just check-singbox`：2026-07-31 试点回滚后没再用过
-  （`docs/proxy-todo.md` 第 5 节）。airport 生成给客户端的 sing-box 订阅不受影响。
+  （`docs/services/proxy.md#singbox-cgnat`）。airport 生成给客户端的 sing-box 订阅不受影响。
 - **nix-minecraft**（input、overlay、三台的模块）：没有主机定义服务器。tank 上
   wuxi 留下的 MariaDB `minecraft` 库、`mc_user`，Postgres 的 `luckperms` /
   `minecraft` 库和角色不再声明；**数据还在**，确认不要后手动 `DROP`。
@@ -362,7 +362,7 @@ Owner 明确选择 tank 固定主库、h610 异步灾备、人工确认后切换
 
 应用独立修复安全租约重获（保留 fencing 和暂停边界）；数据库改为 systemd 直接管理 PostgreSQL，禁用 monitor/keeper，固定只读灾备与本地主库，客户端只连接 tank。备库离线不阻塞主库写入，角色检查脚本不允许隐式提升，复制健康检查只告警。原数据目录、TLS/SCRAM、容量约束、备份和人工隔离工具保留。没有“通过提高超时已修好运营商链路”的承诺。
 
-代价明确：tank 真正故障时不再无人值守接管；异步复制可能丢未同步的尾部写入。人工提升必须先证明旧主已隔离、核对 WAL 并接受可能的数据损失，同步修改持久角色和 DSN。流程、迁移/回滚边界与隔离验证见 [固定主库 runbook](runbooks/qq-fixed-primary.md)；上线结果另记 `gaoji-qq-official.md`，此决策不代替部署证据。
+代价明确：tank 真正故障时不再无人值守接管；异步复制可能丢未同步的尾部写入。人工提升必须先证明旧主已隔离、核对 WAL 并接受可能的数据损失，同步修改持久角色和 DSN。流程、迁移/回滚边界与隔离验证见 [固定主库 runbook](runbooks/qq-fixed-primary.md)。
 
 **误导过排查的地方：**进程 active 不代表 QQ 可用，数据库恢复不代表旧租约会自动恢复；历史消息缺口不等同当前网关断开。只把候选优先级设成零也不能移除 keeper 的网络分区自停逻辑，所以不采用那种临时改法。
 
@@ -478,7 +478,7 @@ Nix 只打包发布源码和运行时依赖，SDK 与 typebox 由 Pi 宿主提�
 保留个人输入框、状态栏及 better-render，CC 对这四个工具让出专用渲染器。
 普通前台/后台代理池各 2，关闭定时任务，开启用量上报及费用显示；工作流仍使用
 上游独立并发池，不把普通池上限宣传成全局预算。配置、用法、权限和验证见
-[Pi 子代理](pi-subagents.md)。同进程子会话退出误卸载主窗口渲染的回归见
+[Pi 子代理](home/pi-subagents.md)。同进程子会话退出误卸载主窗口渲染的回归见
 [事故记录](incidents.md#pi-subagent-renderer-lifecycle)。
 
 ## 2026-11-02 · Pi 只加紧凑 Git 状态，不换整套 TUI {#pi-git-status}
@@ -562,34 +562,13 @@ Hank 的 Pi 输入文字、上下边框和 `❯` 固定为中性灰白 `#c5c5c5`
 
 ## 2026-10-31 · Pi 的上下文压缩交给 Magic Context {#pi-magic-context}
 
-2026-11-04 已移除，以下为当时的配置；见 [当前决策](#pi-bootstrap)。
+2026-11-04 已移除；见 [当前决策](#pi-bootstrap)。
 
-Hank 的 dev 档 Pi 保留 `@cortexkit/pi-magic-context` 0.49.33 的包和配置，
-目前暂时关闭（`magic-context-settings.nix` 的 `enabled = false`）。
-由 `pkgs/pi-magic-context/` 固定发布包及 npm lockfile，使用原生扩展发现机制，
-不另装一份 Pi peer 包；关闭 Magic Context 的自更新，由 Nix 更新版本。
-
-Pi 的 `compaction.enabled` 始终取 Magic Context `enabled` 的反值：停用时恢复
-原生自动压缩，启用时交给 Magic Context，避免两套管理器重复压缩或同时关闭。
-Historian 使用已有 CLIProxy 的 `cliproxy/gpt-5.5` / `low`，
-会产生额外的摘要模型用量，不改变主会话模型或其默认值。Dreamer 暂不开启，
-避免首次安装就启动定时模型任务。检索使用本地多语言
-`Xenova/paraphrase-multilingual-MiniLM-L12-v2` / `q8`，首次使用需下载权重；
-选择多语言模型是为了让中文查询能找到英文记忆。
-
-`home/hank/modules/pi/magic-context-settings.nix` 声明设置，激活时合并到
-`~/.config/cortexkit/magic-context.jsonc`，保留注释与未声明字段。状态和记忆写入
-`~/.local/share/cortexkit/magic-context/context.db`（尊重 XDG 路径），不进 Nix store。
-`/ctx-status` 看状态，`/ctx-wrapup` 请求压缩；只安装 Pi 扩展，不给 OpenCode 加载。
-移除 Magic Context 时须同时恢复 Pi 原生自动压缩。
-
-验证：`bash scripts/check-pi-magic-context.sh` 在临时 HOME、agent 和数据库中离线
-检查停用时恢复原生压缩且不注册工具、命令或创建数据库，再单独启用测试
-JSONC 合并、原生 ONNX / Sharp 加载、工具和命令注册、记忆写入及关键词检索。
-不下载模型、不调用 LLM、不激活 home。重新启用只需将上述 `enabled` 改回 `true`，
-Home Manager 激活后重启 Pi；不删除现有配置、模型缓存或数据库。
-
----
+当时 Hank 的 dev 档 Pi 用 `@cortexkit/pi-magic-context` 0.49.33（`pkgs/pi-magic-context/`）
+管上下文压缩，Pi 的 `compaction.enabled` 始终取 Magic Context `enabled` 的反值，
+避免两套管理器重复压缩或同时关闭。Historian 用 CLIProxy 的 `cliproxy/gpt-5.5` / `low`，
+检索用本地多语言模型，让中文查询能找到英文记忆。状态写在
+`~/.local/share/cortexkit/magic-context/`，不进 Nix store。
 
 ## 2026-10-31 · Pi 正文交给 better-render，工具卡保留 CC 风格 {#pi-better-render}
 
@@ -847,7 +826,7 @@ Pi 的个人扩展以单行显示目录、Git 分支、模型、推理强度和�
 
 Claude 的状态栏输入提供 5h/7d 额度和重置时间，Pi 扩展上下文没有
 等价数据，因此这组字段不显示。费用使用 Pi 记录的模型计价；公开 API
-单价及代理估算口径见 [Pi 模型费用](pi-model-pricing.md)，自托管 NInfer 保持零单价。
+单价及代理估算口径见 [Pi 模型费用](home/pi-model-pricing.md)，自托管 NInfer 保持零单价。
 
 ## 2026-10-18 · OpenCode 迁移到 V2，暂时停用 V1 插件 {#opencode-v2-migration}
 
@@ -891,7 +870,7 @@ seraph 作为通过 SSH 管理的计算节点运行，停用全部视频输出�
 计算支持。两张显卡的显示模块在内核中禁用，GNOME/GDM 系统服务移除。
 CUDA 与 Bonsai 继续提供计算和推理服务。
 
-实机检查见 [计算节点记录](seraph-gpu.md)。
+配置见 [seraph](hosts/seraph.md)。
 
 ## 2026-10-05 · Nixvim 回到 9 月 28 日界面改版前 {#nixvim-visual-rollback-20261005}
 
@@ -981,7 +960,7 @@ Hank 的 VS Code 设置不由 Home Manager 的 `userSettings` / `keybindings`
 
 没有采用“每次 activation 复制成可写文件”的做法，因为可写不代表 GUI 修改能在
 下一次 activation 后保留。也没有维护一套读写 JSONC 的合并脚本；优先级交给
-VS Code 本身处理。具体路径、使用方式与快捷键见 [VS Code / Neovim](vscode-neovim.md)。
+VS Code 本身处理。具体路径、使用方式与快捷键见 [VS Code / Neovim](home/vscode-neovim.md)。
 
 ## 2026-09-27 · 高级 QQ 接入迁到 tank，h610 不再登录同一账号 {#gaoji-qq-tank}
 
@@ -1150,7 +1129,7 @@ sudo 只允许该入口，关闭终端和转发，不向聊天沙盒提供私钥
 Gaoji 的控制与计算 worker 保留，旧 ops／部署入口停用，主机清单改用
 `clusterControl`；Alertmanager 保留规则与独立 webhook，移除经 Hub 的群告警。
 历史决策与事故记录保留。配置、密钥与首次迁移顺序见
-[Max SSH 运维接入](max-ssh-operations.md)。当日已完成 10 台 NixOS fleet 切换与
+[Max SSH 运维接入](services/max-ssh-operations.md)。当日已完成 10 台 NixOS fleet 切换与
 SSH/sudo 验收；h310 的原有 Gaoji 安装失败使 switch 非零，实际新系统已生效，
 详见该页的发布记录。Darwin 仅有配置，不在本次实机验收范围。
 
@@ -1160,7 +1139,7 @@ SSH/sudo 验收；h310 的原有 Gaoji 安装失败使 switch 非零，实际新
 本机监听在启动时解析并验证 Tailscale 接口地址，数字地址由运行时产生。
 不能把所有 `listenAddress` 机械替换成域名：maxops、Headplane 和
 Alertmanager 的部分字段只接受 IP，h610 的 nginx 又承载控制平面的启动入口。
-这些适配及数据库/NFS 的迁移边界见 [操作说明](tailscale-names.md)。
+这些适配及数据库/NFS 的迁移边界见 [操作说明](services/tailscale-names.md)。
 
 ## 2026-09-12 · hackintosh 的 raycast 为什么不从 unstable 取 {#x86-64-darwin-unstable-drop}
 
@@ -1207,48 +1186,6 @@ Prometheus 指标和新控制台域名随之改名；旧域名保留为别名。
 
 外部运维客户端身份和 API 继续保留，只同步获准读取的服务名称。不修改其他机器或
 其他人的机器人，不因仓库改名执行系统切换。应用配置中的自定义人格和 QQ 名片需另行同步。
-
-## 2026-09-07 · maxops 执行面扩到八台纳管主机 {#maxops-fleet-full-control}
-
-> 历史方案，已于 2026-09-15 退役；当前流程见 [SSH 运维](max-ssh-operations.md)。
-
-h610 继续作为唯一 Hub；八台纳管主机各自运行 Agent 与 Executor。Hank 和 Max
-使用独立 token，但都获得全部 host、job、unit、diagnostic、workspace 与 deployment
-权限。Kennethbot 保持只读。每台主机的 manageable unit 仍来自
-`config.my.host.maxops.readableUnits`，完整客户端权限不会绕过目标机清单。
-
-每台主机使用独立 execution token。远端主机的同一份 SOPS 文件同时加密给该主机、
-h610 和管理员：目标 Agent 读取本机副本，Hub 读取 h610 副本。token 只通过运行时
-文件和 systemd credential 传递。
-
-一个 repository executor 同时也是该 deployment 的 builder，workspace 不跨
-executor 隐式复制。因此各主机使用独立逻辑 repository ID 与本机 system deployment
-profile，虽然它们都指向同一个公开 Git 远端。这样 x86_64 与 aarch64 在本机原生构建，
-远端 ref 的 CAS 仍协调多个发布者；人工 push、直接 rebuild 和其他部署工具继续作为
-同等事实来源。
-
----
-
-## 2026-09-07 · maxops 完整执行面先落在 h610 {#maxops-h610-full-control}
-
-> 历史方案，已于 2026-09-15 退役；当前流程见 [SSH 运维](max-ssh-operations.md)。
-
-Hank 和 Max 使用独立 token，但在 Hub 上拥有相同的完整 capability、`nix-config`
-workspace 和 `h610-system` deployment 权限。h610 同时运行 agent 与 executor；executor
-提供有界诊断 profile 和显式 root operator/activation profile，能运行命令、操作已列入
-inventory 的服务、修改冻结的 Git workspace，并按 closure 与业务检查完成部署验收。
-
-其他 fleet 主机仍只部署观察 agent。Hub 会继续显示它们的真实远端状态，但不会因为
-h610 已启用 executor 就把其他主机宣称为可执行；需要逐机新增独立 execution token、
-executor 和 manageable unit 清单后才能开放写入。这也保留了人工 push、直接 rebuild
-和其他部署工具作为同等事实来源，maxops 每次变更前仍须重新观察 Git head、运行 closure
-与 system profile。
-
-`nix-config` 使用公开 HTTPS 地址进行 fetch，因此 workspace、check、commit 和未发布
-workspace 的构建部署不依赖人的 checkout。远端 publish 仍由 Git 远端自身鉴权决定；
-不会把个人 SSH key 或 token 写进 Nix store 来伪造“已有发布能力”。
-
----
 
 ## 2026-09-05 · 删掉 hank tmux extraConfig 里的死设置 {#tmux-dead-settings}
 
