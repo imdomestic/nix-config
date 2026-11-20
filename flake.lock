@@ -1839,7 +1839,6 @@
         "system-manager": "system-manager",
         "vex": "vex",
         "wayland-scroll-factor": "wayland-scroll-factor",
-        "wg-config": "wg-config",
         "zjstatus": "zjstatus",
         "zsh-hank": "zsh-hank",
         "zsh-linwhite": "zsh-linwhite"
@@ -2355,22 +2354,6 @@
         "ref": "v1.0.0",
         "repo": "wayland-scroll-factor",
         "type": "github"
-      }
-    },
-    "wg-config": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1766413685,
-        "narHash": "sha256-lZYQ1BQ+WOyFYHgD/lO7D4KZoUE+hWuNXrrEdqJoKfk=",
-        "ref": "refs/heads/main",
-        "rev": "b52b7419c27912d99f26dfd3aea3dd87f90d38f2",
-        "revCount": 5,
-        "type": "git",
-        "url": "ssh://git@github.com/imdomestic/wgconfigs"
-      },
-      "original": {
-        "type": "git",
-        "url": "ssh://git@github.com/imdomestic/wgconfigs"
       }
     },
     "zjstatus": {

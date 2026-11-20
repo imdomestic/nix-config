@@ -6,12 +6,7 @@
   pkgs,
   config,
   ...
-}: let
-  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
-    conf = "${inputs.wg-config.outPath}/client_00076.conf";
-    address = "10.0.0.77/24";
-  };
-in {
+}: {
   imports = [
     ./hardware-configuration.nix
     ../../system/modules/dae
@@ -47,8 +42,6 @@ in {
         Name = "br-lan";
       };
     };
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
 
     networks."20-lan1-uplink" = {
       matchConfig.Name = "enp40s0";

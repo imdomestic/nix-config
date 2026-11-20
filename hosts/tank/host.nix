@@ -13,7 +13,6 @@
       enable = true;
       manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "prometheus.service" "alertmanager.service" "grafana.service" "samba-smbd.service" "nfs-server.service" "postgresql.service" "matrix-synapse.service"];
     };
-    ip = "10.0.0.66";
     sshUser = "root";
 
     modules = [

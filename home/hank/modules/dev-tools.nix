@@ -28,7 +28,6 @@ in {
       hydra-check
 
       # Network diagnostics and operations
-      wireguard-tools
       iperf3
 
       # neovim dependencies

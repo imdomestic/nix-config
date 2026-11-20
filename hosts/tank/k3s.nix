@@ -46,9 +46,9 @@ in {
     # 不开 clusterInit，用默认的 SQLite：单节点用不上 etcd，而 etcd 会记住节点地址。
     # 加第二台 server 时再打开，k3s 会就地把 SQLite 转成 etcd。
     extraFlags = [
-      # wg0 的地址是静态的；br-lan 走 DHCP，地址可能会变。
-      "--node-ip=10.0.0.66"
-      "--flannel-iface=wg0"
+      # headscale 给的 tailnet 地址是固定的；br-lan 走 DHCP，地址可能会变。
+      "--node-ip=100.64.0.4"
+      "--flannel-iface=tailscale0"
       # kubectl 从 tailnet 连进来。
       "--tls-san=tank.inner.imdomestic.com"
       "--tls-san=100.64.0.4"

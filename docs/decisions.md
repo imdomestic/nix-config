@@ -11,6 +11,28 @@
 
 ---
 
+## 2026-11-20 · 不再有 WireGuard 网络和 wgconfigs {#no-wireguard}
+
+机器之间全部走 tailnet，以 tokyo 为中心的 WireGuard 网（`10.0.0.0/24`，wg0，
+UDP 50722）连同 `lib/wgClient.nix`、`lib/wgServer.nix`、`hosts/tokyo/wg-peers.nix`、
+registry 的 `ip` 字段和私有 input `wg-config`（`imdomestic/wgconfigs`）一起删了。
+原来挂在它上面的东西：
+
+- tank 的 k3s：`--node-ip` / `--flannel-iface` 改到 tailscale0（`100.64.0.4`），
+  数据库是 SQLite，不记节点地址。tokyo 上那份停用的 agent 配置也一并指到 tailnet。
+- tokyo 的 cs2（27015）和 mumble（64738）公网入口：照旧 DNAT 到 tank，只是目标
+  换成 tank 的 tailnet 地址，经 tailscale0 masquerade 出去。
+- `system/modules/minecraft/wuxi.nix`（旧的 wuxi 服，后端和 LuckPerms 都绑
+  `10.0.0.66`，CMI.jar 只存在于 wgconfigs 里）及 encore 上早已不导入的
+  `minecraft.nix`：删除。运营网络在 k3s 里（`k8s/apps/mc`），不受影响。
+- 主机上的 wg0 是 tailscale 出问题时的 sshd 退路；这条退路没有了，现在只剩
+  局域网地址上的 sshd（`system/modules/tailscale/default.nix`）。
+
+没有私有 input 之后，tank 上 flake-updater 的 `flake-updater-ssh` 和两把 deploy
+key 也删了：组织设置里 `deploy_keys_enabled_for_repositories` 本来就是关的，那两把
+key 早已不能用（`docs/incidents.md#updater-steel-oom-r6s`）。`imdomestic/vex` 已公开，
+改走 `git+https`。各主机 sops 文件里的 `wireguard` 键随之删除。
+
 ## 2026-11-19 · tank 的 fleetTests 里跑 max 自己的嵌套 VM 测试 {#maxx-fleet-test}
 
 `fleetTests.x86_64-linux.maxvm-tank` 就是 `inputs.maxx.nestedChecks.x86_64-linux.vm`:

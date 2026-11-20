@@ -36,7 +36,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 私有 flake input(kvim / wezterm-config / wg-config)要用。
+      # 给 git+ssh 的私有 flake input 用。2026-11-20 起已经没有这样的 input 了
+      # (docs/decisions.md#no-wireguard)。
       - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}

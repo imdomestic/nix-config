@@ -51,11 +51,6 @@
     options =
       import ../_lib/host-facts.nix {inherit lib;}
       // {
-        ip = mkOption {
-          type = types.nullOr types.str;
-          default = null;
-          description = "Address on the WireGuard network, where the host has one.";
-        };
         sshUser = mkOption {
           type = types.str;
           default = "root";

@@ -5,13 +5,9 @@
   config,
   ...
 }: let
-  wgPeers = import ./wg-peers.nix;
-  wg = import ../../lib/wgServer.nix {inherit pkgs lib;} {
-    peers = wgPeers;
-    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
-    pskFileFor = idx: config.sops.secrets."wireguard/psk/${toString idx}".path;
-    address = "10.0.0.1/24";
-  };
+  # tank 的 tailnet 地址:cs2 和 mumble 的公网入口在这里、服务在 tank 上;
+  # k3s agent 也连它。
+  tank = "100.64.0.4";
 in {
   imports = [
     ./hardware-configuration.nix
@@ -34,30 +30,23 @@ in {
     "--relay-server-static-endpoints=8.216.32.13:40000"
   ];
 
-  sops.secrets =
-    {
-      "wireguard/private_key".owner = "systemd-network";
-      # 新的一套凭据。老的三个键(vless_uuid / interconn_private_key /
-      # client_private_key)已随凭据轮换从 sops 里换掉,见下面的 legacy_*。
-      "xray/reality_private_key" = {};
-      "xray/interconn2_uuid" = {};
-      "xray/interconn2_short_id" = {};
-      "xray/client_in2_uuid" = {};
-      "xray/client_in2_short_id" = {};
-      # 悉尼出口那条隧道的两个入口。复用本机同一对 REALITY 密钥,各自一个
-      # shortId —— 和上面两个入口的做法一致。
-      "xray/interconn_au_uuid" = {};
-      "xray/interconn_au_short_id" = {};
-      "xray/client_au_uuid" = {};
-      "xray/client_au_short_id" = {};
-      "k3s/token" = {};
-      "acme/cloudflare_env" = {};
-    }
-    // lib.listToAttrs (lib.imap0 (idx: _: {
-        name = "wireguard/psk/${toString idx}";
-        value = {owner = "systemd-network";};
-      })
-      wgPeers);
+  sops.secrets = {
+    # 新的一套凭据。老的三个键(vless_uuid / interconn_private_key /
+    # client_private_key)已随凭据轮换从 sops 里换掉,见下面的 legacy_*。
+    "xray/reality_private_key" = {};
+    "xray/interconn2_uuid" = {};
+    "xray/interconn2_short_id" = {};
+    "xray/client_in2_uuid" = {};
+    "xray/client_in2_short_id" = {};
+    # 悉尼出口那条隧道的两个入口。复用本机同一对 REALITY 密钥,各自一个
+    # shortId —— 和上面两个入口的做法一致。
+    "xray/interconn_au_uuid" = {};
+    "xray/interconn_au_short_id" = {};
+    "xray/client_au_uuid" = {};
+    "xray/client_au_short_id" = {};
+    "k3s/token" = {};
+    "acme/cloudflare_env" = {};
+  };
 
   time.timeZone = "Asia/Tokyo";
 
@@ -86,13 +75,13 @@ in {
   networking = {
     firewall = {
       enable = true;
-      # 转发给 tank 的 DNAT 和 wg 中转走策略路由,rpfilter 会误杀。
+      # 转发给 tank 的 DNAT 走策略路由,rpfilter 会误杀。
       checkReversePath = false;
       # xray 入站(3444/3445/54322/54324)和 derper 的 HTTPS(8443)。
       allowedTCPPorts = [3444 3445 54322 54324 8443];
-      # derper 的 STUN(3478)、wireguard 中心节点(50722)和 tailscale peer
-      # relay(40000)。云厂商防火墙那层也得放行这几个端口。
-      allowedUDPPorts = [3478 50722 40000];
+      # derper 的 STUN(3478)和 tailscale peer relay(40000)。云厂商防火墙
+      # 那层也得放行这几个端口。
+      allowedUDPPorts = [3478 40000];
     };
     networkmanager.enable = false;
     useNetworkd = true;
@@ -108,36 +97,14 @@ in {
           chain prerouting {
             type nat hook prerouting priority -100; policy accept;
 
-            iifname "eth0" tcp dport 27015 dnat ip to 10.0.0.66:27015
-            iifname "eth0" udp dport 27015 dnat ip to 10.0.0.66:27015
-
-            iifname "eth0" tcp dport 64738 dnat ip to 10.0.0.66:64738
-            iifname "eth0" udp dport 64738 dnat ip to 10.0.0.66:64738
+            iifname "eth0" meta l4proto { tcp, udp } th dport { 27015, 64738 } dnat ip to ${tank}
           }
 
           chain postrouting {
             type nat hook postrouting priority 100; policy accept;
 
-            oifname "wg0" ip daddr 10.0.0.66 tcp dport 27015 masquerade
-            oifname "wg0" ip daddr 10.0.0.66 udp dport 27015 masquerade
-
-            oifname "wg0" ip daddr 10.0.0.66 tcp dport 64738 masquerade
-            oifname "wg0" ip daddr 10.0.0.66 udp dport 64738 masquerade
-          }
-        '';
-      };
-      # Replaces the server.conf PostUp:
-      #   iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-      # so WireGuard clients (10.0.0.0/24) reach the internet via the WAN (eth0).
-      tables.wireguard = {
-        name = "wireguard";
-        enable = true;
-        family = "inet";
-        content = ''
-          chain postrouting {
-            type nat hook postrouting priority 100; policy accept;
-
-            ip saddr 10.0.0.0/24 oifname "eth0" masquerade
+            # 以本机的 tailnet 地址出去,tank 的回包才会走回 tailscale0。
+            oifname "tailscale0" ip daddr ${tank} meta l4proto { tcp, udp } th dport { 27015, 64738 } masquerade
           }
         '';
       };
@@ -146,8 +113,6 @@ in {
 
   systemd.network = {
     enable = true;
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
 
     networks."30-eth0" = {
       matchConfig.Name = "eth0";
@@ -277,14 +242,14 @@ in {
     enable = false;
     role = "agent";
     tokenFile = config.sops.secrets."k3s/token".path;
-    serverAddr = "https://10.0.0.66:6443";
+    serverAddr = "https://${tank}:6443";
     extraFlags = [
       "--node-name=tokyo"
       "--node-taint=vps=true:NoSchedule"
       "--node-label=node.kubernetes.io/vps=true"
-      "--node-ip=10.0.0.1"
-      "--node-external-ip=10.0.0.1"
-      "--flannel-iface=wg0"
+      "--node-ip=100.64.0.13"
+      "--node-external-ip=100.64.0.13"
+      "--flannel-iface=tailscale0"
     ];
   };
 

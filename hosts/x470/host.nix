@@ -4,7 +4,6 @@
     kind = "nixos";
     inChina = true;
     roles = ["desktop" "gui" "server"];
-    ip = "10.0.0.77";
     sshUser = "root";
 
     externalModules = [

@@ -12,7 +12,6 @@
       enable = true;
       manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "nginx.service" "xray.service" "derper.service"];
     };
-    ip = "10.0.0.1";
     sshUser = "root";
     maxTier = "dev";
     buildOn = "tank";

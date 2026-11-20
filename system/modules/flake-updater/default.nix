@@ -18,29 +18,12 @@
   state = "/var/lib/flake-updater";
   secret = name: config.sops.secrets."imdomestic-updater/${name}".path;
 
-  githubKnownHosts = pkgs.writeText "github-known-hosts" ''
-    github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
-  '';
-  # The two private inputs, one read-only deploy key each: GitHub does not let
-  # one key be a deploy key on two repositories. git runs this as
-  # `<this> git@github.com "git-upload-pack 'imdomestic/vex'"`.
-  gitSsh = pkgs.writeShellScript "flake-updater-ssh" ''
-    case "$*" in
-      *imdomestic/wgconfigs*) key=${secret "wgconfigs-key"} ;;
-      *imdomestic/vex*) key=${secret "vex-key"} ;;
-      *) echo "flake-updater: no key for: $*" >&2; exit 1 ;;
-    esac
-    exec ${pkgs.openssh}/bin/ssh -i "$key" -o IdentitiesOnly=yes -o BatchMode=yes \
-      -o UserKnownHostsFile=${githubKnownHosts} -o StrictHostKeyChecking=yes "$@"
-  '';
-
   flake-updater = pkgs.writeShellApplication {
     name = "flake-updater";
     runtimeInputs = with pkgs; [
       config.nix.package
       bash
       gitMinimal
-      openssh
       jq
       curl
       openssl
@@ -63,7 +46,6 @@
         fleet_nix=${./fleet.nix}
         # 16:00 to 19:00 UTC, midnight to 03:00 in China.
         budget=$((3 * 3600))
-        export GIT_SSH_COMMAND=${gitSsh}
       ''
       + builtins.readFile ./flake-updater.sh;
   };
@@ -82,9 +64,7 @@ in {
   };
   users.groups.flake-updater = {};
 
-  sops.secrets = lib.genAttrs (map (n: "imdomestic-updater/${n}") ["private-key" "vex-key" "wgconfigs-key"]) (_: {
-    owner = "flake-updater";
-  });
+  sops.secrets."imdomestic-updater/private-key".owner = "flake-updater";
 
   environment.systemPackages = [flake-updater];
 

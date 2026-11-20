@@ -5,14 +5,7 @@
   lib,
   inputs,
   ...
-}: let
-  # Rendered via sops.templates (cloudflare tokens + web password from sops).
-  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
-    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
-    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
-    address = "10.0.0.66/24";
-  };
-in {
+}: {
   imports = [
     ./hardware-configuration.nix
     # ../../system/modules/mihomo
@@ -20,7 +13,6 @@ in {
     ../../system/modules/keyd
     ../../system/modules/monitoring
     ../../system/modules/qq-bot-postgres-ha.nix
-    # ../../system/modules/minecraft/wuxi.nix
     # ../../system/modules/dae
   ];
 
@@ -59,8 +51,6 @@ in {
   # Import → 1860(Node Exporter Full)。没有把那份 JSON vendor 进仓库,
   # 它 200KB 且每次上游更新都要重新 pin,不值得。
 
-  sops.secrets."wireguard/private_key".owner = "systemd-network";
-  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
   sops.secrets."qq_bot/postgres_password" = {
     sopsFile = ../../secrets/secrets.yaml;
     owner = "postgres";
@@ -372,13 +362,11 @@ in {
         br-lan.allowedTCPPorts = [80];
         # tank.local、NFS(exports 给的是 tailnet 地址)、k3s API、
         # matrix(h610 的 nginx 经 tailnet 反代)、cliproxy 的转发、ollama、
-        # gaoji bot(h610 的 nginx / napcat 来连)、journal-remote 接收端。
-        tailscale0.allowedTCPPorts = [80 2049 6443 8008 8317 11434 18080 19532];
-        # k3s 的 node-ip 在 wg0 上;luckperms 的 postgres(pg_hba 放了
-        # 10.0.0.0/24);tokyo DNAT 过来的 cs2。
-        wg0 = {
-          allowedTCPPorts = [5432 6443 10250 27015];
-          allowedUDPPorts = [8472 27015];
+        # gaoji bot(h610 的 nginx / napcat 来连)、journal-remote 接收端、
+        # tokyo 经 tailnet 转过来的 cs2。murmur 自己 openFirewall。
+        tailscale0 = {
+          allowedTCPPorts = [80 2049 6443 8008 8317 11434 18080 19532 27015];
+          allowedUDPPorts = [27015];
         };
       };
       # nspawn 容器(ve-gaoji-web、vb-debian-guest)。
@@ -397,8 +385,6 @@ in {
         Name = "br-lan";
       };
     };
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
 
     networks."20-lan1-uplink" = {
       matchConfig.Name = "enp5s0";
@@ -530,7 +516,6 @@ in {
       # TYPE  DATABASE        USER            ADDRESS                 METHOD
       local   all             all                                     trust
       host    luckperms       minecraft       127.0.0.1/32            trust
-      host    luckperms       minecraft       10.0.0.0/24             md5
       host    luckperms       minecraft       10.42.0.0/24            md5
     '';
   };

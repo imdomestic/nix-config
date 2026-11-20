@@ -4,6 +4,28 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-20 · nightly updater 连续三晚超时：steel 把 r6s 打到 OOM {#updater-steel-oom-r6s}
+
+11-18 起 tank 上的 flake-updater 每晚都是 `Nothing passed` + `Out of time`，
+issue 里只有这两行。第一个 gate 要构建 57–59 个变了的系统和 home，x86_64 的全部
+构建成功，没过的 16 个全是 aarch64（交给 r6s，`/etc/nix/machines` 里 2 个 job）。
+
+根因是 hank 的 helix 模块装的 `pkgs-unstable.steel`：它没有任何缓存里的 aarch64
+产物，每次 nixpkgs-unstable 一动就要在 r6s 上用 `cargo -j 8` 重编。11-20 00:50
+rustc 把 r6s（7.6 GB、无 swap）打进全局 OOM，nscd 和 tailscaled 跟着重启，
+tank 到 r6s 的 ssh-ng 构建连接挂了将近两个小时；01:14 r6s 自己的 home-sync 也在
+steel 上 OOM。第二轮重试只剩两分钟，steel 被预算砍掉，所以永远编不完，下一晚重来。
+处理：删掉 steel（hank 不用它）。
+
+**误导人的地方：** 报告里看不到任何构建错误。`build_all` 每轮都用 `2>` 覆盖
+`build.err`，留下的只是最后两分钟被打断的那一轮；`problems.md` 在超时分支里也不写。
+同一时间段 encore、gpd、x470 在 updater 里求值失败（`Failed to fetch git repository
+… imdomestic/vex / wgconfigs`），看起来像主因，其实不是：main 和 gate 上都失败，
+`changes` 两边都是 null，不进 gate，只是这三台悄悄不被测了。那两把 deploy key 失效
+的原因是组织关掉了 deploy key（`deploy_keys_enabled_for_repositories: false`），
+仓库的 keys API 返回空列表，不是 key 本身被删。真正的线索在 r6s 的
+`journalctl -k`（oom-killer）和 tailscaled 的 PID 变化。
+
 ## 2026-11-17 · h610 升级后 Headscale 0.29.4 在 Go 1.27 下编码 MapResponse 失败 {#h610-headscale-go127-mapresponse}
 
 h610 升到 `nixos-26.05.20261113.f1e5c35` 后，最初 `headscale.service`

@@ -149,6 +149,7 @@ Headscale 注册密钥认证。SIGTERM 未结束该扩展，最终以 SIGKILL �
 已通过新机 CLI 与 Headscale 列表核对新旧节点独立；个人 SSH 密钥和其他钥匙串项目不变。
 官方清理参考：https://tailscale.com/docs/features/client/uninstall
 
+（2026-11-20 起没有 WireGuard 网了，见 `decisions.md#no-wireguard`；下面这段只是当时的记录。）
 WireGuard 的 `10.0.0.65/24` 留给新 `praxic`，`m1elite` 不配置该接口。当前
 `/Users/hank/Documents/privatekey` 与 `presharedkey` 未找到，所以新机暂不自动启动
 wg0。确认密钥、服务端 peer 以及旧机隧道已停后再启用；旧机如仍需 WireGuard，另配

@@ -12,7 +12,6 @@
       enable = true;
       manageableUnits = ["tailscaled.service" "prometheus-node-exporter.service" "xray.service" "mihomo.service" "ddns-go.service" "systemd-resolved.service"];
     };
-    ip = "10.0.0.9";
     sshUser = "root";
     maxTier = "interactive";
     buildOn = "r6s";

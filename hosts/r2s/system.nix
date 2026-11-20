@@ -2,22 +2,13 @@
   config,
   pkgs,
   ...
-}: let
-  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
-    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
-    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
-    address = "10.0.0.9/24";
-  };
-in {
+}: {
   imports = [
     ../../system/modules/dae
     # ../../system/modules/singbox
     ./hardware-configuration.nix
     ../../system/modules/vlmcsd
   ];
-
-  sops.secrets."wireguard/private_key".owner = "systemd-network";
-  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
   hardware.deviceTree = {
     enable = true;
@@ -121,8 +112,6 @@ in {
         Name = "br-lan";
       };
     };
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
 
     # LAN2
     networks."20-lan2-uplink" = {

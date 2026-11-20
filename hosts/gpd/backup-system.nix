@@ -24,14 +24,6 @@
     useNetworkd = true;
   };
 
-  #   wg-quick.interfaces = {
-  #     wg0 = {
-  #       configFile = "${inputs.wg-config.outPath}/client_00024.conf";
-  #       autostart = true;
-  #     };
-  #   };
-  # };
-
   # Configure network proxy if necessary
   # networking.proxy.default = "http://127.0.0.1:7890";
   # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";

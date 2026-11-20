@@ -51,11 +51,6 @@
             derpport: 8443
             stunport: 3478
   '';
-  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
-    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
-    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
-    address = "10.0.0.5/24";
-  };
 in {
   imports = [
     ../../system/modules/airport
@@ -73,7 +68,6 @@ in {
     #   Alertmanager  http://h610.inner.imdomestic.com:9093
     #   Grafana       http://h610.inner.imdomestic.com:3000
     ../../system/modules/monitoring
-    # ../../system/modules/minecraft/wuxi.nix
   ];
 
   # Docker 的默认 bridge 和 Compose bridge 是转发流量的入口(Max 和它的
@@ -87,9 +81,6 @@ in {
   my.dae.bootstrapDomains = ["controlplane.tailscale.com" "api.cloudflare.com"];
   # 崩溃恢复(disable_waiting_network + Restart=on-failure)已经是 dae 模块的默认,
   # 不再每台单写。见 docs/incidents.md#h610-dae-crash-recovery。
-
-  sops.secrets."wireguard/private_key".owner = "systemd-network";
-  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
   # cliproxy 2026-10-14 搬到了 tank,11-02 又搬到 gizmo(见 gizmo/system.nix)。
   # 这里只剩一个 TCP 转发,让手机、别人的机器这类不归本仓库管、还写着 h610:8317
@@ -375,10 +366,6 @@ in {
         Name = "br-lan";
       };
     };
-
-    # wireguard
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
 
     # LAN
     networks."20-lan-uplink" = {

@@ -2,8 +2,8 @@
 #
 # 大厅是常驻的 StatefulSet，世界存在 PVC 里，作为静态后端写在 velocity.toml。小游戏房间
 # 是 Agones Fleet，由 minecraft/agones-{paper,fabric} 上报状态，Velocity 上的
-# minecraft/velocity-router 按 GameServer 动态注册。旧服的定义见
-# system/modules/minecraft/wuxi.nix，存档在 tank 的 /data/srv/minecraft。
+# minecraft/velocity-router 按 GameServer 动态注册。旧服（wuxi）的模块已删
+# （docs/decisions.md#no-wireguard），存档在 tank 的 /data/srv/minecraft。
 {lib, ...}: let
   tag = import ../../../minecraft/image-tag.nix;
 

@@ -8,8 +8,9 @@
 # 策略在 hosts/h610/system.nix 的 headscale policy 里(`ssh` 段),规则是
 # `group:imdomestic → autogroup:member`,users 含 root。
 #
-# **退路是 wireguard:** 来自 10.0.0.x 的连接仍然走 sshd + publickey,不受
-# tailscale SSH 影响。2026-08-08 在 r6s 上的完整实测(零密钥能登、带密钥其实
+# **退路是非 tailnet 地址:** 从局域网地址过来的连接仍然走 sshd + publickey,
+# 不受 tailscale SSH 影响(原来的 WireGuard 网已删,docs/decisions.md#no-wireguard)。
+# 2026-08-08 在 r6s 上的完整实测(零密钥能登、带密钥其实
 # 没被用到、审计日志长什么样)见 docs/incidents.md#tailscale-ssh-r6s-probe。
 {
   config,
@@ -94,7 +95,7 @@ in {
         PermitRootLogin = yes,这四个人早就能 root 登任何一台。变的是机制
         (免密钥)和可审计性(记得下是谁),不是谁能进。
 
-        退路:wireguard 的 10.0.0.x 走的是 sshd,不受这个开关影响。
+        退路:局域网地址走的是 sshd,不受这个开关影响。
         应急关掉不用 rebuild —— `tailscale set --ssh=false`。
       '';
     };

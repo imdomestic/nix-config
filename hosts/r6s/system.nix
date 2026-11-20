@@ -4,13 +4,7 @@
   lib,
   pkgs,
   ...
-}: let
-  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
-    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
-    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
-    address = "10.0.0.4/24";
-  };
-in {
+}: {
   imports = [
     ./hardware-configuration.nix
     # dae -> mihomo。三者不能并存:都要接管转发流量,dae 走 eBPF/tc,
@@ -41,9 +35,6 @@ in {
   # 电信 PPPoE 给的是 CGNAT 地址(100.84.115.12),和 tailscale 认领的
   # 100.64.0.0/10 撞在一起。但注意 false 本身也有问题(TCP 不进 tun),
   # 两个坑都记在 docs/proxy-todo.md 第 5 节。
-
-  sops.secrets."wireguard/private_key".owner = "systemd-network";
-  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -226,10 +217,6 @@ in {
         Name = "br-lan";
       };
     };
-
-    # wireguard
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
 
     # LAN1
     networks."20-lan1-uplink" = {

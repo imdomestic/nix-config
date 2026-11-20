@@ -4,13 +4,7 @@
   lib,
   pkgs,
   ...
-}: let
-  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
-    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
-    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
-    address = "10.0.0.6/24";
-  };
-in {
+}: {
   imports = [
     ./hardware-configuration.nix
     # ../../system/modules/mihomo
@@ -119,8 +113,6 @@ in {
         Name = "br-lan";
       };
     };
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
 
     networks."20-lan-uplink" = {
       matchConfig.Name = "end0";
@@ -195,8 +187,6 @@ in {
   # 同 r6s:这台也是 firewall.enable = false,原来那份 openFirewall = true
   # 是空操作,exporter 实际绑在 0.0.0.0。新模块绑 my.host.tsName(100.64.0.7)。
 
-  sops.secrets."wireguard/private_key".owner = "systemd-network";
-  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
   # 搬到悉尼之后关掉:这台现在蹲在公寓 hotspot 的 NAT 后面,WAN 拿到的是
   # 172.24/16,也没有全局 IPv6 —— 默认盯的 ppp0 根本不存在了,就算改成盯
   # enp1s0u2,把一个私有地址推到 rpi4.imdomestic.com 也没有意义。搬回去把这里

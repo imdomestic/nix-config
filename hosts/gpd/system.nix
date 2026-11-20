@@ -2,12 +2,7 @@
   pkgs,
   inputs,
   ...
-}: let
-  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
-    conf = "${inputs.wg-config.outPath}/client_00024.conf";
-    address = "10.0.0.25/24";
-  };
-in {
+}: {
   imports = [
     ./hardware-configuration.nix
     ./dosuspend.nix
@@ -37,8 +32,6 @@ in {
   systemd.network = {
     wait-online.enable = false;
     enable = true;
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
     networks."wlan" = {
       matchConfig.Name = "wlan0";
       networkConfig = {

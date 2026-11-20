@@ -22,7 +22,6 @@
         "tailscaled.service"
       ];
     };
-    ip = "10.0.0.5";
     sshUser = "root";
 
     modules = [

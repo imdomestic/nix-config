@@ -3,13 +3,7 @@
   pkgs,
   config,
   ...
-}: let
-  wg = import ../../lib/wgClient.nix {inherit pkgs;} {
-    privateKeyFile = config.sops.secrets."wireguard/private_key".path;
-    presharedKeyFile = config.sops.secrets."wireguard/preshared_key".path;
-    address = "10.0.0.9/24";
-  };
-in {
+}: {
   imports = [
     ../../system/modules/dae
     ../../system/modules/keyd
@@ -21,9 +15,6 @@ in {
   # ddns-go must reach Cloudflare's API even while the proxy is down.
   my.dae.bootstrapDomains = ["api.cloudflare.com"];
   my.tailscale.exitNode = true;
-
-  sops.secrets."wireguard/private_key".owner = "systemd-network";
-  sops.secrets."wireguard/preshared_key".owner = "systemd-network";
 
   fileSystems = {
     "/" = {
@@ -170,8 +161,6 @@ in {
   };
   systemd.network = {
     enable = true;
-    netdevs."40-wg0" = wg.netdev;
-    networks."40-wg0" = wg.network;
     links = {
       "10-wan0" = {
         matchConfig = {

@@ -70,7 +70,6 @@ others. The only home file every account loads is `flake/_lib/home-base.nix`.
     kind = "nixos";                 # nixos | darwin | home
     roles = ["server" "desktop" "gui"]; # the one knob for what the machine is
     tsName = "example.inner.imdomestic.com"; # opts into tailscale, deploy, telemetry
-    ip = "10.0.0.68";               # optional WireGuard address
     sshUser = "root";
     inChina = true;                 # SJTU mirror first; off by default
     ageKey = "age1…";               # the host's sops key (ssh host key via ssh-to-age)
