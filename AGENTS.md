@@ -347,7 +347,7 @@ just deploy / just deploy-host <host> # deploy-rs, see "Deploys"
 just deploy-system <host> / just deploy-home <host> <user>
 just deploy-built <host>  # a `buildOn` host's system, via its builder
 just sops-config          # regenerate .sops.yaml from flake/secrets.nix
-just check-sops / check-xray / check-singbox [host...]; just check-tunnels
+just check-sops / check-xray [host...]; just check-tunnels
 ```
 
 system-manager has no recipe: `sudo system-manager switch --flake .#<host>`.

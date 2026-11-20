@@ -7,14 +7,11 @@
 }: {
   imports = [
     ./hardware-configuration.nix
-    # dae -> mihomo。三者不能并存:都要接管转发流量,dae 走 eBPF/tc,
-    # mihomo 和 sing-box 走 nftables+tun。回滚就是把 dae 换回来再 switch,
+    # dae -> mihomo。两者不能并存:都要接管转发流量,dae 走 eBPF/tc,
+    # mihomo 走 nftables+tun。回滚就是把 dae 换回来再 switch,
     # 或者直接 nixos-rebuild --rollback。
     # ../../system/modules/dae
     ../../system/modules/mihomo
-    # sing-box 那次试点已回滚(2026-07-31 凌晨断网),两个坑都没解决,
-    # 见 docs/proxy-todo.md 第 5 节。
-    # ../../system/modules/singbox
     ../../system/modules/keyd
   ];
 
@@ -29,12 +26,6 @@
   # mihomo provides DNS during bootstrap, so its controller must not wait for MagicDNS.
   my.tailscale.guardedTCPServices.mihomo = [9090];
   my.tailscale.exitNode = true;
-
-  # 重新启用 modules/singbox 时,这台要一并加上
-  #   my.singbox.autoRedirect = false;
-  # 电信 PPPoE 给的是 CGNAT 地址(100.84.115.12),和 tailscale 认领的
-  # 100.64.0.0/10 撞在一起。但注意 false 本身也有问题(TCP 不进 tun),
-  # 两个坑都记在 docs/proxy-todo.md 第 5 节。
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

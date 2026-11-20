@@ -16,9 +16,9 @@
 with lib; let
   cfg = config.services.imsub;
 
-  # 节点凭据,和 modules/mihomo、modules/singbox 共用同一个 sops 文件
+  # 节点凭据,和 modules/mihomo 共用同一个 sops 文件
   # (按 .sops.yaml 的兜底规则加密给全部 admin + 全部 host)。名单本身在
-  # ../im-nodes.nix,三个模块共用一份;列表顺序就是客户端里的显示顺序。
+  # ../im-nodes.nix,两个模块共用一份;列表顺序就是客户端里的显示顺序。
   nodes = import ../im-nodes.nix;
   nodeFields = ["uuid" "public_key" "short_id"];
 
@@ -381,7 +381,7 @@ in {
     };
     users.groups.imsub = {};
 
-    # 各节点的凭据。mihomo / singbox 模块声明的是同名同文件的 secret,
+    # 各节点的凭据。mihomo 模块声明的是同名同文件的 secret,
     # 同一台机器上同时开也不冲突(定义相同,模块系统直接合并)。
     #
     # 这里不设 restartUnits:服务读的是下面渲染出来的成品,而且每次请求都重新

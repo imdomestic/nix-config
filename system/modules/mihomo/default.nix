@@ -6,8 +6,8 @@
 }: let
   cfg = config.my.mihomo;
 
-  # 节点凭据,和 modules/singbox、modules/imsub 用的是同一个 sops 文件
-  # (加密给全部 admin + 全部 host)。名单在 ../im-nodes.nix,三个模块共用一份。
+  # 节点凭据,和 modules/imsub 用的是同一个 sops 文件
+  # (加密给全部 admin + 全部 host)。名单在 ../im-nodes.nix,两个模块共用一份。
   nodes = import ../im-nodes.nix;
   nodeFields = ["uuid" "public_key" "short_id"];
   s = config.sops.placeholder;

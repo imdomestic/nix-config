@@ -1,4 +1,4 @@
-# 自用节点的唯一真相 —— modules/{imsub,mihomo,singbox} 三处共用这一份。
+# 自用节点的唯一真相 —— modules/{imsub,mihomo} 共用这一份。
 #
 # 以前这份名单在那三个模块里各抄了一遍。加一台机器要改三处,少改一处**不会
 # 报错**,只会静悄悄地少一个节点(r2s 上线时两处都漏过)。2026-09-01 加澳洲
@@ -6,8 +6,7 @@
 #
 # 四个字段各有各的理由,不能压成一个字符串:
 #
-#   name   客户端里看到的节点名后缀(imsub/mihomo 用 `imdomestic-<name>`,
-#          singbox 用 `im-<name>`)。
+#   name   客户端里看到的节点名后缀(`imdomestic-<name>`)。
 #   host   DNS 名。**au 节点和它对应的本土节点是同一台机器、同一个域名**,
 #          只有端口不同 —— 所以 host 推不出 name,反之亦然。
 #   port   54322 = client-in2,流量经反向隧道从 gizmo(日本)出去。

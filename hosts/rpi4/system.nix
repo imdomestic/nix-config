@@ -9,7 +9,6 @@
     ./hardware-configuration.nix
     # ../../system/modules/mihomo
     ../../system/modules/dae
-    # ../../system/modules/singbox
     # tuigreet 摘掉了。它是个图形登录管理器(services.greetd),而 NixOS 26.05 里
     # greetd 算 displayManager —— 一开就把 graphical-desktop.nix 整个拉进来。
     # 这才是这台上 nautilus 和 speech-dispatcher 的真正来源:

@@ -5,7 +5,6 @@
 }: {
   imports = [
     ../../system/modules/dae
-    # ../../system/modules/singbox
     ./hardware-configuration.nix
     ../../system/modules/vlmcsd
   ];
