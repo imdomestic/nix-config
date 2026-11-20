@@ -1,5 +1,6 @@
 {
   config,
+  pkgs,
   lib,
   ...
 }: {
@@ -18,4 +19,8 @@
         run rm -f -- "$legacyAerospaceAgent"
       fi
     '');
+
+  home.packages = [
+    pkgs.macmon
+  ];
 }
