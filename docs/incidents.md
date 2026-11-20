@@ -4,6 +4,39 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-20 · 本地 `nix flake check` 占满 CPU 和内存、跑不完：GC 在反复标记整支舰队 {#flake-check-gc-thrash}
+
+现象：praxic 上 `just check` 或任何一次求值全部主机的 `nix eval`，14 个核全满、
+内存涨到十几 GB，几十分钟不结束，Ctrl-C 也要等很久（实验里 SIGTERM 杀不掉，要 `-9`）。
+
+测量（praxic，Determinate Nix 3.24 / 2.35.3）：
+- 每个配置单独一个进程、单核求到 drvPath：20 台 NixOS 82 s / 分配 20.9 GB，
+  5 台 darwin 17 s / 4.2 GB，46 个 home 149 s / 38.6 GB，合计约 250 s CPU。
+  最重的是 tank（12.6 s、3.3 GB：nspawn 容器、microvm、maxx 和 qq-bot 各自带一份
+  llm-agents 和 nixpkgs 6dadaf4）、268v（7.3 s，内嵌一个 nixosSystem）和两台 Mac 上
+  hank 的 home（7.7 s、2.3 GB）。
+- 同样 71 个放进**一个进程**、单核：25 分钟没跑完，RSS 11.7 GB。逐项计时看到每项越来越慢
+  （marble 单独 2.3 s，排在第 9 个时 27 s）；`sample` 显示 ~98% 的活跃样本在
+  `GC_mark_from` / `GC_mark_some`，求值本身几乎为零。
+- `GC_INITIAL_HEAP_SIZE=12G`：前 20 台恢复到单独的速度，堆满（~13 GB）之后每项
+  25–230 s，RSS 停在 13–16 GB 不降——这些内存是活的。
+
+原因：一个进程里，求过的配置全都挂在 flake outputs 上，每台约 0.5 GB 一直可达；Boehm
+每次回收都要把整个活堆标记一遍，堆越大回收越贵，总时间随配置数超线性增长。Determinate 的
+`nix flake check` 正是这样跑的：它按 schema 把全部 nixosConfigurations、
+darwinConfigurations 和 92 个 homeConfigurations 名字（46 个不同的 home，跨平台）
+放在一个进程里求（未知输出 deploy、deployChecks、fleetTests、nixidyEnvs 不碰）；
+`eval-cores = 0` 再让多个配置的工作集同时在堆里，GC 的并行标记线程占满所有核。
+CI 用的是普通 Nix，`flake check` 不看 homeConfigurations，所以那边没这么重。
+
+**误导人的地方：** 看上去像某台主机卡住或 IFD 在等 Linux builder——都不是：tank、h610
+在 `allow-import-from-derivation = false` 下照样求值，单独跑每台都很快。也不是内存不够
+（36 GB 机器上 RSS 十几 GB 就已经慢到不可用）。加大堆只是把拐点往后推。
+
+结论：验证改动按目标分进程求值（每个进程自己的小堆，GC 便宜），不要在本机跑整舰队的
+`flake check`；顺带发现 `6203dacf` 起 hackintosh 的 home 求值失败（macmon 只有
+aarch64-darwin），CI 抓不到，Determinate 的 check 会停在那里。
+
 ## 2026-11-20 · nightly updater 连续三晚超时：steel 把 r6s 打到 OOM {#updater-steel-oom-r6s}
 
 11-18 起 tank 上的 flake-updater 每晚都是 `Nothing passed` + `Out of time`，
