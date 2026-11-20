@@ -334,7 +334,7 @@ misled you** — the wrong first guess is usually more valuable than the fix.
 ## Build, verify, push
 
 ```sh
-just check                # nix flake check (with mirror substituters)
+just eval [host...]       # evaluate systems and homes, one nix process each
 just fmt                  # format every .nix file (alejandra)
 just lint                 # alejandra --check + deadnix, as CI runs them
 just switch <host>        # nixos-rebuild switch   — system only, no homes
@@ -354,15 +354,23 @@ system-manager has no recipe: `sudo system-manager switch --flake .#<host>`.
 `just push` commits everything as "update" — don't use it; write a real
 commit message. Do not run `switch` on the user's behalf unless asked.
 
-Before claiming a change works, at minimum make sure evaluation passes
-(`just check`, or an `nix eval` / `--dry-run` of the affected configuration).
+Before claiming a change works, at minimum make sure evaluation passes:
+`just eval <host>...` for the hosts it touches, `just eval` for all of them,
+or an `nix eval` / `--dry-run` of the affected configuration. **Never evaluate
+the whole fleet in one process** — no local `nix flake check`, no single
+`nix eval` mapping over every configuration. Every configuration already
+evaluated stays reachable and the GC re-marks all of it each cycle, so the
+fleet that takes about four minutes of CPU in separate processes runs past
+25 minutes on every core and ~15 GB
+(`docs/incidents.md#flake-check-gc-thrash`). `just eval` runs one process per
+target, four at a time (`EVAL_JOBS`), and prints the failing ones' errors.
 Before pushing, `just lint`: CI fails on an unformatted file or on code
 deadnix finds unused. An argument that has to stay unused is named `_name`.
 A change meant to be behaviour-neutral (a move, a refactor) is proven by
 comparing the drvPath of every output against the previous commit
 (`nix eval --raw "git+file://$PWD?rev=<old>#<attr>.drvPath"` vs the working
-tree). tank's toplevel and `nixidyEnvs.x86_64-linux` do import-from-derivation,
-so on a Mac they need an x86_64-linux machine to build that part.
+tree). `nixidyEnvs.x86_64-linux` does import-from-derivation, so on a Mac it
+needs an x86_64-linux machine to build that part.
 
 ### Before any rebuild: freshness check
 

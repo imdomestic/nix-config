@@ -39,8 +39,12 @@ hm-dry host user:
   home-manager switch -b backup --flake .#"hosts/{{host}}/{{user}}" --dry-run
 
 # -------- Flake & tooling --------
-check:
-  nix flake check --option substituters '{{substituters}}'
+# Evaluate every system and home (or only those of the given hosts), one nix
+# process per target. Not `nix flake check`: in one process the GC makes the
+# whole fleet take 25+ minutes on all cores (docs/incidents.md#flake-check-gc-thrash).
+# usage: just eval [host...]      EVAL_JOBS=N for more or fewer at a time (default 4)
+eval *hosts:
+  EVAL_SUBSTITUTERS='{{substituters}}' ./scripts/eval.sh {{hosts}}
 
 # Format every .nix file with the flake's alejandra.
 fmt:
@@ -51,9 +55,6 @@ fmt:
 lint:
   nix fmt -- --check .
   nix run --inputs-from . nixpkgs#deadnix -- -L --fail .
-
-check-trace:
-  nix --show-trace flake check --option substituters '{{substituters}}'
 
 # Verify every sops.secrets key a host declares actually exists in its
 # secrets/hosts/<host>.yaml. Without this, a mismatch only surfaces during
