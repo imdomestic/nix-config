@@ -27,13 +27,6 @@
     redmi-note-12-turbo = "100.64.0.38";
   };
   matrixUpstream = "http://matrix-tailnet";
-  gaojiBotHost =
-    if config.services.gaoji.runBot
-    then "172.17.0.1"
-    else "100.64.0.4";
-  qqBotModelProfiles = builtins.toJSON (import ../../lib/gaoji-model-profiles.nix {
-    placement = config.my.fleet.placements.cliproxy;
-  });
   # Headscale decodes regions as map[int]*DERPRegion. Nix attrset keys are
   # strings, and pkgs.formats.yaml therefore quotes 611, which yaml.v3 rejects.
   headscaleDerpMap = pkgs.writeText "headscale-derp-map.yaml" ''
@@ -81,34 +74,6 @@ in {
   my.dae.bootstrapDomains = ["controlplane.tailscale.com" "api.cloudflare.com"];
   # 崩溃恢复(disable_waiting_network + Restart=on-failure)已经是 dae 模块的默认,
   # 不再每台单写。见 docs/incidents.md#h610-dae-crash-recovery。
-
-  # cliproxy 2026-10-14 搬到了 tank,11-02 又搬到 gizmo(见 gizmo/system.nix)。
-  # 这里只剩一个 TCP 转发,让手机、别人的机器这类不归本仓库管、还写着 h610:8317
-  # 的客户端照旧能用。tank 的日志里最后一次见到 100.64.0.3 是 10-23;等 gizmo 上
-  # cliproxy 的日志里也一直没有它,这段就可以删。
-  #
-  # 写死 100.64.0.3 加 FreeBind:socket 开机就要 bind,那时 tailscale 地址可能
-  # 还不存在。不监听通配地址,公网上不该有这个端口(理由同 modules/cliproxy 的
-  # bindAddress)。
-  systemd.sockets.cliproxy-forward = {
-    wantedBy = ["sockets.target"];
-    listenStreams = ["100.64.0.3:8317"];
-    socketConfig.FreeBind = true;
-  };
-  systemd.services.cliproxy-forward = {
-    description = "Forward the old h610 cliproxy port to gizmo";
-    serviceConfig = {
-      # gizmo 的 tailnet 地址。cliproxy 只听 IPv4,写名字的话解析出 IPv6 就连不上。
-      ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 100.64.0.16:8317";
-      DynamicUser = true;
-      NoNewPrivileges = true;
-      ProtectSystem = "strict";
-      ProtectHome = true;
-    };
-  };
-  # gaoji 的环境文件(qq-deepseek-bot-postgres.env)还要这把调用密钥,原先由
-  # cliproxy 模块声明。
-  sops.secrets."cliproxy/api_key".sopsFile = ../../secrets/clients/cliproxy.yaml;
 
   # 重新启用 modules/mihomo 时这几行就位,现在 import 注释掉了所以是死设置
   # (选项由该模块定义,模块不 import 时这些赋值会导致求值失败,所以一并注释)。
@@ -205,7 +170,7 @@ in {
     enableUserSlices = true;
 
     # **故意不开 enableSystemSlice。** 这台的 system.slice 里是 headscale、
-    # max、napcat、cliproxy、nginx、docker —— 让 oomd 在整个 system.slice 上
+    # napcat、nginx、docker —— 让 oomd 在整个 system.slice 上
     # 按压力挑一个杀,挑中的很可能是 matrix 转发或者 bot,那是拿服务中断换
     # 内存。nix 构建的内存单独在下面用 MemoryHigh 限,比无差别杀精确得多。
     #
@@ -288,9 +253,9 @@ in {
       # 也在 dae 的 lanInterfaces 里。
       trustedInterfaces = ["br-lan" "docker0"];
       interfaces."ppp0".allowedUDPPorts = [546];
-      # nginx(*.inner 的 vhost)、headplane、本地模型 API,只给 tailnet。
-      interfaces.tailscale0.allowedTCPPorts = [80 443 3001 11434 11435];
-      # 公网:headscale / h610.imdomestic.com / max webhook(8443)、matrix 和
+      # headplane、本地模型 API,只给 tailnet。
+      interfaces.tailscale0.allowedTCPPorts = [3001 11434 11435];
+      # 公网:headscale / h610.imdomestic.com(8443)、matrix 和
       # livekit 的反代(8448)、livekit RTC(7881)、coturn、xray 入站。
       allowedTCPPorts = [8443 8448 7881 3478 3480 5349 5351 1444 1445 54322 54323 54324];
       # coturn,以及 headscale 内置 DERP 的 STUN(3479)。
@@ -308,12 +273,10 @@ in {
         }
       ];
       checkReversePath = false;
-      # docker compose 的网桥(br-<id>)、nspawn 容器、max 的沙箱和 operations 口。
+      # docker compose 的网桥(br-<id>)、nspawn 容器。
       extraInputRules = ''
         iifname "br-*" accept
         iifname "ve-*" accept
-        iifname "max-sb-*" accept
-        iifname "max-ops-host" accept
       '';
     };
   };
@@ -481,21 +444,6 @@ in {
     ];
   };
 
-  security.acme.certs."max.imdomestic.com" = {
-    dnsProvider = "cloudflare";
-    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
-    group = "nginx";
-  };
-
-  security.acme.certs."gaoji.inner.imdomestic.com" = {
-    dnsProvider = "cloudflare";
-    # Tailnet DNS does not answer SOA; see docs/incidents.md#gaoji-acme-inner-soa.
-    dnsResolver = "1.1.1.1:53";
-    environmentFile = config.sops.secrets."acme/cloudflare_env".path;
-    group = "nginx";
-    extraDomainNames = ["kennethbot.inner.imdomestic.com"];
-  };
-
   my.ddns = {
     enable = true;
     zones = [
@@ -504,7 +452,7 @@ in {
         ipv4 = {
           enable = true;
           interface = "ppp0";
-          domains = ["h610:imdomestic.com" "tailscale:imdomestic.com" "matrix:imdomestic.com" "rtc:imdomestic.com" "max:imdomestic.com"];
+          domains = ["h610:imdomestic.com" "tailscale:imdomestic.com" "matrix:imdomestic.com" "rtc:imdomestic.com"];
         };
         ipv6.domains = ["h610:imdomestic.com" "matrix:imdomestic.com" "rtc:imdomestic.com"];
       }
@@ -761,44 +709,6 @@ in {
   # don't load from here. Pin domestic resolvers for containers instead.
   virtualisation.docker.daemon.settings.dns = ["223.5.5.5" "119.29.29.29"];
 
-  sops.secrets."gaoji/authorization_key" = {
-    sopsFile = ../../secrets/gaoji/account-auth.yaml;
-    key = "authorization_key";
-    mode = "0400";
-    restartUnits = lib.optional config.services.gaoji.runBot "gaoji.service";
-  };
-
-  services.gaoji = {
-    enable = true;
-    runBot = false;
-    # Keep existing data during the service rename; see docs/decisions.md#gaoji-rename.
-    stateDirectory = "qq-deepseek-bot";
-    cacheDirectory = "qq-deepseek-bot";
-    environmentFile = "/home/kenneth/services/chat-bot/.env";
-    user = "kenneth";
-    group = "users";
-    host = "172.17.0.1";
-    port = 18080;
-    admin = {
-      secretFile = config.sops.secrets."gaoji/authorization_key".path;
-      origin = "https://gaoji.inner.imdomestic.com";
-    };
-    environment = {
-      FORWARDED_ALLOW_IPS = "127.0.0.1";
-      AI_OBSERVABILITY_ENABLED = "true";
-      AI_METRICS_PATH = "/metrics";
-      AI_SEMANTIC_ENABLED = "true";
-      AI_EMBEDDING_BASE_URL = "http://${config.my.host.tsName}:11434/v1";
-      AI_EMBEDDING_API_KEY = "ollama-local";
-      AI_EMBEDDING_MODEL = "bge-m3";
-      AI_EMBEDDING_DIMENSIONS = "1024";
-      AI_EMBEDDING_TIMEOUT_SECONDS = "60";
-      OTEL_SERVICE_NAME = "gaoji";
-    };
-    runtimePackages = [pkgs.ffmpeg-headless];
-    sandbox.enable = false;
-  };
-
   my.monitoring.extraScrapeConfigs = [
     {
       job_name = "gaoji";
@@ -806,11 +716,8 @@ in {
       scrape_interval = "15s";
       static_configs = [
         {
-          targets = ["${gaojiBotHost}:18080"];
-          labels.instance =
-            if config.services.gaoji.runBot
-            then "h610"
-            else "tank";
+          targets = ["100.64.0.4:18080"];
+          labels.instance = "tank";
         }
       ];
     }
@@ -898,90 +805,6 @@ in {
       onCalendar = "*-*-* 03:20:00";
       restoreCheck.onCalendar = "Sun *-*-* 04:20:00";
     };
-  };
-
-  sops.templates."qq-deepseek-bot-postgres.env" = {
-    owner = "kenneth";
-    group = "users";
-    mode = "0400";
-    restartUnits = lib.optionals config.services.gaoji.runBot [
-      "gaoji.service"
-    ];
-    content = ''
-      AI_POSTGRES_DSN=postgresql://qq_bot:${config.sops.placeholder."qq_bot/postgres_password"}@tank.inner.imdomestic.com:55432/qq_bot?target_session_attrs=read-write&connect_timeout=3&sslmode=require
-      AI_POSTGRES_SCHEMA=qq_bot
-      AI_POSTGRES_POOL_MIN_SIZE=1
-      AI_POSTGRES_POOL_MAX_SIZE=10
-      AI_POSTGRES_POOL_TIMEOUT_SECONDS=10
-      AI_POSTGRES_HEALTH_CHECK_INTERVAL_SECONDS=5
-      AI_POSTGRES_NODE_NAMES=tank
-      AI_DISABLED_GROUPS=
-      AI_ADMIN_ENABLED=true
-      AI_ADMIN_USER_IDS=3526452465
-      AI_SANDBOX_ENABLED=true
-      AI_SANDBOX_ALLOWED_USERS=
-      AI_SANDBOX_MAX_PER_USER=2
-      AI_SANDBOX_MAX_TOTAL=8
-      AI_SANDBOX_TIMEOUT_SECONDS=120
-      AI_SANDBOX_MAX_FILE_MB=0
-      AI_MEDIA_ENABLED=true
-      AI_MEDIA_ROOT=/var/lib/qq-deepseek-bot/media
-      AI_VISION_PROFILE=gpt-5.6-luna
-      AI_VISION_AUTO_DESCRIBE=false
-      AI_MEDIA_MAX_SOURCE_MB=100
-      AI_VISION_MAX_IMAGE_MB=20
-      AI_MEDIA_PREPARE_THRESHOLD_MB=1
-      AI_MEDIA_MAX_EDGE_PX=1568
-      AI_VISION_TIMEOUT_SECONDS=180
-      AI_MEDIA_MAX_ATTEMPTS=5
-      AI_MEDIA_LEASE_SECONDS=600
-      AI_MEDIA_BATCH_SIZE=4
-      AI_MEDIA_WORKER_CONCURRENCY=2
-      AI_ARCHIVE_ENABLED=true
-      AI_ARCHIVE_ROOT=/mnt/kennethbot-archive
-      AI_ARCHIVE_MEDIA_RETENTION_DAYS=30
-      AI_ARCHIVE_DELIVERY_RETENTION_DAYS=7
-      AI_ARCHIVE_DELIVERY_MIN_MB=1
-      AI_ARCHIVE_INTERVAL_SECONDS=60
-      AI_ARCHIVE_BATCH_SIZE=20
-      CLIPROXY_API_KEY=${config.sops.placeholder."cliproxy/api_key"}
-      AI_MODEL_DEFAULT_PROFILE=gpt-6.1-sol
-      AI_SIMPLE_CHAT_PROFILE=gpt-6-luna
-      AI_MODEL_PROFILES_JSON='${qqBotModelProfiles}'
-      AI_GROUP_MODEL_PROFILES_JSON='{"201644592":"gpt-5.6-sol"}'
-    '';
-  };
-  systemd.services.gaoji = lib.mkIf config.services.gaoji.runBot {
-    serviceConfig.EnvironmentFile = lib.mkAfter [
-      config.sops.templates."qq-deepseek-bot-postgres.env".path
-    ];
-    serviceConfig.ReadWritePaths = ["/mnt/kennethbot-archive"];
-    after = lib.mkAfter [
-      "tailscaled.service"
-      "ollama.service"
-      "qq-bot-postgres-bootstrap.service"
-    ];
-    wants = lib.mkAfter [
-      "tailscaled.service"
-      "ollama.service"
-      "qq-bot-postgres-node.service"
-    ];
-  };
-
-  fileSystems."/mnt/kennethbot-archive" = {
-    device = "tank.inner.imdomestic.com:/data/services/kennethbot-archive";
-    fsType = "nfs";
-    options = [
-      "nfsvers=4.2"
-      "_netdev"
-      "nofail"
-      "noauto"
-      "x-systemd.automount"
-      "x-systemd.idle-timeout=300"
-      "soft"
-      "timeo=50"
-      "retrans=2"
-    ];
   };
 
   environment = {
@@ -1174,16 +997,8 @@ in {
     owner = "headscale";
     restartUnits = ["headplane.service"];
   };
-  # agent 的 pre-auth key。reusable,2036 年过期(`headscale preauthkeys
-  # create --user 1 --reusable -e 87600h`,user 1 = hank@imdomestic.com)。
-  # **不能带 --tags**:打了 tag 的节点不再属于 group:imdomestic,上面 ACL
-  # 那条 dst 就匹配不到它。
-  sops.secrets."headplane/agent_preauthkey" = {
-    owner = "headscale";
-    restartUnits = ["headplane.service"];
-  };
-  # headplane 0.7 takes a headscale API key instead (`headscale apikeys create
-  # -e 87600h`, 2036) and makes the agent a tag:headplane-agent node itself.
+  # The agent authenticates with a headscale API key (`headscale apikeys create
+  # -e 87600h`, 2036) and joins as a tag:headplane-agent node itself.
   sops.secrets."headplane/headscale_api_key" = {
     owner = "headscale";
     restartUnits = ["headplane.service"];
@@ -1203,17 +1018,8 @@ in {
       # headscale.url / public_url / config_path 三个默认值都是从
       # services.headscale 推出来的(127.0.0.1:8080、server_url、configFile),
       # 照抄一遍只会多一处漂移点,所以不写。
-      # Both shapes until main's nixpkgs has headplane 0.7 (nixos-26.05 moved
-      # to it in 2026-11); then keep only the api_key_path one. Not mkIf: a
-      # definition inside a false mkIf still needs the option to exist.
-      integration.agent =
-        {enabled = true;}
-        // lib.optionalAttrs (lib.versionOlder pkgs.headplane.version "0.7") {
-          pre_authkey_path = config.sops.secrets."headplane/agent_preauthkey".path;
-        };
-      headscale = lib.optionalAttrs (lib.versionAtLeast pkgs.headplane.version "0.7") {
-        api_key_path = config.sops.secrets."headplane/headscale_api_key".path;
-      };
+      integration.agent.enabled = true;
+      headscale.api_key_path = config.sops.secrets."headplane/headscale_api_key".path;
     };
   };
 
@@ -1279,10 +1085,6 @@ in {
       limit_req_zone $binary_remote_addr zone=airportsub:1m rate=10r/m;
       # 自用订阅同理。只有我自己在拉,10r/m 绰绰有余。
       limit_req_zone $binary_remote_addr zone=imsub:1m rate=10r/m;
-      # max 管理面板的唯一凭据是一个 bearer token,而它挂在公网上,
-      # 所以给 /api/ 一个桶:正常用起来一次翻页也就几个请求,
-      # 但撞 token 需要的量级远在这之上。
-      limit_req_zone $binary_remote_addr zone=maxapi:1m rate=60r/m;
     '';
   };
 
@@ -1299,51 +1101,6 @@ in {
   # 必须 mkForce:上游那 60 是普通定义,不覆盖就是定义冲突而不是取较小值。
   # 0 = 取消时间窗,不再有"失败太快"的判定,按 RestartSec 一直重试下去。
   systemd.services.nginx.startLimitIntervalSec = lib.mkForce 0;
-
-  # Private web ports are interface-filtered; see ./tailscale-names.nix.
-  services.nginx.virtualHosts."gaoji.inner.imdomestic.com" = {
-    serverName = "gaoji.inner.imdomestic.com";
-    useACMEHost = "gaoji.inner.imdomestic.com";
-    forceSSL = true;
-    listen = [
-      {
-        addr = "0.0.0.0";
-        port = 80;
-      }
-      {
-        addr = "0.0.0.0";
-        port = 443;
-        ssl = true;
-      }
-    ];
-    locations."/" = {
-      proxyPass = "http://${gaojiBotHost}:18080";
-      proxyWebsockets = true;
-      extraConfig = ''
-        ${lib.optionalString config.services.gaoji.runBot "proxy_bind 127.0.0.1;"}
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-      '';
-    };
-  };
-
-  services.nginx.virtualHosts."kennethbot.inner.imdomestic.com" = {
-    useACMEHost = "gaoji.inner.imdomestic.com";
-    listen = [
-      {
-        addr = "0.0.0.0";
-        port = 80;
-      }
-      {
-        addr = "0.0.0.0";
-        port = 443;
-        ssl = true;
-      }
-    ];
-    locations."/".return = "308 https://gaoji.inner.imdomestic.com$request_uri";
-  };
 
   # 订阅端点。和 headscale 共用 8443,靠 SNI 分流。
   services.nginx.virtualHosts."h610.imdomestic.com" = {
@@ -1383,65 +1140,6 @@ in {
     };
     locations."/" = {
       extraConfig = "return 404;";
-    };
-  };
-
-  # max 管理面板。和别的一样挂 8443(电信封了 443),SNI 分流。
-  #
-  # 静态资源(HTML/JS/CSS)是不需要 token 的:<script> 标签带不了
-  # Authorization 头。它们不含任何数据,所有状态都要过 /api/,而
-  # /api/ 每一条都验 token。
-  # Max runs on tank since 2026-09-27; its admin listener binds only tank's
-  # tailnet address. The router still forwards :8443 here, so this vhost keeps
-  # terminating TLS and proxies across the tailnet. An address, not a name:
-  # nginx resolves names once at start and would fail without MagicDNS.
-  services.nginx.virtualHosts."max.imdomestic.com" = let
-    maxBackend = "100.64.0.4:7700";
-  in {
-    serverName = "max.imdomestic.com";
-    useACMEHost = "max.imdomestic.com";
-    forceSSL = true;
-    http2 = true;
-    listen = [
-      {
-        addr = "0.0.0.0";
-        port = 8443;
-        ssl = true;
-      }
-      {
-        addr = "[::]";
-        port = 8443;
-        ssl = true;
-      }
-    ];
-    locations."/" = {
-      proxyPass = "http://${maxBackend}";
-      extraConfig = ''
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-      '';
-    };
-    locations."/hooks/" = {
-      proxyPass = "http://${maxBackend}";
-      extraConfig = ''
-        client_max_body_size 64k;
-        limit_req zone=maxapi burst=20 nodelay;
-        limit_req_status 429;
-      '';
-    };
-    # 数据面单独限速。burst 给到 20 是因为切一次标签页会并发拉
-    # overview + 列表 + 两张图,一次操作打出小几个请求很正常。
-    locations."/api/" = {
-      proxyPass = "http://${maxBackend}";
-      extraConfig = ''
-        limit_req zone=maxapi burst=20 nodelay;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-      '';
     };
   };
 

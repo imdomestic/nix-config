@@ -1,4 +1,4 @@
-{inputs, ...}: {
+_: {
   hosts.h610 = {
     system = "x86_64-linux";
     kind = "nixos";
@@ -13,7 +13,6 @@
       manageableUnits = [
         "docker-qwen35-sycl.service"
         "qwen35-sycl-warmup.service"
-        "gaoji.service"
         "qq-bot-postgres-node.service"
         "docker-napcat.service"
         "nginx.service"
@@ -27,10 +26,6 @@
     modules = [
       ./tailscale-names.nix
       ./qwen35-sycl.nix
-    ];
-
-    externalModules = [
-      inputs.qq-bot.nixosModules.gaoji
     ];
 
     users = {

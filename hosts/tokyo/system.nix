@@ -215,7 +215,7 @@ in {
     enable = true;
   };
 
-  # 平时把看板压在 tank 上:h610 已经背着 headscale、max、napcat、cliproxy、
+  # 平时把看板压在 tank 上:h610 已经背着 headscale、napcat、
   # nginx、docker,而 tank 是那台有存储、有 20 线程的机器。tank 不在了就自动
   # 换 h610 —— 这正是 2026-08-10 停电那天需要的。
   # 不写这行的话主后端会退回字母序第一台(h610),那是个没有含义的选择。

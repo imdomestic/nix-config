@@ -46,17 +46,17 @@
     [
       (rule "secrets/hosts/encore-vex-github-(private-key|client-secret)$" (readersOf "encore"))
       (rule "secrets/hosts/encore-acme\\.env$" (readersOf "encore"))
-      (rule "secrets/hosts/h610-(max|ops)\\.yaml$" (readersOf "h610"))
       (rule "secrets/hosts/tank-max\\.yaml$" (readersOf "tank"))
       # Tokyo's linwhite home also uses the Bonsai gateway.
       (rule "secrets/clients/bonsai\\.yaml$" (readersOf config.placements.bonsai-ninfer.host ++ [(on "linwhite" "tokyo")]))
       # Hank, linwhite and Max's Gemini gateway key; never distribute Google OAuth state.
       (rule "secrets/clients/agy-proxy\\.yaml$" (keysOf "hank" ++ keysOf "linwhite" ++ map host [config.placements.agy-proxy.host "tank"]))
-      # 系统客户端还有 h610 的 gaoji 与 SillyTavern；浏览器拿不到原始 key。
-      (rule "secrets/clients/cliproxy\\.yaml$" (everyone ++ map host (lib.unique ["h610" config.placements.cliproxy.host config.placements.sillytavern.host])))
+      # 系统客户端还有 SillyTavern；浏览器拿不到原始 key。
+      (rule "secrets/clients/cliproxy\\.yaml$" (everyone ++ map host (lib.unique [config.placements.cliproxy.host config.placements.sillytavern.host])))
       # tank 集群的 cluster-admin token,只给 hank 自己的机器(home/hank/modules/kube)。
       (rule "secrets/clients/kube-tank\\.yaml$" (keysOf "hank"))
-      (rule "secrets/gaoji/account-auth\\.yaml$" (admins ++ [(host "h610")]))
+      # gaoji 的管理密钥。tank 上的 bot 读 kenneth 手放的文件,这里只是 admin 的留档。
+      (rule "secrets/gaoji/account-auth\\.yaml$" admins)
     ]
     ++ map (n: rule "secrets/hosts/${lib.escapeRegex n}\\.yaml$" (readersOf n)) keyed
     ++ [
