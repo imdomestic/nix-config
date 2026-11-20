@@ -26,9 +26,10 @@
   networking.hostName = lib.mkDefault config.my.host.name;
 
   boot.loader = {
-    systemd-boot.configurationLimit = lib.mkIf config.boot.loader.systemd-boot.enable 10;
-    grub.configurationLimit = lib.mkIf config.boot.loader.grub.enable 10;
-    generic-extlinux-compatible.configurationLimit = lib.mkIf config.boot.loader.generic-extlinux-compatible.enable 10;
+    # mkDefault: a host with a small ESP (r6s) sets its own.
+    systemd-boot.configurationLimit = lib.mkIf config.boot.loader.systemd-boot.enable (lib.mkDefault 10);
+    grub.configurationLimit = lib.mkIf config.boot.loader.grub.enable (lib.mkDefault 10);
+    generic-extlinux-compatible.configurationLimit = lib.mkIf config.boot.loader.generic-extlinux-compatible.enable (lib.mkDefault 10);
   };
 
   # Per-host secrets live in secrets/hosts/<name>.yaml (encrypted to that
