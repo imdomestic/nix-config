@@ -149,16 +149,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    paneru = {
-      url = "github:karinushka/paneru";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    nix-minecraft = {
-      url = "github:Infinidoge/nix-minecraft";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     # 运营集群的 k8s 配置用 Nix 写，渲染成 YAML 交给 Argo CD，见 k8s/。
     nixidy = {
       url = "github:arnarg/nixidy/latest";

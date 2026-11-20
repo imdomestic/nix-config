@@ -1,11 +1,9 @@
 {
-  inputs,
   config,
   pkgs-unstable,
   ...
 }: {
   imports = [
-    inputs.paneru.darwinModules.paneru
     ../../system/modules/nerdfonts
   ];
   system.stateVersion = 5;

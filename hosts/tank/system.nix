@@ -440,20 +440,14 @@
   #   openFirewall = true;
   # };
 
-  # for cs2 dedicated server and cmi
+  # for the cs2 dedicated server
   services.mysql = {
     package = pkgs.mariadb;
     enable = true;
-    ensureDatabases = ["cs2" "minecraft"];
+    ensureDatabases = ["cs2"];
     ensureUsers = [
       {
         name = "cs2";
-        ensurePermissions = {
-          "*.*" = "ALL PRIVILEGES";
-        };
-      }
-      {
-        name = "mc_user";
         ensurePermissions = {
           "*.*" = "ALL PRIVILEGES";
         };
@@ -469,17 +463,13 @@
   services.postgresql = {
     enable = true;
     dataDir = "/data/lib/postgresql/${config.services.postgresql.package.psqlSchema}";
-    ensureDatabases = ["luckperms" "minecraft" "matrix-synapse"];
+    ensureDatabases = ["matrix-synapse"];
     # 旧 max(Haskell)的库 `max` 留着给 maxx 导入,它的表用了 vector 类型;
     # 导完之前别去掉。
     extensions = ps: [ps.pgvector];
     enableTCPIP = true;
     settings.password_encryption = "scram-sha-256";
     ensureUsers = [
-      {
-        name = "minecraft";
-        ensureDBOwnership = true;
-      }
       {
         name = "matrix-synapse";
         ensureDBOwnership = true;
@@ -488,13 +478,11 @@
     authentication = pkgs.lib.mkForce ''
       # TYPE  DATABASE        USER            ADDRESS                 METHOD
       local   all             all                                     trust
-      host    luckperms       minecraft       127.0.0.1/32            trust
-      host    luckperms       minecraft       10.42.0.0/24            md5
     '';
   };
 
   # Dedicated physical-replication node for the QQ bot. The existing 5432
-  # cluster remains independent for Matrix and Minecraft.
+  # cluster remains independent for Matrix.
   services.qq-bot-postgres-ha = {
     enable = true;
     failoverMode = "manual";

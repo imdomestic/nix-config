@@ -21,7 +21,6 @@
     ];
 
     externalModules = [
-      inputs.nix-minecraft.nixosModules.minecraft-servers
       inputs.disko.nixosModules.disko
     ];
 

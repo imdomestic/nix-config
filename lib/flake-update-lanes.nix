@@ -26,9 +26,7 @@
     "flake-parts"
     "import-tree"
     "nixidy"
-    "nix-minecraft"
     "NixVirt"
     "zjstatus"
-    "paneru"
   ];
 }

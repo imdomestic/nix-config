@@ -1,10 +1,5 @@
-{
-  inputs,
-  config,
-  ...
-}: {
+{config, ...}: {
   imports = [
-    inputs.paneru.darwinModules.paneru
     ../../system/modules/nerdfonts
   ];
   system.stateVersion = 5;

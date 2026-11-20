@@ -28,7 +28,6 @@
     externalModules = [
       inputs.maxx.nixosModules.maxx
       inputs.qq-bot.nixosModules.gaoji
-      inputs.nix-minecraft.nixosModules.minecraft-servers
       inputs.nix-index-database.nixosModules.default
     ];
 
