@@ -48,6 +48,7 @@ in {
     };
     sandbox = {
       enable = true;
+      workSnapshots.enable = true;
       backend = "container";
       vmRoot = "/data/services/gaoji/vms";
       # 自动运维 (2026-11-17): these conversations' containers reach the fleet with
@@ -154,6 +155,16 @@ in {
       ];
     }))
   ];
+
+  # Pin the root-owned backup directory so the service cannot rename it via its writable parent.
+  systemd.mounts = lib.optional (cfg.enable && cfg.sandbox.workSnapshots.enable) {
+    what = "/data/services/gaoji/backups";
+    where = "/data/services/gaoji/backups";
+    type = "none";
+    options = "bind";
+    requiredBy = ["gaoji.service" "gaoji-work-snapshot.service"];
+    before = ["gaoji.service" "gaoji-work-snapshot.service"];
+  };
 
   systemd.tmpfiles.rules = lib.optionals cfg.enable [
     "d /data/services/gaoji 0750 kenneth users -"
