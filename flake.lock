@@ -2323,16 +2323,16 @@
       "locked": {
         "lastModified": 1792670684,
         "narHash": "sha256-X1GQ9UMDuBzoBDfIHaxmnjWtziuNME/bMK4lSwXbvEU=",
-        "ref": "feat/vex-p2",
+        "ref": "dev",
         "rev": "ded89eda669b96f96869c88132e15857b6624641",
         "revCount": 37,
         "type": "git",
-        "url": "ssh://git@github.com/imdomestic/vex"
+        "url": "https://github.com/imdomestic/vex"
       },
       "original": {
-        "ref": "feat/vex-p2",
+        "ref": "dev",
         "type": "git",
-        "url": "ssh://git@github.com/imdomestic/vex"
+        "url": "https://github.com/imdomestic/vex"
       }
     },
     "wayland-scroll-factor": {

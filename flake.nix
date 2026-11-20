@@ -15,7 +15,7 @@
 
   inputs = {
     vex = {
-      url = "git+ssh://git@github.com/imdomestic/vex?ref=feat/vex-p2";
+      url = "git+https://github.com/imdomestic/vex?ref=dev";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
