@@ -11,6 +11,39 @@
 
 ---
 
+## 2026-11-20 · 一批兼容旧形态的写法删掉了 {#legacy-cleanup-2026-11}
+
+都是「迁移已经完成、留着只为过渡」的东西，逐项确认过没有使用者再删：
+
+- **h610 上的旧 Max 入口**：`max.imdomestic.com` 的 vhost、证书、DDNS 记录、
+  `maxapi` 限速桶，以及防火墙里 `max-sb-*` / `max-ops-host` 两条。后端
+  `100.64.0.4:7700` 早已没人监听。Cloudflare 上的 `max` A 记录要手动删。
+- **两条 8317 转发**（tank、h610 → gizmo 的 cliproxy）：删前两边都没有已建立的
+  连接。还写着旧地址的客户端改连 `gizmo.inner.imdomestic.com:8317`。
+- **h610 的 gaoji**：`runBot = false` 时模块什么都不跑，连同只给它用的
+  环境文件模板、`/mnt/kennethbot-archive`、`cliproxy/api_key`、
+  `gaoji.inner` 的旧 vhost 和证书（这个名字现在解析到 tank 上 gaoji-web 自己的
+  tailnet 节点）一起删了。`kennethbot.inner` 别名也删了；它的更新脚本找不到
+  gaoji 节点，一直在失败。headscale 的 extra record 只剩 `vex.inner`，写成静态的
+  `dns.extra_records`。
+- **headplane 0.7 之前的配置分支**和 `agent_preauthkey`：main 上已经是 0.7。
+- **singbox 模块**、`just check-singbox`：2026-07-31 试点回滚后没再用过
+  （`docs/proxy-todo.md` 第 5 节）。airport 生成给客户端的 sing-box 订阅不受影响。
+- **nix-minecraft**（input、overlay、三台的模块）：没有主机定义服务器。tank 上
+  wuxi 留下的 MariaDB `minecraft` 库、`mc_user`，Postgres 的 `luckperms` /
+  `minecraft` 库和角色不再声明；**数据还在**，确认不要后手动 `DROP`。
+- **paneru**：两台 Mac 导入了模块但从没启用。
+- **隧道短名 `sh`**：tokyo 的 portal、gizmo / rpi4 的 bridge、sops 键
+  （`xray/peers/sh`、`imdomestic/sh`）全部改叫 `tokyo`。portal 和 bridge 的域名
+  必须一致，所以 tokyo、gizmo、rpi4 要一起部署。
+- **vex 对 k3s 版本的精确断言**（`1.35.8+k3s1`）：它让 nightly updater 拒收
+  nixpkgs，而 k3s 小版本升级本身没有问题。
+- **CI 里 tank 的 cabal2nix 预热**：Haskell 版 Max 已经不在，tank 不再 IFD。
+- 其余：removeLegacyAerospace（三个账户）、没有导入的 `system/modules/{grub,vfio,man}`、
+  `hosts/gpd/backup-system.nix`、`hosts/tank/MIGRATION.md`。
+
+---
+
 ## 2026-11-20 · 不再有 WireGuard 网络和 wgconfigs {#no-wireguard}
 
 机器之间全部走 tailnet，以 tokyo 为中心的 WireGuard 网（`10.0.0.0/24`，wg0，
