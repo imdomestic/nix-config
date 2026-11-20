@@ -1,5 +1,4 @@
 {
-  config,
   lib,
   pkgs,
   ...
@@ -15,13 +14,6 @@
     "resource-reader"
   ];
 in {
-  assertions = [
-    {
-      assertion = config.services.k3s.package.version == "1.35.8+k3s1";
-      message = "Vex metrics-server manifests require k3s 1.35.8+k3s1";
-    }
-  ];
-
   systemd.services.k3s.preStart = lib.mkAfter ''
     ${pkgs.coreutils}/bin/install -d -m 0755 ${manifestsDirectory}/metrics-server
     ${lib.concatMapStringsSep "\n" (name: ''

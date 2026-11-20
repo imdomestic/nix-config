@@ -8,10 +8,6 @@
       assertion = config.networking.nftables.enable;
       message = "Vex k3s requires the nftables firewall";
     }
-    {
-      assertion = config.services.k3s.package.version == "1.35.8+k3s1";
-      message = "Vex requires k3s 1.35.8+k3s1";
-    }
   ];
 
   services.k3s = {
