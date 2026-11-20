@@ -113,7 +113,6 @@
       };
     };
 
-    # LAN2
     networks."20-lan2-uplink" = {
       matchConfig.Name = "enu1";
       networkConfig.Bridge = "br-lan";
@@ -148,11 +147,8 @@
     };
 
     networks."25-wan-ppp" = {
-      matchConfig.Name = "ppp0"; # 匹配 pppd 创建的接口
+      matchConfig.Name = "ppp0";
       networkConfig = {
-        # 在这里开启 NAT (IPMasquerade)
-        # IPMasquerade = "ipv4";
-
         # IPv6 配置 (PPPoE 也能获取 IPv6)
         IPv6AcceptRA = true;
         DHCP = "ipv6"; # 很多运营商通过 DHCPv6-PD 下发前缀
@@ -181,7 +177,7 @@
         DHCPPrefixDelegation = true;
       };
       linkConfig = {
-        RequiredForOnline = "no"; # carrier
+        RequiredForOnline = "no";
       };
 
       dhcpServerConfig = {
@@ -195,7 +191,7 @@
       ipv6SendRAConfig = {
         Managed = false; # no DHCPv6
         OtherInformation = false;
-        EmitDNS = true; # send DNS with RA
+        EmitDNS = true;
       };
     };
   };

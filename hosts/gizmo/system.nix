@@ -121,7 +121,6 @@ in {
     SystemMaxUse=100M
   '';
 
-  # 方案 3：实时流式推送日志到中央 tank 存储服务器(14T 大空间)
   services.journald.upload = {
     enable = true;
     settings.Upload = {
@@ -134,7 +133,7 @@ in {
     wants = ["tailscaled.service"];
   };
 
-  # 方案 2：启用 systemd-pstore 自动归档内核崩溃堆栈
+  # 启用 systemd-pstore 自动归档内核崩溃堆栈
   systemd.services.systemd-pstore.enable = true;
 
   # 抑制高频计时任务在 journal 中反复刷 session scope 启停审计
@@ -181,7 +180,7 @@ in {
     kernelParams = [
       "console=tty0"
       "earlycon=uart8250,mmio32,0xfe660000"
-      "pcie_aspm=off" # 关闭 PCIe 节能
+      "pcie_aspm=off"
       "panic=10" # Panic 时保留现场 10 秒供日志和网络处理，随后自动重启
     ];
     kernel.sysctl = {
@@ -192,7 +191,7 @@ in {
       "net.core.default_qdisc" = "fq";
       "net.ipv4.tcp_congestion_control" = "bbr";
 
-      # 增加 backlog 防止丢包 (从脚本移到这里)
+      # 增加 backlog 防止丢包
       "net.core.netdev_max_backlog" = 16384;
 
       # 增加 TCP 缓冲区大小 (针对千兆/2.5G网络)
@@ -222,9 +221,6 @@ in {
   services.desktopManager.gnome.enable = false;
 
   powerManagement.cpuFreqGovernor = "performance";
-
-  # 见 profiles/netdiag.nix。iproute2 / tailscale 是冗余声明,删了。
-  # wakeonlan 搬去了 home/hank —— 是人用的,机器自己不需要。
 
   security.sudo.wheelNeedsPassword = false;
   # Delta only: this option merges definitions, so root arrives from nixpkgs'
@@ -313,21 +309,18 @@ in {
       };
     };
 
-    # LAN1
     networks."20-lan1-uplink" = {
       matchConfig.Name = "enp1s0";
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # LAN2
     networks."20-lan2-uplink" = {
       matchConfig.Name = "enP1p17s0";
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # WAN
     networks."20-wan-uplink" = {
       matchConfig.Name = "wan0";
       networkConfig.Bridge = "br-lan";

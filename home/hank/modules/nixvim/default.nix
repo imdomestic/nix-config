@@ -7,7 +7,7 @@
   ...
 }: let
   mkRaw = inputs.nixvim.lib.nixvim.mkRaw;
-  # Dev machines (importing home/<user>/dev.nix) get the full setup;
+  # Dev machines (importing profiles/dev.nix) get the full setup;
   # everything gated on `dev` below stays out of the closure elsewhere.
   dev = config.my.nixvim.dev.enable;
   toLua = inputs.nixvim.lib.nixvim.toLuaObject;
@@ -1037,7 +1037,7 @@ in {
 
       treesitter-textobjects.lazyLoad.settings.event = "DeferredUIEnter";
 
-      # 前端(React + Tailwind)。LSP 在下面 plugins.lsp.servers 里统一声明,
+      # 前端(React + Tailwind)。LSP 在下面 lsp.servers 里统一声明,
       # 这里只管编辑体验,全部跟着 dev 走。
       ts-autotag = {
         enable = dev;

@@ -430,7 +430,7 @@ in {
 
   users.users.hank = {
     isNormalUser = true;
-    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
+    extraGroups = ["wheel"];
     packages = with pkgs; [
       tree
     ];

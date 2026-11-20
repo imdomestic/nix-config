@@ -14,7 +14,6 @@
     overlays = [
       inputs.nur.overlays.default
       inputs.nix-minecraft.overlay
-      # inputs.headplane.overlays.default
       (_final: prev: {
         # `prev.stdenv.hostPlatform.system`,不是 `prev.system`:后者是 nixpkgs
         # 的旧别名,26.05 起求值时会打
@@ -76,8 +75,6 @@
     ];
     channel.enable = false;
 
-    # 没有 buildMachines 了(见 flake/builders/deploy.nix 的 remoteBuild),留着它
-    # 是惰性的 —— 万一以后手动往 /etc/nix/machines 里加东西,不用再打开一次。
     distributedBuilds = true;
   };
 }

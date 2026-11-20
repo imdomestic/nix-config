@@ -1,6 +1,3 @@
-# Edit this configuration file to define what should be installed on
-# your system. Help is available in the configuration.nix(5) man page, on
-# https://search.nixos.org/options and in the NixOS manual (`nixos-help`).
 {
   inputs,
   pkgs,
@@ -67,7 +64,6 @@
     };
   };
 
-  # Set your time zone.
   time.timeZone = "Asia/Hong_Kong";
   services.xserver.enable = true;
   services.xserver.videoDrivers = ["nvidia"];
@@ -93,7 +89,7 @@
   i18n.inputMethod.ibus.engines = [pkgs.ibus-engines.libpinyin];
   users.users.hank = {
     isNormalUser = true;
-    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
+    extraGroups = ["wheel"];
     packages = with pkgs; [
       tree
     ];
@@ -109,9 +105,9 @@
     steam = {
       enable = true;
       gamescopeSession.enable = true;
-      remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
-      dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
-      localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
+      remotePlay.openFirewall = true;
+      dedicatedServer.openFirewall = true;
+      localNetworkGameTransfers.openFirewall = true;
     };
   };
 

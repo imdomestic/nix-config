@@ -25,10 +25,6 @@
     nameservers = ["1.1.1.1" "8.8.8.8"];
   };
 
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://127.0.0.1:7890";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
   systemd.network = {
     wait-online.enable = false;
     enable = true;
@@ -44,7 +40,7 @@
 
   users.users.linwhite = {
     isNormalUser = true;
-    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
+    extraGroups = ["wheel"];
     packages = with pkgs; [
       tree
     ];
@@ -86,14 +82,13 @@
 
   services.printing.enable = true;
 
-  # Enable sound.
   services.pipewire = {
     enable = true;
     pulse.enable = true;
   };
 
   # 这里只留机器自己需要的。GUI 应用、编译工具链、看 GPU 的那几个都搬去了
-  # home(./desktop-apps.nix、profiles/dev)—— 换一个浏览器不该需要 root + 整机重建。
+  # home(home/linwhite/gpd.nix、profiles/dev)—— 换一个浏览器不该需要 root + 整机重建。
   # vim 留着:系统坏掉时是以 root 身份进来修的,那时候 home 的 PATH 帮不上忙。
   environment.systemPackages = with pkgs; [
     vim
@@ -116,14 +111,14 @@
     steam = {
       enable = true;
       gamescopeSession.enable = true;
-      remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
-      dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
-      localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
+      remotePlay.openFirewall = true;
+      dedicatedServer.openFirewall = true;
+      localNetworkGameTransfers.openFirewall = true;
     };
     zsh.enable = true;
   };
 
   services.openssh.enable = true;
 
-  system.stateVersion = "26.05"; # Did you read the comment?
+  system.stateVersion = "26.05";
 }

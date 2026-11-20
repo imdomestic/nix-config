@@ -63,7 +63,7 @@
     kernelParams = [
       "console=tty0"
       "earlycon=uart8250,mmio32,0xfe660000"
-      "pcie_aspm=off" # 关闭 PCIe 节能
+      "pcie_aspm=off"
     ];
     kernel.sysctl = {
       "net.ipv4.ip_forward" = 1;
@@ -85,8 +85,6 @@
 
   my.ddns.enable = true;
 
-  # vim/tcpdump/ethtool/mtr 搬去了 profiles/netdiag.nix;iproute2 和 tailscale
-  # 删掉了 —— 前者 NixOS 本来就给,后者 services.tailscale 自己会装。
   environment.systemPackages = with pkgs; [
     ndppd
   ];
@@ -179,21 +177,18 @@
       };
     };
 
-    # LAN1
     networks."20-lan1-uplink" = {
       matchConfig.Name = "enp1s0";
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # LAN2
     networks."20-lan2-uplink" = {
       matchConfig.Name = "enP1p17s0";
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # WAN
     networks."20-wan-uplink" = {
       matchConfig.Name = "wan0";
       linkConfig.RequiredForOnline = "no";
@@ -234,7 +229,7 @@
         DHCPPrefixDelegation = true;
       };
       linkConfig = {
-        RequiredForOnline = "no"; # carrier
+        RequiredForOnline = "no";
       };
 
       dhcpServerConfig = {
@@ -248,7 +243,7 @@
       ipv6SendRAConfig = {
         Managed = false; # no DHCPv6
         OtherInformation = false;
-        EmitDNS = true; # send DNS with RA
+        EmitDNS = true;
       };
     };
   };
@@ -395,7 +390,7 @@
           }
         ];
 
-        # 四个入口一律丢进反向隧道,从 gizmo 的日本出口出去。
+        # 两个入口一律丢进反向隧道,从 gizmo 的日本出口出去。
         routing.rules = [
           {
             type = "field";

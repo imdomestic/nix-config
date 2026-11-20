@@ -37,7 +37,6 @@ in {
   # 回滚用户改动,而且它是"服务只绑 tailscale"这条规矩的唯一例外。
   # 完整理由和实测见 docs/decisions.md#drop-cockpit。
 
-  # hardware.pulseaudio.enable = lib.mkDefault false;
   services.pipewire.enable = lib.mkIf headless (lib.mkDefault false);
 
   # Servers often rely on predictable networking

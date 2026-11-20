@@ -4,8 +4,6 @@
   config,
   ...
 }: {
-  # Used for backwards compatibility, please read the changelog before changing.
-  # $ darwin-rebuild changelog
   imports = [
     ../../system/modules/nerdfonts
   ];
@@ -27,10 +25,7 @@
   };
 
   nixpkgs.hostPlatform = "x86_64-darwin";
-  # environment.systemPackages = with pkgs; [
-  # ];
 
-  # host-users
   networking.computerName = config.my.host.name;
   system.defaults.smb.NetBIOSName = config.my.host.name;
   system.primaryUser = "hank";

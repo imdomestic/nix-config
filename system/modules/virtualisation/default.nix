@@ -1,7 +1,5 @@
 {pkgs, ...}: {
   environment.systemPackages = with pkgs; [
-    # virt-manager 不在这里:下面的 programs.virt-manager.enable 自己就有
-    # `environment.systemPackages = [cfg.package]`,写两遍只是让人以为有两个来源。
     cloud-utils
     cdrtools
     qemu
@@ -14,8 +12,6 @@
     win-spice
     dive
     podman-compose
-    # cockpit-machines 跟着 cockpit 一起删了(见 profiles/server.nix)——
-    # 它是 cockpit 的虚拟机插件,宿主没了就只是个装着没用的包。
   ];
 
   virtualisation = {

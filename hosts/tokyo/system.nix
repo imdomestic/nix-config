@@ -13,7 +13,7 @@ in {
     ./hardware-configuration.nix
     # 只为了 gateway.nix —— 这台不跑 Prometheus/Grafana,只做 Grafana 的
     # 故障转移入口:http://tokyo.inner.imdomestic.com:3000 → tank,连不上自动换 h610。
-    # 角色在 ./default.nix 的 roles 里("monitor-gateway"),主后端见下面的
+    # 角色在 ./host.nix 的 roles 里("monitor-gateway"),主后端见下面的
     # my.monitoring.gateway.primary。
     ../../system/modules/monitoring
     ../../system/modules/minecraft/sh.nix
@@ -368,7 +368,6 @@ in {
 
   security.sudo.wheelNeedsPassword = false;
 
-  # fzf 删了:各账户的 interactive.nix 里 programs.fzf 已经装了它。
   # git 和 neovim 留着 —— 这是台服务器,出事时是 root 进来修,而且本机
   # `nixos-rebuild --flake` 要 git。
   environment.systemPackages = with pkgs; [

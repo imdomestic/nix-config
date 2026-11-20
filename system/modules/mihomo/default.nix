@@ -391,7 +391,7 @@ in {
     # 然后 wget 卡死。dae 没这问题是因为它在 eBPF 层连本机查询一起拦。
     #
     # 把 resolved 的上游指向 mihomo:LAN 继续查 192.168.22.1:53,resolved 转发
-    # 给 mihomo,由 mihomo 做 fake-ip 和分流。DHCP/RA 通告的东西一个都不用动。
+    # 给 mihomo,由 mihomo 做分流。DHCP/RA 通告的东西一个都不用动。
     # FallbackDNS 保持不变 —— mihomo 挂了至少还能解析,代价是那时会拿到投毒
     # 结果,但那种状态下本来也上不了网。
     services.resolved.settings.Resolve.DNS = lib.mkIf cfg.router ["127.0.0.1:1053"];

@@ -63,7 +63,7 @@ in {
     # ../../system/modules/mihomo
     ../../system/modules/keyd
     ../../system/modules/qq-bot-postgres-ha.nix
-    # 监控的第二份(tank 是第一份)。开关读 ./default.nix 的 roles,不在这里写。
+    # 监控的第二份(tank 是第一份)。开关读 ./host.nix 的 roles,不在这里写。
     #   Prometheus    http://h610.inner.imdomestic.com:9009
     #   Alertmanager  http://h610.inner.imdomestic.com:9093
     #   Grafana       http://h610.inner.imdomestic.com:3000
@@ -146,8 +146,7 @@ in {
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  # **故意不开 binfmt。** ARM 构建交给 tank(见 modules/nix.nix 的
-  # buildMachines)。开着 binfmt 的坏处不是"抢在 tank 前面"而是**溢出** ——
+  # **故意不开 binfmt。** ARM 构建交给 tank。开着 binfmt 的坏处不是"抢在 tank 前面"而是**溢出** ——
   # 它把 aarch64-linux 加进 extra-platforms,于是 tank 满载时 nix 会 decline
   # 而不是 postpone,溢出的 ARM 构建落到这台上用 QEMU 跑。
   # 详见 docs/incidents.md#h610-drop-binfmt。
@@ -259,7 +258,7 @@ in {
   networking = {
     # Avoid depending on public DNS and PPP hairpin access to our own control plane.
     hosts."127.0.0.1" = ["tailscale.imdomestic.com"];
-    networkmanager.enable = false; # Easiest to use and most distros use this by default.
+    networkmanager.enable = false;
     useDHCP = false;
     useNetworkd = true;
     nftables = {
@@ -359,7 +358,6 @@ in {
   systemd.network = {
     enable = true;
 
-    # bridge
     netdevs."10-br-lan" = {
       netdevConfig = {
         Kind = "bridge";
@@ -367,7 +365,6 @@ in {
       };
     };
 
-    # LAN
     networks."20-lan-uplink" = {
       matchConfig.Name = "enp5s0";
       networkConfig.Bridge = "br-lan";
@@ -428,7 +425,7 @@ in {
       ipv6SendRAConfig = {
         Managed = false; # no DHCPv6
         OtherInformation = false;
-        EmitDNS = true; # send DNS with RA
+        EmitDNS = true;
       };
     };
   };
@@ -557,7 +554,6 @@ in {
         };
       };
 
-      # 老密钥对。私钥和 UUID 都已随公开仓库泄露,只为过渡期保活,Step 5 删。
       vision = id: {
         inherit id;
         flow = "xtls-rprx-vision";
@@ -995,11 +991,6 @@ in {
   };
 
   environment.systemPackages = with pkgs; [
-    # nginx 删了:services.nginx.enable 已经把它装进 system path 了,再声明一遍
-    # 只会让人以为这台上有两个来源。
-    #
-    # deploy-rs 删了:hank 和 linwhite 的 modules/dev-tools.nix 里本来就有。
-    #
     # gcc 没搬。这台上有 hank / linwhite / kenneth / fendada / genisys 五个账户,
     # 只有 hank 引了 dev profile —— 而 pip / npm / cargo 会隐式去找 cc。
     # 按 AGENTS.md 的说法这属于"every account must have regardless of who logs in",
@@ -1058,7 +1049,7 @@ in {
             dst = ["group:imdomestic:*"];
           }
 
-          # 放行经 exit node 的出网流量。shanghai 广播 --advertise-exit-node
+          # 放行经 exit node 的出网流量。tokyo 广播 --advertise-exit-node
           # (见 hosts/tokyo/system.nix),没有这条的话策略层面就把出网挡掉,
           # 广播了也用不了。
           #
@@ -1295,11 +1286,11 @@ in {
     '';
   };
 
-  # 即使上面的 ip_nonlocal_bind 已经打断了那个环,这条也值得留着:nginx 依赖的
+  # nginx 依赖的
   # 晚到资源不止一个地址(ACME 证书、上游 socket…),任何一个在开机时慢一步,都会
   # 让它连败 5 次然后**永久**放弃。
   #
-  # 上游 nginx 模块自己设了 `startLimitIntervalSec = 60`(system/modules/services/
+  # 上游 nginx 模块自己设了 `startLimitIntervalSec = 60`(nixos/modules/services/
   # web-servers/nginx/default.nix),配上默认的 StartLimitBurst=5,就是"60 秒内失败
   # 5 次就再也不启动"。2026-08-17 那次实测正好落在这个窗口里:22:38:13 起第一次,
   # 22:39:04 放弃,51 秒 5 次。而同一个单元里写着 `Restart = "always"` —— 那句话
@@ -1396,10 +1387,6 @@ in {
   };
 
   # max 管理面板。和别的一样挂 8443(电信封了 443),SNI 分流。
-  #
-  # 面板本身跑在 bot 进程里,只绑 127.0.0.1,所以进出这台机器的唯一
-  # 通道就是这个 vhost。它自己不做 TLS、没有用户体系,认证只有一个
-  # bearer token 由 max.nix 的 SOPS 模板提供。
   #
   # 静态资源(HTML/JS/CSS)是不需要 token 的:<script> 标签带不了
   # Authorization 头。它们不含任何数据,所有状态都要过 /api/,而

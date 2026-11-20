@@ -52,8 +52,7 @@ in {
     my.tailscale.bindServices = ["prometheus-node-exporter"];
 
     # 这条断言是 fail-closed 的关键。没有它,tsName 忘了填时 listenAddress
-    # 会拿到 null,而 nixpkgs 那边的默认是 "0.0.0.0" —— 在下面这几台
-    # firewall.enable = false 的机器上,那等于把 exporter 直接挂出去。
+    # 会拿到 null,而 nixpkgs 那边的默认是 "0.0.0.0"。
     # 宁可求值失败也不要静默降级成公开监听。
     assertions = [
       {
@@ -70,10 +69,7 @@ in {
     services.prometheus.exporters.node = {
       enable = true;
 
-      # **只绑 tailscale 地址。** r2s/r5s/gizmo/shanghai/r6s/rpi4 这几台是
-      # firewall.enable = false,`openFirewall` 在它们身上是空操作,绑定
-      # 地址是那里唯一真正起作用的边界。
-      #
+      # **只绑 tailscale 地址。**
       # 别小看这个 exporter 的信息量:开了 systemd collector 之后它会导出
       # 全部 unit 名字和状态。对跑着 xray/mihomo/wireguard 的这几台机器来说,
       # 那是一份完整的服务清单,不该落到 tailnet 之外。

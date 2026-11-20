@@ -14,9 +14,6 @@
     then pkgs-unstable.nix-output-monitor
     else pkgs.nix-output-monitor;
 in {
-  # 用户无关的共享 dev 工具链(LSP / CLI / direnv)。
-  # 编辑器(nixvim)是按用户的,放在各自的 home/<user>/dev.nix 里,
-  # 由那里 import 本文件复用这套工具链。
   home.packages = with pkgs;
     [
       # Nix configuration and deployment

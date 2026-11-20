@@ -29,7 +29,7 @@
           ];
         })
         fcitx5-mozc
-        fcitx5-gtk # Fcitx5 gtk im module and glib based dbus client library
+        fcitx5-gtk
         qt6Packages.fcitx5-qt
         fcitx5-material-color
         catppuccin-fcitx5

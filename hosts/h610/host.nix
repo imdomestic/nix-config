@@ -30,7 +30,6 @@
     ];
 
     externalModules = [
-      # inputs.headplane.nixosModules.headplane
       inputs.qq-bot.nixosModules.gaoji
     ];
 

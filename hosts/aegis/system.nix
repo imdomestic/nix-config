@@ -4,8 +4,6 @@
   config,
   ...
 }: {
-  # Used for backwards compatibility, please read the changelog before changing.
-  # $ darwin-rebuild changelog
   imports = [
     ../../system/modules/nerdfonts
     ../../system/modules/linwhite-smb/darwin.nix
@@ -37,8 +35,6 @@
 
   nixpkgs.hostPlatform = "aarch64-darwin";
 
-  # iproute2mac 删了:linwhite 的 modules/dev-tools.nix 的 darwin 分支里本来就有。
-  # host-users
   networking.computerName = config.my.host.name;
   networking.localHostName = config.my.host.name;
   system.primaryUser = "linwhite";

@@ -98,15 +98,6 @@ in {
           set -g @tmux-dotbar-status-right-text ' #{host_short} '
         '';
       }
-      # {
-      #   plugin = continuum;
-      #   extraConfig = ''
-      #     # Tmux 启动时自动恢复最后一次保存的会话
-      #     set -g @continuum-restore 'on'
-      #     # 每 15 分钟自动在后台保存一次（默认也是 15）
-      #     set -g @continuum-save-interval '15'
-      #   '';
-      # }
 
       # 存/取整个会话布局。**手动**:prefix C-s 存,prefix C-r 取。
       #
@@ -342,22 +333,7 @@ in {
       c = "clear";
       q = "exit";
 
-      # --- File Ops ---
-      # mkdir = "mkdir -p";
-      # fm = "ranger";
-      # ls = "eza --color=auto --icons";
-      # l = "ls -l";
-      # la = "ls -a";
-      # lla = "ls -la";
-      # lt = "ls --tree";
-      # cat = "bat --color always --plain";
-      # Nu 的 cp/mv/rm 默认行为略有不同，但这些参数通常兼容
-      # mv = "mv -v";
-      # cp = "cp -vr";
-      # rm = "rm -vr";
-
       # --- Git (基础部分) ---
-      # 复杂 Git 别名建议使用 git config alias 或 def，这里保留通用的
       g = "git";
       ga = "git add";
       gaa = "git add --all";
@@ -569,7 +545,6 @@ in {
       nvimdiff = "nvim -d";
       # p 去掉了:git add . && git commit -am 'update' && git push,提交信息永远是
       # "update"。真要一把梭也该自己写一句人话,不该有个一键别名让人手滑。
-      # getidf / brew86 也去掉了:~/esp 和 /usr/local/homebrew 都不存在了。
       lg = "lazygit";
       lvim = "NVIM_APPNAME=lazyvim nvim";
       dvim = "NVIM_APPNAME=dvim nvim";
@@ -584,15 +559,6 @@ in {
       q = "exit";
       ".." = "cd ..";
       mkdir = "mkdir -p";
-      #
-      # 这一轮又删掉的(抄来的、目标不存在的、或者不如直接敲的):
-      #   run=pnpm run   pnpm 只在 kenneth 的配置里,hank 一台都没装
-      #   ra=joshuto     joshuto 全仓库没有任何 host 装
-      #   nvid=neovide   同上
-      #   mkgrub         NixOS 的 grub 配置是 nixos-rebuild 生成的,手跑这个只会帮倒忙
-      #   mtar/utar/uz   tar -zcvf / -zxvf / unzip 的包装,省不了几个字还得先想别名叫啥
-      #   psg            ps aux | grep 的包装,procs 或直接管道都比它清楚
-      # 更早一轮删的:fm=ranger(已换成 yazi 的 y)、整块 pacman/paru(没有 Arch 机器)。
 
       # file operations
       ls = "eza --color=auto --icons";
@@ -608,9 +574,6 @@ in {
       rm = "rm -v";
 
       # git —— 这份保持和上面 nushell 那份一致,再加几个日志 / rebase / stash 的常用项。
-      # 原来这里是从 oh-my-zsh 整包抄来的 176 个 g* 别名,而 history 里真正出现过的只有
-      # 8 个(ga gb gc gcl gco gl gp gst)。删掉的那些在 git log 里找得回来。
-      #
       # 需要 $(git_main_branch) / $(git_develop_branch) 的那些一个没留:那几个 helper
       # 每次展开都要 fork 一串 git show-ref,而"主干叫什么"这件事在这个仓库里是常数。
       g = "git";
@@ -1005,9 +968,6 @@ in {
     # 这两个。它们本来只在 profiles/dev.nix 里,而 hank 没开 dev profile 的机器
     # ssh 过去 magick 不在,图就是出不来。
     # 提到这里 = 每台有 hank 的机器都能看图,又不用把整套 dev 工具链背过去。
-    #
-    # dev.nix 里那份没删:它同时被 linwhite/dev.nix 引着。taipan 上两边都声明,指向
-    # 同一个 derivation,profile 里会去重,无害。
     # tectonic 仍然只在 dev profile —— 它是真的重。
     pkgs.imagemagick
     pkgs.ghostscript

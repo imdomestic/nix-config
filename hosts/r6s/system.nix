@@ -40,8 +40,7 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelModules = ["pppoe"];
 
-  # 根要搬到 SD 卡(mmcblk0)上的 f2fs。**这一步只是把能力装上**,根还在 eMMC
-  # 的 ext4 上;真正切换是改 hardware-configuration.nix 里的 UUID。
+  # 根在 SD 卡(mmcblk0)上的 f2fs(见 hardware-configuration.nix)。
   #
   # 为什么是 f2fs:这张卡上报 `DISC-GRAN = 4M`,擦除块 4 MB。ext4 那种就地更新
   # 的小块 fsync 落进 4 MB 块里要读-改-写整块;f2fs 是 log-structured,顺序写进
@@ -73,7 +72,7 @@
   powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
-    networkmanager.enable = false; # Easiest to use and most distros use this by default.
+    networkmanager.enable = false;
     useDHCP = false;
     useNetworkd = true;
     nftables = {
@@ -206,11 +205,9 @@
     };
   };
 
-  # --- 3. Systemd-networkd 配置 (DHCP & RA) ---
   systemd.network = {
     enable = true;
 
-    # bridge
     netdevs."10-br-lan" = {
       netdevConfig = {
         Kind = "bridge";
@@ -218,14 +215,12 @@
       };
     };
 
-    # LAN1
     networks."20-lan1-uplink" = {
       matchConfig.Name = "end0";
       networkConfig.Bridge = "br-lan";
       linkConfig.RequiredForOnline = "enslaved";
     };
 
-    # LAN2
     networks."20-lan2-uplink" = {
       matchConfig.Name = "enP4p65s0";
       networkConfig.Bridge = "br-lan";
@@ -271,32 +266,28 @@
       matchConfig.Name = "br-lan";
       networkConfig = {
         Address = "192.168.22.1/24";
-        # DHCPv4 Server
         DHCPServer = true;
-        # IPv4 NAT
         IPMasquerade = "ipv4";
-        # IPv6 RA (SLAAC)
         IPv6SendRA = true;
         IPv6AcceptRA = false;
         DHCPPrefixDelegation = true;
       };
       linkConfig = {
-        # or "routable" with IP addresses configured
-        RequiredForOnline = "no"; # carrier
+        RequiredForOnline = "no";
       };
 
       dhcpServerConfig = {
         PoolOffset = 100;
         PoolSize = 100;
         EmitDNS = true;
-        DNS = ["192.168.22.1"]; # 告诉客户端 DNS 找我 (然后被 dae 劫持)
+        DNS = ["192.168.22.1"]; # 告诉客户端 DNS 找我
       };
 
       # SLAAC
       ipv6SendRAConfig = {
         Managed = false; # no DHCPv6
         OtherInformation = false;
-        EmitDNS = true; # send DNS with RA
+        EmitDNS = true;
       };
     };
   };
@@ -393,7 +384,7 @@
           }
         ];
 
-        # 四个入口一律丢进反向隧道,从 gizmo 的日本出口出去。
+        # 两个入口一律丢进反向隧道,从 gizmo 的日本出口出去。
         routing.rules = [
           {
             type = "field";
@@ -404,38 +395,22 @@
       };
   };
 
-  # node_exporter 挪到 system/modules/telemetry(经 profiles/server.nix 引入)。
-  # 这里原来那份是 openFirewall = true + 默认 listenAddress 0.0.0.0 —— 而这台
-  # firewall.enable = false,openFirewall 是空操作,exporter 实际听在包括 ppp0
-  # 在内的每一张网卡上。开了 systemd collector 之后它会导出全部 unit 名字,
-  # 对这台跑 xray/mihomo 的机器来说那是一份不该外泄的服务清单。
-  # 新模块绑 my.host.tsName(100.64.0.5),和上面 mihomo 面板同一个规矩。
-
   services.displayManager.gdm.enable = false;
   services.desktopManager.gnome.enable = false;
 
-  # tailscale + Tailscale SSH 由 system/modules/tailscale 统一管(经 base profile
-  # 引入,按 my.host.tsName 自动开)。这台是 2026-08-08 那次 Tailscale SSH 的试点,
-  # 实测结论记在模块的文件头注释里。
-
-  # Set your time zone.
   time.timeZone = "Asia/Hong_Kong";
 
   i18n.defaultLocale = "en_US.UTF-8";
 
-  # Define a user account. Don't forget to set a password with ‘passwd’.
   users.users.hank = {
     isNormalUser = true;
-    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
+    extraGroups = ["wheel"];
     packages = with pkgs; [
       tree
     ];
   };
 
   security.sudo.wheelNeedsPassword = false;
-
-  # 整块搬去了 profiles/netdiag.nix —— 这台原本声明的五个里,iproute2 和
-  # tailscale 本来就有,剩下三个和另外四台路由器一字不差。
 
   programs.zsh.enable = true;
 

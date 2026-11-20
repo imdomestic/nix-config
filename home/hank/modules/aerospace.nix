@@ -1,4 +1,4 @@
-# hank 的 AeroSpace,由 users.hank.gui.darwin 加载(../user.nix),所以 hank 的
+# hank 的 AeroSpace,由 ../profiles/gui-darwin.nix 加载,所以 hank 的
 # 每台 Mac 桌面都有。Home Manager 管:配置写进 ~/.config/aerospace,launchd
 # agent 跟着账户走,两个人的键位各用各的。
 {config, ...}: let

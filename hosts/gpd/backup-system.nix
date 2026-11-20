@@ -18,42 +18,10 @@
   };
 
   networking = {
-    hostName = "gpd"; # Define your hostname.
-    networkmanager.enable = false; # Easiest to use and most distros use this by default.
-    # useDHCP = false;
+    hostName = "gpd";
+    networkmanager.enable = false;
     useNetworkd = true;
   };
-
-  # Configure network proxy if necessary
-  # networking.proxy.default = "http://127.0.0.1:7890";
-  # networking.proxy.noProxy = "127.0.0.1,localhost,internal.domain";
-
-  # systemd.network = {
-  #   enable = true;
-  #   netdevs."10-br-lan" = {
-  #     netdevConfig = {
-  #       Kind = "bridge";
-  #       Name = "br-lan";
-  #     };
-  #   };
-  #
-  #   networks."20-lan-uplink" = {
-  #     matchConfig.Name = "eno1";
-  #     networkConfig.Bridge = "br-lan";
-  #     linkConfig.RequiredForOnline = "enslaved";
-  #   };
-  #
-  #   networks."30-br-lan" = {
-  #     matchConfig.Name = "br-lan";
-  #     networkConfig = {
-  #       DHCP = "yes";
-  #       IPv6AcceptRA = true;
-  #     };
-  #     linkConfig = {
-  #       RequiredForOnline = "routable";
-  #     };
-  #   };
-  # };
 
   time.timeZone = "Asia/Hong_Kong";
 
@@ -82,14 +50,13 @@
 
   services.printing.enable = true;
 
-  # Enable sound.
   services.pipewire = {
     enable = true;
     pulse.enable = true;
   };
 
   environment.systemPackages = with pkgs; [
-    vim # Do not forget to add an editor to edit configuration.nix! The Nano editor is also installed by default.
+    vim
     wget
     firefox
     google-chrome
@@ -127,14 +94,14 @@
     steam = {
       enable = true;
       gamescopeSession.enable = true;
-      remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
-      dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
-      localNetworkGameTransfers.openFirewall = true; # Open ports in the firewall for Steam Local Network Game Transfers
+      remotePlay.openFirewall = true;
+      dedicatedServer.openFirewall = true;
+      localNetworkGameTransfers.openFirewall = true;
     };
     zsh.enable = true;
   };
 
   services.openssh.enable = true;
 
-  system.stateVersion = "25.11"; # Did you read the comment?
+  system.stateVersion = "25.11";
 }

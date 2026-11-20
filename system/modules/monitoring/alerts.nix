@@ -24,7 +24,7 @@ in
           {
             alert = "HostUnreachable";
             expr = ''up{job="node"} == 0'';
-            # 10 分钟。gizmo 跨海、shanghai 在机房,单次抓取失败很常见;
+            # 10 分钟。gizmo 跨海、tokyo 在机房,单次抓取失败很常见;
             # 真挂了 10 分钟也不差这一会儿。
             "for" = "10m";
             labels.severity = "critical";

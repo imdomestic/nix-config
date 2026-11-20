@@ -8,7 +8,6 @@
     ];
   };
 
-  # example services
   systemd.services."nix-store-gc" = {
     description = "Collect unreachable paths from the Nix store";
     startAt = ["daily"];

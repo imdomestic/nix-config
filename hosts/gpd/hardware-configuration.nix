@@ -37,7 +37,7 @@
   ###### 2) TTY 字体放大（高分屏必需）
   console = {
     packages = [pkgs.terminus_font];
-    font = "ter-v36n"; # 觉得小就改 ter-v36n
+    font = "ter-v36n";
   };
 
   ###### 7) 小屏触控板/键盘体验（可选）

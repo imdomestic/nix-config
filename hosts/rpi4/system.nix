@@ -32,7 +32,7 @@
   powerManagement.cpuFreqGovernor = "performance";
 
   networking = {
-    networkmanager.enable = false; # Easiest to use and most distros use this by default.
+    networkmanager.enable = false;
     useDHCP = false;
     useNetworkd = true;
     nftables = {
@@ -79,7 +79,6 @@
   # 上游从「自己拨号」变成「DHCP + captive portal」。见
   # docs/decisions.md#rpi4-drop-pppoe。
 
-  # 公寓的 hotspot 认证。凭据走 sops,不进 store。
   my.tsRelay.enable = true;
 
   # 悉尼默认直连，整个 X 域名集走日本；控制面/媒体拆分会重新触发年龄确认。
@@ -89,6 +88,7 @@
     jpGeoSites = ["twitter"];
   };
 
+  # 公寓的 hotspot 认证。凭据走 sops,不进 store。
   my.captivePortal = {
     enable = true;
     interval = "10s";
@@ -156,7 +156,7 @@
         IPv6AcceptRA = false;
       };
       linkConfig = {
-        RequiredForOnline = "no"; # carrier
+        RequiredForOnline = "no";
       };
 
       dhcpServerConfig = {
@@ -182,10 +182,6 @@
     ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="8156", ATTR{power/control}="on"
   '';
   boot.kernelParams = ["usbcore.autosuspend=-1"];
-
-  # node_exporter 挪到 system/modules/telemetry(经 profiles/server.nix 引入)。
-  # 同 r6s:这台也是 firewall.enable = false,原来那份 openFirewall = true
-  # 是空操作,exporter 实际绑在 0.0.0.0。新模块绑 my.host.tsName(100.64.0.7)。
 
   # 搬到悉尼之后关掉:这台现在蹲在公寓 hotspot 的 NAT 后面,WAN 拿到的是
   # 172.24/16,也没有全局 IPv6 —— 默认盯的 ppp0 根本不存在了,就算改成盯
@@ -334,7 +330,7 @@
 
   users.users.hank = {
     isNormalUser = true;
-    extraGroups = ["wheel"]; # Enable ‘sudo’ for the user.
+    extraGroups = ["wheel"];
     packages = with pkgs; [
       tree
     ];
@@ -342,17 +338,7 @@
 
   security.sudo.wheelNeedsPassword = false;
 
-  # 见 profiles/netdiag.nix。iproute2 是冗余声明,删了。
-  # ddns-go 删了:system/modules/ddns-go 的单元写的是 ${pkgs.ddns-go.outPath}/bin/ddns-go,
-  # 走绝对 store 路径,不吃 PATH。
-
   programs.zsh.enable = true;
 
-  # pipewire 跟着上面那套桌面一起删了 —— 这台没有声卡也没有人在上面放音频,
-  # 它存在的唯一原因是旧桌面需要。
-
-  # services.openssh.enable 删了:profiles/server.nix → modules/ssh 已经开了,
-  # 而且 profiles/base.nix → modules/ssh/policy.nix 配了 /etc/ssh/authorized_keys.d/master。
-  # 在这里再写一遍只会让人以为有两个来源。
-  system.stateVersion = "25.05"; # Did you read the comment?
+  system.stateVersion = "25.05";
 }

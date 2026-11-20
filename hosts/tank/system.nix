@@ -41,13 +41,13 @@
   };
 
   # 监控的第一份。**开关不在这里** —— my.monitoring.enable 默认读 registry 里
-  # 的 roles(见 ./default.nix 的 "monitor")。在这儿再写一遍是冗余的,而只写
+  # 的 roles(见 ./host.nix 的 "monitor")。在这儿再写一遍是冗余的,而只写
   # 这儿不加 roles 会被模块里的断言拦下(对端就不认识这一份了)。
   #   Prometheus    http://tank.inner.imdomestic.com:9009
   #   Alertmanager  http://tank.inner.imdomestic.com:9093
   #   Grafana       http://tank.inner.imdomestic.com:3000
   # 全都只绑 tailscale 地址。另一份在 h610(100.64.0.3),统一入口在
-  # shanghai(http://100.64.0.13:3000)。看板要自己导一次:Grafana 里
+  # tokyo(http://100.64.0.13:3000)。看板要自己导一次:Grafana 里
   # Import → 1860(Node Exporter Full)。没有把那份 JSON vendor 进仓库,
   # 它 200KB 且每次上游更新都要重新 pin,不值得。
 
@@ -78,9 +78,9 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   boot.initrd.kernelModules = [
-    "dm-snapshot" # when you are using snapshots
-    "dm-raid" # e.g. when you are configuring raid1 via: `lvconvert -m1 /dev/pool/home`
-    "dm-cache-default" # when using volumes set up with lvmcache
+    "dm-snapshot"
+    "dm-raid"
+    "dm-cache-default"
   ];
   boot.supportedFilesystems = ["xfs" "bcachefs" "ntfs"];
   # aarch64 的构建交给 r6s 原生跑，不在这里用 binfmt 模拟：qemu-user 下要起很多
@@ -224,7 +224,7 @@
 
   services.filebrowser = {
     enable = true;
-    user = "hank"; # FileBrowser 以 hank 身份运行
+    user = "hank";
     group = "users";
     openFirewall = true;
     settings = {
@@ -336,13 +336,13 @@
           create_full_put_path on;
         '';
 
-        basicAuthFile = "/etc/nixos/webdav.htpasswd"; # 密码文件路径，见下文
+        basicAuthFile = "/etc/nixos/webdav.htpasswd";
       };
     };
   };
 
   networking = {
-    networkmanager.enable = false; # Easiest to use and most distros use this by default.
+    networkmanager.enable = false;
     useDHCP = false;
     useNetworkd = true;
     nftables.enable = true;
@@ -420,16 +420,13 @@
     # };
   };
 
-  # Set your time zone.
   time.timeZone = "Asia/Hong_Kong";
 
-  # Enable the X11 windowing system.
   services.xserver.enable = true;
   # services.xserver.videoDrivers = ["nvidia"];
   # nixpkgs.config.cudaSupport = true;
   hardware.graphics.enable = true;
 
-  # Enable the GNOME Desktop Environment.
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
 
@@ -674,20 +671,12 @@
 
   services.printing.enable = true;
 
-  # Enable sound.
   services.pipewire = {
     enable = true;
     pulse.enable = true;
   };
 
-  # 这里只留 tank 这台机器自己需要的。搬走的去处:
-  #   GUI / 桌面配套 (clapper radeontop brightnessctl) -> home/hank
-  #   内核构建那几个 (flex bison elfutils libelf pkg-config) -> hank 的 modules/dev-tools.nix
-  #   虚拟化那一组 -> profiles/virtualisation 本来就装了,这里是抄的第二遍
-  #   wget git starship zsh duf bat just btop cachix -> home 的 base / interactive / dev 早就有
-  #   ddns-go 删了:单元里写的是 ${pkgs.ddns-go.outPath}/bin/ddns-go,不吃 PATH
-  #   jellyfin 三件套删了:services.jellyfin 是注释掉的,全文件再无第二处引用
-  #
+  # 这里只留 tank 这台机器自己需要的。
   # vim 留着:系统坏掉时是以 root 身份进来修的,那时候 home 的 PATH 帮不上忙。
   environment.systemPackages = with pkgs; [
     rdma-core
@@ -719,8 +708,8 @@
 
   programs.steam = {
     enable = true;
-    remotePlay.openFirewall = true; # Open ports in the firewall for Steam Remote Play
-    dedicatedServer.openFirewall = true; # Open ports in the firewall for Source Dedicated Server
+    remotePlay.openFirewall = true;
+    dedicatedServer.openFirewall = true;
   };
 
   services.openssh.enable = true;
@@ -782,5 +771,5 @@
     settings.Remote.SplitMode = "host";
   };
 
-  system.stateVersion = "24.11"; # Did you read the comment?
+  system.stateVersion = "24.11";
 }

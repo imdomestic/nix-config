@@ -47,7 +47,7 @@
   selfName = config.my.host.tsName;
 
   # 谁在跑监控 —— 和抓取目标一样从 registry 派生,不手维护第二份名单。
-  # 加/减一份监控 = 改 hosts/<name>/default.nix 里 roles 那一行,
+  # 加/减一份监控 = 改 hosts/<name>/host.nix 里 roles 那一行,
   # 本机的开关、对端的 Alertmanager gossip 名单、Grafana 的第二个数据源、
   # 以及"另一份挂了"那条告警的预期成员数,四处同时跟着变。
   monitors = lib.filter (h: lib.elem "monitor" h.roles) inventory;
@@ -645,8 +645,6 @@ in {
       };
     };
 
-    # 这个 fleet 现在 8 台全是 firewall.enable = false,下面两条是空转的。
-    # 留着是为了模块自身正确:哪天某台把防火墙打开,监控不会莫名其妙失联。
     # 注意是 interfaces.tailscale0 而不是全局 allowedTCPPorts —— 只在
     # tailscale 接口上放行,不碰 WAN。
     networking.firewall.interfaces.tailscale0.allowedTCPPorts =
