@@ -5,7 +5,7 @@
   lib,
 }: let
   facts = h: {
-    inherit (h) name system kind roles tsName ip sshUser lanRoutes gpuMonitoring clusterControl usernames;
+    inherit (h) name system kind roles tsName sshUser lanRoutes gpuMonitoring clusterControl usernames;
   };
   fleet = {
     hosts = lib.mapAttrs (_: facts) config.hosts;

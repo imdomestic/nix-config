@@ -28,7 +28,7 @@
       type = lib.types.attrsOf lib.types.raw;
       default = {};
       description = ''
-        Every registry entry's facts (name, system, kind, roles, tsName, ip,
+        Every registry entry's facts (name, system, kind, roles, tsName,
         sshUser, lanRoutes, gpuMonitoring, clusterControl, usernames), for
         modules that need to see past their own host.
       '';
