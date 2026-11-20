@@ -29,6 +29,7 @@
       openssl
       coreutils
       diffutils
+      gawk
       gnugrep
       gnused
     ];
