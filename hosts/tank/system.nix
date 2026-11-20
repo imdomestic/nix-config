@@ -16,30 +16,6 @@
     # ../../system/modules/dae
   ];
 
-  # cliproxy 2026-11-02 搬到了 gizmo(docs/decisions.md#cliproxy-on-gizmo)。这里
-  # 只剩一个 TCP 转发,给还没重新部署 home 的机器和不归本仓库管的客户端,它们还
-  # 写着 tank:8317。gizmo 的日志分不出谁是经这里转的(来源都是 100.64.0.4),
-  # 要看 tank 上 `ss -tn sport = :8317`;一直没有连接了,这段就可以删。
-  #
-  # 写死地址加 FreeBind,理由同 h610 上的那个转发:开机时 tailscale 地址可能还
-  # 不存在,而公网上不该有这个端口。
-  systemd.sockets.cliproxy-forward = {
-    wantedBy = ["sockets.target"];
-    listenStreams = ["100.64.0.4:8317"];
-    socketConfig.FreeBind = true;
-  };
-  systemd.services.cliproxy-forward = {
-    description = "Forward the old tank cliproxy port to gizmo";
-    serviceConfig = {
-      # gizmo 的 tailnet 地址。cliproxy 只听 IPv4,写名字的话解析出 IPv6 就连不上。
-      ExecStart = "${pkgs.systemd}/lib/systemd/systemd-socket-proxyd 100.64.0.16:8317";
-      DynamicUser = true;
-      NoNewPrivileges = true;
-      ProtectSystem = "strict";
-      ProtectHome = true;
-    };
-  };
-
   # 监控的第一份。**开关不在这里** —— my.monitoring.enable 默认读 registry 里
   # 的 roles(见 ./host.nix 的 "monitor")。在这儿再写一遍是冗余的,而只写
   # 这儿不加 roles 会被模块里的断言拦下(对端就不认识这一份了)。
@@ -361,11 +337,11 @@
         # 局域网文件目录(nginx 的 tank.local)。
         br-lan.allowedTCPPorts = [80];
         # tank.local、NFS(exports 给的是 tailnet 地址)、k3s API、
-        # matrix(h610 的 nginx 经 tailnet 反代)、cliproxy 的转发、ollama、
-        # gaoji bot(h610 的 nginx / napcat 来连)、journal-remote 接收端、
+        # matrix(h610 的 nginx 经 tailnet 反代)、ollama、
+        # gaoji bot(h610 的 napcat 来连)、journal-remote 接收端、
         # tokyo 经 tailnet 转过来的 cs2。murmur 自己 openFirewall。
         tailscale0 = {
-          allowedTCPPorts = [80 2049 6443 8008 8317 11434 18080 19532 27015];
+          allowedTCPPorts = [80 2049 6443 8008 11434 18080 19532 27015];
           allowedUDPPorts = [27015];
         };
       };
