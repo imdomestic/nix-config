@@ -1,17 +1,8 @@
-{
-  config,
-  pkgs-unstable,
-  ...
-}: let
+_: let
   theme = "evergarden-winter-green";
 in {
-  home.packages = [pkgs-unstable.steel];
-  home.sessionVariables = {
-    STEEL_HOME = "${config.home.homeDirectory}/.steel";
-  };
   programs.helix = {
     enable = true;
-    # package = pkgs-unstable.steelix;
     settings = {
       theme = theme;
       editor = {
