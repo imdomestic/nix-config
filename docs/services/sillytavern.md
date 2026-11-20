@@ -12,7 +12,7 @@ ssh linwhite@seraph.inner.imdomestic.com 'sudo cat /run/secrets/sillytavern/pass
 密码加密保存在 `secrets/hosts/seraph.yaml`，不与任何模型 API Key 共用。
 HTTP 流量在 Tailnet 的 WireGuard 隧道内传输；没有启用 Funnel、公网入口或
 自签名 HTTPS。不要在公网反代这个端口。浏览器仍将 HTTP 视为非安全上下文：
-聊天和流式输出已验证，录音等要求 HTTPS 的浏览器功能不在本次部署范围内。
+录音等要求 HTTPS 的浏览器功能不可用。
 
 ## Charites 美化工坊
 
@@ -30,10 +30,6 @@ HTTP 流量在 Tailnet 的 WireGuard 隧道内传输；没有启用 Funnel、公
 - Nix 管理的文件 `system/modules/sillytavern/charites.nix` 只安装固定源码资产，
   不复制上游配置文件。扩展目录是只读 store 链接，更新通过 Nix pin，不从
   扩展管理器覆盖源文件。
-- 安装前的 ST 数据快照与桌面 / 390×844 手机验收截图保存在
-  `/var/lib/sillytavern-validation/20261110-charites/`；面板、预览切换、刷新保留
-  与无横向溢出均通过。模型设置及 12 个连接的内容未改变；ST 自己把连接列表
-  按显示名称排序不算配置丢失。
 
 另有[独立的 Lumiverse 实例](lumiverse.md)，不是 ST 皮肤，不共享聊天目录。
 
@@ -52,17 +48,12 @@ HTTP 流量在 Tailnet 的 WireGuard 隧道内传输；没有启用 Funnel、公
 | Qwen3.5 4B | h610 的 llama.cpp，当前运行窗口为 32768 |
 | Ollama · Qwen3 8B / Gemma 4 E4B | tank 的两个小模型，使用保守的 4096 客户端窗口 |
 
-2026-11-18：两组 Vertex 路由已从网关退役，配置也删除了旧快捷项。
-seraph 当时 SSH 不通，因此本机持久化 profile/preset 的定向清理尚待部署；
-旧 UI 名称可能仍在，但已无法调用上游。恢复后运行新声明的 bootstrap，
-不删除用户聊天或其他连接；细节见 [部署记录](agy-chat-completions.md)。
-
 CLIProxy 的新模型会随重新连接 / 刷新模型列表出现，不需要修改 Nix 列出每个模型。
 网关目录也包含 `gpt-image-*`、Imagen 等生图模型；它们**不是 Chat Completion
 对话模型**，不能当成聊天模型选择。Clef 的 `/v1/systemone` 决策接口也不是聊天
 接口，因此没有创建一个看似可用但实际上不兼容的连接。
 
-**Rewind 不接入本实例。** 它是[有使用条件的提供商](rewind.md#usage-conditions)，
+**Rewind 不接入本实例。** 它是[有使用条件的提供商](../rewind.md#usage-conditions)，
 在共享模型资料中标记 `conditional = true`。本实例不保留 Rewind 连接或预设，
 模型目录过滤 `rewind/`，手填的 Rewind 生成请求也会在调用上游之前被拒绝。
 其他客户端已有的显式 Rewind 配置不变；不要把共享 CLIProxy Key 当成已经满足
@@ -131,32 +122,3 @@ sudo unshare -n python3 scripts/test-tailscale-web.py 8000 8080
 package=$(nix build --no-link --print-out-paths .#nixosConfigurations.seraph.config.services.sillytavern.package)
 node scripts/test-sillytavern-exclusions.mjs "$package/lib/node_modules/sillytavern"
 ```
-
-## 2026-11-10 · 上线验收 {#acceptance}
-
-SillyTavern 1.18.0 已部署到 seraph，当前运行系统为
-`/nix/store/85gp4v0bvkhknp68pvj1zqjawa77mjlp-nixos-system-seraph-26.05.20261105.c56a87d`。
-没有更新内核或 NVIDIA 驱动，没有重启机器，也没有激活 Home Manager。
-
-- 24 个 NixOS / Darwin 配置求值及 `just lint` 通过；bootstrap 23 项测试、
-  安装包排除规则测试、真实端口的 15 项隔离 IPv4/IPv6 防火墙检查通过。
-- 从 gizmo 的真实 Tailnet 客户端访问入口，未认证返回 401；内部 8001 / 8002
-  不可达。同一 LAN 上访问 seraph 的 `10.1.2.194:8000` 也不可达。
-- 合法登录可打开页面；缺少 CSRF 的 POST 与非法 Host 均返回 403。
-- 12 个连接保留，Rewind 连接、未使用的预设及管理记录已移除。验收时 CLIProxy
-  目录 79 个 ID 中的 8 个 `rewind/` 被过滤，其他 71 个保持不变。手填 Rewind
-  在 Custom / OpenAI / Claude 请求路径均立即返回 `model_not_allowed` / 403。
-- 两个 Bonsai、Gemini 3.8 Flash High、GPT 6.1 Sol、Claude Opus 4.6 Thinking、
-  Vertex Gemini 4 Argon、DeepSeek V4.1 Flash、h610 Qwen3.5 4B、tank Qwen3 8B /
-  Gemma 4 E4B 的小请求均返回文本和完整的流式终止帧。这是连通性验收，
-  **不是**所有目录 ID 的能力、长上下文或性能保证。
-- Chromium 实际完成首次引导、连接切换与模型目录过滤；新页面自动连接本机
-  Hikari，聊天框发送中文请求后得到“部署验收通过”，无页面脚本错误。
-- 重启 bootstrap 后，用户 settings 文件逐字节不变，保留 Persona、自动连接、
-  选中的 Hikari 及其余偏好。真实模型 Key 仍仅在 nginx 私有 SOPS header 中，
-  SillyTavern 服务用户不能读取，secret store 中只有 `not-required`。
-- taipan 的 NixOS 节点离线，Windows 节点在线；本次不重启那台机器或切换系统。
-  两个 Qwen3.8 连接已经配置，但尚不能做在线生成验收。
-
-原始流式请求、浏览器截图与排除规则记录保存在 seraph 的
-`/var/lib/sillytavern-validation/20261110/`，按私有运维记录处理。

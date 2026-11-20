@@ -121,7 +121,7 @@ in {
     '')
     # Claude Code draws pictures only where XTVERSION names kitty or Ghostty;
     # Rex says "rex", though it draws kitty placeholder images
-    # (docs/rex.md#claude-code-pictures).
+    # (docs/home/rex.md#claude-code-pictures).
     (lib.mkOrder 2000 ''
       if [[ $TERM_PROGRAM == rex ]]; then
         export CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1
@@ -285,7 +285,7 @@ in {
   '';
 
   # Rex 1408 stores appearance in user defaults, separately from init.lua.
-  # Migration coverage and remaining differences: docs/rex.md.
+  # Migration coverage and remaining differences: docs/home/rex.md.
   targets.darwin.defaults."com.superlogical.rex" = {
     "Workspace.darkThemeID" = zenId;
     "Workspace.lightThemeID" = pearlId;

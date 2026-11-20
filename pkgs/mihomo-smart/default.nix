@@ -24,7 +24,7 @@ buildGoModule rec {
   # 否则每次求值都可能拿到不同的代码。版本号取自它 merge 上游时的基线。
   version = "1.19.24-smart-unstable-2026-08-02";
   # 至少要到这个 commit:StatusTest 的明文跳转经代理拨号(vernesong/mihomo#12),
-  # 之前的会让 mihomo 跑几个小时就 exit 2,见 docs/proxy-todo.md 第 10 节。
+  # 之前的会让 mihomo 跑几个小时就 exit 2,见 docs/services/proxy.md#mihomo-panic。
   rev = "a866d76895b0865874900b8edb832991515bc6e3";
 
   src = fetchFromGitHub {

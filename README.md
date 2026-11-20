@@ -16,7 +16,7 @@ My main machine is a Mac (`praxic`). Day to day I live in three apps: Arc for
 browsing, Raycast for launching everything, and Rex for the terminal. The
 actual work happens inside Rex with Neovim (nixvim), either locally
 or over SSH on whichever box has the hardware the job needs; see
-[`docs/rex.md`](docs/rex.md).
+[`docs/home/rex.md`](docs/home/rex.md).
 
 Behind that is a small fleet, spread over a few places on purpose:
 
@@ -47,7 +47,7 @@ Codex) working in this checkout. [`AGENTS.md`](AGENTS.md) is the rulebook I
 hand them, and some of its rules point straight at the incident that
 produced them. Separately, Max, an LLM bot, sits in a couple of group chats and
 does ops on the fleet over plain SSH as the `max` account; see
-[Max SSH operations](docs/max-ssh-operations.md). Its successor, maxx,
+[Max SSH operations](docs/services/max-ssh-operations.md). Its successor, maxx,
 also interacts with GitHub and submits pull requests via `@maxxagent`.
 
 ### Common Questions Related To This Workflow

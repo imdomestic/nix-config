@@ -67,7 +67,7 @@ source tag on every start.
 
 The readiness probe retrieves `/v1/models/clef-27b-8k`, ensuring that the local
 model exists before routing requests. Startup and version findings are in
-[the incident record](incidents.md#taipan-clef-decision-startup).
+[the incident record](../incidents.md#taipan-clef-decision-startup).
 
 The 2026-10-15 upstream model blobs are:
 
@@ -105,7 +105,7 @@ layers on the GPU. At 12K only 434 MiB remained free; 16K ran with 59/65 layers
 on the GPU and took 7.894 seconds for 16,277 input tokens. The default remains
 8K to leave room for image processing. This establishes a tested all-GPU range,
 not an absolute model or CPU-offload limit. See the
-[context comparison](incidents.md#taipan-clef-context-limit).
+[context comparison](../incidents.md#taipan-clef-context-limit).
 
 The validation script tests cold/warm requests, a longer input, a near-full
 window, 32 questions, image decisions, a long state with a 1024×1024 image,
@@ -122,7 +122,7 @@ python3 scripts/test-clef-deployment.py \
 does not reconfigure the server. `--model` defaults to the gateway's `clef-27b`.
 
 Measured memory, latency and acceptance results are in
-[the 2026-10-15 incident record](incidents.md#taipan-clef-decision-startup).
+[the 2026-10-15 incident record](../incidents.md#taipan-clef-decision-startup).
 
 Primary references:
 [Cloudflare model and reference code](https://huggingface.co/Cloudflare/clef),

@@ -68,7 +68,7 @@ Explore/Plan 使用独立的只读提示词，不继承整个仓库指令。Plan
 没有自动运行审查或研究。`subagents.ts` 替换插件原来的主动委派描述与规则，
 不修改参数 schema、任务执行或通知协议；这是降低调用频率的模型策略，不是禁止
 所有 Agent 调用的权限门。决定与显示边界见
-[主会话优先策略](decisions.md#pi-subagents-main-first)。
+[主会话优先策略](../decisions.md#pi-subagents-main-first)。
 插件本身保留每 60 秒一次的内存记录清理；有任务时
 还有 UI 动画刷新，不会因此定时启动模型或执行 `git status`。状态栏的 Git
 刷新仍是事件驱动。
@@ -90,7 +90,7 @@ Explore/Plan 虽然不提供 edit/write，仍有 Bash；只读意图不能当成
 CC 继续渲染普通工具，Agent 和工作流工具保留插件自己的卡片；正文仍交给
 better-render，输入框和状态栏不替换。无界面子会话不会执行主窗口的 CC 生命周期，
 也不会卸载其 better-render 补丁，见
-[渲染生命周期回归](incidents.md#pi-subagent-renderer-lifecycle)。
+[渲染生命周期回归](../incidents.md#pi-subagent-renderer-lifecycle)。
 
 ## 验证
 

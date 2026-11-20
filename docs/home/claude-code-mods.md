@@ -67,13 +67,6 @@ with `NODE_PATH` set to pi-math's (the `node_modules` link inside the folder
 `CLAUDE_CODE_PLUGIN_DIRS` names leads there), and with
 `CLAUDE_CODE_PLUGIN_DIRS` unset, or the installed copy loads beside it.
 
-Verified on 2026-10-25 on praxic (Rex 1443, Claude Code 2.1.310): the nine
-tests pass; a picture pasted into a fresh session showed under its prompt at
-once; the store build, loaded through `CLAUDE_CODE_PLUGIN_DIRS` in an
-interactive session, drew a display formula and an image line as kitty
-placeholders. Read previews and pasted pictures were checked by eye in the
-development copy the store build was made from.
-
 What misled, for pasted pictures: the first version joined a message's text
 blocks into one key, which never matched. The session transcript (the
 `.jsonl`) stores a pasted prompt as its text and its image, so it looked

@@ -1,7 +1,7 @@
 # Tailscale names
 
 The managed fleet uses `tsName = "<node>.inner.imdomestic.com"` in each host
-registry entry. `lib/my-host.nix` forwards it as `config.my.host.tsName` to all
+registry entry. `flake/_lib/host-facts.nix` forwards it as `config.my.host.tsName` to all
 four evaluators. A non-null name enables the existing deployment, telemetry and
 Tailscale defaults. No allocated Tailscale IP is required in this inventory.
 Do not assume the registry name equals the actual MagicDNS name: verify the
@@ -35,20 +35,10 @@ Use `just darwin aegis` for the system.
 | iOS node 25 | `terciopelo` | `a19pro` |
 | iOS node 24 | `krait` | `m1` |
 
-The previous DNS names and flake outputs are not compatibility aliases. Use
-`taipan.inner.imdomestic.com` for inference clients and telemetry, and
-`just hm praxic hank` for the local home. The Windows node was offline during
-the rename; its Headscale name is changed, but its OS computer name still needs
-an on-device change. iOS device names are changed in Settings, independently
-from their Headscale names. Dated incident records retain their original names.
-
-Verification: the Mac reports `praxic` for HostName, LocalHostName and
-ComputerName; native Linux reports `taipan` for both its live and static
-hostname. All five new MagicDNS names resolve to their existing node addresses;
-the five previous names no longer resolve. Both h610 and tank have activated
-the new model URLs and monitoring configuration: node, NVIDIA GPU and ping
-scrapes for `taipan` are up, and `/v1/models` responds through the new name.
-The rename did not re-enrol any node or change its Tailscale addresses.
+The previous DNS names and flake outputs are not compatibility aliases. iOS
+device names are changed in Settings, independently from their Headscale names.
+Dated incident records keep their original names. The rename did not re-enrol
+any node or change its Tailscale addresses.
 
 ## Listeners
 
@@ -78,7 +68,7 @@ migration does not add an address-change supervisor. Replacing a node also
 requires removing/renaming its old Headscale record to preserve the intended
 DNS name; neither hostname reuse nor DNS is authentication.
 
-## Bootstrap listeners and h610 aliases
+## Bootstrap listeners
 
 `my.tailscale.guardedTCPServices` declares private ports for services that must
 start before MagicDNS. The same guard protects r6s mihomo's controller on 9090;
@@ -91,12 +81,6 @@ drops traffic arriving outside `lo` and `tailscale0`. The table applies to both
 IPv4 and IPv6 regardless of `networking.firewall.enable`. Nginx is ordered after
 and bound to nftables; stopping that service stops nginx before removing the
 rules. The public 8443 endpoint is unaffected.
-
-Headscale extra DNS records require addresses. The `headscale-local-dns` timer
-updates `gaoji` and `kennethbot` aliases from the client's current self address,
-using the native `dns.extra_records_path` setting. The file starts as `[]` on a
-fresh installation so it cannot prevent Headscale from starting. Headscale
-watches subsequent atomic updates; alias convergence can take a timer interval.
 
 ## PostgreSQL and NFS
 
@@ -124,7 +108,7 @@ or client is replaced with a new address.
 This covers the ten previously `tsIp`-managed hosts and their consumers. WSL's
 separate inference setup was not in that inventory and retains its independent
 `tailnetAddress`; changing its service lifecycle is a separate migration.
-Tailscale range constants, loopback addresses, WireGuard addresses and subnet
+Tailscale range constants, loopback addresses and subnet
 routes are not allocated node identities and remain numeric.
 
 Run `python3 scripts/test-tailscale-bind.py`, then evaluate the affected system
@@ -132,61 +116,7 @@ closures with `nix eval --raw .#nixosConfigurations.<host>.config.system.build.t
 Changes under `home/` are not needed. No automatic registration, pre-auth key
 creation or database restoration is part of this migration.
 
-## Deployment on 2026-09-13
+## Rollout
 
-The authorized rollout includes `fadfd33`, `86b95e7` and `007d177`. All ten
-running system paths and persistent profiles match the evaluated final closures.
-All clients report DNS acceptance enabled, resolve their own names and the
-dynamic aliases, and serve node/ping metrics through names. All 17 NixOS systems
-evaluated successfully. Eight bind-adapter checks passed; the earlier isolated
-nftables tests covered IPv4/IPv6 and private/public ports.
-
-Builds used clean Linux worktrees. r6s built r2s/r5s/gizmo/rpi4; tank built
-Shanghai. No small target compiled its system. No machine rebooted, and no
-standalone Home Manager profile was activated. The unrelated local marble edit
-and existing target checkouts were preserved.
-
-Runtime verification passed:
-
-- Prometheus: h610 27/27 targets up; tank 25/25 targets up.
-- Complete nine-host maxops read-only acceptance, including Agent/Executor,
-  metrics, deployment/profile agreement and authorization boundaries.
-- Public Headscale health, Headplane, both Grafanas and the Shanghai gateway.
-  The independent nftables guards are loaded for h610 80/443 and r6s 9090.
-- PostgreSQL monitor and keepers restarted one at a time. Both node addresses
-  now use names; node IDs remain 1/4 and timeline remains 11. h610 remains the
-  healthy primary and tank the healthy secondary. A read-only query using the
-  application's credentials and both DNS endpoints selected writable `qq_bot`.
-  PostgreSQL remains 17.10; this was not a database upgrade.
-- Archive export and mounted source use names, and access succeeds. Qwen's DNS
-  listener, health endpoint and actual native warmup all succeeded. Max, Hub
-  and Qwen showed zero restarts after their final starts.
-
-Corrections and misleading assumptions are recorded in
-[the incident entry](incidents.md#tailscale-name-runtime-compatibility).
-rpi4's first switch reported a root user-manager exit during reactivation;
-a foreground retry of the same closure succeeded. One Shanghai journal query
-returned HTTP 502; a subsequent query and the final complete fleet check passed.
-
-Functional acceptance is separate from strict business health. Max had zero
-failed deliveries at the first sample and one at the final sample. The remaining
-row is delivery `171477`, created September 9, retrying an iMessage bridge
-preflight timeout. Both the bridge name and its currently resolved IP time out
-from h610; DNS resolution itself succeeds. Unknown deliveries remain 3,058,
-parked media 388, failed captures 19 and permanent delivery failures 4. These
-records were preserved; no messages were replayed or synthetic notifications
-sent. r2s retains a failed SSH session scope; no migrated service is failed.
-Rollback timers were cancelled after verification; prior generations remain.
-
-| Host | Final system store hash |
-| --- | --- |
-| b650 | `93shdvxx1cjs7p9zfvfsgc8qlhf0zf49` |
-| h310 | `dl4i7f8gmmrmj47my0nc716bp6x4dvaj` |
-| h610 | `299brvf4rb8ql83vqvdkzskidr6xm9dq` |
-| r2s | `y3cw0h41aa62r7pcl27cz0jycdpw7kr7` |
-| r5s | `wknjbzzdbgj2c0kg84yr3vxbjwszx75d` |
-| gizmo | `zzlmsxza731zbxg7g1d6amhyjjg2gpla` |
-| r6s | `jc0fyydc6w1fpzwd7qml0flgqg6w9vjm` |
-| rpi4 | `hhji6lb3hdka4w9alyg4kfcd5wvb6p0p` |
-| shanghai | `6lzjzpmn7fh1ams1dwhznv52ih6na98l` |
-| tank | `ky201haigvp6ivf1rkbmvrx8shhcb7ss` |
+The migration was deployed on 2026-09-13; what went wrong and what misled us is in
+[the incident entry](../incidents.md#tailscale-name-runtime-compatibility).

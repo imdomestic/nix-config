@@ -17,7 +17,7 @@
     PL1_Duration_s = 2;
     PL2_Tdp_W = burst;
     PL2_Duration_S = 0.002;
-    Trip_Temp_C = 80; # 温度优先；配置和测量见 docs/encore-cooling.md。
+    Trip_Temp_C = 80; # 温度优先；配置和测量见 docs/hosts/encore.md#cooling。
     Disable_BDPROCHOT = false;
   };
 in {

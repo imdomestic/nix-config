@@ -1,17 +1,16 @@
-# 代理链路待办
+# 代理链路
 
-2026-07-29 那轮凭据轮换之后剩下的几件事，都不紧急，但每件都有取舍，记在这里
-免得下次从头推一遍。
+境外出口的拓扑、试过的方案和还没做的事。
 
 拓扑速记：gizmo（日本，主出口）作为 bridge 主动拨向各 portal 的 `interconn2`；
 客户端连 portal 的 `client-in2`，流量经反向隧道从 gizmo 出去。2026-09-01 起 rpi4
-（悉尼）也是 bridge，只接 h610 和 sh，作冗余出口，见
+（悉尼）也是 bridge，只接 h610 和 tokyo，作冗余出口，见
 `docs/decisions.md#rpi4-portal-to-bridge`。**gizmo 只能经
 tailscale `100.64.0.16` 访问**，它的公网 IPv6 有防火墙，从外面连不进来。
 
 ---
 
-## 1. xmc finalmask（观望）
+## 1. xmc finalmask（观望） {#xmc}
 
 Xray 的 [PR #6210](https://github.com/XTLS/Xray-core/pull/6210) 加了一个叫 xmc 的
 finalmask 传输层，用真实 Minecraft 协议做伪装。作者写它的动机基本就是这套部署：
@@ -39,7 +38,7 @@ prerelease），且 nixpkgs 跟上。届时先只在 `interconn2`（唯一跨境
 [A Wall Behind A Wall](https://gfw.report/publications/sp25/en/)（IEEE S&P 2025）
 GFW 不检查境内互通流量，那一段换不换伪装意义不大。
 
-## 2. v6 节点从高端口搬到 443
+## 2. v6 节点从高端口搬到 443 {#v6-443}
 
 已实测**电信不封 IPv6 入站 443**（从外部直连 `r5s.imdomestic.com:443` 成功）。
 r5s / r6s / r2s 三台 portal 都只有 v6（rpi4 已不是 portal），可以把它们的
@@ -52,71 +51,21 @@ r5s / r6s / r2s 三台 portal 都只有 v6（rpi4 已不是 portal），可以�
 
 需要 portal 的监听端口和 gizmo 的拨号端口同步改，没有只加不改的路径。
 
-## 3. r2s（已上线，隧道验证未记录）
+## 3. sing-box 的 auto_redirect 与 CGNAT（2026-07-31，已放弃） {#singbox-cgnat}
 
-r2s 已在 2026-09-15 的 fleet rollout 中构建、激活并通过 SSH 验收（见
-`docs/max-ssh-operations.md`）。下面 ddns-go 和 `interconn-r2s` 两项检查没有
-留下记录，仍待确认。
-
-2026-08-14 已用原 SSH host key 恢复 `host_r2s` 的 SOPS recipient，并新建
-`secrets/hosts/r2s.yaml`。WireGuard、DDNS 和全新轮换的 Xray 凭据都改由 SOPS
-提供；gizmo 的 bridge/outbound、共享 DAE 节点以及 mihomo、sing-box 的节点列表
-也重新纳入 r2s。
-
-配置侧的求值、SOPS 键完整性、Xray 配置与隧道域名可以离线检查；设备真正上线后
-还需要确认 `r2s.imdomestic.com` 已被 ddns-go 更新到当前 IPv6，并从 gizmo 验证
-`interconn-r2s` 已建连。若机器重装后 SSH host key 变过，必须先更新这里的 age
-recipient，否则目标机无法解密新文件。
-
-## 4. 死代码里的旧凭据（已解决）
-
-`system/modules/singbox/default.nix` 里原先还留着那个泄露的 UUID 和公钥（连同
-已下线的 54321 端口和 `www.microsoft.com` 这个 sni）。2026-07-31 重写该模块时
-一并清掉了，现在全部凭据从 `secrets/clients/imdomestic.yaml` 经 sops 读入。
-
-## 5. sing-box 迁移（已回滚，两个问题都没解决）
-
-2026-07-31 凌晨在 r6s 上试了一次 dae -> sing-box，**两种 `auto_redirect` 取值
-各自坏在不同的地方**，最后回滚到 dae。`system/modules/singbox` 已经重写好并且
-凭据进了 sops（`secrets/clients/imdomestic.yaml`，加密给全部 admin + 全部
-host），r6s 的 import 已改回 dae。重新试之前必须先解决下面两条。
-
-**`auto_redirect = true`（上游推荐值）：LAN 正常，路由器自己的 IPv4 全挂。**
-它对本机发出的 TCP 是在 nat output 链里 `redirect to :<port>`，内核把目的地址
-改写成 127.0.0.1 从 lo 投递，源地址仍是 WAN 地址。电信 PPPoE 给 r6s 的是
-CGNAT 地址 `100.84.115.12`，而 tailscale 在 filter INPUT 挂了
+2026-07-31 在 r6s 上试过 dae -> sing-box，回滚后 sing-box 模块已删除。留下的教训：
+`auto_redirect = true` 把本机 TCP 在 nat output 链 `redirect` 到 lo，源地址仍是 WAN
+地址；电信 PPPoE 给 r6s 的是 CGNAT 地址（`100.84.115.12`），撞上 tailscale 在 filter
+INPUT 挂的
 
     ip saddr 100.64.0.0/10 iifname != "tailscale0" drop
 
-于是每个重定向到 lo 的 SYN 都被丢掉——没有 RST，没有日志，只在 lo 上看到
-SYN 重传。IPv6 不受影响（tailscale 对应规则用的是 `fd7a:115c:a1e0::/48`），
-LAN 转发也不受影响（prerouting 的 redirect 源是 192.168.22.x）。所以症状精确
-落在「只有路由器自己上不了 v4」这个很迷惑的组合上。
+于是只有路由器自己的 IPv4 全挂，LAN 和 IPv6 正常。nftables 里 `accept` 不终结，
+在更早的链里放行没用；那条规则是 tailscale 自己管的链，改了会被覆盖。
+`auto_redirect = false` 时 TCP 根本不进 tun，机制没查清。mihomo 为什么没有这个问题
+见 [auto-redirect](#auto-redirect)。
 
-注意这已经是同一个网络里第二次撞 `100.64.0.0/10`：shanghai 那台的注释写着
-运营商 DHCP 下发的 DNS 也在这个段里，和 tailscale 撞过一次。
-
-想不出干净解法的原因：nftables 里 `accept` 不是终结的，在更早的链里放行没用，
-只有 `drop` 终结；而 tailscale 那条规则是它自己管理的链，改了会被覆盖。
-`--netfilter-mode=off` 能绕开但要自己接管 tailscale 的转发规则。
-
-**`auto_redirect = false`：TCP 根本不进 tun，全网断。**
-实测日志对比（同样约 6 分钟窗口）：
-
-    auto_redirect=true   TCP 1604 条, UDP 5780 条, vless 988 次
-    auto_redirect=false  TCP    7 条, UDP 33807 条, vless 123 次
-
-UDP（DNS、tailscale 的 41641）照进不误，TCP 几乎为零。两种模式用的是同一套
-`ip rule`，所以差异不在路由层，**具体机制没查清**。另外注意 false 那次
-LAN 客户端的 tailscale UDP 也被卷进了 tun（日志里大量
-`inbound packet connection to 192.168.22.x:41641`），本来就不该进。
-
-**下次重试的前提：**先在一台不当网关、也不吃 CGNAT 地址的机器上（比如 tank）
-把 `auto_redirect=false` 时 TCP 不进 tun 的机制搞清楚，再回到 r6s。
-不要再直接在网关上试——它一挂就是全家断网，而且 r6s 自己就是这台机器上网的
-出口，回滚只能靠 tailscale 或者物理接触。
-
-## 6. 隧道抽风的根因（2026-07-31 实测）
+## 4. 隧道抽风的根因（2026-07-31 实测） {#tunnel-root-cause}
 
 症状：浏览器开网页"秒死"，过一阵自己好。
 
@@ -182,7 +131,7 @@ UDP 端口。开了之后 gizmo 当 server、各 portal 当 client，反向隧�
 **五个节点共用一个出口，冗余是假的。** 任何 gizmo 侧或跨境段的整体问题都会让
 五个同时失效，没有健康节点可切。选路策略再聪明也救不了这一类。
 
-## 7. 选路：延迟指标看不见这个问题
+## 5. 选路：延迟指标看不见这个问题 {#quality-routing}
 
 h610 RTT 89ms、吞吐 4.8 Mbit/s、丢包 13%，而按延迟选路的策略认为它健康。
 调研过的客户端里只有三个把质量纳入实时评分：
@@ -206,7 +155,7 @@ Hiddify / NekoBox / Loon / v2rayA 全是纯延迟。dae 的五个策略
 五条里最好的之一。链路质量随运营商、时段、v4/v6 大幅波动，要的是能感知质量的
 选路，不是更短的节点列表。
 
-## 8. r6s: dae -> mihomo(smart) 迁移记（2026-07-31 完成）
+## 6. r6s: dae -> mihomo(smart) 迁移记（2026-07-31 完成） {#r6s-mihomo}
 
 三次踩坑，都不是配置解析问题——**三次 `-t` 校验全过，服务全起不来或不通**：
 
@@ -223,7 +172,7 @@ Hiddify / NekoBox / Loon / v2rayA 全是纯延迟。dae 的五个策略
 3. **换 DNS 模式后必须 `resolvectl flush-caches`。** 两次"还是坏的"都是缓存
    残留（旧的投毒记录 / 旧的 fake-ip），不是配置没生效。
 
-### auto-redirect：mihomo 和 sing-box 的关键差异
+### auto-redirect：mihomo 和 sing-box 的关键差异 {#auto-redirect}
 
 sing-box 那次断网是因为 `auto_redirect` 把本机 TCP 重定向到 lo，源地址仍是
 CGNAT 的 100.84.115.12，撞上 tailscale 的
@@ -275,7 +224,7 @@ redir-host 必须把域名解析对（拿到毒 IP 就会去连毒 IP），所�
 走代理失败率 4/160 (2.5%)。**但这不能和之前的 20% 直接比**——那是在 h610 上用
 dae 测的，主机和软件两个变量都变了。要干净归因得在同一台上做 dae/mihomo 对比。
 
-## 9. h610 试 mihomo 失败并回滚（2026-07-31）
+## 7. h610 试 mihomo 失败并回滚（2026-07-31） {#h610-mihomo-rollback}
 
 r6s 迁移成功之后把 h610 也切过去，**cliproxy 随即不可用**，回滚到 dae。
 r6s 保持 mihomo 不变。
@@ -327,7 +276,7 @@ cliproxy 清冷却，或者直接绕开 cliproxy 用 curl）。
 
 ---
 
-## 10. mihomo 每隔几小时崩一次（2026-08-01，已修）
+## 8. mihomo 每隔几小时崩一次（2026-08-01，已修） {#mihomo-panic}
 
 症状是「r6s 上 mihomo 过一段时间就退出」。7-31 20:27 部署，8-1 06:25 和 10:18
 各崩一次，两次都是人发现断网手动重启才恢复的。
@@ -388,7 +337,6 @@ Transport **只设了 `DialTLSContext`，没设 `DialContext`**。一旦某次�
 just check-sops      声明的密钥在 sops 文件里真的存在吗
 just check-tunnels   bridge/portal 两端的 reverse-* 域名对得上吗
 just check-xray      生成的配置 xray 真的能启动吗
-just check-singbox   生成的配置 sing-box 真的能启动吗（在目标机上跑）
 ```
 
 这三条各自对应一次真实事故：shanghai 自 `e55593c` 起就因为 psk 键名不对而不可
@@ -397,10 +345,4 @@ just check-singbox   生成的配置 sing-box 真的能启动吗（在目标机�
 `realitySettings` 变成空块，一样通过求值，直到 xray 启动时报 `empty "password"`
 才暴露，r6s 因此宕了半小时。
 
-check-singbox 对应的是 sing-box 1.13 那批「弃用但没删」的写法——旧式 DNS
-server、缺 default_domain_resolver——它们不是告警而是启动即 Fatal，配置能求值、
-能生成合法 JSON，服务就是起不来。它必须在目标主机上跑：tun/auto_redirect 是
-Linux only，在 macOS 上必然失败，本地跑只会得到假阳性。
-
-但要清楚它的边界：**它只能证明配置能被解析和初始化，不能证明流量真的通。**
-上面那次断网，`just check-singbox` 是过的。
+但要清楚它们的边界：**只能证明配置能被解析和初始化，不能证明流量真的通。**

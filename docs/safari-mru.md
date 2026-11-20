@@ -110,17 +110,4 @@ nix build .#safari-mru
 交互测试还验证程序启动后创建的新标签，避免按键时即时扫描掩盖通知订阅缺失。
 测试由已授权的 Rex 终端运行；launchd 常驻实例仍需启用 Home Manager 并单独核对辅助功能授权。
 
-2026-11-06：事件驱动版 2 已通过构建、纯状态测试及配置求值。
-Owner 曾在提交前手动 switch 启用版本 2；随后保存为提交 `13856ea4`，
-已核对该提交的 package outPath 与当时运行的版本相同，能够重建。
-服务启动时记录等待辅助功能权限；实际通知覆盖与快捷键验收尚未完成。
-Arc 交互调整在版本 3；版本 2 仍是按每次 Tab 立即激活的旧交互，需更新 home 才能启用版本 3。
-版本 3 已通过 Nix 构建、纯状态测试、Swift 测试脚本类型检查、lint、三个 Mac home 求值与 praxic 的 home dry run。
-自动桌面控制工具当前连接失败，版本 3 的实际键盘与事件验收尚未完成。
-版本 4 已增加整个 app 的严格签名校验、应用标识检查、Info.plist 篡改拒绝测试及按需状态输出。
-Nix 输出及可写副本均已通过 Apple codesign 严格验证；修改 Info.plist 的副本被拒绝。
-修复版 4 已在 praxic 激活；实际 agent 的版本和 bundle 标识均正确，安装副本验签成功。
-通过 `tccd` 日志确认允许记录仍绑定旧 cdhash；仅重置本 app 并由当前 app 请求、owner 允许后，
-新启动的 launchd 实例已确认 `permission=yes`。
-Safari 前台识别到 6 个标签，`hotkeys=yes`；4 次真实快捷键对应 4 次切换请求，`activationErrors=0`。
-owner 已验证手动切换标签后 Ctrl+Tab 正常。本次没有逐项验收长按、反向、取消和新标签的通知覆盖。
+版本 4 在 praxic 运行，真实快捷键切换已验收；长按、反向、取消和新标签的通知覆盖没有逐项验收。

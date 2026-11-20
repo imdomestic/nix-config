@@ -1,5 +1,5 @@
 let
-  # USD per million tokens; sources and effective dates: docs/pi-model-pricing.md.
+  # USD per million tokens; sources and effective dates: docs/home/pi-model-pricing.md.
   gpt = {
     input,
     output,

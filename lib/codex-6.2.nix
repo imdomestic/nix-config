@@ -19,7 +19,7 @@ let
   };
 in {
   inherit levels ids models;
-  # Codex account discovery defaults, not the public API's 1.05M limit; docs/cliproxy-model-catalog.md.
+  # Codex account discovery defaults, not the public API's 1.05M limit; docs/services/cliproxy.md#codex-6-2.
   catalog =
     map (id: {
       inherit id;

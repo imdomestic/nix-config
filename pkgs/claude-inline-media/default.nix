@@ -5,7 +5,7 @@
   pi-math,
 }:
 # A Claude Code mod: math and pictures drawn in the transcript
-# (docs/claude-code-mods.md#inline-media). The output is the plugin folder.
+# (docs/home/claude-code-mods.md#inline-media). The output is the plugin folder.
 stdenvNoCC.mkDerivation {
   pname = "claude-inline-media";
   inherit (lib.importJSON ./mod/.claude-plugin/plugin.json) version;

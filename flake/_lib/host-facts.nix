@@ -59,7 +59,7 @@
       Fully qualified MagicDNS name. A non-null name opts this host into
       Tailscale, deployment and telemetry. Connections use this name; listeners
       resolve it at startup. No allocated Tailscale IP belongs in the registry.
-      See docs/tailscale-names.md for DNS readiness and IP-only applications.
+      See docs/services/tailscale-names.md for DNS readiness and IP-only applications.
     '';
   };
 

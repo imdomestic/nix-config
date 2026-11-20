@@ -2,7 +2,7 @@
 
 ## 启用和扩展
 
-在 `hosts/<host>/default.nix` 登记，采集端和所有 monitor 的抓取目标共用此信息：
+在 `hosts/<host>/host.nix` 登记，采集端和所有 monitor 的抓取目标共用此信息：
 
 ```nix
 tsName = "taipan.inner.imdomestic.com";
@@ -16,7 +16,7 @@ UUID 用 `nvidia-smi -L` 获取。空列表自动纳入该机全部 NVIDIA GPU�
 并额外检查这些卡是否消失。换卡要更新 UUID；加卡向列表追加。主机必须运行原生 NVIDIA
 驱动且启用 telemetry。目前后端支持 NVIDIA；AMD/Intel 需要新增对应采集后端，不能只填 UUID。
 `server` profile 已导入 telemetry；其他 profile 的主机需在 `modules` 中追加
-`../../modules/telemetry`，然后同样只通过上述登记选择 GPU。
+`../../system/modules/telemetry`，然后同样只通过上述登记选择 GPU。
 
 修改后求值并部署 GPU 主机以及 `roles` 含 `monitor` 的主机，目前为 h610、tank。
 优先 SSH 到目标机器，使用独立干净 worktree 拉取当前 `origin/main`，以 checkout 所有者

@@ -86,16 +86,3 @@ nix eval --raw .#darwinConfigurations.aegis.config.system.build.toplevel.drvPath
 ```
 
 根因、时间线与验证边界：`docs/incidents.md#smb-fixed-mountpoint`。
-
-## 验证（2026-10-06）
-
-全部 20 个 NixOS 配置与 4 个 nix-darwin 配置求值通过。
-seraph 与 encore 的系统部署均已确认，Samba 和密码配置服务处于 active
-状态，两台服务器均没有失败的系统服务。
-
-获准客户端已建立 SMB 3.1.1 连接。两个共享均完成 1 MiB 文件读写、
-中文文件名、扩展属性、重命名、SHA-256 校验与删除验证；远端文件所有者为
-linwhite，文件权限为 `0600`，目录权限为 `0700`。
-
-两个服务只监听各自 Tailscale IPv4 地址的 TCP 445。seraph 与 encore 之间的
-SMB 连接均超时，nftables 拒绝规则的计数增加，验证了 aegis 地址限制。

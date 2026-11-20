@@ -61,7 +61,7 @@ in {
       serviceConfig.RestartSec = "10s";
     };
 
-    # XML, pmon and journal cover fields absent from query-gpu; see docs/gpu-monitoring.md.
+    # XML, pmon and journal cover fields absent from query-gpu; see docs/services/gpu-monitoring.md.
     systemd.services.gpu-detail-metrics = {
       description = "NVIDIA detailed telemetry for node exporter";
       after = ["systemd-tmpfiles-setup.service" "nvidia-persistenced.service"];

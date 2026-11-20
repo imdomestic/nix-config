@@ -11,7 +11,7 @@ in {
   imports = [inputs.rex.nixosModules.default];
 
   # On every tailnet server: one Rex server per account, each started as that
-  # account; every caller reaches only their own. docs/rex.md#login-server.
+  # account; every caller reaches only their own. docs/home/rex.md#login-server.
   config = lib.mkIf (config.my.host.tsName != null) {
     services.rex.loginServer = {
       enable = true;

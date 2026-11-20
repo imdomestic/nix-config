@@ -42,12 +42,11 @@ Qwen3.8 Aligned、h610 Qwen3.5 4B、tank Ollama。默认选中本机 Hikari。
 - Ollama 默认 `qwen3:8b`，同一连接也能选 `gemma4:e4b-it-q4_K_M`。
 - 首页 **Temporary chat → No preset** 可以直接测试模型；手机上临时聊天按钮
   只显示图标。手机默认 Enter 换行，发送请点发送按钮。
-- Qwen3.8 所在的 taipan 当前 NixOS 离线，因此连接只完成预设；本次不切换其
-  Windows / NixOS，也不重启那台机器。
+- Qwen3.8 在 taipan 上，只有 taipan 启动到 NixOS 时可用。
 - **Rewind 不接入。** 继承用户对有使用条件提供商的要求，模型目录过滤
   `rewind/`，注册的对话提供商在普通与流式生成前均拒绝该前缀。
-- CLIProxy 目录中还有生图等非聊天模型，不应选作普通对话模型；没有在此次部署
-  中配置生图、TTS、语音识别或其他需要独立适配的功能。
+- CLIProxy 目录中还有生图等非聊天模型，不应选作普通对话模型；没有配置生图、
+  TTS、语音识别或其他需要独立适配的功能。
 
 两个前端复用相同的推理服务器。Bonsai 的两个模型共享一张 GPU，切换模型会
 互斥装载；同时使用两个前端不会获得两份独立的显存或推理容量。
@@ -80,8 +79,8 @@ Qwen3.8 Aligned、h610 Qwen3.5 4B、tank Ollama。默认选中本机 Hikari。
 网络边界：Bun 只监听 `127.0.0.1:7860`；nginx 只监听 Tailnet 地址 `:7861`，
 独立 nftables 守卫进一步限制接口。没有 Funnel、公网或 LAN 入口。保留应用
 原生认证，关闭任意 Origin 信任，仅信任声明的 Origin 与 loopback 反代。
-HTTP 由 Tailnet 隧道加密，但浏览器仍视其为非安全上下文；基础登录、聊天、
-WebSocket 已验收，Push / 麦克风等依赖安全上下文的功能不在本次范围内。
+HTTP 由 Tailnet 隧道加密，但浏览器仍视其为非安全上下文；Push / 麦克风等
+依赖安全上下文的功能不可用。
 
 维护命令：
 
@@ -96,22 +95,3 @@ systemctl status podman-lumiverse lumiverse-bootstrap nginx
 
 日志和浏览器状态可能包含会话标识，不要直接公开日志。系统部署遵守
 `AGENTS.md` 的 freshness check；Home Manager 不参与。
-
-## 2026-11-10 · 验收 {#acceptance}
-
-- 13 项 bootstrap 隔离测试通过；固定镜像 Bun 下 3 项提供商策略测试、52 项
-  断言通过，包括全部 23 个注册提供商的非流式 / 流式拒绝及零网络请求。
-- 登录页面可达，未认证 connections / settings / secrets API 均返回 401。
-- gizmo 的真实 Tailnet 客户端可访问 7861，无法访问内部 7860；同一 LAN 上的
-  `10.1.2.194:7861` 不可达。ST 的原有 8000 入口仍正常返回认证挑战。
-- 7 个连接初始化成功，Bonsai / CLIProxy / h610 / Ollama 的模型列表正常，
-  CLIProxy 返回 71 个非 Rewind ID（上游目录当时为 79 个）。
-- 经 Lumiverse 原生生成 API 的 Hikari、Gemini 3.8 Flash High、GPT 6.1 Sol
-  均收到实际回复；手填 Rewind 被本地策略拒绝，没有提交给模型上游。
-- Chromium 桌面浏览器完成登录和中文临时聊天，WebSocket 流式输出成功；
-  390×844 手机视口也完成实际发送并收到 `MOBILE_OK`，没有页面脚本错误或
-  横向溢出。临时测试聊天返回首页后按应用设计删除。
-- 重跑初始化前后的连接、默认连接及管理记录相同；没有改写 ST 的模型设置。
-
-原始验收记录和截图：`/var/lib/lumiverse-validation/20261110/`。截图不是可恢复
-备份；其中的浏览器测试会话应在验收后注销。

@@ -75,19 +75,9 @@ Linux 独立使用时将源文件默认的 `PIXIE_Y_SIGN` 改为 `-1.0`。
   粒子使用有寿命的小方块和线性淡出，保留背景的预乘 alpha。
 - shader 不知道 Neovim 模式、窗口或命令行；终端程序的光标移动也会出现特效。
 
-## 2026-09-30 验证
-
-- 本机 Ghostty：`1.3.2-main-+91f66da24`，Metal；当前配置背景透明度为 0.85。
-- 用该 Ghostty revision 的真实 `shadertoy_prefix.glsl`，经 glslang 编译到
-  SPIR-V，再由 SPIRV-Cross 转为 MSL，并由 Apple M1 Pro 的 Metal 驱动编译、
-  离屏渲染。覆盖 block/bar/underline、短移动、斜向移动和粒子寿命。
-- 156 帧渲染检查中，隐藏、失焦、初始位置、静止、hollow、lock、重新聚焦但
-  尚未移动、动画完全结束的输出与输入逐字节一致；透明背景满足预乘 alpha。
-  同时检查原生光标区域和远离轨迹区域不变，并目视检查渲染图片。
-- `hank@m1elite` Home Manager activation derivation 求值、生成的 Ghostty
-  配置构建、`ghostty +validate-config` 通过。未运行 switch。
-- 电脑控制工具拒绝访问 Ghostty，因此没有进行真实 Ghostty 窗口加载和交互验收。
-  离屏预览使用合成终端底图，不能当作 Ghostty 运行截图。
+离屏渲染检查（2026-09-30）用的是该 Ghostty revision 的真实 `shadertoy_prefix.glsl`
+（glslang → SPIR-V → SPIRV-Cross → Metal）：不该出特效的状态输出与输入逐字节一致，
+透明背景满足预乘 alpha。没有在真实 Ghostty 窗口里做交互验收。
 
 参考：
 

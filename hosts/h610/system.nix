@@ -49,7 +49,7 @@ in {
     ../../system/modules/airport
     ../../system/modules/imsub
     # 2026-07-31 试过 mihomo,因为 cliproxy 一直 EOF 而回滚,见
-    # docs/proxy-todo.md 第 9 节。r6s 上同一份配置是好的,所以问题多半出在
+    # docs/services/proxy.md#h610-mihomo-rollback。r6s 上同一份配置是好的,所以问题多半出在
     # 这台的链路质量(五条里最差)上,而不是配置本身。下面 my.mihomo.* 那几行
     # 留着,重新试的时候把这两行换回来即可。
     ../../system/modules/dae

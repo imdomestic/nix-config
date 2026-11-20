@@ -29,7 +29,7 @@
     # Existing public-API estimate for Argon/Carbon, not the AGY subscription bill.
     gemini-4 = price 2 0.1 10;
     gemini-4-hydrogen = price 1.5 0.075 7.5;
-    # As docs/pi-model-pricing.md has it, checked 2026-10-18.
+    # As docs/home/pi-model-pricing.md has it, checked 2026-10-18.
     gpt-6-1-sol = price 2 0.1 10;
     gpt-6-astra = price 10 1 50;
     # Promotional until 2026-11-30.

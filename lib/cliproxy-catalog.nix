@@ -2,7 +2,7 @@
   pkgs,
   extraModels,
 }: let
-  # Custom sources replace every provider; snapshot upkeep: docs/cliproxy-model-catalog.md.
+  # Custom sources replace every provider; snapshot upkeep: docs/services/cliproxy.md#catalog.
   baseline = builtins.fromJSON (builtins.readFile (builtins.fetchurl {
     url = "https://raw.githubusercontent.com/router-for-me/models/11a1417210520dc526aacdd4bde9303398ecfd4d/models.json";
     sha256 = "487476de10655f562955630463503f15ba3990837818344ac8aa40acafc918cc";

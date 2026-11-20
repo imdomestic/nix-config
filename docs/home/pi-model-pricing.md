@@ -37,7 +37,7 @@ Gemini 价格来源：[Google 官方价目](https://ai.google.dev/gemini-api/doc
 Hydrogen 于 2026-11-15 加入，沿用 `hosts/tank/maxx.nix` 在 2026-11-12
 核对的公开 Hydrogen 价格；四个后缀是独立的 Antigravity 预设 ID，费用
 估算共用同一公开型号价格，不是订阅账单。目录与预设配置见
-`docs/cliproxy-model-catalog.md`，此前误判见
+`docs/services/cliproxy.md#catalog`，此前误判见
 `docs/incidents.md#antigravity-hydrogen-effort`。
 
 GPT 输入总量超过 272,000 token 时，输入、缓存读取和缓存写入单价乘 2，

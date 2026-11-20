@@ -65,7 +65,7 @@ in {
   home.sessionVariables.CLAUDE_CODE_TMUX_TRUECOLOR = "1";
 
   # Claude Code 把这里列的目录当插件原地加载:不经 marketplace,也就没有要在
-  # nix 之外跑的 `claude plugin install`(docs/claude-code-mods.md#inline-media)。
+  # nix 之外跑的 `claude plugin install`(docs/home/claude-code-mods.md#inline-media)。
   home.sessionVariables.CLAUDE_CODE_PLUGIN_DIRS = "${inline-media}";
 
   # HM 的 programs.claude-code 没有 themes 选项。选用要在 /theme 里点一次:

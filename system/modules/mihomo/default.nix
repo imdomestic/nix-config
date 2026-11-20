@@ -165,7 +165,7 @@ in {
         tailscale 那条 `ip saddr 100.64.0.0/10 iifname != "tailscale0" drop` 里,
         于是本机 IPv4 全挂 —— 没有 RST、没有日志,只在 lo 上看到 SYN 重传。
         sing-box 1.13 是无条件开 mark mode 的,所以那次一定踩;mihomo 默认不开,
-        只要不碰那两个 `-set` 选项就没事。详见 docs/proxy-todo.md 第 5 节。
+        只要不碰那两个 `-set` 选项就没事。详见 docs/services/proxy.md#singbox-cgnat。
 
         下面用的是普通的 `route-exclude-address`(前缀列表),不触发 mark mode。
       '';

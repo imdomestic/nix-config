@@ -14,7 +14,7 @@
       "UNIX-CONNECT:${socket}"
   '';
 in {
-  # Every reachable tailnet node gets Rex's local-user access; docs/rex.md#tailnet-access.
+  # Every reachable tailnet node gets Rex's local-user access; docs/home/rex.md#tailnet-access.
   launchd.agents.rex-tailnet-relay = {
     enable = true;
     config = {

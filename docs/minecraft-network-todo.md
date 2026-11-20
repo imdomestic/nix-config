@@ -4,7 +4,7 @@
 
 相关文档和仓库：
 
-- 旧服布局：`docs/encore-minecraft.md`
+- 旧服数据：`docs/hosts/encore.md#minecraft-data`
 - chorusd 源码：私有仓库 `imdomestic/chorus-testbed`
 
 ## 结论速记
@@ -40,31 +40,19 @@
 | `HCHogan/max` | hank | QQ bot，跑在 tank 上 |
 | d2-map-dev | linwhite | 地图仓库，目前只在 linwhite 本机 |
 
-## 现状（2026-10-17 核对）
+## 现状（2026-10-17 核对，2026-11-20 修正过时的几条）
 
-- **encore 上的旧服全部停用了。** 旧的 Velocity、bedrock-proxy、lobby、bingo、speedrun、GTL 都被 `system/modules/chorus/legacy-minecraft.nix` 停用。
+- **encore 上的旧服全部停用了**，旧的 Velocity、bedrock-proxy、lobby、bingo、speedrun、GTL 的服务定义也已删除；数据见 `docs/hosts/encore.md#minecraft-data`。
 - **运营集群（2026-10-17 起）是 tank 上的单节点 k3s。**
   - 节点配置在 `hosts/tank/k3s.nix`，集群内容在 `k8s/`，由 Argo CD 从 `k8s-rendered` 分支同步。
   - 目前跑着一套用旧存档搭的测试网络：Velocity + 大厅（Paper 1.21.1）+ bingo（Fabric 1.21.11）。
   - 大厅是常驻的 StatefulSet，世界存在 PVC 里，作为静态后端写在 velocity.toml。
   - bingo 是 Agones Fleet：`minecraft/agones-fabric` 上报状态，Velocity 上的 `minecraft/velocity-router` 动态注册。玩家在大厅用 `/play bingo` 进 bingo，房间关掉时被送回大厅。
-  - 测试网络是离线模式，在 tailnet 内连 `tank.inner.imdomestic.com:25565`。tank 的防火墙是关着的，局域网 192.168.20.0/24 也能连。
+  - 测试网络是离线模式，在 tailnet 内连 `tank.inner.imdomestic.com:25565`。
   - kubectl 和 k9s 用 `tank` 这个 context，见 `home/hank/modules/kube`。
-- **k3s 只有一个 server，就是 encore。**
-  - encore 是一台笔记本（见 `docs/encore-cooling.md`），网络走 WiFi `wlo1`。
-  - 数据存储用默认的 SQLite，没开 `clusterInit`。
-  - seraph 只是 agent。encore 一挂，集群就不会再调度任何东西。
-- **encore 根分区 343G，已用 92%。** 占用大头是 `/home/linwhite` 153G、`/home/hank` 103G、`/nix/store` 45G。
-- **chorusd 跑在 encore 上：**
-  - 构建：systemd 单元 `chorus-build@`；
-  - 房间：每个房间一个 StatefulSet 加一块 local-path PVC；
-  - 入口：mc-router 加 `<room>.chorus.internal` 域名，只有 tailnet 内能连；
-  - 归档：rsync 到 tank。
-- **旧服数据都在 encore 本机，分散在几处：**
-  - PostgreSQL 16：`minecraft`、`luckperms` 两个库；
-  - MariaDB：`minecraft` 库，CMI 在用；
-  - 代理的 LuckPerms：自己的 H2 文件；
-  - SkinsRestorer：文件存储。
+- **encore 上的 k3s 现在由 vex 管**（`hosts/encore/vex.nix`、`system/modules/vex`），encore 是唯一的 server，seraph 是 agent（`hosts/seraph/vex-agent.nix`）。encore 一挂，这个集群就不会再调度任何东西。
+  - encore 是一台笔记本（见 `docs/hosts/encore.md`），网络走 WiFi `wlo1`。
+  - 房间入口是 mc-router；tokyo 上的 gate（`system/modules/minecraft/gate.nix`）把公网 25565 转到 encore。
 
 ## 1. 先和 linwhite 对齐
 

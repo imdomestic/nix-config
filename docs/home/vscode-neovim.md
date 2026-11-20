@@ -101,9 +101,3 @@ scripts/test-vscode-neovim.sh hank@praxic
 脚本构建声明的扩展并启动独立的 VS Code 测试窗口，使用临时用户目录、扩展目录和
 测试文件。不会改动日常 VS Code 配置；窗口结束后打印结果，保留临时目录供查日志。
 找不到应用时可通过 `VSCODE_BIN` 指定 CLI。需要桌面会话，不是 headless CI 测试。
-
-2026-09-28 在 m1elite 上验证：VS Code 1.139.1、vscode-neovim 1.19.0、
-Neovim 0.12.4。用户设置覆盖与重置、47 个桥接命令注册、横向/纵向分屏和导航、
-标签切换、surround 编辑与 undo、Tree-sitter `daf`、inlay hints 切换及 Quick Open
-调用通过。嵌入实例使用 VS Code 剪贴板，未加载终端 LSP、Snacks、Blink 或 Noice。
-终端配置启动检查、42 份 Home 配置求值通过。测试不代表每个语言扩展的功能验收。

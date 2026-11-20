@@ -151,7 +151,7 @@ in {
     };
     "bonsai/api_key".restartUnits = ["nginx.service"];
   };
-  # Bind real credentials to upstreams, not mutable browser profiles; see docs/sillytavern.md.
+  # Bind real credentials to upstreams, not mutable browser profiles; see docs/services/sillytavern.md.
   sops.templates."sillytavern-cliproxy-header" = {
     owner = config.services.nginx.user;
     restartUnits = ["nginx.service"];

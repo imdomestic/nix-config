@@ -49,7 +49,7 @@ lib/                    # data and helpers modules import: nixpkgs-registry pins
 pkgs/                   # local packages
 secrets/                # sops files: secrets.yaml, hosts/<host>.yaml, clients/
 scripts/                # check-* scripts behind the just recipes, plus model/bench tooling
-docs/                   # incidents.md, decisions.md, topic docs, runbooks/
+docs/                   # incidents.md, decisions.md; hosts/, services/, home/, runbooks/ (docs/README.md)
 Justfile                # every rebuild/deploy command
 ```
 
@@ -464,13 +464,13 @@ ssh hank@<构建机> \
 踩过一次，见 `docs/incidents.md#arm-boxes-oom-on-local-build`。
 用户在当前任务中明确指定构建机时按该指令执行，先核对资源并限制构建并发；
 2026-09-15 的 h310、taipan、rpi4 本机构建例外与实测见
-`docs/max-ssh-operations.md#2026-09-15-fleet-rollout`。
+`docs/services/max-ssh-operations.md#2026-09-15-fleet-rollout`。
 
 ## Deploys
 
 Servers and routers are deployed with deploy-rs using the MagicDNS names in
 `tsName`. The initiator must resolve `*.inner.imdomestic.com`; see
-`docs/tailscale-names.md`. `autoRollback` and `magicRollback` are enabled.
+`docs/services/tailscale-names.md`. `autoRollback` and `magicRollback` are enabled.
 Targets are every NixOS host with a `tsName`; list them from the flake instead
 of trusting a hand-written list:
 
@@ -521,8 +521,9 @@ nix eval --json .#deploy.nodes --apply builtins.attrNames
   (`docs/decisions.md#auto-update`).
 
 Max operates these targets through ordinary SSH as the full-sudo `max` account,
-using its own Tailscale client. The bot runs on `tank` as `max-service`.
-Configuration and dated rollout evidence: `docs/max-ssh-operations.md`.
+using its own Tailscale client. The bot (maxx) runs on `tank`; which chats' VMs get that
+network is `services.maxx.vm.operations` in `hosts/tank/maxx.nix`.
+Configuration and the 2026-09-15 rollout record: `docs/services/max-ssh-operations.md`.
 
 ## CI
 

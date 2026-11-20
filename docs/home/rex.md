@@ -1,4 +1,4 @@
-# Rex appearance migration
+# Rex
 
 On 2026-10-24, Hank's Ghostty settings were migrated to Rex Beta 0.1.0
 (build 1408) on praxic. `home/hank/modules/rex/default.nix` applies the same preferences
@@ -30,19 +30,10 @@ No original application configuration file is copied into this repository.
 | Alt+i quick terminal | No matching global quick-terminal action found; not rebound to another action |
 | Shell integration, clipboard policy, click-to-move, TERM, auto-update | Application-specific behavior; no unverified mapping added |
 
-The initial theme was imported using Rex's Settings → Themes → Import with
-`~/.config/ghostty/themes/kanso`, then named Kanso Zen. Kanso Pearl was imported
-from the upstream Ghostty theme. Their IDs are retained by the Nix module so
-activation updates those themes rather than creating duplicates.
-The live font, fallback order, cursor, and Option preferences were changed in
-Rex settings. Updating defaults through Home Manager on another Mac may require
-reopening the Rex client before its appearance refreshes.
-
-The generated themes were compared against both Rex imports, including all
-256 palette entries. Repeated theme activation was verified to preserve other
-preferences and themes and to produce the same data. All eleven managed
-preferences matched the live app. No full Home Manager switch was run for the
-initial migration; appearance was applied directly in Rex.
+Kanso Zen and Kanso Pearl were first imported through Rex's Settings → Themes →
+Import; the Nix module keeps their IDs so activation updates those themes
+rather than creating duplicates. Updating defaults through Home Manager on
+another Mac may require reopening the Rex client before its appearance refreshes.
 
 Use `just hm-dry <host> hank` to review a home generation, and
 `just hm <host> hank` when activating it. A system rebuild does not apply this
@@ -60,11 +51,6 @@ to the server that opened that terminal, including when it differs from
 `Versions/Current`. `REX_BIN_DIR` is not added to `home.sessionPath`, and an
 unset variable does not add an empty PATH entry. See the
 [upstream PATH documentation](https://www.superlogical.com/rex/docs/automate/cli#path).
-
-Validated in an ordinary shell and a fresh login shell started by Rex: both
-resolve `rex`, and the Rex shell has `REX_BIN_DIR` as its first PATH entry.
-The generated `.zshrc` and CLI link were applied directly, without a full home
-switch.
 
 ## Tmux keys
 
@@ -102,13 +88,6 @@ repeat-key table. Press Ctrl-b for each new sequence. Existing macOS shortcuts
 remain available. Tmux's last-window Tab, scratch popup, resurrect,
 thumbs and agent-sidebar bindings are not mapped to unrelated actions.
 
-Validated on Rex 1408 with 39 loaded bindings and one custom action, without
-keymap diagnostics. Live keyboard checks covered both split directions,
-directional focus, swapping unequal panes while preserving split IDs and
-ratios, resizing from 50% to 55%, zoom toggling, tab creation/navigation and tab
-reordering. The generated file was linked and reloaded directly; no full home
-switch was needed. The test session was retained after the user began using it.
-
 ## Copy mode
 
 **Ctrl-b [** runs the `copy_mode` action from `home/hank/modules/rex/default.nix`. It
@@ -123,39 +102,19 @@ closes and the script focuses the pane again with `rex focus`. All other nvim
 motions and searches work as usual. Colors are not kept.
 
 From 2026-10-25 to 2026-11-12 the layer covered the whole window instead,
-working around a Rex 1443 bug: it drew no floating layer that started right of
-the window's left edge. Over a right-hand pane (bounds `[0.6, 0, 0.4, 1]`),
-and in a test layer at `[0.25, 0.25, 0.25, 0.25]`, nothing appeared, while
-the invisible nvim kept the keyboard and only a blind `:q` closed it. Layers
-starting at the top-left corner drew normally, which is why left-hand and
-zoomed panes worked. What misled: everything the server
-reports was right. The layer had the pane's bounds, the app had even sized it
-(63×47 for a 63-column pane, with itself as owner), and its screen captured
-fine, so only looking at the window showed the fault. The 2026-10-24 check
-below had the same blind spot: it compared bounds, not pixels. After those
-blind quits the keyboard also did not come back to the pane, although in the
-recorded run the server had refocused it; hence the explicit `rex focus`.
+working around a Rex 1443 bug that drew no floating layer starting right of
+the window's left edge; Rex 1889 fixed it. What misled: everything the server
+reported was right (the layer's bounds and size, its captured screen), so only
+looking at the window showed the fault. After the blind quits that bug caused,
+the keyboard did not come back to the pane, so the script still refocuses it
+with `rex focus` as a safety net.
 
-Rex 1889 fixed it. On 2026-11-12, in a test tab split left and right, layers
-at `[0.5, 0, 0.5, 1]` and `[0.25, 0.25, 0.25, 0.25]` drew, and the copy-mode
-script in a layer with the right pane's rect showed that pane's scrollback
-ending at its last line, confirmed in screenshots of the window. After a test
-layer closed, keys typed in the app went to the pane without the script's
-`rex focus`, but `q` had been sent with `rex send-key`, not typed in the app,
-so the explicit refocus stays as a safety net. Pane rects in
-`rex.session.view` are fractions of the window even inside a floating layer
-(a split in a layer at `[0.5, 0.5, 0.5, 0.5]` reports `[0.75, 0.5, 0.25, 0.5]`
-for its right half), so a pane's rect can be used as layer bounds anywhere.
-Opening the layer ends a pane's zoom, so the action passes the zoom state to
-the script, which zooms the pane again on exit, before the layer closes; a
-zoom set then survives the close (checked on 1889, zoomed and unzoomed).
-
-Verified on 2026-10-24 by running the action against a test tab through
-`rex do --action`: the layer bounds matched the pane, the view ended at the
-pane's last line, soft-wrapped lines were joined, and three yank-and-leave
-runs put the selected line on the clipboard (`clipboard_written`, then
-`child_exited`, then `block_closed`). One run against a just-created,
-never-shown tab did not reach the clipboard.
+Pane rects in `rex.session.view` are fractions of the window even inside a
+floating layer, so a pane's rect can be used as layer bounds anywhere. Opening
+the layer ends a pane's zoom, so the action passes the zoom state to the
+script, which zooms the pane again on exit, before the layer closes. Run
+against a just-created tab that was never shown, a yank did not reach the
+clipboard.
 
 ## Shell integration
 
@@ -163,11 +122,9 @@ Rex reads OSC 7 (working directory) and OSC 133 (prompt and command marks),
 but does not inject a shell integration, and Ghostty's own loads only inside
 Ghostty. `rex.nix` adds a small zsh hook, active only when `TERM_PROGRAM` is
 `rex`: it reports the directory and marks prompt start, input start, command
-start and exit status. The directory report is verified: before the hook,
-`rex block call pwd` returned `{}`; with it, a new shell reports
-`file://praxic/Users/hank` and follows `cd`. The prompt marks are what Jump to
-Previous/Next Prompt and the program status protocol's prompt-time cleanup
-rely on; those were not yet checked in the app.
+start and exit status. Without the hook `rex block call pwd` returns `{}`. The
+prompt marks are what Jump to Previous/Next Prompt and the program status
+protocol's prompt-time cleanup rely on; those were not yet checked in the app.
 
 ## Claude Code pictures
 
@@ -205,7 +162,7 @@ Connect from Rex for iOS with Tailscale enabled, using
 `http://praxic.inner.imdomestic.com:7297` (currently `http://100.64.0.9:7297`).
 Terminals display on iOS through this relay since the iOS app update of
 2026-10-31; build 1577 had connected but never completed the terminal data
-handshake ([iOS data handshake](incidents.md#rex-ios-data-handshake)).
+handshake ([iOS data handshake](../incidents.md#rex-ios-data-handshake)).
 The relay binds only the Tailscale address and accepts sources in
 `100.64.0.0/10`; Tailscale encrypts the HTTP connection. As requested, every
 tailnet device that network policy permits can connect. Rex sees the relay as
@@ -250,20 +207,8 @@ entry, and its ssh guard in `/etc/ssh/ssh_config` for every account. On
 logind hosts an account's server is that person's ordinary personal server,
 so `rex` in an ssh shell on tank shows the same sessions as the app.
 
-Deployed to all twelve on 2026-10-31; each change was Rex alone, with no
-kernel change. From praxic, `rex -S http://<host>.inner.imdomestic.com:7297
-whoami` reported `hank@imdomestic.com … acting as hank` on every host where
-hank has an account. seraph, which has only linwhite, answered "not in the
-account policy", and asking for `linwhite@`, `kenneth@` or `root@` on tank
-was refused with 403. Hank's iPhone and Rex Beta 1651 on praxic show
-terminals. linwhite's Mac app reached his own account on tank and started his
-shell, but sent nothing on the terminal data connection, as iOS build 1577 did
-([iOS data handshake](incidents.md#rex-ios-data-handshake)). That is an old
-client, fixed by updating the app.
-
-Systems for this were built on tank, r6s and taipan and pushed with
-`nix copy --no-check-sigs --to ssh-ng://root@<host>`. Without the flag the
-host refuses the builder's unsigned paths. From praxic, r2s is reachable only
-through the h610 DERP relay, and Tailscale SSH times out there. Its routers
-were activated from r6s with `switch-to-configuration test`, checked over the
-tailnet, then made the boot default.
+A login with no account of its name on the host is answered "not in the
+account policy", and asking for another person's account is refused with 403.
+An old Rex client can reach its account and start the shell but never complete
+the terminal data connection
+([iOS data handshake](../incidents.md#rex-ios-data-handshake)); update the app.
