@@ -69,7 +69,6 @@ in {
     voiceAsr.enable = true;
     runtimePackages = [pkgs.ffmpeg-headless];
     environment = {
-      FORWARDED_ALLOW_IPS = "100.64.0.3";
       AI_OBSERVABILITY_ENABLED = "true";
       AI_METRICS_PATH = "/metrics";
       AI_SEMANTIC_ENABLED = "true";

@@ -47,7 +47,7 @@ home/<account>/         # user.nix (table entry), default.nix, <host>.nix; profi
                         # interactive, dev, gui-<platform>); modules/ for what they import
 lib/                    # data and helpers modules import: nixpkgs-registry pins, nixpkgs-for, wg*, model tables
 pkgs/                   # local packages
-secrets/                # sops files: secrets.yaml, hosts/<host>.yaml, clients/, gaoji/
+secrets/                # sops files: secrets.yaml, hosts/<host>.yaml, clients/
 scripts/                # check-* scripts behind the just recipes, plus model/bench tooling
 docs/                   # incidents.md, decisions.md, topic docs, runbooks/
 Justfile                # every rebuild/deploy command

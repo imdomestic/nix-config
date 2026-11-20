@@ -6,7 +6,6 @@
 }: let
   bot = config.services.gaoji;
   domain = "gaoji.inner.imdomestic.com";
-  legacyDomain = "kennethbot.inner.imdomestic.com";
   containerName = "gaoji-web";
   hostInterface = "ve-${containerName}";
   containerAddress = "10.233.0.2";
@@ -23,7 +22,9 @@ in {
     externalInterface = "br-lan";
     internalInterfaces = [hostInterface];
   };
-  services.gaoji.environment.FORWARDED_ALLOW_IPS = lib.mkForce "100.64.0.3,${bot.host}";
+  # The only proxy in front of the bot is gaoji-web-upstream below, which
+  # connects from the bot's own address.
+  services.gaoji.environment.FORWARDED_ALLOW_IPS = bot.host;
 
   # A local socket avoids a Tailscale hairpin back into the host node.
   systemd.sockets.gaoji-web-upstream = {
@@ -89,7 +90,6 @@ in {
           dnsResolver = "1.1.1.1:53";
           environmentFile = "/run/gaoji-acme.env";
           extraLegoFlags = ["--dns.propagation-wait" "120s"];
-          extraDomainNames = [legacyDomain];
           group = "nginx";
           reloadServices = ["nginx.service"];
         };
@@ -116,11 +116,6 @@ in {
                 proxy_read_timeout 3600s;
               '';
             };
-          };
-          ${legacyDomain} = {
-            useACMEHost = domain;
-            forceSSL = true;
-            locations."/".return = "308 https://${domain}$request_uri";
           };
         };
       };

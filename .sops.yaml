@@ -104,18 +104,6 @@ creation_rules:
           - age1zzwv2edh2ssz7xpmpcqr73rkh79j4mwjy50ap8dvm4c64ksmspxsz7mnat # hank (1)
           - age175594x5r5ngze8rs5n2ga0976e0flh0xq2aqjq3xaldr28e703sqlcy9n6 # hank (2)
           - age1f0ch7vfsqs3u5c4mzqs4m228wge5vulz0s0yj30gkapk7nlk3g2s43x42l # hank (3)
-  - path_regex: 'secrets/gaoji/account-auth\.yaml$'
-    key_groups:
-      - age:
-          - age1xeeg8yu74aqn5x0vzevsuxmsd4nem3cfw2gjwc82ke4mjvep3pxq5p99lh # hank@hackintosh
-          - age1uumwl2zvv6sk2yysjtd29yfffjj8xfus6z95eu0ftxt40mnyh9aq3g5f2c # hank@praxic
-          - age1zrnfrlp7ps4e9c5hpefz4g7fycsqf6ntswftmcj6dzlpyx6e9essx2vrj5 # hank@wsl
-          - age1zzwv2edh2ssz7xpmpcqr73rkh79j4mwjy50ap8dvm4c64ksmspxsz7mnat # hank (1)
-          - age175594x5r5ngze8rs5n2ga0976e0flh0xq2aqjq3xaldr28e703sqlcy9n6 # hank (2)
-          - age1f0ch7vfsqs3u5c4mzqs4m228wge5vulz0s0yj30gkapk7nlk3g2s43x42l # hank (3)
-          - age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7 # linwhite (personal)
-          - age1ctfjwk8fkfuxq9rrsuenmqtx8l3jx5rt4hujvh525pgruxs69fls4qtj7z # fendada (personal)
-          - age18glzkfyda2qcs7ffqz9pgxrqc0p9e565xpcqxe85shdfltlv2ytq5rjp4v # kenneth (personal)
   - path_regex: 'secrets/hosts/encore\.yaml$'
     key_groups:
       - age:

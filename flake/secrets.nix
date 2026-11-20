@@ -55,8 +55,6 @@
       (rule "secrets/clients/cliproxy\\.yaml$" (everyone ++ map host (lib.unique [config.placements.cliproxy.host config.placements.sillytavern.host])))
       # tank 集群的 cluster-admin token,只给 hank 自己的机器(home/hank/modules/kube)。
       (rule "secrets/clients/kube-tank\\.yaml$" (keysOf "hank"))
-      # gaoji 的管理密钥。tank 上的 bot 读 kenneth 手放的文件,这里只是 admin 的留档。
-      (rule "secrets/gaoji/account-auth\\.yaml$" admins)
     ]
     ++ map (n: rule "secrets/hosts/${lib.escapeRegex n}\\.yaml$" (readersOf n)) keyed
     ++ [

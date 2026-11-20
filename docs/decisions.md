@@ -27,6 +27,9 @@
   gaoji 节点，一直在失败。headscale 的 extra record 只剩 `vex.inner`，写成静态的
   `dns.extra_records`。
 - **headplane 0.7 之前的配置分支**和 `agent_preauthkey`：main 上已经是 0.7。
+- **`secrets/gaoji/account-auth.yaml`**：只有 h610 那份休眠的 gaoji 读它。tank 上的
+  bot 用 kenneth 手放在 `/home/kenneth/services/gaoji/` 的文件，不走 sops。
+  tank 上 gaoji-web 容器里的 `kennethbot.inner` 证书名和跳转也一起删了。
 - **singbox 模块**、`just check-singbox`：2026-07-31 试点回滚后没再用过
   （`docs/proxy-todo.md` 第 5 节）。airport 生成给客户端的 sing-box 订阅不受影响。
 - **nix-minecraft**（input、overlay、三台的模块）：没有主机定义服务器。tank 上
