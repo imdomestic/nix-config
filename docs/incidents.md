@@ -1409,8 +1409,6 @@ Keychain 迁入，仍取得旧节点 ID 1。**误导点：客户端 HostName 已
 最终核对进程路径后以 SIGKILL 结束，仅清理 Tailscale 设备钥匙串记录，再认证取得
 独立节点 ID 52、`praxic.inner.imdomestic.com`、`100.64.0.9`，旧机保持停止。
 
-执行状态及后续操作见 [Mac 迁移交接](mac-migration.md)。
-
 ## 2026-10-20 · Pi 去斜体处理误删图片定位颜色参数 {#pi-inline-color-parameters}
 
 组合 `pi-math` 0.2.0 与 `pi-response-renderer` 0.2.0 时，后者的

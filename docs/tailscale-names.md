@@ -17,10 +17,9 @@ zone and `resolve` so a peer's address change does not require an nginx restart.
 
 ## Host names from 2026-10-04
 
-The 2026-10-22 replacement splits the Macs into the old M1 Pro `m1elite` and
-the new M3 Max `praxic`. Runtime migration is tracked in
-[the Mac migration runbook](mac-migration.md#network-identity); the table below
-records the earlier rename, rather than completion of the replacement.
+On 2026-10-22 the Macs split into the old M1 Pro `m1elite` and the new M3 Max
+`praxic` (a new node; see `incidents.md#mac-migration-nix-bootstrap`). The table
+below records the earlier rename.
 
 The `aegis` node uses `aegis.local` on the LAN and
 `aegis.inner.imdomestic.com` on Tailscale. Its existing node identity and

@@ -12,7 +12,7 @@
     users.hank = {
       # 写了 uid 就等于把这个账户交给 nix-darwin 管(见 system/modules/users.nix),
       # 登录 shell 才会真的落到 pkgs.zsh 上,不用手动 chsh。迁移后激活前必须核对
-      # hank 的实际 uid，见 docs/mac-migration.md#nix-restore。
+      # hank 的实际 uid，见 docs/incidents.md#mac-migration-nix-bootstrap。
       #
       # description 显式写成现在的 RealName:模块里它默认取用户名,而 nix-darwin 会把
       # description 写进 RealName,不写的话"Hank Hogan"会被改成"hank"。
