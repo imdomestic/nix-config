@@ -45,7 +45,7 @@ in {
       # marksman
       markdownlint-cli
       prettierd
-      biome
+      pkgs-unstable.biome
       lua-language-server
       bash-language-server
       # sqlite

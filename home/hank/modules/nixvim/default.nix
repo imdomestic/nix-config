@@ -1387,7 +1387,22 @@ in {
         };
       };
 
-      conform-nvim = {
+      conform-nvim = let
+        # 没有项目 biome.json 时给 biome 一份全局配置:不开 frontmatter 解析,
+        # biome 会把 Markdown 开头的 `---` 当分隔线,在它后面插空行。
+        # CLI 没有对应 flag,只能走配置文件。有项目配置时不碰,由项目说了算。
+        biomeGlobalConfig = pkgs.writeTextDir "biome.json" (builtins.toJSON {
+          markdown.parser.frontmatter = true;
+        });
+        biomeEnv = mkRaw ''
+          function(_, ctx)
+            if vim.fs.root(ctx.dirname, { "biome.json", "biome.jsonc", ".biome.json", ".biome.jsonc" }) then
+              return {}
+            end
+            return { BIOME_CONFIG_PATH = "${biomeGlobalConfig}" }
+          end
+        '';
+      in {
         enable = true;
         autoInstall.enable = false;
         lazyLoad.settings = {
@@ -1409,7 +1424,7 @@ in {
             swift = ["swiftformat"];
             typst = ["typstyle"];
             json = ["biome"];
-            html = ["biome"];
+            html = ["biome-html"];
             css = ["biome"];
             markdown = ["biome"];
             javascript = ["biome-check"];
@@ -1423,6 +1438,17 @@ in {
             python = ["ruff_fix" "ruff_organize_imports" "ruff_format"];
             nix = ["alejandra"];
             elm = ["elm_format"];
+          };
+          formatters = {
+            biome.env = biomeEnv;
+            # biome 的 HTML 格式化器默认关着(还是实验性的),不开它 biome 原样吐回、
+            # 退出码 1,<leader>lf 看起来什么都没做。inherit 取的是 conform 内置的
+            # biome,不是上面那个覆盖,所以 env 要再写一遍。
+            biome-html = {
+              "inherit" = "biome";
+              append_args = ["--html-formatter-enabled=true"];
+              env = biomeEnv;
+            };
           };
         };
       };
