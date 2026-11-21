@@ -1,5 +1,6 @@
 {placement}: let
-  baseUrl = (import ./cliproxy-models.nix {inherit placement;}).baseUrl;
+  cliproxy = import ./cliproxy-models.nix {inherit placement;};
+  inherit (cliproxy) baseUrl;
   proxy = model: aliases: {
     provider = "cliproxy";
     protocol = "openai-chat";
@@ -15,10 +16,18 @@
       vision = true;
     };
   };
-  gpt = model: aliases: (proxy model aliases) // {reasoning_effort = "low";};
+  # gaoji sizes the chat tail from the window (min(window / 8, 64k)) and assumes
+  # 128k when none is given, which left a 16k tail; give it the real ones.
+  gpt = model: aliases:
+    (proxy model aliases)
+    // {
+      reasoning_effort = "low";
+      max_input_tokens = cliproxy.gpt.input;
+    };
   gemini = model: aliases:
     (proxy model aliases)
     // {
+      max_input_tokens = cliproxy.gemini.context;
       capabilities = (proxy model aliases).capabilities // {video = true;};
     };
 in {
