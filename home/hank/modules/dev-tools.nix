@@ -32,7 +32,8 @@ in {
       lua51Packages.lua
       lua51Packages.luarocks
       ruff
-      ty
+      # ty 还是 0.0.x beta,发版很密;26.05 停在 0.0.38,落后上游几十个版本。
+      pkgs-unstable.ty
       typst
       tinymist
       taplo
