@@ -1418,7 +1418,9 @@ in {
             typescriptreact = ["biome-check"];
             haskell = ["ormolu"];
             ocaml = ["ocamlformat"];
-            python = ["ruff"];
+            # conform 的 "ruff" 是 ruff_fix 的旧名,只跑 check --fix 不格式化。
+            # 三个连用 = biome-check 的同款:safe fix + 整理 import + 格式化。
+            python = ["ruff_fix" "ruff_organize_imports" "ruff_format"];
             nix = ["alejandra"];
             elm = ["elm_format"];
           };
