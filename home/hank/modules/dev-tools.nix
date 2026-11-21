@@ -79,6 +79,7 @@ in {
       mprocs
 
       pandoc
+      ffmpeg-full
       yq-go
       jq
       posting
