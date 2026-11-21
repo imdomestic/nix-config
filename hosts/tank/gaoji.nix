@@ -63,6 +63,8 @@ in {
           "qqo:conversation:e5a1f0462ebd578c1b2dd78ece2d61152f679ab915b1ff11c52abfac89acb637"
         ];
         loginServer = "https://tailscale.imdomestic.com:8443";
+        # tank's own tailnet IPv4: operations containers reach tank through gaojiops.
+        hostAddress = "100.64.0.4";
         domain = "inner.imdomestic.com";
       };
     };
