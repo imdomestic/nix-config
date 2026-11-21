@@ -1629,11 +1629,11 @@
         "uv2nix": "uv2nix"
       },
       "locked": {
-        "lastModified": 1795290701,
-        "narHash": "sha256-XaKhHM6v9eeCi4vIG9frFUs9jHUSdxAkeNt+tmU8Oho=",
+        "lastModified": 1795296696,
+        "narHash": "sha256-1Q4t1V6TJHxGZ4aMZ/cIrRzVdhq62gxnFxMwPT4DHdE=",
         "owner": "zty20040403",
         "repo": "gaojibot",
-        "rev": "bba6471317f7c85a774ec7282fe933e359632ff6",
+        "rev": "c30de577fd982bddb7c81d48ddcbcf5b973726c1",
         "type": "github"
       },
       "original": {
