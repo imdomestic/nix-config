@@ -1555,7 +1555,18 @@ in {
           };
         }
 
-        # hover 和诊断浮窗用内置的 K / <C-w>d,边框由 opts.winborder 统一。
+        # hover 用内置的 K,边框由 opts.winborder 统一。诊断浮窗内置是 <C-w>d,
+        # 这里留一个和 vscode.nix 同键的 <leader>ld。
+        {
+          mode = "n";
+          key = "<leader>ld";
+          action = mkRaw ''
+            function()
+              vim.diagnostic.open_float()
+            end
+          '';
+          options.desc = "Hover diagnostic";
+        }
         {
           # 限定 Normal 模式,避免 g 前缀拦截 snippet 占位符的输入。
           mode = "n";
