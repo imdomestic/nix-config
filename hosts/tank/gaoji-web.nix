@@ -26,6 +26,14 @@ in {
   # connects from the bot's own address.
   services.gaoji.environment.FORWARDED_ALLOW_IPS = bot.host;
 
+  # systemd's stock 80-container-ve.network matches every ve-* link; when
+  # networkd restarts it reconfigures this one and drops the host address the
+  # container unit set, cutting gaoji-web off. The container unit owns it.
+  systemd.network.networks."10-${hostInterface}" = {
+    matchConfig.Name = hostInterface;
+    linkConfig.Unmanaged = true;
+  };
+
   # A local socket avoids a Tailscale hairpin back into the host node.
   systemd.sockets.gaoji-web-upstream = {
     wantedBy = ["sockets.target"];
