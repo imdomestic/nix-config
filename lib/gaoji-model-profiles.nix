@@ -3,6 +3,7 @@
   agyPlacement,
 }: let
   cliproxy = import ./cliproxy-models.nix {inherit placement;};
+  codex62 = import ./codex-6.2.nix;
   inherit (cliproxy) baseUrl;
   proxy = model: aliases: {
     provider = "cliproxy";
@@ -26,6 +27,13 @@
     // {
       reasoning_effort = "low";
       max_input_tokens = cliproxy.gpt.input;
+    };
+  # GPT 6.2 through the Codex accounts: their input limits, not the public 1.05M.
+  gpt62 = model: aliases:
+    (proxy model aliases)
+    // {
+      reasoning_effort = "low";
+      max_input_tokens = codex62.models.${model}.input;
     };
   gemini = model: aliases:
     (proxy model aliases)
@@ -118,6 +126,8 @@ in {
         vision = false;
       };
     };
+    "gpt-6.2-sol" = gpt62 "gpt-6.2-sol" ["gpt62" "sol62"];
+    "gpt-6.2-astra" = gpt62 "gpt-6.2-astra" ["astra62"];
     "gpt-6.1-sol" = gpt "gpt-6.1-sol" ["default" "gpt" "sol" "gpt61" "gpt-5.4" "gpt54" "gpt-5.5" "gpt55"];
     "gpt-6.1-terra" = gpt "gpt-6.1-terra" ["terra"];
     "gpt-6-astra" = gpt "gpt-6-astra" ["astra"];
