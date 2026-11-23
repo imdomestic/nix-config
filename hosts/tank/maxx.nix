@@ -103,38 +103,11 @@ in {
       deepseek = "deepseek-v4-flash-vision-exp";
     };
 
-  # The rule that sends the operations network's VMs into its namespace
-  # (maxx's module adds it too). networkd removes the ip rules its .network
-  # files don't name whenever it configures a link: on 2026-11-06 it took
-  # this one five seconds after boot, and those VMs were cut off until
-  # 11-07. br-lan's file names it, br-lan being always configured.
-  systemd.network.networks."30-br-lan".routingPolicyRules = [
-    {
-      From = "${config.services.maxx.vm.operations.subnet}.0/24";
-      Table = 236;
-      Priority = 236;
-    }
-  ];
-
   services.maxx = {
     enable = true;
     # The groups' VMs, where the tools run: 32 at a time, on taps from
     # 10.235.0.0/24.
     vm.enable = true;
-    # SSH fleet operations (2026-11-05): these groups' VMs reach the fleet
-    # with `ssh <host>` as max, through the maxops node of the Haskell max,
-    # whose state was copied to /var/lib/maxx-ops-tailscale. Conversations
-    # by maxx's ids, the groups' numbers being in its database only.
-    vm.operations = {
-      enable = true;
-      conversations = [8 13];
-      loginServer = "https://tailscale.imdomestic.com:8443";
-      domain = "inner.imdomestic.com";
-      # tank's own tailnet address, so these VMs reach tank too, as max
-      # through Tailscale SSH like every other machine: root on the
-      # machine running max, which these groups are trusted with.
-      hostAddress = "100.64.0.4";
-    };
     settings = {
       # Each VM's size, up from maxx's default of 2 vCPUs and 4 GiB
       # (2026-10-31). Up to 12 chats' VMs stay on for the programs Max
