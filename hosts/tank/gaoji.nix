@@ -8,6 +8,7 @@
   runtimeDir = "/home/kenneth/services/gaoji";
   modelProfiles = import ../../lib/gaoji-model-profiles.nix {
     placement = config.my.fleet.placements.cliproxy;
+    agyPlacement = config.my.fleet.placements.agy-proxy;
   };
   modelEnvironment = pkgs.writeText "gaoji-models.env" ''
     # One model for every conversation keeps the provider cache warm; the
@@ -92,6 +93,16 @@ in {
     restartUnits = lib.optionals cfg.enable ["gaoji.service"];
   };
 
+  # agy-proxy's client key (docs/agy-proxy.md); tank already reads this file for Max.
+  sops.secrets."gaoji/agy_api_key" = {
+    sopsFile = ../../secrets/clients/agy-proxy.yaml;
+    key = "agy-proxy/api_key";
+    owner = "kenneth";
+    group = "users";
+    mode = "0400";
+    restartUnits = lib.optionals cfg.enable ["gaoji.service"];
+  };
+
   sops.templates."gaoji-tank-postgres.env" = {
     owner = "kenneth";
     group = "users";
@@ -109,6 +120,7 @@ in {
       AI_SANDBOX_MAX_PER_USER=1
       AI_SANDBOX_MAX_FILE_MB=200
       AI_SEARCH_API_KEY=${config.sops.placeholder."gaoji/bocha_api_key"}
+      AGY_API_KEY=${config.sops.placeholder."gaoji/agy_api_key"}
     '';
   };
 

@@ -1,4 +1,7 @@
-{placement}: let
+{
+  placement,
+  agyPlacement,
+}: let
   cliproxy = import ./cliproxy-models.nix {inherit placement;};
   inherit (cliproxy) baseUrl;
   proxy = model: aliases: {
@@ -30,6 +33,50 @@
       max_input_tokens = cliproxy.gemini.context;
       capabilities = (proxy model aliases).capabilities // {video = true;};
     };
+  # Gemini 4 on the Antigravity subscription, through agy-proxy's Chat entry
+  # (docs/agy-proxy.md). The model ID is the thinking preset, so no
+  # reasoning_effort; gaoji carries agy's extra_content signatures back.
+  # Argon thinks silently for up to ~110 s, hence the long timeout.
+  gemini4 = family: level: context: aliases: {
+    provider = "agy";
+    protocol = "openai-chat";
+    base_url = "https://${agyPlacement.tsName}/agy/v1";
+    api_key_env = "AGY_API_KEY";
+    model = "gemini-4-${family}-${level}";
+    inherit aliases;
+    timeout_seconds = 240;
+    thinking = "auto";
+    max_input_tokens = context;
+    capabilities = {
+      tools = true;
+      streaming = true;
+      json_mode = true;
+      vision = true;
+      video = true;
+    };
+  };
+  hydrogen = cliproxy.antigravityHydrogen.context;
+  gemini4Profiles = builtins.listToAttrs (map (entry: {
+      name = "gemini-4-${entry.family}-${entry.level}";
+      value = gemini4 entry.family entry.level entry.context entry.aliases;
+    }) (
+      map (level: {
+        family = "hydrogen";
+        inherit level;
+        context = hydrogen;
+        aliases = optional (level == "high") "hydrogen";
+      }) ["medium" "high" "xhigh"]
+      ++ builtins.concatMap (family:
+        map (level: {
+          inherit family level;
+          context = 262144;
+          aliases = optional (level == "high") family ++ optional (family == "argon" && level == "high") "gemini4";
+        }) ["medium" "high"]) ["neon" "argon" "carbon"]
+    ));
+  optional = cond: value:
+    if cond
+    then [value]
+    else [];
 in {
   # This embedded default wins over AI_MODEL_DEFAULT_PROFILE in gaoji's catalog.
   default = "gemini-3.8-flash-high";
@@ -92,5 +139,17 @@ in {
     "gemini-3-flash" = gemini "gemini-3-flash" [];
     "claude-sonnet-4-6" = proxy "claude-sonnet-4-6" ["sonnet"];
     "claude-opus-4-6-thinking" = proxy "claude-opus-4-6-thinking" ["opus"];
+    inherit
+      (gemini4Profiles)
+      "gemini-4-hydrogen-medium"
+      "gemini-4-hydrogen-high"
+      "gemini-4-hydrogen-xhigh"
+      "gemini-4-neon-medium"
+      "gemini-4-neon-high"
+      "gemini-4-argon-medium"
+      "gemini-4-argon-high"
+      "gemini-4-carbon-medium"
+      "gemini-4-carbon-high"
+      ;
   };
 }
