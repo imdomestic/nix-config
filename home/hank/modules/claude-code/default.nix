@@ -68,6 +68,9 @@ in {
   # nix 之外跑的 `claude plugin install`(docs/home/claude-code-mods.md#inline-media)。
   home.sessionVariables.CLAUDE_CODE_PLUGIN_DIRS = "${inline-media}";
 
+  # Bash 工具默认用 $SHELL(zsh):不加引号的 $VAR 不分词,ls 之类的别名也跟进来。
+  home.sessionVariables.CLAUDE_CODE_SHELL = lib.getExe pkgs.bash;
+
   # HM 的 programs.claude-code 没有 themes 选项。选用要在 /theme 里点一次:
   # settings.json 不归 nix 管(见 hank/default.nix 里 statusline 那段)。
   home.file = lib.mapAttrs' (slug: pal:
