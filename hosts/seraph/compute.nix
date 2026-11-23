@@ -16,7 +16,6 @@
       open = true;
       nvidiaSettings = false;
       nvidiaPersistenced = true;
-      package = config.boot.kernelPackages.nvidiaPackages.production;
     };
     nvidia-container-toolkit.enable = true;
   };

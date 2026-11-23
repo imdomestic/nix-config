@@ -11,6 +11,30 @@
 
 ---
 
+## 2026-11-24 · 都用 linuxPackages_latest {#latest-kernel}
+
+取代 11-06 的[默认内核](#default-kernel)。`system/profiles/base.nix` 把
+`boot.kernelPackages` 默认设成 `linuxPackages_latest`，nvidia 驱动默认用
+nixpkgs-unstable 的 production 版，对着这个内核编。不跟的只有两处：rpi4 仍钉
+6.12（07-26 一次 "update" 提交里钉的，没有记录原因）；x86_64-rescue 不经过 base，
+为了 ZFS 留在默认内核。
+
+- LTS 没有少重启。11-06 换过去时是 6.18.57，到 11-23 已经出到 6.18.64，每个小版本
+  都要重启一次。重启次数跟着 nixpkgs 更新走，与内核系列无关。
+- LTS 的回移反而弄坏了树外模块：bcachefs 1.39.7 在 6.18.64 上编不过，11-23 的
+  nightly 因为 h310、tank、x470 构建失败，把 nixpkgs 整个留下了（issue #9）。
+  bcachefs 上游跟的是主线最新；`linuxPackages_latest.bcachefs`（7.3.4 和 7.3.5，
+  都是 1.39.7）Hydra 都构建过，在 cache.nixos.org 里，xone、xpad-noone 也在。
+- 26.05 的 nvidia 595.71.05 在 7.3.4 上仍然编不过（专有模块，x470 用的那种：
+  `nvidia/os-interface.c` 里 `strncpy` 隐式声明）。unstable 的 595.112.07 在 7.3.4
+  上 nvidia-open 和专有模块都编得过（11-24 在 tank 上实测）。代价是驱动模块不在任何
+  缓存里，内核或驱动一变就要编一次（nightly 在 tank 上编），用户态驱动也跟着
+  unstable 走。等 26.05 的驱动跟上，删掉 base 里那一行就回到 26.05 的驱动。
+- r2s、r5s、gizmo 的 DTB 在 7.3.4 里都有，r2s 的超频 overlay 也编得过（在 r6s 上
+  实测）；r6s 的设备树来自 UEFI 固件。
+- 风险在跨系列（7.3 → 7.4）：比小版本更容易带回归，而 r2s、r5s、gizmo、tokyo
+  都在远处，起不来只能等人去处理。新内核照旧 `--boot` 加重启。
+
 ## 2026-11-20 · 一批兼容旧形态的写法删掉了 {#legacy-cleanup-2026-11}
 
 都是「迁移已经完成、留着只为过渡」的东西，逐项确认过没有使用者再删：
@@ -314,6 +338,8 @@ ci.yml（`GITHUB_TOKEN` 的推送不会）。
   除版本号外应当一致。
 
 ## 2026-11-06 · 除 268v 外都用默认内核，不用 linuxPackages_latest {#default-kernel}
+
+**已被 [都用 linuxPackages_latest](#latest-kernel)（2026-11-24）取代。**
 
 26.05 的默认内核是 6.18 LTS。除 268v 外，没有主机再设 `boot.kernelPackages`。
 

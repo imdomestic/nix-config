@@ -2,6 +2,8 @@
   lib,
   inputs,
   config,
+  pkgs,
+  pkgs-unstable,
   system,
   ...
 }: {
@@ -24,6 +26,14 @@
   # the specialArgs that remain are set in flake/builders/systems.nix.
   nixpkgs.hostPlatform = lib.mkDefault system;
   networking.hostName = lib.mkDefault config.my.host.name;
+
+  # The LTS kernel needs a reboot for every point release too, and its
+  # backports broke the out-of-tree bcachefs module; see
+  # docs/decisions.md#latest-kernel.
+  boot.kernelPackages = lib.mkDefault pkgs.linuxPackages_latest;
+  # 26.05's nvidia driver does not build on the newest kernel; unstable's,
+  # compiled against our kernel, does. Only read where nvidia is enabled.
+  hardware.nvidia.package = lib.mkDefault (pkgs-unstable.linuxPackagesFor config.boot.kernelPackages.kernel).nvidiaPackages.production;
 
   boot.loader = {
     # mkDefault: a host with a small ESP (r6s) sets its own.

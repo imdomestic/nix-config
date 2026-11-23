@@ -21,8 +21,6 @@
         efiSysMountPoint = "/efi";
       };
     };
-    # Default (LTS) kernel on purpose: 26.05's nvidia driver is built and cached
-    # for it, and does not compile against linuxPackages_latest.
   };
 
   networking = {
@@ -51,7 +49,6 @@
       open = true;
       nvidiaSettings = false;
       nvidiaPersistenced = true;
-      package = config.boot.kernelPackages.nvidiaPackages.production;
     };
     nvidia-container-toolkit.enable = true;
   };
