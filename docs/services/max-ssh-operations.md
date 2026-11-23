@@ -7,15 +7,15 @@ Max（maxx，跑在 tank 上）让指定群聊的 VM 用普通 `ssh <host>` 以 
 - `system/modules/max-operator.nix`（经 `system/modules/users.nix` 导入，所有 NixOS /
   nix-darwin 主机都有）：`max` 账户，完整免密 sudo，没有密码。macOS 上 UID 550，
   首次激活前核对该 UID 没被占用。
-- `hosts/tank/maxx.nix` 的 `services.maxx.vm.operations`：哪些会话（按 maxx 的会话 ID）
-  的 VM 走运维网络；VM 经 `maxops` 节点上 tailnet，节点状态在 `/var/lib/maxx-ops-tailscale`
-  （2026-11-05 从旧 Haskell Max 复制过来）。`hostAddress` 是 tank 自己的 tailnet 地址，
-  让这些 VM 也能经 Tailscale SSH 进 tank。运维子网的 ip rule 必须写在 `br-lan` 的
-  networkd 文件里，否则 networkd 会把它删掉（文件里的注释有原委）。
+- tank 不再把 maxx 的 VM 接上 tailnet：运维网络（`services.maxx.vm.operations`）已移除，
+  `maxops` 节点和 `/var/lib/maxx-ops-tailscale` 也删了。哪个群要 Max 上这个 tailnet，Max
+  在那个群的 VM 里自己把 tailscaled 作为它的 unit 跑起来，在 h610 上用
+  `headscale nodes register` 把节点放进 `max@imdomestic.com` 名下。做法见 Max 仓库
+  `docs/design/vm.md` 的 "Tailnets"。
 - `hosts/h610/system.nix`：Headscale 策略里 `max@imdomestic.com` 属于 `group:imdomestic`。
 
 Tailscale SSH 的目标机必须在自己的客户端上开启 SSH；在 tailnet 地址上 22 端口是
-Tailscale SSH，不到 sshd。Max 自己的运维流程在 Max 仓库的 `docs/runbooks/ssh-operations.md`。
+Tailscale SSH，不到 sshd。
 
 旧 maxops（Hub、Agent、Executor）已移除；Gaoji 的控制服务和 worker 保留，主机元数据用
 `clusterControl`。

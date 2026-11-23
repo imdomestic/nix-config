@@ -521,8 +521,8 @@ nix eval --json .#deploy.nodes --apply builtins.attrNames
   (`docs/decisions.md#auto-update`).
 
 Max operates these targets through ordinary SSH as the full-sudo `max` account,
-using its own Tailscale client. The bot (maxx) runs on `tank`; which chats' VMs get that
-network is `services.maxx.vm.operations` in `hosts/tank/maxx.nix`.
+using its own Tailscale client. The bot (maxx) runs on `tank`; Max joins the tailnet
+itself from a chat's VM, and its node is let in with `headscale nodes register` on h610.
 Configuration and the 2026-09-15 rollout record: `docs/services/max-ssh-operations.md`.
 
 ## CI
