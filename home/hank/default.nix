@@ -7,6 +7,11 @@
   ...
 }: let
   tmux-agent-sidebar = pkgs.callPackage ../../pkgs/tmux-agent-sidebar {};
+
+  brewPrefix =
+    if pkgs.stdenv.isAarch64
+    then "/opt/homebrew"
+    else "/usr/local";
 in {
   imports = [
     # 精简版 nixvim(nix 支持常开);dev.nix 会把 my.nixvim.dev.enable 打开
@@ -797,39 +802,18 @@ in {
         done
         unset _hm_keymap
       ''
-      # macOS 那段原来是运行时 `if [ "$(uname)" = "Darwin" ]` 加一层
-      # `if [ "$(uname -m)" = "x86_64" ]`,每开一个 shell fork 两次 uname 去问
-      # 一件 nix 在求值期就知道的事。放在这里的结果是:Linux 上生成的 .zshrc 里
-      # 根本不会出现这几行,mac 上则是常量,没有分支。
-      (lib.optionalString pkgs.stdenv.isDarwin (let
-        brewPrefix =
-          if pkgs.stdenv.isAarch64
-          then "/opt/homebrew"
-          else "/usr/local";
-      in
-        ''
-          source ~/.orbstack/shell/init.zsh 2>/dev/null || :
-          alias matlabcli="/Applications/MATLAB_R2025a.app/bin/matlab -nodesktop -nosplash"
-          ${lib.optionalString config.my.host.inChina "export HOMEBREW_BOTTLE_DOMAIN=https://mirror.sjtu.edu.cn/homebrew-bottles"}
-
-          # 这里原来是 eval "$(brew shellenv)" —— 每次开 shell fork 一个 bash 脚本,
-          # 它自己再 fork 一次 /usr/libexec/path_helper,实测 ~55ms,而输出是常量。
-          # 顺带甩掉 path_helper:它会按 /etc/paths 重排 PATH,把 /usr/bin 顶到 nix 前面。
-          #
-          # path/fpath 用数组前插,不是 export PATH="...:$PATH" —— 后者在嵌套 shell
-          # 里会一层层叠上去(rustup 那条以前就是这么重复的)。
-          export HOMEBREW_PREFIX="${brewPrefix}"
-          export HOMEBREW_CELLAR="${brewPrefix}/Cellar"
-          export HOMEBREW_REPOSITORY="${brewPrefix}"
-          export INFOPATH="${brewPrefix}/share/info:''${INFOPATH:-}"
-          path=("${brewPrefix}/bin" "${brewPrefix}/sbin" $path)
-          fpath=("${brewPrefix}/share/zsh/site-functions" $fpath)
-        ''
-        + lib.optionalString pkgs.stdenv.isAarch64 ''
-          path=("/opt/homebrew/opt/rustup/bin" $path)
-        ''))
+      # 只有 zsh 才有的部分;brew 的 PATH 和变量在下面的 home.sessionPath / sessionVariables。
+      (lib.optionalString pkgs.stdenv.isDarwin ''
+        source ~/.orbstack/shell/init.zsh 2>/dev/null || :
+        alias matlabcli="/Applications/MATLAB_R2025a.app/bin/matlab -nodesktop -nosplash"
+        fpath=("${brewPrefix}/share/zsh/site-functions" $fpath)
+      '')
     ];
   };
+
+  # 为的是 ~/.profile:登录 bash 靠它读 hm-session-vars.sh,没有它的话
+  # home.sessionVariables / sessionPath 只有 zsh 拿得到(不是从 zsh 里起的 bash 全没有)。
+  programs.bash.enable = true;
 
   # git diff / show / log -p / blame 走 delta,取代原来的 diff.tool = nvimdiff。
   #
@@ -928,27 +912,42 @@ in {
   # SNACKS_<NAME> 是 snacks 内置的检测覆盖。设在这里而不是 nixvim 模块里,是因为
   # 这是"我坐在 ghostty 前面"这个事实,只对 hank 成立,不该替别的用户断言;而且它
   # 会被每台 nix 管的机器写进 shell 环境,ssh 过去自然生效,不用折腾 SendEnv。
-  home.sessionVariables = {
-    SNACKS_GHOSTTY = "1";
+  home.sessionVariables =
+    {
+      SNACKS_GHOSTTY = "1";
 
-    # KUBECONFIG 在 modules/kube 里,只有导入 dev.nix 的机器有。
-    TERMINAL = "ghostty";
+      # KUBECONFIG 在 modules/kube 里,只有导入 dev.nix 的机器有。
+      TERMINAL = "ghostty";
 
-    LESS = "--RAW-CONTROL-CHARS";
-    MANPAGER = "less -s -M +Gg";
+      LESS = "--RAW-CONTROL-CHARS";
+      MANPAGER = "less -s -M +Gg";
 
-    # LESS_TERMCAP_* 没搬过来:那组的值必须是真的 ESC 字节,而这里生成的是
-    # POSIX sh 的 export NAME="value",写不出 $'\e'。它们留在 init-extra.zsh。
-  };
+      # LESS_TERMCAP_* 没搬过来:那组的值必须是真的 ESC 字节,而这里生成的是
+      # POSIX sh 的 export NAME="value",写不出 $'\e'。它们留在 init-extra.zsh。
+    }
+    # 这就是 `brew shellenv` 的输出,写成常量:eval 它每开一个 shell 要 fork 两次
+    # (~55ms),它调的 path_helper 还会把 /usr/bin 顶到 nix 前面。
+    // lib.optionalAttrs pkgs.stdenv.isDarwin {
+      HOMEBREW_PREFIX = brewPrefix;
+      HOMEBREW_CELLAR = "${brewPrefix}/Cellar";
+      HOMEBREW_REPOSITORY = brewPrefix;
+      INFOPATH = "${brewPrefix}/share/info:\${INFOPATH:-}";
+    }
+    // lib.optionalAttrs (pkgs.stdenv.isDarwin && config.my.host.inChina) {
+      HOMEBREW_BOTTLE_DOMAIN = "https://mirror.sjtu.edu.cn/homebrew-bottles";
+    };
 
   # 这几个目录不是每台机器都有(.moon / .ghcup / .cargo 在这台 mac 上就没有),
   # 不存在的 PATH 项只是每次查找多一次 stat,留着比按 host 分叉省事。
-  home.sessionPath = [
-    "${config.home.homeDirectory}/.moon/bin"
-    "${config.home.homeDirectory}/.ghcup/bin"
-    "${config.home.homeDirectory}/.local/bin"
-    "${config.home.homeDirectory}/.cargo/bin"
-  ];
+  home.sessionPath =
+    lib.optional (pkgs.stdenv.isDarwin && pkgs.stdenv.isAarch64) "/opt/homebrew/opt/rustup/bin"
+    ++ lib.optionals pkgs.stdenv.isDarwin ["${brewPrefix}/bin" "${brewPrefix}/sbin"]
+    ++ [
+      "${config.home.homeDirectory}/.moon/bin"
+      "${config.home.homeDirectory}/.ghcup/bin"
+      "${config.home.homeDirectory}/.local/bin"
+      "${config.home.homeDirectory}/.cargo/bin"
+    ];
 
   # compinit -C 不再自己去发现新装的补全,所以每次 home-manager 切换后把 dump 删掉:
   # 之后第一个新开的 shell 会花 ~500ms 重建一次,后面又回到 ~280ms。
