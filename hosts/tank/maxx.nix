@@ -31,6 +31,8 @@
     gemini-4-hydrogen = price 1.5 0.075 7.5;
     # As docs/home/pi-model-pricing.md has it, checked 2026-10-18.
     gpt-6-1-sol = price 2 0.1 10;
+    # Checked 2026-11-18, as the same file has it.
+    gpt-6-2-sol = price 2 0.1 10;
     gpt-6-astra = price 10 1 50;
     # Promotional until 2026-11-30.
     gpt-5-6-sol = price 4 0.4 20;
@@ -163,11 +165,11 @@ in {
         };
         # Background agents: pi in the groups' VMs, its model calls
         # forwarded by maxx with the provider's key. This is the model one
-        # runs on unless Max starts it on another of those below
-        # (max-agent start --model); until 2026-11-13 it was Rewind's
+        # runs on unless Max starts it on another of those below; until
+        # 2026-11-24 it was gpt-6.1-sol, and until 2026-11-13 Rewind's
         # gpt-6-astra, asked for xhigh, which pi sent as high.
         job = {
-          model = "cliproxy-responses/gpt-6.1-sol";
+          model = "cliproxy-responses/gpt-6.2-sol";
           effort = "high";
         };
         # The Haskell max's models that see pictures, for /model; maxx
@@ -239,6 +241,11 @@ in {
             protocol = "responses";
             api_key_file = secret "cliproxy-api-key";
             models = {
+              "gpt-6.2-sol" = {
+                context_window = cliproxy.gpt.context;
+                max_output = cliproxy.gpt.output;
+                price = prices.gpt-6-2-sol;
+              };
               "gpt-6.1-sol" = {
                 context_window = cliproxy.gpt.context;
                 max_output = cliproxy.gpt.output;
