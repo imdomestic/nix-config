@@ -85,6 +85,9 @@ in {
       AI_GITHUB_LOGIN = "gaoji-ji";
       AI_GITHUB_USER_ID = "358294790";
       OTEL_SERVICE_NAME = "gaoji";
+      # Voice calls: Doubao TTS 2.0 voice (邻家女孩 2.0). The App ID and token
+      # live in runtime.env on tank, not here.
+      AI_VOICE_SPEAKER = "zh_female_linjianvhai_uranus_bigtts";
     };
   };
 
