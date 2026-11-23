@@ -2,5 +2,6 @@
 {
   imports = [
     ../modules/gui/linux.nix
+    ../modules/flatpak.nix
   ];
 }

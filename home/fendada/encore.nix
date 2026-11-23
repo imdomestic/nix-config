@@ -2,7 +2,7 @@
 {config, ...}: {
   imports = [
     ../linwhite/encore.nix
-    ../linwhite/profiles/gui-linux.nix
+    ../linwhite/modules/gui/linux.nix
     ../linwhite/modules/ghostty/settings.nix
     ../linwhite/modules/wezterm.nix
     ../linwhite/modules/starship.nix

@@ -5,9 +5,9 @@
   pkgs,
   ...
 }: {
+  services.flatpak.packages = ["org.mozilla.firefox" "com.github.rafostar.Clapper"];
+
   home.packages = with pkgs; [
-    firefox
-    clapper
     # GPU 占用率、调频与带 ROCm 的 btop。
     radeontop
     corectrl

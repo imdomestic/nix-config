@@ -6,7 +6,6 @@
 }: {
   imports = [
     ./modules/hyprland
-    ./modules/flatpak.nix
   ];
   # Flathub's build, not nixpkgs': cache.nixos.org has no bambu-studio, and
   # compiling it took tank down (docs/incidents.md#bambu-studio-build-oom).

@@ -111,7 +111,7 @@ in {
         "$mod, Return, exec, ${lib.getExe pkgs.ghostty}"
         "$mod, Space, exec, vicinae toggle || ${lib.getExe pkgs.rofi} -show drun"
         "$mod, D, exec, ${lib.getExe pkgs.rofi} -show drun"
-        "$mod, B, exec, ${lib.getExe pkgs.google-chrome}"
+        "$mod, B, exec, ${lib.getExe pkgs.flatpak} run com.google.Chrome"
 
         # Window management (macOS-like: Super+W/Q close; Alt/Tab for tiling)
         "$mod, W, killactive"
