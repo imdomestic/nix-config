@@ -31,6 +31,13 @@
     '')
   ];
 
+  # WSLg has the gui role without the desktop profile that normally enables this.
+  services.flatpak.enable = true;
+  xdg.portal = {
+    enable = true;
+    extraPortals = [pkgs.xdg-desktop-portal-gtk];
+    config.common.default = ["gtk"];
+  };
   programs.nix-ld.enable = true;
   environment.variables = {
     LD_LIBRARY_PATH = "/run/opengl-driver/lib:/usr/lib/wsl/lib";

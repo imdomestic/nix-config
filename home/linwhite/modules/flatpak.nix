@@ -1,5 +1,6 @@
 # Flathub apps for linwhite, installed per user by nix-flatpak; the system side
-# (services.flatpak) comes with the desktop role. The host file lists the apps.
+# (services.flatpak) comes with the desktop role, or explicitly on GUI-only WSL.
+# Common apps live here; extra apps remain in the account's host files.
 {
   inputs,
   lib,
@@ -10,9 +11,28 @@
 
   services.flatpak = {
     enable = true;
-    update.auto = {
-      enable = true;
-      onCalendar = "weekly";
+    remotes = [
+      {
+        name = "flathub";
+        location = "https://dl.flathub.org/repo/flathub.flatpakrepo";
+      }
+    ];
+    uninstallUnmanaged = false;
+    packages = [
+      "com.google.Chrome"
+      "com.qq.QQ"
+      "com.spotify.Client"
+      "org.prismlauncher.PrismLauncher"
+      "org.pwmt.zathura"
+      "com.github.ahrm.sioyek"
+      "org.upscayl.Upscayl"
+    ];
+    update = {
+      onActivation = true;
+      auto = {
+        enable = true;
+        onCalendar = "daily";
+      };
     };
   };
 

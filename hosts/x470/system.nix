@@ -95,8 +95,6 @@
   };
   programs = {
     zsh.enable = true;
-    chromium.enable = true;
-    firefox.enable = true;
     gamescope = {
       enable = true;
       capSysNice = true;

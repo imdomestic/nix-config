@@ -405,6 +405,8 @@
 
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
+  # No desktop role here, but hank's Clapper is a per-user Flatpak.
+  services.flatpak.enable = true;
 
   services.sunshine = {
     enable = true;
