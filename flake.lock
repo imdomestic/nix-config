@@ -2200,11 +2200,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1795522255,
-        "narHash": "sha256-pfoDWNW73NZUDEt+tkgB8iDnxgQ0cpjAG37WkoaTajA=",
+        "lastModified": 1795524106,
+        "narHash": "sha256-5rYzQVEBryBVtq5ZlBu/CSGw33b1iN5I2JgOyt72gE0=",
         "owner": "HCHogan",
         "repo": "wxdesk",
-        "rev": "3fc3bcbf158015273adc8d33ef7a5f5b7e09db28",
+        "rev": "ad08a1fba21627ba74e32d3be2da009d8520f09f",
         "type": "github"
       },
       "original": {
