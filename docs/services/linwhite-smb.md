@@ -9,13 +9,21 @@ seraph 与 encore 使用 `system/modules/linwhite-smb/nixos.nix` 提供 `/home/l
 | encore | `encore-linwhite` | `/home/linwhite` |
 
 Samba 只绑定服务器自己的 Tailscale IPv4 地址与 TCP 445 端口。Samba 的
-访问白名单和 nftables 规则均只允许 aegis 的 `100.64.0.25`；该地址已经通过
-Tailscale 节点状态核实。Tailscale 提供设备认证与传输加密，SMB 验证 linwhite
-账户的专用密码。
+访问白名单和 nftables 规则均允许 aegis 的 `100.64.0.25`；encore 还允许
+Android 设备 ruin 的 `100.64.0.20`，seraph 不允许 ruin。这些地址已经通过
+Tailscale 节点状态核实。Tailscale 提供设备认证与传输加密，SMB 再验证账户密码；
+白名单是按设备而不是按 SMB 用户绑定的。
 
-每台服务器的 `linwhite-smb-password.service` 首次启动时生成专用密码，保存为
-root 所有的 `/var/lib/linwhite-smb/password`，目录权限 `0700`，文件权限
-`0600`，并配置 Samba 账户。密码不写入配置仓库或 Nix store。
+每台服务器的 `linwhite-smb-password.service` 首次启动时生成 linwhite 的专用密码，
+保存为 root 所有的 `/var/lib/linwhite-smb/password`。encore 的
+`ruin-smb-password.service` 为独立的 `ruin` SMB 账户生成密码，保存于
+`/var/lib/linwhite-smb/ruin-password`。目录权限 `0700`，密码文件权限 `0600`；
+密码不写入配置仓库或 Nix store。`ruin` 是无登录 shell、无家目录的系统账户，
+SMB 文件操作仍以 linwhite 身份执行，因此它可以读写 linwhite 的整个家目录。
+
+首次部署 encore 后，在 encore 本机运行 `sudo cat /var/lib/linwhite-smb/ruin-password`
+取得密码。在 ruin 的 SMB 客户端连接 `smb://encore.inner.imdomestic.com/encore-linwhite`，
+使用用户名 `ruin` 和该密码；设备须连接 Tailscale。
 
 文件操作使用各服务器的 linwhite 账户，新建文件权限为 `0600`，新建目录权限为
 `0700`。`catia`、`fruit`、`streams_xattr` 提供 macOS 文件名、Finder 元数据和
@@ -31,8 +39,8 @@ deploy .#encore.system --remote-build --temp-path /home/linwhite/.config/nix-con
 
 部署前确认目标机器的临时目录存在。`my.tailscale.bindServices` 在 Samba 启动前
 确认 Tailscale 地址就绪；`my.tailscale.guardedTCPServices` 限制 SMB 的接入接口。
-如果 aegis 的 Tailscale 节点身份更换导致 IPv4 地址变化，需要同步更新白名单及
-nftables 规则。
+如果 aegis 或 ruin 的 Tailscale 节点身份更换导致 IPv4 地址变化，需要更新对应
+白名单；Samba 和 nftables 从同一列表生成。
 
 ## aegis 自动挂载与固定路径
 

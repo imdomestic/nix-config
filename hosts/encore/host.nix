@@ -12,6 +12,7 @@
       ./keyboard.nix
       ./retained-services.nix
       ../../system/modules/linwhite-smb/nixos.nix
+      ./smb.nix
       ../../system/modules/vex
       ./vex.nix
     ];
