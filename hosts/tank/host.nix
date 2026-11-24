@@ -22,13 +22,11 @@
       ./gaoji.nix
       ./gaoji-web.nix
       ./maxx.nix
-      ./wxdesk-vm.nix
       ./macos-vm
     ];
 
     externalModules = [
       inputs.maxx.nixosModules.maxx
-      inputs.wxdesk.nixosModules.vm
       inputs.qq-bot.nixosModules.gaoji
       inputs.nix-index-database.nixosModules.default
     ];

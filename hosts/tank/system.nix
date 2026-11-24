@@ -466,9 +466,6 @@
     enable = true;
     dataDir = "/data/lib/postgresql/${config.services.postgresql.package.psqlSchema}";
     ensureDatabases = ["matrix-synapse"];
-    # 旧 max(Haskell)的库 `max` 留着给 maxx 导入,它的表用了 vector 类型;
-    # 导完之前别去掉。
-    extensions = ps: [ps.pgvector];
     enableTCPIP = true;
     settings.password_encryption = "scram-sha-256";
     ensureUsers = [

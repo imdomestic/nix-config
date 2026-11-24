@@ -329,12 +329,6 @@ in {
           about = "Destiny 2 的 Bungie API，只读公开数据：玩家资料和战绩、活动记录、每周的突袭挑战、商人。文档 https://bungie-net.github.io/multi/ 。按名字找玩家用 POST /Destiny2/SearchDestinyPlayerByBungieName/-1/，body 是 {displayName, displayNameCode}。物品和活动的定义在 GET /Destiny2/Manifest/ 给的文件里，那些文件直接从 https://www.bungie.net 下载、不经这里，存进 /work 反复用。玩家没公开的（背包、仓库）看不到，也不能替人移动、装备物品。";
         };
       };
-      # The sticker library's vectors: bge-m3 on h610's Ollama, the model
-      # the Haskell max's vectors were made with.
-      embedding = {
-        base_url = "http://h610.inner.imdomestic.com:11434/v1";
-        model = "bge-m3";
-      };
     };
   };
 }

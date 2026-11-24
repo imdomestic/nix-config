@@ -11,6 +11,19 @@
 
 ---
 
+## 2026-11-25 · 去掉 wxdesk-vm、maxx 的向量和 pgvector {#no-wxdesk-no-pgvector}
+
+- **wxdesk-vm**：微信暂时不做，max 仓库删了 `max-wechat`（8e6cbdcf），这里跟着删掉
+  虚拟机、`wxdesk` 输入、sops 里的 `wxdesk/*` 和操作手册。[11-24 那条](#wxdesk-vm)
+  留着当来历。tank 上的 `/var/lib/wxdesk-vm`（带微信登录的盘）没跟着删。
+- **maxx 的 `[embedding]`**：max d7cc8be8 起 `history` 和 `find_stickers` 只按关键词搜，
+  不再用向量，见 max 仓库的 `docs/decisions/keywords-not-vectors.md`。h610 上 Ollama
+  的 bge-m3 还留着，gaoji 在用。
+- **tank 的 pgvector**：原来是给旧 Haskell max 的库 `max` 导入用的，导入 10-29 就做完了，
+  maxx 也不再用。部署时在 `maxx` 库里删了向量表和扩展、去掉 `_sqlx_migrations` 的 10 和
+  13 两行（max 删了这两个迁移），在 `max` 库里 `drop extension vector cascade`，只丢了
+  旧的向量列。
+
 ## 2026-11-24 · maxx 的微信走 tank 上的 Linux 微信虚拟机 {#wxdesk-vm}
 
 maxx 要进一个微信群，再加几个人私聊。微信没有给个人号群聊用的机器人接口，于是在 tank 上
@@ -27,8 +40,8 @@ maxx 要进一个微信群，再加几个人私聊。微信没有给个人号群
 - 详细的取舍见 max 仓库的 `docs/decisions/wechat-through-the-desktop-client.md`。
 - **当晚 bot 的号就被封控了**：上线三个多小时后，半小时内登录了三次（虚拟机重启、手机上
   退出一次、再登一次），桌面端被「账号状态异常，本次登录已失效」踢下线，手机端也被退出；
-  重新登录后号就不能聊天了。maxx 的 `platforms.wechat` 随即关掉，`wxdesk-vm` 停着（没去掉，
-  tank 重启会把它带起来，停在登录界面）。
+  重新登录后号就不能聊天了。maxx 的 `platforms.wechat` 随即关掉，`wxdesk-vm` 停着；11-25
+  [去掉了](#no-wxdesk-no-pgvector)。
 
 ## 2026-11-24 · 都用 linuxPackages_latest {#latest-kernel}
 
