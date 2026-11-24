@@ -1,6 +1,6 @@
-# WeChat's Linux client in a VM, driven by wxdesk for maxx (platforms.wechat
-# in ./maxx.nix). Why: docs/decisions.md#wxdesk-vm; how to run it:
-# docs/runbooks/wxdesk-vm.md.
+# WeChat's Linux client in a VM, driven by wxdesk. maxx doesn't use it
+# since the bot's account was restricted: docs/decisions.md#wxdesk-vm; how
+# to run it: docs/runbooks/wxdesk-vm.md.
 {config, ...}: let
   secret = name: config.sops.secrets."wxdesk/${name}".path;
 in {
