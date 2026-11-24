@@ -13,13 +13,16 @@
   aerospace = "${config.programs.aerospace.package}/bin/aerospace";
 
   rexVisibility = pkgs.writeShellScript "rex-workspace-visibility" ''
-    # Query live state, not the callback's potentially stale workspace environment.
-    workspaces=$(${aerospace} list-workspaces --monitor all --visible) || exit 0
-    visibility=hidden
-    if printf '%s\n' "$workspaces" | grep -qx 2; then
-      visibility=visible
-    fi
-    /usr/bin/osascript -l JavaScript ${./modules/rex/workspace-visibility.js} "$visibility"
+    (
+      # Query under the lock: an older callback must not overwrite a newer one.
+      /usr/bin/lockf -s 9 || exit 0
+      workspaces=$(${aerospace} list-workspaces --monitor all --visible) || exit 0
+      visibility=hidden
+      if printf '%s\n' "$workspaces" | grep -qx 2; then
+        visibility=visible
+      fi
+      /usr/bin/osascript -l JavaScript ${./modules/rex/workspace-visibility.js} "$visibility"
+    ) 9>"''${TMPDIR:-/tmp}/rex-workspace-visibility.lock"
   '';
   rexStartupVisibility = pkgs.writeShellScript "rex-startup-visibility" ''
     # Cover Rex's asynchronous initial window restoration as well as detection.
@@ -31,8 +34,9 @@
   '';
 
   evict = pkgs.writeShellScript "aerospace-evict-dummy" ''
-    target=$(${aerospace} list-monitors --format '%{monitor-id}|%{monitor-name}' |
-      grep -v '|${dummy}$' | head -n1 | cut -d'|' -f1)
+    monitors=$(${aerospace} list-monitors --format '%{monitor-id}|%{monitor-name}') || exit 0
+    printf '%s\n' "$monitors" | grep -q '|${dummy}$' || exit 0
+    target=$(printf '%s\n' "$monitors" | grep -v '|${dummy}$' | head -n1 | cut -d'|' -f1)
     [ -n "$target" ] || exit 0
 
     ${aerospace} list-windows --monitor all --format '%{window-id}|%{monitor-name}' |
@@ -60,7 +64,7 @@ in {
       }
     ];
 
-    # 显示器 pattern 是正则;没有其他显示器匹配时 AeroSpace 自己回落到现有显示器。
+    # 钉到首个非诱骗器屏；多真实屏的限制见 docs/incidents.md#aerospace-workspace-focus。
     "workspace-to-monitor-force-assignment" = builtins.listToAttrs (map (ws: {
       name = ws;
       value = "^(?!${dummy}$).*$";
