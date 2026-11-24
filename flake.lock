@@ -998,11 +998,11 @@
         "systems": "systems_4"
       },
       "locked": {
-        "lastModified": 1795501636,
-        "narHash": "sha256-8Rs3Ntr7jrU+0/j42//ix825op8vUAIw/+QoB8rbU3k=",
+        "lastModified": 1795521637,
+        "narHash": "sha256-gfpm9H2YtsMtKgGC5QDkraaTVxRRUEvlzZx4Gv2u2BY=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "fe3f0edf0ad9dc087dc42ce050e634182e8e951f",
+        "rev": "edbabd7efe955f815b1cd551d928dfa0810d200d",
         "type": "github"
       },
       "original": {
@@ -1690,6 +1690,7 @@
         "system-manager": "system-manager",
         "vex": "vex",
         "wayland-scroll-factor": "wayland-scroll-factor",
+        "wxdesk": "wxdesk",
         "zjstatus": "zjstatus",
         "zsh-hank": "zsh-hank",
         "zsh-linwhite": "zsh-linwhite"
@@ -2189,6 +2190,26 @@
         "owner": "daniel-g-carrasco",
         "ref": "v1.0.0",
         "repo": "wayland-scroll-factor",
+        "type": "github"
+      }
+    },
+    "wxdesk": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795522255,
+        "narHash": "sha256-pfoDWNW73NZUDEt+tkgB8iDnxgQ0cpjAG37WkoaTajA=",
+        "owner": "HCHogan",
+        "repo": "wxdesk",
+        "rev": "3fc3bcbf158015273adc8d33ef7a5f5b7e09db28",
+        "type": "github"
+      },
+      "original": {
+        "owner": "HCHogan",
+        "repo": "wxdesk",
         "type": "github"
       }
     },

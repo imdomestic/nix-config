@@ -125,6 +125,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # WeChat's desktop client in a VM on tank, driven for maxx.
+    wxdesk = {
+      url = "github:HCHogan/wxdesk";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     qq-bot = {
       url = "github:zty20040403/gaojibot";
       inputs.nixpkgs.follows = "nixpkgs";

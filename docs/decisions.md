@@ -11,6 +11,21 @@
 
 ---
 
+## 2026-11-24 · maxx 的微信走 tank 上的 Linux 微信虚拟机 {#wxdesk-vm}
+
+maxx 要进一个微信群，再加几个人私聊。微信没有给个人号群聊用的机器人接口，于是在 tank 上
+跑一台 NixOS 虚拟机，里面是官方的 Linux 微信，由 [wxdesk](https://github.com/HCHogan/wxdesk)
+通过无障碍总线（AT-SPI）读窗口、用 XTEST 和剪贴板操作，maxx 经 TCP 连它
+（`hosts/tank/wxdesk-vm.nix`，操作见 `docs/runbooks/wxdesk-vm.md`）。
+
+- **不用 iLink**（微信给机器人的通道）：只有私聊，没有群。
+- **不用 hook 和解数据库**：Windows 客户端的注入 DLL 跟着版本坏、有封号风险；解密客户端数据库
+  的仓库 2026 年被腾讯在 GitHub 上下架了一批，max 的仓库是公开的。
+- **不用 Windows 虚拟机**：Linux 版的控件带着文字挂在无障碍总线上，读消息不用 OCR。
+- **代价**：人只能按微信显示的名字认，改名就是另一个人；一个窗口，一次一条消息；客户端界面
+  一改就可能坏。部署不重启这台虚拟机，重启后可能要手机重新确认登录。
+- 详细的取舍见 max 仓库的 `docs/decisions/wechat-through-the-desktop-client.md`。
+
 ## 2026-11-24 · 都用 linuxPackages_latest {#latest-kernel}
 
 取代 11-06 的[默认内核](#default-kernel)。`system/profiles/base.nix` 把

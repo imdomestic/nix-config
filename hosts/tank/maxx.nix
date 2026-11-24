@@ -74,6 +74,13 @@ in {
         owner = "maxx";
         restartUnits = ["maxx.service"];
       };
+      # What maxx sends wxdesk first; the VM has it too.
+      "maxx/wxdesk-token" = {
+        sopsFile = ../../secrets/hosts/tank-max.yaml;
+        key = "wxdesk/token";
+        owner = "maxx";
+        restartUnits = ["maxx.service"];
+      };
       # web_search's, Exa's: the Haskell max's, under its name.
       "maxx/exa-api-key" = {
         sopsFile = ../../secrets/hosts/tank-max.yaml;
@@ -287,6 +294,13 @@ in {
       platforms.qq = {
         app_id_file = secret "qq-app-id";
         app_secret_file = secret "qq-app-secret";
+      };
+      # wxdesk in the VM of hosts/tank/wxdesk-vm.nix; maxx is the WeChat
+      # account's name, as the client shows it.
+      platforms.wechat = {
+        address = "127.0.0.1:17710";
+        token_file = secret "wxdesk-token";
+        name = "maxx";
       };
       search.api_key_file = secret "exa-api-key";
       # Max's own GitHub account: its commits in the VMs are by it. Max
