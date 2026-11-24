@@ -22,6 +22,7 @@
       ./gaoji.nix
       ./gaoji-web.nix
       ./maxx.nix
+      ./maxx-backup.nix
       ./macos-vm
     ];
 

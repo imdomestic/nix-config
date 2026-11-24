@@ -395,6 +395,9 @@ in {
 
   systemd.tmpfiles.rules = [
     "d /var/lib/coturn 0750 root turnserver -"
+    # restic repositories other hosts back up to over sftp, as root:
+    # tank-maxx is tank's maxx database (hosts/tank/maxx-backup.nix).
+    "d /var/lib/restic 0700 root root -"
     "r ${config.my.telemetry.textfileDir}/gaoji-qq.prom - - - -"
   ];
 

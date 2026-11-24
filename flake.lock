@@ -994,15 +994,16 @@
         "nixpkgs": [
           "nixpkgs"
         ],
+        "nixpkgs-postgres": "nixpkgs-postgres",
         "rust-overlay": "rust-overlay_3",
         "systems": "systems_4"
       },
       "locked": {
-        "lastModified": 1795554199,
-        "narHash": "sha256-2MaYlcNs7uYMI5GdPj5ulsqpp1ir5xux3ZicKlLXbck=",
+        "lastModified": 1795562422,
+        "narHash": "sha256-F4ut5M3LxctTxkwlUs877pvR0DuPjiCvc+03WM5bLwI=",
         "owner": "HCHogan",
         "repo": "max",
-        "rev": "0ac73d853120745b83da911c9c07efdf88c0bae8",
+        "rev": "5f69a12ba05b52bee2df20fe53fef5edecd3ed1b",
         "type": "github"
       },
       "original": {
@@ -1309,6 +1310,22 @@
         "owner": "NixOS",
         "ref": "nixpkgs-26.05-darwin",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-postgres": {
+      "locked": {
+        "lastModified": 1795371335,
+        "narHash": "sha256-oa2P5WZer1A4wuhatl92JyHHEjrrOdIyuvTuI5LUi9Q=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "619c39f6eac5d1ed6b8f073a9414baf7034b2356",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "619c39f6eac5d1ed6b8f073a9414baf7034b2356",
         "type": "github"
       }
     },

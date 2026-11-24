@@ -1,8 +1,8 @@
-# The Rust rewrite of Max, as its own stack: its own user, database,
-# directories and units, all named maxx. The Haskell max is gone from tank;
-# its database and /var/lib/max stay for maxx's import.
-# Design: docs/rust-rewrite.md on the max repo's maxx branch. It reaches QQ
-# through Tencent's official bot API, as the bot maxx.
+# The Rust rewrite of Max, as its own stack: its own user, Postgres
+# cluster, directories and units, all named maxx; backed up by
+# ./maxx-backup.nix. The Haskell max is gone from tank; its database (in the
+# host's cluster) and /var/lib/max stay. Design: the max repo's docs/. It
+# reaches QQ through Tencent's official bot API, as the bot maxx.
 {
   config,
   lib,
@@ -108,6 +108,9 @@ in {
     # The groups' VMs, where the tools run: 32 at a time, on taps from
     # 10.235.0.0/24.
     vm.enable = true;
+    # maxx's own cluster: its database was 1.4 GB in 2026-11, its tables'
+    # rows mostly appended and read back by recent ones.
+    postgresql.settings.shared_buffers = "1GB";
     settings = {
       # Each VM's size, up from maxx's default of 2 vCPUs and 4 GiB
       # (2026-10-31). Up to 12 chats' VMs stay on for the programs Max

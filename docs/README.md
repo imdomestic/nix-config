@@ -12,7 +12,7 @@
 | hosts | [encore](hosts/encore.md), [seraph](hosts/seraph.md), [tokyo](hosts/tokyo.md), [268v Windows VM and iGPU passthrough](268v-windows-vfio.md) |
 | services | [agy-proxy](agy-proxy.md), [Bonsai](services/bonsai.md), [Clef](services/clef.md), [CLIProxyAPI](services/cliproxy.md), [GPU monitoring](services/gpu-monitoring.md), [linwhite's SMB shares](services/linwhite-smb.md), [Lumiverse](services/lumiverse.md), [Max SSH operations](services/max-ssh-operations.md), [Minecraft network](minecraft-network-todo.md), [proxy chain](services/proxy.md), [Rewind](rewind.md), [SillyTavern](services/sillytavern.md), [Tailscale names](services/tailscale-names.md) |
 | home | [Claude Code mods](home/claude-code-mods.md), [Ghostty cursor](ghostty-cursor.md), [Pi model pricing](home/pi-model-pricing.md), [Pi subagents](home/pi-subagents.md), [Rex](home/rex.md), [Safari MRU](safari-mru.md), [VS Code / Neovim](home/vscode-neovim.md) |
-| runbooks | [macOS VM](runbooks/macos-vm.md), [QQ fixed primary](runbooks/qq-fixed-primary.md), [r6s](runbooks/r6s.md), [seraph Secure Boot](runbooks/seraph-secure-boot.md), [USB rescue](runbooks/usb-rescue.md) |
+| runbooks | [macOS VM](runbooks/macos-vm.md), [maxx backup](runbooks/maxx-backup.md), [QQ fixed primary](runbooks/qq-fixed-primary.md), [r6s](runbooks/r6s.md), [seraph Secure Boot](runbooks/seraph-secure-boot.md), [USB rescue](runbooks/usb-rescue.md) |
 
 Six docs stay at the top level although they belong in a folder: a source file
 that is copied into the Nix store names each one (`pkgs/agy-proxy/proxy.go`,

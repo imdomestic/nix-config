@@ -11,6 +11,22 @@
 
 ---
 
+## 2026-11-25 · maxx 的备份以 root 写进 h610，不设受限用户 {#maxx-backup-as-root}
+
+tank 上 maxx 的库每晚由 restic 经 sftp 备份到 h610（`hosts/tank/maxx-backup.nix`，
+操作见 `docs/runbooks/maxx-backup.md`）。h610 上**没有**只许 sftp 的专用用户，
+也没有 append-only 的 rest-server。
+
+- **h610 开着 Tailscale SSH**：从 tailnet 连 22 端口由 tailscaled 按 headscale 的
+  策略认证，tank 的 root 不带密钥就能以 root 登录 h610，sshd 和 `authorized_keys`
+  里的 `command=`、`restrict` 都碰不到。另建一个受限用户挡不住拿到 tank root 的人。
+- **不用 append-only**：rest-server 的 `--append-only` 加上在 h610 上做 prune，能防
+  tank 被攻破后删备份，但要多一个服务和一个定时任务，对现在的威胁不值得。
+- **代价**：tank 的 root 能删掉 h610 上的备份。
+- **不放在 tank 本机**：tank 上已有的 `/data/backup/postgresql` 和数据在同一套盘上，
+  只防误操作，防不了 tank 本身出事；h610 和 tank 不在同一个地方（见 h610 的
+  host.nix）。
+
 ## 2026-11-25 · 去掉 wxdesk-vm、maxx 的向量和 pgvector {#no-wxdesk-no-pgvector}
 
 - **wxdesk-vm**：微信暂时不做，max 仓库删了 `max-wechat`（8e6cbdcf），这里跟着删掉
