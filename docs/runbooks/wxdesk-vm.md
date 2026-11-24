@@ -28,6 +28,12 @@ journalctl -u wxdesk-vm -f       # 客体的串口输出
 
 ## 登录
 
+bot 的手机上的微信**不能退出登录**：手机一退出，这台客户端也跟着退出，弹「你已退出WeChat」。
+锁屏、断网、杀后台都没关系。
+
+客户端只是重启过：VNC 里点「登录」（或者
+`wxdesk-vm-ssh 'wx xdotool mousemove 639 504 click 1'`），在手机上确认。
+
 微信退出了登录，或者换了一块新盘：
 
 1. 在自己机器上 `ssh -L 15901:127.0.0.1:15901 root@tank`，VNC 连 `localhost:15901`。
