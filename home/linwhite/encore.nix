@@ -9,7 +9,18 @@
   ];
   # Flathub's build, not nixpkgs': cache.nixos.org has no bambu-studio, and
   # compiling it took tank down (docs/incidents.md#bambu-studio-build-oom).
-  services.flatpak.packages = ["com.bambulab.BambuStudio"];
+  services.flatpak = {
+    packages = ["com.bambulab.BambuStudio"];
+    # Bambu Studio 只暴露 X11（XWayland），默认走核显会跨卡拷贝并闪白屏；
+    # 强制走直连 HDMI-A-1 的 NVIDIA 独显，并禁用 WebKit 合成模式以减少重绘闪烁。
+    overrides."com.bambulab.BambuStudio".Environment = {
+      __NV_PRIME_RENDER_OFFLOAD = "1";
+      __NV_PRIME_RENDER_OFFLOAD_PROVIDER = "NVIDIA-G0";
+      __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+      __VK_LAYER_NV_optimus = "NVIDIA_only";
+      WEBKIT_DISABLE_COMPOSITING_MODE = "1";
+    };
+  };
   # KMS 串流需要活动的屏幕；GNOME 自动熄屏后不会留下可捕获的 framebuffer。
   dconf.settings."org/gnome/desktop/session".idle-delay = lib.hm.gvariant.mkUint32 0;
   home.packages = [

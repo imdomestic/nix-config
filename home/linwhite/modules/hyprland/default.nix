@@ -21,12 +21,14 @@ in {
       "$mod" = "SUPER";
 
       monitor = [
+        "HDMI-A-1,2560x1440@120.00,auto,1"
         ",highrr,auto,1"
       ];
 
       env = [
-        # 混合显卡：笔记本内屏由 Intel 核显（card1）直连驱动，HDMI / 独显加速走 NVIDIA（card0）
-        "AQ_DRM_DEVICES,/dev/dri/card1:/dev/dri/card0"
+        # 混合显卡：合盖外接 HDMI 时显示器直连 NVIDIA（card0），优先将其作为主合成器避免跨卡 blit；
+        # 开盖使用内屏（card1）时再由 card0 向 card1 输出。
+        "AQ_DRM_DEVICES,/dev/dri/card0:/dev/dri/card1"
         "NIXOS_OZONE_WL,1"
         "ELECTRON_OZONE_PLATFORM_HINT,auto"
         "QT_QPA_PLATFORM,wayland;xcb"
