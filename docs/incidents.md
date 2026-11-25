@@ -55,6 +55,26 @@ portal 上 xray 的路由都是把所有入站丢进反向隧道，`freedom` 出
   `--since -90s` 抽样、再按 `outbound=`/`dialer=` 计数，一条命令就能看出来：
   `journalctl -u dae --since -90s -o cat | grep pname=xray | grep -c aliyun`。
 
+部署（都在 11-25 晚上）：
+
+- **r5s**：`just deploy-built r5s` 把 main（`74f0b189`）装成启动项，22:12 重启，69 秒后回来。
+  它之前一直跑着 11-06 的第 77 代，这一下连内核一起从 6.18.57 到了 7.3.5；重启前核对过
+  extlinux 默认项指的内核、initrd、`rk3568-nanopi-r5s.dtb` 和 `init` 都在。重启后 PPPoE
+  重拨、ddns-go 更新了地址，gizmo 的 bridge 几分钟内连回，`imdomestic-r5s-v2` 重新被选中。
+- **h610**：不重启，只换 dae 的配置。它跑的是 `c83ee892`（11-20 的第 606 代）；在那个提交上
+  只加这一条规则，就是分支 `pin/h610-xray-direct`（`9002f455`），在 tank 上构建、拷过去再
+  `switch`。和原来的系统相比只有 `dae.dae` 和 sops 的 manifest 不同，激活时只重启了
+  `dae.service`。**h610 现在跑的是这个分支而不是 main**，下次把 main 部署到 h610 之后删掉它。
+- h310 也用这个模块，没有部署；它下次从 main 部署时带上这条规则。
+
+修完之后量到的：
+
+- r5s 的 dae 日志里 `pname=xray` 的流量 90 秒 0 条（`must_direct` 的连接 dae 根本不经手），
+  拨号超时从 165 次降到十来次；xray 收下的去 `www.aliyun.com` 的连接 0 个。
+- h610 的 dae 日志 2 分钟从 23894 行降到 131 行，拨号超时从 2712 次降到 0。
+- tank 上 `api.exa.ai` 连测 30 次全通（修之前 24 次里 16 次超时），GitHub、
+  `static.crates.io`、DuckDuckGo 各 8 次全通。
+
 没查的：gizmo 上这些回环流量占了多少（所有 portal 共用它一个出口）；r6s 的 mihomo 对
 同一条 dest 拨号怎么选路。
 
