@@ -252,6 +252,10 @@ in {
             # Nix's wrapped daemon has a Linux comm truncated to 15 bytes.
             pname(tailscaled, '.tailscaled-wrapped', '.tailscaled-wra') -> must_direct
             pname(tailscale) -> must_direct
+            # xray 自己往外拨的只有 REALITY 的 dest(www.aliyun.com)。它落进末尾的
+            # `fallback: im` 就会经本机 portal 再进 xray,每进一次又拨一次 dest:
+            # docs/incidents.md#reality-dest-loop。
+            pname(xray) -> must_direct
             ${lib.optionalString (cfg.bootstrapDomains != []) "domain(${bootstrapMatchers}) -> must_direct"}
 
             # 去自建基础设施的连接一律直连。没有这条的话，routing 末尾的

@@ -4,6 +4,60 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-25 · REALITY 的 dest 拨号被 dae 送回代理：r5s、h610 自己连自己 {#reality-dest-loop}
+
+现象：tank 上访问境外一阵好一阵坏。20:25 连测 6 次 `api.exa.ai` 都在 1 秒内，一分钟后
+24 次里 16 次 8 秒超时；GitHub 4–8 秒，`static.crates.io` 超时。国内、局域网、DNS 都正常。
+Max 的 `web_search` 报搜索服务连不上，VM 里访问境外站点超时；tank 自己的 `git fetch` 和
+nix 下载也是 TLS EOF。h610 同一时间也有，轻一些。
+
+根因是一个回环：
+
+1. portal 上 xray 的 REALITY 入站（`interconn2`、`client-in2`）每进来一个连接，就去拨一次
+   dest，`www.aliyun.com:443`。按 `hosts/r5s/system.nix` 里的设想，这一跳解析到本省电信段、
+   直连不出省。
+2. `www.aliyun.com` 这时解析到 `155.102.41.0/24`。网关上的 geoip 是 `v2ray-geoip-2026-05`，
+   它的 CN 列表里没有这一段（把 r5s 的 `cn.dat` 拷下来解析过：8284 个 v4 段，`155.` 开头的
+   只有 4 个，都不含它）。
+3. dae 按 IP 给这条连接选路（日志里的 `sniffed=` 只是记下来，不参与选路；dae 手里还留着
+   这个 IP 对应的域名时才走得到 `domain(geosite:cn) -> direct`，所以偶尔有几条是 direct）。
+   `dip(geoip:cn) -> direct` 不中，落到末尾的 `fallback: im`。
+4. `im` 组选中本机节点时，这次拨号从本机的 `client-in2` 再进 xray，又触发一次 dest 拨号；
+   选中别的节点时，它绕日本出去再回来连阿里云。portal 上每一次握手于是都要先穿一遍隧道。
+
+量到的数字（都是 11-25 晚上）：
+
+- r5s 的 dae 日志 90 秒内 211 条 `pname=xray … www.aliyun.com`，源是 r5s 自己的 WAN 地址，
+  全部 `outbound=im dialer=imdomestic-r5s-v2`；同时 165 条
+  `failed to dial …: context deadline exceeded`。
+- r5s 的 xray 日志同一分钟里 `client-in2 -> portal-r5s` 收下 178 个去 `www.aliyun.com` 的
+  连接，全部来自 r5s 自己的公网地址；真实流量大约 50 个。
+- `im` 组每分钟都在 `imdomestic-r5s-v2` 和 `imdomestic-h610-v2` 之间来回选，
+  `min_moving_avg` 0.8–6.5 秒，两个节点轮流 ALIVE / NOT ALIVE。
+- h610 更重：2 分钟 20787 次 dest 拨号（每秒 173 次），20726 次走 `imdomestic-h610-v2`，
+  2712 次超时。
+- r5s 的 dae 日志只留到 11-24 14:14。按 2 分钟的窗口抽样：11-24 18:00 有 4841 次，23:00
+  2431 次，11-25 09:00、17:00、18:20 各三千多次，中间有只有几十次的时段。更早的看不到，
+  阿里云哪天换的地址段没法确定。
+
+修法：`system/modules/dae/default.nix` 的 routing 里加 `pname(xray) -> must_direct`。两台
+portal 上 xray 的路由都是把所有入站丢进反向隧道，`freedom` 出口没有规则指向它，所以 xray
+自己往外拨的只有 dest；让它一律不进 dae，和 geoip 认不认得那个地址无关。只升级 geoip 治得了
+这一次，阿里云再换一段还会再来。
+
+走过的弯路：
+
+- 先当成晚高峰的跨境链路或出口节点的问题，因为 tank 和 h610 两个站点同时有。两处同时坏，是
+  因为两处跑的是同一份 dae 模块、同一个 dest、同一份 geoip。
+- 以为 tank 的网关是 r6s（mihomo），翻了半天 r6s 的配置。tank 那段 LAN 的网关是 r5s
+  （`192.168.20.1`，dae），`hosts/tank/system.nix` 里写着。
+- dae 的 warning 全天每小时一两万条，`journalctl --since today` 在 r5s 上要翻几分钟；
+  `--since -90s` 抽样、再按 `outbound=`/`dialer=` 计数，一条命令就能看出来：
+  `journalctl -u dae --since -90s -o cat | grep pname=xray | grep -c aliyun`。
+
+没查的：gizmo 上这些回环流量占了多少（所有 portal 共用它一个出口）；r6s 的 mihomo 对
+同一条 dest 拨号怎么选路。
+
 ## 2026-11-24 · AeroSpace 工作区偶尔要按两次 {#aerospace-workspace-focus}
 
 linwhite 报告 Option+数字有时第一次去错工作区，第二次才正确。aegis 当时只有
