@@ -74,6 +74,7 @@ creation_rules:
   - path_regex: 'secrets/clients/cliproxy\.yaml$'
     key_groups:
       - age:
+          - age1u9pju64c3uf67hg6huhz38a9mupv7au6egzg5uv5mtcxdpn42u6qa7lz8h # fendada@7945hx-wsl
           - age1ctfjwk8fkfuxq9rrsuenmqtx8l3jx5rt4hujvh525pgruxs69fls4qtj7z # fendada (personal)
           - age199f3re3sturx83zkmedc5qkz7aqra656w6cz9zttkcxg0slndudqlf8sca # hank@268v
           - age1wh7zpq8aaqx5anad9nxk9cr40q0rq2qcnsrpujmrmsf8z59aycsqhlpmth # hank@encore

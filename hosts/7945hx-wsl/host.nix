@@ -7,6 +7,9 @@
 
     externalModules = [inputs.nixos-wsl.nixosModules.default];
 
-    users.fendada.tier = "dev";
+    users.fendada = {
+      tier = "dev";
+      ageKey = "age1u9pju64c3uf67hg6huhz38a9mupv7au6egzg5uv5mtcxdpn42u6qa7lz8h";
+    };
   };
 }
