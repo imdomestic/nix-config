@@ -11,6 +11,33 @@
 
 ---
 
+## 2026-11-25 · `maxx` 这个 input 也由夜间 updater 挪 {#maxx-moves-nightly}
+
+`lib/flake-update-lanes.nix` 多了一条 `own` lane，里面只有 `maxx`，排在最后。updater
+每晚把它挪到 max 的 main，和别的 input 一样：构建 tank、跑 `maxvm-tank`，过了才推，
+不过就单独剔掉、写进 issue。部署仍然要有人去 switch。
+
+**为什么放开。** 以前 `maxx` 算「自己的仓库，手动挪」，怕的是谁 switch tank 时顺带
+上线一个没人看过的 max。现在 max 的 main 上只有过了它自己检查的东西：每次推送跑
+`nix flake check`；它自己的夜间 workflow 挪 `Cargo.lock` 和 flake input 时跑的也是
+这一套（max 仓库的 `docs/decisions/pins-move-nightly.md`）。到 tank 之前，这里再过两道：
+
+- 构建 tank 的系统时，max 的模块用 `max check-config` 检查 tank 真实的配置，删掉或
+  改名的配置键在这一步就失败；
+- `maxvm-tank`（[#maxx-fleet-test](#maxx-fleet-test)），只有 tank 跑得了。
+
+**为什么排在最后。** 构建和测试它时用的是当晚的 nixpkgs，也就是它上线时的组合。
+
+**代价。**
+
+- 谁 switch tank，谁就带上当晚的 max。max 重启会打断正在进行的 turn；guest 镜像变了
+  （microvm、pi、guest 里任何一个文件）还会停掉正在跑的 VM 和里面的后台任务，下次用到
+  再启动。用的人不多，可以接受。
+- 需要手工数据步骤的 max 改动（比如搬库）不能让 updater 带上去：先把 `maxx.url` 钉到
+  一个 rev，updater 挪不动钉住的 input，做完再放开。
+- 带 migration 的 max 在下一次 switch 时自己迁移，退路是每晚 04:20 的备份
+  （[#maxx-backup-as-root](#maxx-backup-as-root)）。
+
 ## 2026-11-25 · maxx 的备份以 root 写进 h610，不设受限用户 {#maxx-backup-as-root}
 
 tank 上 maxx 的库每晚由 restic 经 sftp 备份到 h610（`hosts/tank/maxx-backup.nix`，
@@ -163,7 +190,8 @@ max 这一个部件,连同它起的 VM。
   一次(「调用方先走了」那个子测试),夜间关卡里一次偶发失败就会剔掉当晚的 nixpkgs。
   等 max 那边修了再加。
 - updater 只在自己挪 input 时跑测试。手动升 `maxx` 部署前,自己在带新 lock 的工作
-  树里构建这个测试,再切换。
+  树里构建这个测试,再切换。(11-25 起 updater 自己也挪 `maxx`,见
+  [#maxx-moves-nightly](#maxx-moves-nightly)。)
 - 要嵌套 KVM,只能在 tank 上构建;11-19 在这份 lock 下(内核 6.18.63)连构建跑了 13 分钟,通过。
 
 ## 2026-11-17 · darwin 用 nixpkgs-26.05-darwin,Linux 留在 nixos-26.05 {#nixpkgs-darwin}

@@ -549,7 +549,10 @@ Configuration and the 2026-09-15 rollout record: `docs/services/max-ssh-operatio
   triggers ci.yml. The run's report is the `nightly update` check on its last
   commit (inputs moved, hosts to reboot, VM test snapshots, and the package
   versions that changed in what it built); problems go to the issue "Nightly flake update needs attention".
-  Inputs in neither lane are moved by hand. Why: `docs/decisions.md#flake-updater`.
+  The last lane is `maxx`: max's main, which max's own nightly workflow keeps
+  moving, so a night's push can bring a new max and a new guest image to the
+  next switch of tank (`docs/decisions.md#maxx-moves-nightly`).
+  Inputs in no lane are moved by hand. Why: `docs/decisions.md#flake-updater`.
 - Pulling the private flake inputs needs the `SSH_PRIVATE_KEY` repo secret (a key
   with read access to the private `imdomestic/*` and `HCHogan/*` repos). macOS
   runners need the Determinate installer: the classic one aborts on their

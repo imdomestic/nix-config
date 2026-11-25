@@ -13,7 +13,7 @@
   ...
 }: let
   lanes = import ../../../lib/flake-update-lanes.nix;
-  inputs = lanes.release ++ lanes.rolling;
+  inputs = lanes.release ++ lanes.rolling ++ lanes.own;
   rootInputs = builtins.attrNames (builtins.fromJSON (builtins.readFile ../../../flake.lock)).nodes.root.inputs;
   state = "/var/lib/flake-updater";
   secret = name: config.sops.secrets."imdomestic-updater/${name}".path;
