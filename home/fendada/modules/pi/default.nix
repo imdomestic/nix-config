@@ -55,6 +55,7 @@ in {
   home.packages = [inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.pi];
 
   sops.secrets."cliproxy/api_key".sopsFile = ../../../../secrets/clients/cliproxy.yaml;
+  sops.secrets."agy-proxy/api_key".sopsFile = ../../../../secrets/clients/agy-proxy.yaml;
 
   # Pi 没有原生 Home Manager 模块；模型元数据进 store，密钥只在请求时读取。
   home.file.".pi/agent/models.json".text = builtins.toJSON {
@@ -104,6 +105,14 @@ in {
             maxTokens = 262144;
           }
         ];
+      };
+      agy = {
+        name = "agy";
+        baseUrl = "https://${config.my.fleet.placements.agy-proxy.tsName}/agy/v1beta";
+        api = "google-generative-ai";
+        # Only the proxy client key reaches the home; docs/agy-proxy.md.
+        apiKey = "!${pkgs.coreutils}/bin/cat ${lib.escapeShellArg config.sops.secrets."agy-proxy/api_key".path}";
+        models = import ./agy-models.nix {inherit lib pricing;};
       };
       cliproxy = {
         name = "CLIProxy (${config.my.fleet.placements.cliproxy.host})";

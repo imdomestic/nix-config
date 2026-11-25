@@ -140,7 +140,7 @@ functionCall part 上的 thoughtSignature 也放在 `extra_content.google.though
 ## gizmo 的凭据与登录 {#gizmo-login}
 
 - 客户端 key：SOPS `secrets/clients/agy-proxy.yaml` 的 `agy-proxy/api_key`（读者：Hank、linwhite、
-  gizmo、tank），运行时 `/run/secrets/agy-proxy/api_key`，经 systemd LoadCredential 传入。
+  fendada、gizmo、tank），运行时 `/run/secrets/agy-proxy/api_key`，经 systemd LoadCredential 传入。
   与 CLIProxy 的 key 不同。
 - Google OAuth：`/var/lib/agy-proxy/oauth.json`，只由服务用户写；client ID / secret 来自 SOPS
   `agy-proxy/oauth_client`，不进源码或 store。快到期（不足一分钟）时服务自己刷新并原子写回 0600 文件
@@ -207,6 +207,8 @@ CLOUD_CODE_URL=http://127.0.0.1:8319 agy        # 另一个终端：原生 agy �
 - **Pi（linwhite）**：`home/linwhite/modules/pi/agy.nix` 只有原生 `agy/*`。Pi 1.5.2 的 Google 适配器只接受
   minimal / low / medium / high，所以 Hydrogen XHigh 经 `agy-google-xhigh` 适配器发送真实 `XHIGH`；
   扩展没加载时明确失败，不降成 High。回归：`bash scripts/check-pi-linwhite-agy.sh`。
+- **Pi（fendada）**：`home/fendada/modules/pi/` 只有原生 `agy/*`，不带扩展，所以没有 Hydrogen XHigh、
+  也不发 `X-Agy-Session-Id`（`docs/home/fendada-pi.md`）。
 - **Max（maxx，tank）**：provider `agy-completions`，`protocol = "chat"`，key 在
   `/run/secrets/maxx/agy-completions-api-key`，retries=0（避免把 429 自动重放）。Max 的 Chat 解析会保留
   message / tool_call 上的未知字段，所以签名回放可用；Max 没有 Gemini 原生协议。

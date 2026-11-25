@@ -8,7 +8,11 @@ linwhite 的 home 模块。模型目录和价格初始参照 hank 的配置，�
   OpenCode 和 NInfer；认证信息不进入 Nix store。
 - CLIProxy 的 key 由 `modules/sops` 从 `secrets/clients/cliproxy.yaml` 解密，
   Pi 在请求时通过 `!cat` 读取。
-- Gemini/agy-proxy 的收件人目前不包括 fendada，所以这里没有启用它。
+- Gemini 走 agy-proxy 的原生 `agy/*`（`google-generative-ai`），key 来自
+  `secrets/clients/agy-proxy.yaml`。没有 Hydrogen XHigh：Pi 1.6.0 的 Google 适配器
+  遇到 `xhigh` 直接报 `Unsupported Google thinking level mapping`（2026-11-25 离线实测），
+  linwhite 靠一个扩展绕过，这里不带扩展。也没有 `agy-completions/*`：Pi 1.5.2 时它带工具的
+  第二轮会 400（`docs/agy-proxy.md` 的客户端一节）。
 - 没有复制其他账户的扩展、主题或默认模型偏好。
 
 ## 新机器的认证

@@ -69,6 +69,8 @@ creation_rules:
           - age1w9pj7r7ul6zgnh7jre7uk8a4mmdzd0538m74uhk06zw4kz4thcwsvcuntw # linwhite@tank
           - age1mjd25w6an6jdaseuqzeld98wlh4jc365yqtr84c4xazc60nplysqaud8xe # linwhite@tokyo
           - age1guuksgwc7ldf0r99dq49kfaw5xkw59rmtlwpyc8yzz3lu5lzwvxq65s6g7 # linwhite (personal)
+          - age1u9pju64c3uf67hg6huhz38a9mupv7au6egzg5uv5mtcxdpn42u6qa7lz8h # fendada@7945hx-wsl
+          - age1ctfjwk8fkfuxq9rrsuenmqtx8l3jx5rt4hujvh525pgruxs69fls4qtj7z # fendada (personal)
           - age14xddk3hzejcam6pcj9pewv0j6ldwk83l92eqz5zdnh2d0cwwjs2sddh7rq # host gizmo
           - age168k3d2228fxjdf6936pwvyzmm6hus9cet06kr64ecgcl6dg4tvrqlqc5hs # host tank
   - path_regex: 'secrets/clients/cliproxy\.yaml$'
