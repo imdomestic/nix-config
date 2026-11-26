@@ -5,6 +5,8 @@
     inChina = true;
     roles = [];
 
+    # WSL 不使用 server 角色，单独启用 home-sync。
+    modules = [../../system/modules/home-sync.nix];
     externalModules = [inputs.nixos-wsl.nixosModules.default];
 
     users.fendada = {
