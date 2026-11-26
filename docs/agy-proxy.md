@@ -209,6 +209,9 @@ CLOUD_CODE_URL=http://127.0.0.1:8319 agy        # 另一个终端：原生 agy �
   扩展没加载时明确失败，不降成 High。回归：`bash scripts/check-pi-linwhite-agy.sh`。
 - **Pi（fendada）**：`home/fendada/modules/pi/` 只有原生 `agy/*`，不带扩展，所以没有 Hydrogen XHigh、
   也不发 `X-Agy-Session-Id`（`docs/home/fendada-pi.md`）。
+- **fx（Hank）**：`home/hank/modules/fx/` 的 `agy` 连接（`openai-chat-completions`，型号同 Pi 的
+  `agy-models.nix`）。fx 0.0.18 只有 OpenAI / Anthropic 协议，Chat 也不回传 `extra_content`，2026-11-26
+  实测带工具的第二轮 400，所以默认用 cliproxy 的 GPT，`agy` 只适合不调工具的单轮。
 - **Max（maxx，tank）**：provider `agy-completions`，`protocol = "chat"`，key 在
   `/run/secrets/maxx/agy-completions-api-key`，retries=0（避免把 429 自动重放）。Max 的 Chat 解析会保留
   message / tool_call 上的未知字段，所以签名回放可用；Max 没有 Gemini 原生协议。

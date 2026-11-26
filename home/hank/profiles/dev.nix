@@ -14,6 +14,7 @@
     ../modules/pgcli.nix
     ../modules/codex
     ../modules/pi
+    ../modules/fx
     # ../modules/tuicr.nix
   ];
 
