@@ -380,6 +380,17 @@
         DHCP = "yes";
         IPv6AcceptRA = true;
       };
+      # Tailscale (--accept-routes) puts r5s's advertised 192.168.20.0/24 into
+      # table 52 at rule priority 5270, hijacking local LAN/gateway traffic
+      # (including k3s CoreDNS -> 192.168.20.1) into tailscale0. Keep local
+      # subnet lookups on main ahead of table 52.
+      routingPolicyRules = [
+        {
+          To = "192.168.20.0/24";
+          Table = "main";
+          Priority = 5200;
+        }
+      ];
       linkConfig = {
         RequiredForOnline = "routable";
       };
