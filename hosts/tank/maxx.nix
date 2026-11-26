@@ -67,12 +67,12 @@
   deployBefore = deployHook "before" ''
     guest() { nix-store --query --requisites "$1" | grep -- '-max-guest\.json$' | sort | tr '\n' ' ' || true; }
     if [[ $(guest "$1") == "$(guest "$2")" ]]; then
-      echo "the guest image stays: the VMs run on over Max's restart"
+      echo "the guest image stays: a restart of Max leaves the VMs running"
     else
-      echo "the guest image changes: as Max restarts, every VM is stopped with the background commands and agents in it, and boots the new image when next needed"
+      echo "the guest image changes: the switch stops every VM, with the background commands and agents in it, and each boots the new image when next needed"
     fi
     turns=$(maxx-psql -XAtc "select coalesce(string_agg(distinct t.conversation_id::text, ' '), ''') from turns t where not exists (select 1 from turn_outcomes o where o.turn_id = t.id) and t.started_at > now() - interval '6 hours'" 2>/dev/null) || turns="unknown, the query failed"
-    echo "turns open, which a restart of Max ends, in conversations: ''${turns:-none}"
+    echo "conversations with a turn open, which a restart of Max ends: ''${turns:-none}"
     while read -r vm _; do
       n=''${vm#maxx-vm@}
       n=''${n%.service}
