@@ -1,0 +1,10 @@
+{
+  "name": "fendada-pi-ui",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "pi-open-tui": "0.4.4",
+    "pi-better-render": "0.5.0",
+    "beautiful-mermaid": "1.1.3"
+  }
+}

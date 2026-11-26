@@ -8,6 +8,21 @@
   cliproxy = import ../../../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
   codex62 = import ../../../../lib/codex-6.2.nix;
   pricing = import ./pricing.nix;
+  ui = pkgs.callPackage ./ui.nix {};
+  settings = {
+    shellPath = "${pkgs.bash}/bin/bash";
+    defaultProvider = "cliproxy";
+    defaultModel = "gpt-6-astra";
+    defaultThinkingLevel = "medium";
+    packages = [
+      "${ui}/node_modules/pi-open-tui"
+      "${ui}/node_modules/pi-better-render"
+    ];
+    terminal.images = "auto";
+    fullscreenWheelScrollLines = 3;
+    fullscreenScrollbar = "always";
+    theme = "midnight-code";
+  };
   free = {
     input = 0;
     output = 0;
@@ -52,10 +67,33 @@
 in {
   imports = [../sops];
 
-  home.packages = [inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.pi];
+  home.packages = [
+    (pkgs.symlinkJoin {
+      name = "fendada-pi";
+      paths = [inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.pi];
+      nativeBuildInputs = [pkgs.makeWrapper];
+      # WSL autoProxy otherwise sends private fleet endpoints through the Windows proxy (502).
+      postBuild = ''
+        wrapProgram "$out/bin/pi" \
+          --run 'export NO_PROXY="''${NO_PROXY:+$NO_PROXY,}localhost,127.0.0.1,::1,.inner.imdomestic.com"' \
+          --run 'export no_proxy="''${no_proxy:+$no_proxy,}localhost,127.0.0.1,::1,.inner.imdomestic.com"'
+      '';
+    })
+  ];
 
   sops.secrets."cliproxy/api_key".sopsFile = ../../../../secrets/clients/cliproxy.yaml;
   sops.secrets."agy-proxy/api_key".sopsFile = ../../../../secrets/clients/agy-proxy.yaml;
+
+  # Merge declared preferences; Pi can still save runtime state and UI settings.
+  home.activation.piSettings = lib.hm.dag.entryAfter ["writeBoundary"] ''
+    run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
+      ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/settings.json"} \
+      ${lib.escapeShellArg (builtins.toJSON settings)}
+    run ${pkgs.python3}/bin/python ${../../../../scripts/merge-json-settings.py} \
+      ${lib.escapeShellArg "${config.home.homeDirectory}/.pi/agent/open-tui.json"} \
+      ${lib.escapeShellArg (builtins.toJSON (import ./open-tui.nix))}
+  '';
+  home.file.".pi/agent/themes/midnight-code.json".text = builtins.toJSON (import ./midnight-code.nix);
 
   # Pi 没有原生 Home Manager 模块；模型元数据进 store，密钥只在请求时读取。
   home.file.".pi/agent/models.json".text = builtins.toJSON {

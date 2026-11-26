@@ -1,0 +1,60 @@
+--- a/src/render/code.ts
++++ b/src/render/code.ts
+@@ -35,7 +35,7 @@
+  * Code block: full-width background, language label in the top-right corner,
+  * optional line numbers, hard-wrapped long lines marked with ↪. No ``` fences.
+  */
+-export function renderCode(token: any, ctx: RenderContext): string[] {
++function renderPlainCode(token: any, ctx: RenderContext): string[] {
+ 	const { style } = ctx;
+ 	const lang: string = (token.lang ?? "").trim().split(/\s+/)[0] ?? "";
+ 	const source: string = (token.text ?? "").replace(/\t/g, "    ");
+@@ -80,3 +80,37 @@
+ 	lines.push(row(" ".repeat(gutterWidth), ""));
+ 	return lines;
+ }
++
++
++/** Local card layout: bounded width, rounded frame, line gutter and original Copy actions. */
++export function renderCode(token: any, ctx: RenderContext): string[] {
++ const lang: string = (token.lang ?? '').trim().split(/\s+/)[0] || 'text';
++ if (ctx.width < 20 || isMermaid(lang)) return renderPlainCode(token, ctx);
++ const { style } = ctx;
++ const source: string = (token.text ?? '').replace(/\t/g, '    ');
++ const highlighted = style.highlight(source, lang) ?? source.split('\n').map(line => style.fg('mdCodeBlock', line));
++ const numberWidth = state.lineNumbers ? String(highlighted.length).length : 0;
++ const overhead = numberWidth ? numberWidth + 7 : 4;
++ const longest = highlighted.reduce((n, line) => Math.max(n, visibleWidth(line)), 0);
++ const width = Math.min(ctx.width, 110, Math.max(56, longest + overhead));
++ const inner = width - overhead;
++ const border = (s: string) => style.fg('mdCodeBlockBorder', s);
++ const paint = (s: string) => style.codeBg ? style.codeBg + withBackground(s, style.codeBg) + BG_RESET : s;
++ const clickable = !!ctx.onCode && fenceClosed(token.raw ?? '');
++ const button = clickable ? style.fg('accent', codeButtonText('idle')) : '';
++ const right = clickable ? ' ' + button + ' ' + border('╮') : border('─╮');
++ const labelRoom = Math.max(0, width - visibleWidth(right) - 4);
++ const label = sliceByColumn(lang.toUpperCase(), 0, labelRoom, true);
++ const left = border('╭─ ') + style.fg('muted', label) + ' ';
++ const lines = [paint(left + border('─'.repeat(Math.max(0, width - visibleWidth(left) - visibleWidth(right)))) + right)];
++ if (clickable) ctx.onCode!({x: width - codeButtonWidth - 2, y: 0, width: codeButtonWidth, code: token.text ?? ''});
++ highlighted.forEach((line, index) => {
++  hardWrap(line, inner).forEach((piece, continuation) => {
++   const number = continuation ? '↪' : String(index + 1);
++   const gutter = numberWidth ? style.fg('dim', number.padStart(numberWidth)) + border(' │ ') : '';
++   lines.push(paint(border('│ ') + gutter + pad(piece, inner) + border(' │')));
++  });
++ });
++ lines.push(paint(border('╰' + '─'.repeat(width - 2) + '╯')));
++ return lines;
++}
+--- a/src/state.ts
++++ b/src/state.ts
+@@ -10,7 +10,7 @@
+ 	/** Draw ```mermaid blocks as diagrams instead of showing their source. */
+ 	mermaid: true,
+ 	/** Show line numbers in code blocks. */
+-	lineNumbers: false,
++	lineNumbers: true,
+ 	/** Append context-sanitizer diagnostics to ~/.pi/agent/better-render-debug.log. */
+ 	debug: process.env.PI_BETTER_RENDER_DEBUG === "1",
+ 	/** Bumped whenever something that affects rendered output changes (mode, theme, math engine loaded). */
