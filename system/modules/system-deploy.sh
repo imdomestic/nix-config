@@ -29,10 +29,11 @@ need_root() {
     echo "system-deploy $1: needs root (sudo system-deploy $1)" >&2
     exit 1
   fi
-  mkdir -p "$state" /var/cache/system-deploy
-  # Not the caller's: under sudo, nix would leave root's files in their home.
-  export HOME=$state XDG_CACHE_HOME=/var/cache/system-deploy
-  unset XDG_CONFIG_HOME XDG_STATE_HOME XDG_DATA_HOME
+  mkdir -p "$state"
+  # Root's own, not the caller's: under sudo nix would leave root's files in
+  # their home, and root's cache has what earlier builds fetched.
+  export HOME=/root
+  unset XDG_CACHE_HOME XDG_CONFIG_HOME XDG_STATE_HOME XDG_DATA_HOME
 }
 
 # One build, check or switch at a time: they share the state directory.
@@ -66,10 +67,21 @@ resolve() {
 }
 
 # Builds this host's system at commit $1 and prints its path; the link
-# keeps it from the garbage collector until the next build.
+# keeps it from the garbage collector until the next build. A build that
+# failed at fetching is tried again: GitHub from China drops a fetch now
+# and then, and an input or a crate's git source may need one.
 build() {
-  nix build --out-link "$state/target" --print-out-paths \
-    "github:$repo/$1#nixosConfigurations.\"$host\".config.system.build.toplevel" 2>"$state/build.log"
+  local try
+  for try in 1 2 3 4; do
+    if nix build --out-link "$state/target" --print-out-paths \
+      "github:$repo/$1#nixosConfigurations.\"$host\".config.system.build.toplevel" 2>"$state/build.log"; then
+      return 0
+    fi
+    if ((try == 4)) || ! grep -qE 'Failed to fetch|unable to access|unable to download|TLS connect error|timed out|Connection reset' "$state/build.log"; then
+      return 1
+    fi
+    sleep 10
+  done
 }
 
 main_pid() { systemctl show --property=MainPID --value "$1"; }
