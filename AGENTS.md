@@ -385,7 +385,9 @@ up to date:
    `configurationRevision` is **not** set in this flake, so compare store
    paths instead: `readlink /run/current-system` vs the evaluated toplevel
    `outPath` of the host's configuration (a `--dry-run` build also shows
-   whether anything would change).
+   whether anything would change). On a host with `system-deploy` (tank),
+   `system-deploy` names the commit it switched to, or says that someone
+   else switched.
 3. If the remote has new commits, **rebase onto `origin/main` automatically**,
    preserving unrelated local changes. Summarize the incoming commits and
    diff, verify the rebased configuration, then commit and push the requested
@@ -519,6 +521,63 @@ nix eval --json .#deploy.nodes --apply builtins.attrNames
   running `nixos-rebuild`, and flake-updater only pushes to main. A system moves
   to main when someone deploys or rebuilds it
   (`docs/decisions.md#auto-update`).
+
+### `system-deploy`: a host brings itself to a commit
+
+tank, where Max runs, is switched with `system-deploy`, on tank itself
+(`system/modules/system-deploy.nix`; any host that builds its own system gets
+it by listing the module). It builds
+`github:imdomestic/nix-config/<commit>` for the host it runs on, so **the
+commit has to be pushed first**; without a commit it takes main's.
+
+```sh
+sudo system-deploy check [REV]   # build, and report what a switch would do; changes nothing
+sudo system-deploy switch [REV]  # build, check and switch, in a unit of its own; returns at once
+system-deploy wait               # follow that switch to its end and print its report
+system-deploy                    # what the host runs, and the last switch's report
+```
+
+- **Read `check` before `switch`.** Its report says which commit runs and a
+  compare link to the new one, the closure's difference, whether the kernel
+  changes, and which units a switch stops, starts or restarts. Then one
+  line per watched service. On tank that is Max (`maxx`): whether the guest
+  image changes, which stops every VM, with the background commands and
+  agents in it, as Max restarts; which conversations have a turn open, which
+  the restart ends; and which run background units.
+- **`switch` goes on without you**: it runs in `system-deploy-switch.service`,
+  whatever becomes of the shell, the SSH session or the service that asked.
+  Don't run `nixos-rebuild switch` on tank from one of Max's VMs: when the
+  guest image changes, that VM is stopped in the middle of it.
+- **It goes back by itself** when a watched unit (`maxx.service`: active, one
+  process for 20 seconds, which logged `serving`) isn't up 180 seconds after
+  the switch. The exception is a database migration: the Max before refuses
+  a database with a migration it doesn't know, so going back wouldn't help,
+  the result is `failed`, and a person has to look. A host with no watched
+  unit (`my.systemDeploy.checks`) is never sent back.
+- **The result** is `ok`, `rolled-back` or `failed`, the report's last line;
+  `/var/lib/system-deploy/history` has every switch, `switch.log` there what
+  `switch-to-configuration` said.
+- **It runs no tests.** A guest image change is covered by the max repo's
+  own checks and by `fleetTests.x86_64-linux.maxvm-tank` here; run that
+  first when the change is to how tank hosts Max.
+- Not for a host with `buildOn`, and not a way to reach other hosts: those
+  stay with deploy-rs.
+
+**If you are Max, moving your own `maxx` input** (or deploying any other
+change to tank), only when someone in the chat asks for it:
+
+1. `nix flake update maxx` in your fork, a PR, and merge it. `flake.lock`
+   should change only under `maxx`.
+2. `ssh tank 'sudo system-deploy check'`, and tell the people who asked what
+   the report says the switch interrupts.
+3. In a background command: `ssh tank 'sudo system-deploy switch && system-deploy wait'`.
+   The switch restarts you, and the turn that started it ends there.
+4. If the guest image stays, the background command ends with the report
+   and wakes you. If it changes, your VM is stopped with the others and no
+   report comes: in your next turn, `ssh tank system-deploy` shows it.
+   Either way, say the result in the chat.
+5. On `rolled-back` or `failed`, don't switch again to the same commit:
+   say what `ssh tank 'sudo journalctl -u maxx.service -n 50'` shows.
 
 Max operates these targets through ordinary SSH as the full-sudo `max` account,
 using its own Tailscale client. The bot (maxx) runs on `tank`; Max joins the tailnet

@@ -17,6 +17,7 @@
 
     modules = [
       ../../system/modules/flake-updater
+      ../../system/modules/system-deploy.nix
       ./k3s.nix
       ./vex-archive.nix
       ./gaoji.nix

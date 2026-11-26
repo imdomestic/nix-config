@@ -6,6 +6,7 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }: let
   cliproxy = import ../../lib/cliproxy-models.nix {placement = config.my.fleet.placements.cliproxy;};
@@ -53,6 +54,42 @@
     video = true;
     price = prices.gemini-4-hydrogen;
   };
+  # What `system-deploy` says of a switch that only Max can: see
+  # `my.systemDeploy.checks.maxx` below. `maxx-psql` and `maxx-ssh` are the
+  # max module's, on the system's path, which system-deploy passes on.
+  deployHook = name: text:
+    lib.getExe (pkgs.writeShellApplication {
+      name = "maxx-deploy-${name}";
+      runtimeInputs = [config.nix.package config.systemd.package pkgs.coreutils pkgs.gnugrep pkgs.gawk];
+      inherit text;
+    });
+  migration = ''maxx-psql -XAtc "select coalesce(max(version), 0) from _sqlx_migrations"'';
+  deployBefore = deployHook "before" ''
+    guest() { nix-store --query --requisites "$1" | grep -- '-max-guest\.json$' | sort | tr '\n' ' ' || true; }
+    if [[ $(guest "$1") == "$(guest "$2")" ]]; then
+      echo "the guest image stays: the VMs run on over Max's restart"
+    else
+      echo "the guest image changes: as Max restarts, every VM is stopped with the background commands and agents in it, and boots the new image when next needed"
+    fi
+    turns=$(maxx-psql -XAtc "select coalesce(string_agg(distinct t.conversation_id::text, ' '), ''') from turns t where not exists (select 1 from turn_outcomes o where o.turn_id = t.id) and t.started_at > now() - interval '6 hours'" 2>/dev/null) || turns="unknown, the query failed"
+    echo "turns open, which a restart of Max ends, in conversations: ''${turns:-none}"
+    while read -r vm _; do
+      n=''${vm#maxx-vm@}
+      n=''${n%.service}
+      units=$(timeout 15 maxx-ssh "$n" "systemctl list-units 'max-job-*' 'max-call-*' --state=running,activating --no-legend --plain" 2>/dev/null | awk '{print $1}' | tr '\n' ' ') || units="its VM didn't answer"
+      if [[ -n $units ]]; then echo "conversation $n runs: $units"; fi
+    done < <(systemctl list-units 'maxx-vm@*' --state=active --no-legend --plain)
+  '';
+  deployAfter = deployHook "after" ''
+    if [[ $1 == "$2" ]]; then
+      echo "Max wasn't restarted"
+      exit 0
+    fi
+    log=$(journalctl _SYSTEMD_UNIT=maxx.service _PID="$1" --no-pager --output=cat || true)
+    count() { grep -c -- "$1" <<<"$log" || true; }
+    echo "$(grep -o 'serving version=.*' <<<"$log" | tail -n 1 || true), on migration $(${migration} 2>/dev/null || echo unknown)"
+    echo "$(count 'attached to a VM that runs') VMs attached to, $(count "can't be attached to") stopped for the new image, $(count ' ERROR ') errors logged"
+  '';
 in {
   sops.secrets =
     lib.genAttrs (map (name: "maxx/${name}") secretNames) (_: {
@@ -333,5 +370,16 @@ in {
         };
       };
     };
+  };
+
+  # A switch of tank is judged by Max: its unit up as one process that says
+  # it serves. Its migrations are what the max before can't run on: sqlx
+  # refuses a database with a migration the binary doesn't know.
+  my.systemDeploy.checks.maxx = {
+    unit = "maxx.service";
+    ready = "max: serving";
+    before = deployBefore;
+    after = deployAfter;
+    irreversible = deployHook "migration" migration;
   };
 }
