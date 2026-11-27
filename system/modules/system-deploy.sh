@@ -219,6 +219,18 @@ all_up() {
   return "$down"
 }
 
+# What each watched unit that is up says of itself, with the loaded checks.
+say_after() {
+  local name line
+  for name in "${check_names[@]}"; do
+    if [[ -n ${check_after[$name]} ]]; then
+      while IFS= read -r line; do
+        say "$name" "$line"
+      done < <("${check_after[$name]}" "$(main_pid "${check_unit[$name]}")" "${pid_before[${check_unit[$name]}]}" 2>&1 || true)
+    fi
+  done
+}
+
 finish() {
   say result "$1: $2"
   echo "$1" >"$state/state"
@@ -238,7 +250,7 @@ broke_off() {
 
 # `switch`, in its own unit: all of it goes to the report.
 switch_inner() {
-  local name pid status=0
+  local name status=0
   declare -A token_before=()
   rev=$1
   need_root switch
@@ -268,14 +280,7 @@ switch_inner() {
   stage="while it waited for the watched units on $rev, which the host runs"
   say switched "switch-to-configuration exited $status; what it said is in $state/switch.log"
   if all_up; then
-    for name in "${check_names[@]}"; do
-      if [[ -n ${check_after[$name]} ]]; then
-        pid=$(main_pid "${check_unit[$name]}")
-        while IFS= read -r line; do
-          say "$name" "$line"
-        done < <("${check_after[$name]}" "$pid" "${pid_before[${check_unit[$name]}]}" 2>&1 || true)
-      fi
-    done
+    say_after
     if ((status != 0)); then
       finish ok "$host runs $rev, though switch-to-configuration exited $status: some unit failed, see switch.log"
     fi
@@ -299,6 +304,7 @@ switch_inner() {
   stage="while it waited for the watched units on the system before $rev, which the host runs again"
   say switched "switch-to-configuration exited $status"
   if all_up; then
+    say_after
     finish rolled-back "$rev was switched to and didn't hold; $host runs the system before again"
   fi
   finish failed "a watched unit is down on $rev and on the system before as well. Someone has to look"
