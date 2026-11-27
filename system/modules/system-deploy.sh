@@ -80,7 +80,7 @@ resolve() {
   if [[ -z $rev ]]; then
     # GitHub from China drops a fetch now and then.
     for _ in 1 2 3; do
-      rev=$(timeout 60 git ls-remote "https://github.com/$repo" refs/heads/main | cut -f1) || rev=
+      rev=$(timeout 60 git ls-remote "https://github.com/$repo" refs/heads/main 2>/dev/null | cut -f1) || rev=
       if [[ -n $rev ]]; then break; fi
       sleep 5
     done
