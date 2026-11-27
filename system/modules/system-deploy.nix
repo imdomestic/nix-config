@@ -44,12 +44,6 @@
       ''
         host=${lib.escapeShellArg config.my.host.name}
         state=/var/lib/system-deploy
-        check_names=(${lib.escapeShellArgs names})
-        declare -A check_unit=(${table "unit"})
-        declare -A check_ready=(${table "ready"})
-        declare -A check_before=(${table "before"})
-        declare -A check_after=(${table "after"})
-        declare -A check_irreversible=(${table "irreversible"})
       ''
       + builtins.readFile ./system-deploy.sh;
   };
@@ -99,5 +93,17 @@ in {
     });
   };
 
-  config.environment.systemPackages = [system-deploy];
+  config = {
+    environment.systemPackages = [system-deploy];
+    # Read from the system a switch goes to, and from the one it may go back
+    # to: the tool that runs is the old system's, the checks each system's own.
+    environment.etc."system-deploy/checks".text = ''
+      check_names=(${lib.escapeShellArgs names})
+      check_unit=(${table "unit"})
+      check_ready=(${table "ready"})
+      check_before=(${table "before"})
+      check_after=(${table "after"})
+      check_irreversible=(${table "irreversible"})
+    '';
+  };
 }

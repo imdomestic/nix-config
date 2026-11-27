@@ -1,6 +1,6 @@
 # system-deploy: brings this host's system to a commit of the repository.
 # What is above this line is the host's own, from system-deploy.nix: its
-# name, the state directory and the units a switch is judged by.
+# name and the state directory.
 
 PATH=$PATH:/run/current-system/sw/bin:/run/wrappers/bin
 repo=imdomestic/nix-config
@@ -10,6 +10,12 @@ unit=system-deploy-switch
 # new process has to last before it counts as up, in seconds.
 patience=180
 settle=20
+
+# The units a switch is judged by, of the system `load_checks` read last.
+check_names=()
+declare -A check_unit=() check_ready=() check_before=() check_after=() check_irreversible=()
+# The process each watched unit had before the switch, by unit.
+declare -A pid_before=()
 
 usage() {
   cat >&2 <<'EOF'
@@ -43,6 +49,26 @@ take_lock() {
     echo "system-deploy: a build, check or switch is going already; system-deploy says how the switch goes" >&2
     exit 1
   fi
+}
+
+# Reads the checks of the system at $1: each system says itself which
+# units it is judged by, so a commit that adds, drops or changes a check is
+# judged by its own. A system from before this tool has none.
+load_checks() {
+  check_names=()
+  check_unit=() check_ready=() check_before=() check_after=() check_irreversible=()
+  if [[ -r $1/etc/system-deploy/checks ]]; then
+    # shellcheck source=/dev/null
+    source "$1/etc/system-deploy/checks"
+  fi
+}
+
+# Notes the process of every unit the loaded checks watch.
+note_pids() {
+  local name
+  for name in "${check_names[@]}"; do
+    pid_before[${check_unit[$name]}]=$(main_pid "${check_unit[$name]}")
+  done
 }
 
 # A line of the report.
@@ -94,7 +120,8 @@ token() {
 }
 
 # Builds commit $1 and says what a switch to it would do, changing nothing.
-# Leaves `running` and `target`. Fails if the build does.
+# Leaves `running` and `target`, and the target's checks loaded. Fails if
+# the build does.
 examine() {
   local name line dry deployed_rev="" deployed_path="" none=1
   running=$(readlink -f /run/current-system)
@@ -116,6 +143,7 @@ examine() {
     return 1
   fi
   say built "$target"
+  load_checks "$target"
   if [[ $target == "$running" ]]; then
     say same "this is the system that runs: a switch changes nothing"
     return 0
@@ -150,7 +178,7 @@ unit_up() {
   while ((SECONDS < deadline)); do
     pid=$(main_pid "$service")
     if [[ $pid != 0 && $(systemctl is-active "$service" || true) == active ]]; then
-      if [[ $pid == "${pid_before[$name]}" ]]; then return 0; fi
+      if [[ $pid == "${pid_before[$service]:-0}" ]]; then return 0; fi
       if [[ $pid != "$seen" ]]; then
         seen=$pid
         since=$SECONDS
@@ -197,36 +225,43 @@ broke_off() {
 
 # `switch`, in its own unit: all of it goes to the report.
 switch_inner() {
-  local name pid status=0
-  declare -A pid_before=() token_before=()
+  local name pid status=0 deployed_before=""
+  declare -A token_before=()
   rev=$1
   need_root switch
-  take_lock
   exec >"$state/report" 2>&1
   echo switching >"$state/state"
   trap broke_off EXIT
   say started "$(date --iso-8601=seconds) on $host"
+  exec 9>"$state/lock"
+  if ! flock -n 9; then finish failed "a build or check was going; nothing was switched"; fi
   if ! examine "$rev"; then finish failed "nothing was switched"; fi
   if [[ $target == "$running" ]]; then
     echo "$rev $target" >"$state/deployed"
     finish ok "$host runs $rev already"
   fi
+  # The system that runs is judged by its own checks if the host goes back
+  # to it, so its units' processes are noted as well.
+  load_checks "$running"
+  note_pids
+  load_checks "$target"
+  note_pids
   for name in "${check_names[@]}"; do
-    pid_before[$name]=$(main_pid "${check_unit[$name]}")
     token_before[$name]=$(token "$name")
   done
+  if [[ -r $state/deployed ]]; then deployed_before=$(<"$state/deployed"); fi
 
   nix-env --profile "$profile" --set "$target"
   "$target/bin/switch-to-configuration" switch >"$state/switch.log" 2>&1 || status=$?
+  echo "$rev $target" >"$state/deployed"
   say switched "switch-to-configuration exited $status; what it said is in $state/switch.log"
   if all_up; then
-    echo "$rev $target" >"$state/deployed"
     for name in "${check_names[@]}"; do
       if [[ -n ${check_after[$name]} ]]; then
         pid=$(main_pid "${check_unit[$name]}")
         while IFS= read -r line; do
           say "$name" "$line"
-        done < <("${check_after[$name]}" "$pid" "${pid_before[$name]}" 2>&1 || true)
+        done < <("${check_after[$name]}" "$pid" "${pid_before[${check_unit[$name]}]}" 2>&1 || true)
       fi
     done
     if ((status != 0)); then
@@ -241,9 +276,12 @@ switch_inner() {
     fi
   done
   say back "to $running"
+  load_checks "$running"
   nix-env --profile "$profile" --set "$running"
   status=0
   "$running/bin/switch-to-configuration" switch >>"$state/switch.log" 2>&1 || status=$?
+  echo "$deployed_before" >"$state/deployed"
+  say switched "switch-to-configuration exited $status"
   if all_up; then
     finish rolled-back "$rev was switched to and didn't hold; $host runs the system before again"
   fi
@@ -296,6 +334,8 @@ case "${1:-status}" in
       echo "system-deploy: a switch is going already; system-deploy says how it goes" >&2
       exit 1
     fi
+    take_lock
+    exec 9>&-
     systemd-run --unit="$unit" --collect --quiet --service-type=exec \
       --description="system-deploy switch $rev" --setenv=PATH="$PATH" "$0" _switch "$rev"
     echo "started for $rev, in $unit.service: it goes on whatever becomes of this shell."
