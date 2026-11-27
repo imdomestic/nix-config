@@ -386,8 +386,8 @@ up to date:
    paths instead: `readlink /run/current-system` vs the evaluated toplevel
    `outPath` of the host's configuration (a `--dry-run` build also shows
    whether anything would change). On a host with `system-deploy` (tank),
-   `system-deploy` names the commit it switched to, or says that someone
-   else switched.
+   `system-deploy` names the commit the running system was built from, or
+   says that it didn't build it.
 3. If the remote has new commits, **rebase onto `origin/main` automatically**,
    preserving unrelated local changes. Summarize the incoming commits and
    diff, verify the rebased configuration, then commit and push the requested
@@ -553,10 +553,15 @@ system-deploy                    # what the host runs, and the last switch's rep
   the switch. The exception is a database migration: the Max before refuses
   a database with a migration it doesn't know, so going back wouldn't help,
   the result is `failed`, and a person has to look. A host with no watched
-  unit (`my.systemDeploy.checks`) is never sent back.
+  unit (`my.systemDeploy.checks`) is never sent back. A switch is judged by
+  the watched units of the commit it goes to, and a return by those of the
+  system that ran: a commit that adds, drops or changes a check is judged
+  by its own.
 - **The result** is `ok`, `rolled-back` or `failed`, the report's last line;
   `/var/lib/system-deploy/history` has every switch, `switch.log` there what
-  `switch-to-configuration` said.
+  `switch-to-configuration` said. A switch that was stopped in the middle
+  says where it broke off; switching to the same commit again activates it
+  again, which starts the units the first left stopped.
 - **It runs no tests.** A guest image change is covered by the max repo's
   own checks and by `fleetTests.x86_64-linux.maxvm-tank` here; run that
   first when the change is to how tank hosts Max.

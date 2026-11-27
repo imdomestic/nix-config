@@ -93,21 +93,32 @@ resolve() {
 }
 
 # Builds this host's system at commit $1 and prints its path; the link
-# keeps it from the garbage collector until the next build. A build that
+# keeps it from the garbage collector until the next build. `built` keeps
+# which commit every system came from, for `commit_of`. A build that
 # failed at fetching is tried again: GitHub from China drops a fetch now
-# and then, and an input or a crate's git source may need one.
+# and then, and an input or a crate's git source may need one. A commit
+# GitHub doesn't have stays missing.
 build() {
-  local try
+  local try out
   for try in 1 2 3 4; do
-    if nix build --out-link "$state/target" --print-out-paths \
-      "github:$repo/$1#nixosConfigurations.\"$host\".config.system.build.toplevel" 2>"$state/build.log"; then
+    if out=$(nix build --out-link "$state/target" --print-out-paths \
+      "github:$repo/$1#nixosConfigurations.\"$host\".config.system.build.toplevel" 2>"$state/build.log"); then
+      if ! grep -qxF "$1 $out" "$state/built" 2>/dev/null; then echo "$1 $out" >>"$state/built"; fi
+      echo "$out"
       return 0
     fi
-    if ((try == 4)) || ! grep -qE 'Failed to fetch|unable to access|unable to download|TLS connect error|timed out|Connection reset' "$state/build.log"; then
+    if ((try == 4)) || grep -q 'HTTP error 404' "$state/build.log" ||
+      ! grep -qE 'Failed to fetch|unable to access|unable to download|TLS connect error|timed out|Connection reset' "$state/build.log"; then
       return 1
     fi
     sleep 10
   done
+}
+
+# The commit the system at $1 was built from, if it was built here: the
+# last one, where two commits give the same system.
+commit_of() {
+  { grep -F " $1" "$state/built" 2>/dev/null || true; } | tail -n 1 | cut -d" " -f1
 }
 
 main_pid() { systemctl show --property=MainPID --value "$1"; }
@@ -123,19 +134,17 @@ token() {
 # Leaves `running` and `target`, and the target's checks loaded. Fails if
 # the build does.
 examine() {
-  local name line dry deployed_rev="" deployed_path="" none=1
+  local name line dry from none=1
   running=$(readlink -f /run/current-system)
+  from=$(commit_of "$running")
   say commit "$1"
-  if [[ -r $state/deployed ]]; then
-    read -r deployed_rev deployed_path <"$state/deployed" || true
-  fi
-  if [[ $deployed_path == "$running" ]]; then
-    say running "$running, built from $deployed_rev"
-    if [[ $deployed_rev != "$1" ]]; then
-      say changes "https://github.com/$repo/compare/$deployed_rev...$1"
+  if [[ -n $from ]]; then
+    say running "$running, built from $from"
+    if [[ $from != "$1" ]]; then
+      say changes "https://github.com/$repo/compare/$from...$1"
     fi
   else
-    say running "$running, which system-deploy didn't switch to: someone else did, and its commit isn't known here"
+    say running "$running, which system-deploy didn't build: its commit isn't known here"
   fi
   if ! target=$(build "$1"); then
     say build "failed; the end of $state/build.log:"
@@ -145,7 +154,7 @@ examine() {
   say built "$target"
   load_checks "$target"
   if [[ $target == "$running" ]]; then
-    say same "this is the system that runs: a switch changes nothing"
+    say same "this is the system that runs: a switch activates it again, which starts what should run and doesn't"
     return 0
   fi
   while IFS= read -r line; do
@@ -159,7 +168,7 @@ examine() {
     none=0
     say units "would ${line#would }"
   done < <(grep -E '^would ' <<<"$dry" | grep -v 'would activate the configuration' || true)
-  if ((none)); then say units "no unit is stopped, started or restarted"; fi
+  if ((none)); then say units "no unit that runs is stopped, reloaded or restarted"; fi
   for name in "${check_names[@]}"; do
     if [[ -n ${check_before[$name]} ]]; then
       while IFS= read -r line; do
@@ -196,12 +205,14 @@ unit_up() {
 
 # Every watched unit is up within `patience`; says which isn't.
 all_up() {
-  local name down=0 deadline=$((SECONDS + patience))
+  local name logged down=0 deadline=$((SECONDS + patience))
   for name in "${check_names[@]}"; do
     if unit_up "$name" "$deadline"; then
       say "$name" "${check_unit[$name]} is up"
     else
-      say "$name" "${check_unit[$name]} isn't up ${patience}s after the switch: $(systemctl is-active "${check_unit[$name]}" || true); journalctl -u ${check_unit[$name]} says why"
+      logged=""
+      if [[ -n ${check_ready[$name]} ]]; then logged=" that logged \"${check_ready[$name]}\""; fi
+      say "$name" "${check_unit[$name]} isn't up ${patience}s after the switch: it is $(systemctl is-active "${check_unit[$name]}" || true), and up is active with one process for ${settle}s$logged; journalctl -u ${check_unit[$name]} says why"
       down=1
     fi
   done
@@ -217,29 +228,28 @@ finish() {
   exit 1
 }
 
-# The switch ended without a result of its own: a command it rests on failed.
+# The switch ended without a result of its own: it was stopped, or a
+# command it rests on failed. `stage` is where.
 broke_off() {
-  say result "failed: the switch broke off before its end; journalctl -u $unit may say where"
+  say result "failed: the switch broke off $stage; journalctl -u $unit may say why"
   echo failed >"$state/state"
+  printf '%s %s %s\n' "$(date --iso-8601=seconds)" "$rev" failed >>"$state/history"
 }
 
 # `switch`, in its own unit: all of it goes to the report.
 switch_inner() {
-  local name pid status=0 deployed_before=""
+  local name pid status=0
   declare -A token_before=()
   rev=$1
   need_root switch
   exec >"$state/report" 2>&1
   echo switching >"$state/state"
+  stage="before anything was switched"
   trap broke_off EXIT
   say started "$(date --iso-8601=seconds) on $host"
   exec 9>"$state/lock"
   if ! flock -n 9; then finish failed "a build or check was going; nothing was switched"; fi
   if ! examine "$rev"; then finish failed "nothing was switched"; fi
-  if [[ $target == "$running" ]]; then
-    echo "$rev $target" >"$state/deployed"
-    finish ok "$host runs $rev already"
-  fi
   # The system that runs is judged by its own checks if the host goes back
   # to it, so its units' processes are noted as well.
   load_checks "$running"
@@ -249,11 +259,13 @@ switch_inner() {
   for name in "${check_names[@]}"; do
     token_before[$name]=$(token "$name")
   done
-  if [[ -r $state/deployed ]]; then deployed_before=$(<"$state/deployed"); fi
 
+  # A system that runs already is activated again all the same: a switch to
+  # it that broke off may have left its units stopped.
+  stage="in the middle of activating $rev: units it stopped may be down, and sudo system-deploy switch $rev activates it again"
   nix-env --profile "$profile" --set "$target"
   "$target/bin/switch-to-configuration" switch >"$state/switch.log" 2>&1 || status=$?
-  echo "$rev $target" >"$state/deployed"
+  stage="while it waited for the watched units on $rev, which the host runs"
   say switched "switch-to-configuration exited $status; what it said is in $state/switch.log"
   if all_up; then
     for name in "${check_names[@]}"; do
@@ -270,6 +282,9 @@ switch_inner() {
     finish ok "$host runs $rev"
   fi
 
+  if [[ $target == "$running" ]]; then
+    finish failed "a watched unit is down on $rev, which ran before this switch as well: there is no system before it to go back to. Someone has to look"
+  fi
   for name in "${check_names[@]}"; do
     if [[ $(token "$name") != "${token_before[$name]}" ]]; then
       finish failed "$host is on $rev with a watched unit down, and can't go back by itself: $name changed what the system before can't run on (${token_before[$name]} -> $(token "$name")). Someone has to look"
@@ -277,10 +292,11 @@ switch_inner() {
   done
   say back "to $running"
   load_checks "$running"
+  stage="in the middle of going back from $rev to the system before: units may be down, and someone has to look"
   nix-env --profile "$profile" --set "$running"
   status=0
   "$running/bin/switch-to-configuration" switch >>"$state/switch.log" 2>&1 || status=$?
-  echo "$deployed_before" >"$state/deployed"
+  stage="while it waited for the watched units on the system before $rev, which the host runs again"
   say switched "switch-to-configuration exited $status"
   if all_up; then
     finish rolled-back "$rev was switched to and didn't hold; $host runs the system before again"
@@ -289,15 +305,13 @@ switch_inner() {
 }
 
 status() {
-  local running deployed_rev="" deployed_path=""
+  local running from
   running=$(readlink -f /run/current-system)
-  if [[ -r $state/deployed ]]; then
-    read -r deployed_rev deployed_path <"$state/deployed" || true
-  fi
-  if [[ $deployed_path == "$running" ]]; then
-    echo "$host runs $running, built from $repo $deployed_rev"
+  from=$(commit_of "$running")
+  if [[ -n $from ]]; then
+    echo "$host runs $running, built from $repo $from"
   else
-    echo "$host runs $running, which system-deploy didn't switch to"
+    echo "$host runs $running, which system-deploy didn't build: its commit isn't known here"
   fi
   if systemctl is-active --quiet "$unit.service"; then
     echo "a switch is going; its report so far:"
@@ -325,7 +339,9 @@ case "${1:-status}" in
     take_lock
     rev=$(resolve "${2:-}")
     if ! examine "$rev"; then exit 1; fi
-    say result "nothing was switched: sudo system-deploy switch $rev does it"
+    if [[ $target != "$running" ]]; then
+      say result "nothing was switched: sudo system-deploy switch $rev does it"
+    fi
     ;;
   switch)
     need_root switch
