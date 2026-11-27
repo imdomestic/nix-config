@@ -11,6 +11,17 @@
 
 ---
 
+## 2026-11-27 · 去掉 tmux-agent-status 和 tmux-agent-sidebar {#no-tmux-agent-status}
+
+hank 不再用它们：日常终端换成了 Rex，`tmux-agent-status.sh` 在 tmux 外直接退出，
+等于不起作用。一起删掉的有：脚本和 settings.json 里它的四个 hook、dotbar 窗口格式里的
+`#{@agent_state}`、只为让这个标记及时刷新而设的 `status-interval 1`（回到 tmux 默认的 15 秒）、
+tmux-agent-sidebar 的 tmux 插件、Claude Code 插件和 marketplace 软链、`pkgs/tmux-agent-sidebar`
+以及 cachix 的三个 packages 输出。tmux 本身的配置保留。
+
+Agent 状态以后要的话，走 Rex 的 Program Status Protocol（OSC 7501），不靠 tmux 的
+user option。
+
 ## 2026-11-25 · `maxx` 这个 input 也由夜间 updater 挪 {#maxx-moves-nightly}
 
 `lib/flake-update-lanes.nix` 多了一条 `own` lane，里面只有 `maxx`，排在最后。updater

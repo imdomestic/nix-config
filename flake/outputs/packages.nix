@@ -15,7 +15,6 @@
   nixos = config.flake.nixosConfigurations;
   darwin = config.flake.darwinConfigurations;
   font = cfg: cfg.pkgs.callPackage ../../pkgs/recursive-mono-cascadia-italic {};
-  agentSidebar = cfg: cfg.pkgs.callPackage ../../pkgs/tmux-agent-sidebar {};
   templarDroidspacesKernel = cfg: cfg.pkgs.callPackage ../../pkgs/templar-droidspaces-kernel {};
 in {
   flake.packages = {
@@ -29,10 +28,6 @@ in {
       mihomo-smart = nixos.r6s.config.services.mihomo.package;
       # 原生 ARM64 构建入口；只产出 Android Image，不是 NixOS kernelPackages。
       templar-droidspaces-kernel = templarDroidspacesKernel nixos.rpi4;
-      # hank 的 home 在每台机器上都一样,所以这个 Rust TUI 会跟到 r2s / rpi4
-      # 这种小 ARM 盒子上去 —— 而 home 是 deploy 时在**目标机**上编的
-      # (deploy 走 --remote-build)。不缓存的话那几台要现编一遍。
-      tmux-agent-sidebar = agentSidebar nixos.rpi4;
       cliproxy-rewind = nixos.gizmo.config.services.cliproxy.rewind.package;
       agy-proxy = nixos.gizmo.pkgs.callPackage ../../pkgs/agy-proxy {};
     };
@@ -44,11 +39,9 @@ in {
       templar-droidspaces-kernel = templarDroidspacesKernel nixos.taipan;
       # taipan / x470 两台解析出来是同一个 drv,取哪台都一样。
       recursive-mono-cascadia-italic = font nixos.taipan;
-      tmux-agent-sidebar = agentSidebar nixos.taipan;
     };
     aarch64-darwin = {
       recursive-mono-cascadia-italic = font darwin.praxic;
-      tmux-agent-sidebar = agentSidebar darwin.praxic;
       safari-mru = darwin.praxic.pkgs.callPackage ../../pkgs/safari-mru {};
       agy-proxy = darwin.praxic.pkgs.callPackage ../../pkgs/agy-proxy {};
     };

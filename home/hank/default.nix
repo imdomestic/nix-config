@@ -6,8 +6,6 @@
   pkgs-unstable,
   ...
 }: let
-  tmux-agent-sidebar = pkgs.callPackage ../../pkgs/tmux-agent-sidebar {};
-
   brewPrefix =
     if pkgs.stdenv.isAarch64
     then "/opt/homebrew"
@@ -80,16 +78,7 @@ in {
         # home-manager 正好把插件自己的 extraConfig 放在它的 run-shell 前面
         # (modules/programs/tmux.nix);而 programs.tmux.extraConfig 是 mkAfter,
         # 排在所有插件后面 —— 写在那儿就晚了,dotbar 已经读完了。
-        #
-        # #{@agent_state} 是 window 级 user option,状态栏对每个 window 单独展开
-        # 格式串,没设的窗口展开成空串,渲染和现在一模一样。写它的是
-        # ~/.claude/tmux-agent-status.sh。
-        #
-        # 只改了非 ssh 那条分支:dotbar 检测到 pane_current_command 是 ssh 时会换
-        # 成自己的 ssh 格式串,那种窗口不带标记。跑本地 agent 不受影响。
         extraConfig = ''
-          set -g @tmux-dotbar-window-status-format ' #W#{@agent_state} '
-
           # 右半边默认是关的(@tmux-dotbar-right false),打开后 dotbar 会渲染
           # time_component —— 而 -status-right-text 正是塞进那个组件里的文本,
           # 所以走这个选项就能白拿它的配色,不用自己硬写 #[bg=...,fg=...]。
@@ -156,26 +145,6 @@ in {
           set -g @thumbs-upcase-command 'tmux set-buffer -w -- {} && tmux paste-buffer && tmux display-message "已粘贴 {}"'
         '';
       }
-
-      # 跨 session/window 监控 Claude Code 的侧边栏。prefix e 开当前 window,
-      # prefix E 开所有 window。包在 pkgs/tmux-agent-sidebar —— 上游只给 TPM
-      # 装法,那条路会往插件目录里写下载来的二进制,在 store 里行不通。
-      #
-      # hook 那半边不归 nix 管,见下面 home.file 里 .claude/plugin-sources 那条。
-      {
-        plugin = tmux-agent-sidebar;
-        # agent-sidebar.conf 里这些选项全是 `if -F '#{==:#{@x},}'` 的
-        # 「没设才给默认值」,而 home-manager 把插件自己的 extraConfig 排在它的
-        # run-shell **前面** —— 所以这里设的值会被 conf 认账。和 dotbar 同一条
-        # 规矩,写到 programs.tmux.extraConfig 里就晚了。
-        extraConfig = ''
-          set -g @sidebar_position right
-
-          # 上游默认 on:每开一个新 window 都自动塞一个侧边栏 pane 进去。
-          # 关掉,只在按 prefix e 的时候出现。
-          set -g @sidebar_auto_create off
-        '';
-      }
     ];
     extraConfig = ''
       set-option -ga terminal-overrides ",*256col*:Tc"
@@ -232,12 +201,6 @@ in {
       # 不开 —— 那等于 pane 里流过的任何字节都能改窗口名,cat 个文件都行。
       set -g set-titles on
       set -g set-titles-string '#{pane_title}'
-
-      # hostname 是静态的,这条不是为它设的 —— 是为了 @agent_state 那个标记跟手:
-      # 默认 15s 意味着 agent 卡在权限提示上之后,最坏要等 15 秒状态栏才变。
-      # 代价是 dotbar 的 ssh 窗口格式里那段 #() 会每秒跑一次(只影响 ssh 窗口);
-      # 要是同时开一堆 ssh 窗口觉得吵,把这里调大即可。
-      set -g status-interval 1
 
       bind r source-file ~/.config/tmux/tmux.conf \; display '~/.config/tmux/tmux.conf sourced'
 
@@ -873,32 +836,6 @@ in {
     executable = true;
   };
 
-  # Agent 状态写进 tmux 窗口列表。同样只托管脚本,hooks 要自己加进 settings.json:
-  #   "hooks": {
-  #     "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "$HOME/.claude/tmux-agent-status.sh working"}]}],
-  #     "Notification":     [{"hooks": [{"type": "command", "command": "$HOME/.claude/tmux-agent-status.sh blocked"}]}],
-  #     "Stop":             [{"hooks": [{"type": "command", "command": "$HOME/.claude/tmux-agent-status.sh done"}]}],
-  #     "SessionEnd":       [{"hooks": [{"type": "command", "command": "$HOME/.claude/tmux-agent-status.sh clear"}]}]
-  #   }
-  # 用 $HOME 不写死路径:darwin 是 /Users/hank,NixOS 那边是 /home/hank,而
-  # settings.json 不归 nix 管、不会按机器分叉。
-  home.file.".claude/tmux-agent-status.sh" = {
-    source = ./modules/claude-code/tmux-agent-status.sh;
-    executable = true;
-  };
-
-  # 侧边栏的另一半:Claude Code 要靠 hook 才拿得到 prompt / tool call /
-  # subagent 树,而 hook 是以「plugin marketplace」的形式装的,它的 source 是一个
-  # **目录的绝对路径**(记在 ~/.claude/plugins/known_marketplaces.json 里)。
-  # 直接填 store 路径的话,每次升级路径一变就得重新 add;所以在固定位置放一个
-  # 软链,marketplace 指着它,升级自动跟上。
-  #
-  # 装的动作本身是一次性的、不归 nix 管(和上面 statusline / tmux-agent-status
-  # 一样,settings.json 不在 nix 手里):
-  #   /plugin marketplace add ~/.claude/plugin-sources/tmux-agent-sidebar
-  #   /plugin install tmux-agent-sidebar@hiroppy
-  home.file.".claude/plugin-sources/tmux-agent-sidebar".source = "${tmux-agent-sidebar}/share/tmux-plugins/tmux-agent-sidebar";
-
   # snacks.image 靠终端名判断能不能画图:它拿到终端名后剥掉 `xterm-` 前缀,再去
   # match kitty/ghostty/wezterm。ghostty 默认的 xterm-ghostty 剥完正好是 ghostty,
   # 但我们在 modules/ghostty 里把 term 设成了 xterm-256color(远端没有 ghostty 的
@@ -957,11 +894,6 @@ in {
 
   home.packages = [
     pkgs.zsh-completions
-
-    # 二进制单独进 PATH,不只是躺在插件目录里:Claude Code 那份 hook.sh 是从
-    # 它自己的 plugin cache 里跑的,查找顺序的最后一档才是 PATH —— 没有这条,
-    # 它会退回 cache 里那个 TPM 时代下载来的副本。
-    tmux-agent-sidebar
 
     # snacks.image 的转换在 **nvim 所在的机器** 上跑,所以 ssh 过去看图要求远端也有
     # 这两个。它们本来只在 profiles/dev.nix 里,而 hank 没开 dev profile 的机器

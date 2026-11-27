@@ -85,8 +85,8 @@ including to a nested remote tmux.
 This uses Rex's native key sequences. Its resize unit is a percentage, rather
 than tmux's five rows or columns, and it does not reproduce tmux's 300 ms
 repeat-key table. Press Ctrl-b for each new sequence. Existing macOS shortcuts
-remain available. Tmux's last-window Tab, scratch popup, resurrect,
-thumbs and agent-sidebar bindings are not mapped to unrelated actions.
+remain available. Tmux's last-window Tab, scratch popup, resurrect
+and thumbs bindings are not mapped to unrelated actions.
 
 ## Copy mode
 
