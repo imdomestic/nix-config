@@ -54,8 +54,10 @@ unset variable does not add an empty PATH entry. See the
 
 ## Tmux keys
 
-`home/hank/modules/rex/module.nix` generates `init.lua` through `programs.rex.bindings` and
-`extraConfig`. Hank's bindings are in `home/hank/modules/rex/default.nix`. Home activation
+`init.lua` is written by the official Home Manager module (`inputs.rex.homeManagerModules.default`,
+`programs.rex.config`) with `package = null`: the Rex app provides the CLI and server, and terminfo
+and the ssh guard stay with `rex terminfo setup`. `home/hank/modules/rex/module.nix` adds
+`programs.rex.bindings` and `extraConfig` on top and builds the Lua from them. Hank's bindings are in `home/hank/modules/rex/default.nix`. Home activation
 checks the file and reloads an already-running local Rex server.
 
 Each sequence starts with **Ctrl-b**, then the key below. Escape cancels a
