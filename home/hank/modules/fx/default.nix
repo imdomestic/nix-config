@@ -112,6 +112,7 @@ in {
           cliproxy.opencode.models;
         };
         # 网关不验 key。模板只认 low / medium / xhigh(high 当 xhigh)。
+        # fx 要求 max_output_tokens 小于 context_window。
         ninfer = {
           protocol = "openai-chat-completions";
           base_url = ninferHttps;
@@ -131,7 +132,7 @@ in {
             };
           in {
             "qwen3.8-27b" = qwen 262144 131072;
-            "qwen3.8-27b-aligned" = qwen 262144 262144;
+            "qwen3.8-27b-aligned" = qwen 262144 131072;
           };
         };
         agy = {
