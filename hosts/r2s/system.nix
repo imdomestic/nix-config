@@ -66,9 +66,28 @@
     kernel.sysctl = {
       "net.ipv4.ip_forward" = 1;
       "net.core.default_qdisc" = "fq";
+      "net.core.netdev_max_backlog" = 4096;
       "net.ipv4.tcp_congestion_control" = "bbr";
     };
   };
+
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+    memoryPercent = 50;
+  };
+
+  # Keep reboot diagnostics on the SD card, but cap the journal footprint.
+  services.journald.extraConfig = ''
+    SystemMaxUse=128M
+    SystemMaxFileSize=16M
+    RuntimeMaxUse=32M
+  '';
+  my.dae.logLevel = "warn";
+
+  # Builds run on r6s; don't scan nix-daemon twice a minute here.
+  systemd.timers.nix-build-metrics.enable = false;
+  systemd.tmpfiles.rules = ["r ${config.my.telemetry.textfileDir}/nix_builds.prom - - - -"];
 
   networking = {
     firewall = {
@@ -207,8 +226,6 @@
     script = ''
       shopt -s nullglob
       echo 32768 > /proc/sys/net/core/rps_sock_flow_entries 2>/dev/null || true
-      ${pkgs.ethtool} -G end0 rx 1024 tx 1024 2>/dev/null || true
-      ${pkgs.ethtool} -G enu1 rx 1024 tx 1024 2>/dev/null || true
 
       # IRQs by name, not number: the GMAC requests its IRQ only once end0 is
       # up, which can come after network-online.target.
@@ -217,6 +234,15 @@
         [ -n "$(irq end0)" ] && break
         sleep 1
       done
+
+      # Wait until end0 is up before tuning; r8152 only exposes an RX ring.
+      # Log driver errors, but still apply CPU affinity if an offload fails.
+      ${pkgs.ethtool}/bin/ethtool -G end0 rx 1024 tx 1024 || true
+      ${pkgs.ethtool}/bin/ethtool -G enu1 rx 1024 || true
+      for dev in end0 enu1; do
+        ${pkgs.ethtool}/bin/ethtool -K "$dev" rx-udp-gro-forwarding on || true
+      done
+
       # 8(0b1000, CPU3) for xhci-hcd:usb4 (extern0)
       echo 8 > "/proc/irq/$(irq xhci-hcd:usb4)/smp_affinity"
       # 2(0b0010, CPU1) for end0 (intern0)
@@ -225,8 +251,13 @@
       for dev in end0 enu1; do
         [ -d /sys/class/net/$dev ] || continue
 
+        # Exclude the CPU handling this interface's hardware IRQ.
+        case "$dev" in
+          end0) rps=d ;;
+          enu1) rps=7 ;;
+        esac
         for file in /sys/class/net/$dev/queues/rx-*/rps_cpus; do
-          echo 7 > "$file" 2>/dev/null || true
+          echo "$rps" > "$file" 2>/dev/null || true
         done
 
         for file in /sys/class/net/$dev/queues/rx-*/rps_flow_cnt; do

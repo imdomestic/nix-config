@@ -54,6 +54,11 @@ in {
     default = true;
     description = "Skip the pre-start connectivity probe so DAE can reclaim its BPF hooks after a crash.";
   };
+  options.my.dae.logLevel = lib.mkOption {
+    type = lib.types.enum ["trace" "debug" "info" "warn" "error"];
+    default = "info";
+    description = "Minimum log level for dae.";
+  };
   options.my.dae.foreignDnsOverTcp = lib.mkOption {
     type = lib.types.bool;
     default = false;
@@ -131,7 +136,7 @@ in {
         global {
             lan_interface: ${lib.concatStringsSep ", " (map renderInterface cfg.lanInterfaces)}
             wan_interface: auto
-            log_level: info
+            log_level: ${cfg.logLevel}
             allow_insecure: false
             auto_config_kernel_parameter: true
             ${lib.optionalString cfg.disableWaitingNetwork "disable_waiting_network: true"}
