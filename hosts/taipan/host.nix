@@ -26,6 +26,7 @@
 
     modules = [
       ./desktop.nix
+      ./ninfer-https.nix
     ];
 
     externalModules = [

@@ -1,7 +1,8 @@
 # fx(vercel-labs/fx)的模型对齐 pi(../pi):同一份 cliproxy / agy 模型表。
 # fx 的 base_url 只收 https(http 只给 localhost),所以 cliproxy 走 gizmo 的
-# HTTPS 入口,NInfer 只有 http,不接;agy 只有 OpenAI 兼容入口能用,而 fx 不回传
-# extra_content,带工具的第二轮会 400(docs/agy-proxy.md),所以默认用 GPT。
+# HTTPS 入口,NInfer 走 taipan 的(hosts/taipan/ninfer-https.nix);agy 只有 OpenAI
+# 兼容入口能用,而 fx 不回传 extra_content,带工具的第二轮会 400(docs/agy-proxy.md),
+# 所以默认用 GPT。
 {
   config,
   inputs,
@@ -15,6 +16,7 @@
   agyModels = import ../pi/agy-models.nix {inherit lib;};
   cliproxyHttps = "https://${config.my.fleet.placements.cliproxy.tsName}/v1";
   agyHttps = "https://${config.my.fleet.placements.agy-proxy.tsName}/agy/v1";
+  ninferHttps = "https://${config.my.fleet.placements.qwen-ninfer.tsName}/v1";
 
   fx = inputs.llm-agents.packages.${pkgs.stdenv.hostPlatform.system}.fx;
   # fx 的 key 只能来自环境变量;启动时从 sops 读,已设的不覆盖。
@@ -108,6 +110,29 @@ in {
                 else {high = {};};
             })
           cliproxy.opencode.models;
+        };
+        # 网关不验 key。模板只认 low / medium / xhigh(high 当 xhigh)。
+        ninfer = {
+          protocol = "openai-chat-completions";
+          base_url = ninferHttps;
+          auth.type = "none";
+          reviewer_model = "qwen3.8-27b";
+          title_model = "qwen3.8-27b";
+          model_metadata = let
+            qwen = context: output: {
+              context_window = context;
+              max_output_tokens = output;
+              supports_vision = true;
+              reasoning_efforts = {
+                low.reasoning_effort = "low";
+                medium.reasoning_effort = "medium";
+                high.reasoning_effort = "xhigh";
+              };
+            };
+          in {
+            "qwen3.8-27b" = qwen 262144 131072;
+            "qwen3.8-27b-aligned" = qwen 262144 262144;
+          };
         };
         agy = {
           protocol = "openai-chat-completions";
