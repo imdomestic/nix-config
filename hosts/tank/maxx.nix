@@ -111,7 +111,9 @@ in {
         owner = "maxx";
         restartUnits = ["maxx.service"];
       };
-      # web_search's, Exa's: the Haskell max's, under its name.
+      # web_search's, Exa's keys, one a line: maxx searches with each in
+      # order as the one before runs out of credit. Under the name the
+      # Haskell max's one key had.
       "maxx/exa-api-key" = {
         sopsFile = ../../secrets/hosts/tank-max.yaml;
         key = "search-exa-api-key";
@@ -328,7 +330,12 @@ in {
         app_id_file = secret "qq-app-id";
         app_secret_file = secret "qq-app-secret";
       };
-      search.api_key_file = secret "exa-api-key";
+      search = {
+        api_key_file = secret "exa-api-key";
+        # Not Exa's endpoint without a key first, which is on unless set:
+        # the keys alone.
+        free = false;
+      };
       # Max's own GitHub account: its commits in the VMs are by it. Max
       # calls GitHub through the APIs below, and judges for itself what to
       # do there.
