@@ -189,7 +189,7 @@ def main():
             request(
                 "switch_to_qwen",
                 {
-                    "model": "qwen3.8-27b-aligned",
+                    "model": "qwen3.8-27b",
                     "messages": [{"role": "user", "content": "Reply with READY."}],
                     "max_tokens": 16,
                     "stream": False,

@@ -73,12 +73,6 @@
           name = "Qwen3.8 27B Swift · taipan";
           model = "qwen3.8-27b";
         })
-      (localQwen
-        // {
-          id = "fleet-qwen-aligned";
-          name = "Qwen3.8 27B Aligned · taipan";
-          model = "qwen3.8-27b-aligned";
-        })
       (cloud
         // {
           id = "fleet-cliproxy";

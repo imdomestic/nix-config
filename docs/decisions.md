@@ -11,6 +11,21 @@
 
 ---
 
+## 2026-11-28 · taipan 的 Qwen 只留 Swift，去掉 aligned 和 fast {#taipan-qwen-swift-only}
+
+按用户要求，taipan 的 NInfer 只对外提供 `qwen3.8-27b`（Swift-1.5 ablation，
+`podman-qwen38-abliterated`）。QUASAR 那一档（`qwen3.8-27b-aligned`，
+`podman-qwen38` 容器、8100 端口）连同 llama-swap 条目一起删掉；Lumiverse、
+SillyTavern 和各账号 pi / OpenCode / fx 里的 aligned 也删掉。`qwen3.8-27b-fast`
+在 taipan 上早就不提供了，只是各账号 pi 的模型表里还留着，一并删除。
+WSL 自己的 fast 档（`hosts/wsl/system.nix`）是另一台机器，不受影响。
+
+QUASAR 的权重 `qwen3_8_27b_nvfp4qat-a45b9f5c.ninfer` 还留在 taipan 的
+`/var/lib/qwen38/ninfer-models/`，不由配置管理；要恢复这一档就从 git 历史里把
+容器和 llama-swap 条目找回来。
+
+---
+
 ## 2026-11-27 · 去掉 tmux-agent-status 和 tmux-agent-sidebar {#no-tmux-agent-status}
 
 hank 不再用它们：日常终端换成了 Rex，`tmux-agent-status.sh` 在 tmux 外直接退出，

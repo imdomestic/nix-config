@@ -27,7 +27,6 @@
       '';
     };
 
-  qwenRunner = modelUnitRunner "run-qwen38" "podman-qwen38.service";
   abliteratedRunner = modelUnitRunner "run-qwen38-abliterated" "podman-qwen38-abliterated.service";
 
   commonModel = {
@@ -66,20 +65,6 @@
     healthCheckTimeout = 300;
     logLevel = "info";
     models = {
-      "qwen3.8-27b-aligned" =
-        commonModel
-        // {
-          name = "qwen3.8-27b-aligned";
-          description = "QUASAR QAT NVFP4 weights, NVFP4 KV cache, vision and MTP3";
-          useModelName = "qwen3.8-27b-aligned";
-          cmd = lib.getExe qwenRunner;
-          proxy = "http://127.0.0.1:8100";
-          metadata = {
-            model_type = "vlm";
-            context = 262144;
-          };
-          capabilities = commonModel.capabilities // {context = 262144;};
-        };
       "qwen3.8-27b" =
         commonModel
         // {
@@ -125,10 +110,10 @@
   };
 
   # 制品自带的模板，另外合并全部 system/developer 消息、把 high 当 xhigh：
-  # docs/incidents.md#qwen-template-agent-requests。两个制品的模板相同。
+  # docs/incidents.md#qwen-template-agent-requests。
   chatTemplate = ./qwen38-chat-template.jinja;
 
-  # NInfer 的启动配置，两个制品只差文件、名字、端口和默认输出上限。
+  # NInfer 的启动配置。只剩 Swift 一个制品：docs/decisions.md#taipan-qwen-swift-only。
   # 24 GB 上的取值和实测：docs/incidents.md#taipan-ninfer-40dec5ff。
   ninferConfig = {
     name,
@@ -206,7 +191,7 @@ in {
     image = lib.mkOption {
       type = lib.types.str;
       default = "localhost/ninfer:qwen38-40dec5ff-vision48k";
-      description = "NInfer image for both Qwen3.8 artifacts; built by scripts/build-qwen38-quasar.sh.";
+      description = "NInfer image for the Qwen3.8 artifact; built by scripts/build-qwen38-quasar.sh.";
     };
     stateDirectory = lib.mkOption {
       type = lib.types.str;
@@ -253,13 +238,6 @@ in {
             port = 8101;
             maxTokens = 32768;
           };
-          qwen38 = container {
-            name = "qwen38";
-            artifact = "qwen3_8_27b_nvfp4qat-a45b9f5c.ninfer";
-            modelId = "qwen3.8-27b-aligned";
-            port = 8100;
-            maxTokens = 262144;
-          };
         };
       };
     };
@@ -289,17 +267,6 @@ in {
           Type = "oneshot";
           RemainAfterExit = true;
         };
-      };
-      podman-qwen38 = {
-        after = [
-          "network-online.target"
-          "nvidia-container-toolkit-cdi-generator.service"
-          "qwen38-image-import.service"
-        ];
-        requires = [
-          "nvidia-container-toolkit-cdi-generator.service"
-          "qwen38-image-import.service"
-        ];
       };
       podman-qwen38-abliterated = {
         after = [

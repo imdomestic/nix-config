@@ -39,7 +39,6 @@
       (connection "bonsai-main" "Bonsai 2 · seraph 本机" "http://127.0.0.1:8002/bonsai/v1" "bonsai-main")
       (connection "cliproxy" "CLIProxy · 对话模型" "http://127.0.0.1:8002/cliproxy/v1" "gemini-3.8-flash-high")
       (connection "qwen-swift" "Qwen3.8 27B Swift · taipan" (endpoint placements.qwen-ninfer) "qwen3.8-27b")
-      (connection "qwen-aligned" "Qwen3.8 27B Aligned · taipan" (endpoint placements.qwen-ninfer) "qwen3.8-27b-aligned")
       (connection "small-qwen" "Qwen3.5 4B · h610" (endpoint placements.small-qwen) "qwen3.5-4b-q4_k_m")
       (connection "ollama" "Ollama · tank" (endpoint placements.ollama) "qwen3:8b")
     ];
