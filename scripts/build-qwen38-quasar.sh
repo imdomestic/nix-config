@@ -8,8 +8,8 @@ fi
 
 build_dir="$1"
 engine="${CONTAINER_ENGINE:-podman}"
-revision="bace20dc70249eed6402b66d4852c6c3f9612905"
-image="localhost/ninfer:qwen38-quasar-bace20dc-vision48k"
+revision="40dec5ff312809d162cbe41dd5682e054e0bcc00"
+image="localhost/ninfer:qwen38-40dec5ff-vision48k"
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 jobs="${NINFER_BUILD_JOBS:-$(getconf _NPROCESSORS_ONLN)}"
 memory="${NINFER_BUILD_MEMORY:-8g}"

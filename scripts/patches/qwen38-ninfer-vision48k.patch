@@ -1,8 +1,9 @@
-diff --git a/src/models/qwen3_5/frontend/prepared_prompt.h b/src/models/qwen3_5/frontend/prepared_prompt.h
---- a/src/models/qwen3_5/frontend/prepared_prompt.h
-+++ b/src/models/qwen3_5/frontend/prepared_prompt.h
-@@ -23,7 +23,7 @@ namespace frontend {
- inline constexpr std::uint64_t kRawPatchesPerVisionToken  = 4;
+diff --git a/src/models/common/qwen/frontend/resources.h b/src/models/common/qwen/frontend/resources.h
+index ca8a1b11..c6fad383 100644
+--- a/src/models/common/qwen/frontend/resources.h
++++ b/src/models/common/qwen/frontend/resources.h
+@@ -14,7 +14,7 @@ inline constexpr std::uint64_t kRawPatchesPerVisionToken  = 4;
+ inline constexpr std::uint32_t kMinimumMediaSpanTokens = 3;
  // Aggregate prompt capacity and one-item execution capacity are intentionally distinct. Multiple
  // media items are retained by one prepared prompt but pass through the Vision tower sequentially.
 -inline constexpr std::uint64_t kMaximumPromptVisionTokens = 32'768;

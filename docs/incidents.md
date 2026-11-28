@@ -4,6 +4,34 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-28 · taipan 的 NInfer 升到 40dec5ff：视觉预算和投机长度策略 {#taipan-ninfer-40dec5ff}
+
+taipan 先同步到 main（内核 7.3.5、NVIDIA 620.73.04，`--boot` 后重启），旧镜像在新驱动上
+照常加载。再把 NInfer 从 `bace20dc` 升到上游 `40dec5ff`（2026-11-25）。上游的 CLI 换成了
+TOML 配置，模块改为用 `pkgs.formats.toml` 生成，两个容器只差制品、名字、端口和输出上限。
+state slot、continuation、shared prefix 这几个旋钮上游已删掉，由 `context_capacity = "auto"`
+和 `host_capacity = "default"` 自己规划。vision48k 补丁改到新位置
+`src/models/common/qwen/frontend/resources.h`。两个 v3 制品不用重转。
+
+两个坑：
+
+1. **默认视觉预算放不下 262K。** 原样翻译的配置启动即报
+   `Device budget cannot hold model weights and required execution resources`，debug 日志也
+   没有明细。逐项试出来是 `[vision] memory_budget` 默认的 1 GiB：降到 512 MiB 后规划出
+   device 5.74 GiB + host 9.15 GiB，KV 约 291K token。768 MiB、bf16 线性状态、更小的
+   headroom、3 并发都放不下 1 GiB；1 GiB 时 `max_context` 最多到 229376。代价是单张图上限
+   从 16384 降到约 8502 个视觉 token（`media_budget_exceeded`），48K 总预算的三图测试过不了。
+   Max 把图片缩到长边 1568 px（约 2.4K token），三张同发 7269 token 正常，所以选 512 MiB、保留 262K。
+   `memory_headroom = "0B"` 会在 `cudaGraphInstantiate` 缺显存，取 256 MiB。
+2. **adaptive 投机长度让并发吞吐掉一半。** serve 默认 `length_policy = "adaptive"`。同一制品、
+   `scripts/bench-qwen38-concurrency.py` 同样的负载：旧镜像数数 758、混合 447 tok/s；
+   新镜像 adaptive 时 330、391，日志里 4 路 decode-ready 但 host 96%、每 5 秒只出几百 token；
+   改 `fixed` 后 762、464，与旧镜像持平。
+
+验收：`scripts/test-qwen38-quasar.py` 两个制品都通过（Swift 含 259241-token 长上下文加图）；
+fx 经 Max 调用正常。旧镜像 `qwen38-quasar-bace20dc-vision48k` 和它的 tar 留在 taipan 上，
+回滚只需改回 `image`、`imageArchive` 和旧的 cmd。
+
 ## 2026-11-28 · Qwen 内置模板拒绝 agent 的多条 system 消息和 `high` {#qwen-template-agent-requests}
 
 Max 的后台 agent（fx）调 `qwen3.8-27b` 都是 400。不带 `--effort` 时报

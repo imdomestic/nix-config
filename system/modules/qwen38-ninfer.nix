@@ -128,7 +128,62 @@
   # docs/incidents.md#qwen-template-agent-requests。两个制品的模板相同。
   chatTemplate = ./qwen38-chat-template.jinja;
 
-  commonContainer = {
+  # NInfer 的启动配置，两个制品只差文件、名字、端口和默认输出上限。
+  # 24 GB 上的取值和实测：docs/incidents.md#taipan-ninfer-40dec5ff。
+  ninferConfig = {
+    name,
+    artifact,
+    modelId,
+    port,
+    maxTokens,
+  }:
+    (pkgs.formats.toml {}).generate "${name}.toml" {
+      model = {
+        path = "/models/${artifact}";
+        chat_template = "/chat-template.jinja";
+        vision = true;
+      };
+      engine = {
+        max_context = 262144;
+        kv_dtype = "nvfp4";
+        context_capacity = "auto";
+        # 0B 时 CUDA Graph 实例化缺显存。
+        memory_headroom = "256MiB";
+        prefill_chunk = 1024;
+        cuda_graph = true;
+        # Four active lanes share one pool: docs/incidents.md#b650-swift15-concurrency-four.
+        max_concurrency = 4;
+        # A queued request waits behind a full-length prefill, and the
+        # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
+        max_pending_requests = 16;
+        pending_timeout = "600s";
+      };
+      speculative = {
+        backend = "mtp";
+        draft_tokens = 3;
+        proposal_head = "optimized";
+        # serve 默认的 adaptive 让 4 并发吞吐掉一半以上。
+        length_policy = "fixed";
+      };
+      # 默认 1 GiB 时 262K 放不下；512 MiB 单张图上限约 8.5K 视觉 token。
+      vision.memory_budget = "512MiB";
+      media = {
+        cache_capacity = "256MiB";
+        live_capacity = "2GiB";
+      };
+      generation = {
+        max_tokens = maxTokens;
+        preserve_thinking = true;
+      };
+      server = {
+        host = "127.0.0.1";
+        inherit port;
+        model_id = modelId;
+      };
+      logging.request_jsonl = "/logs/${name}.jsonl";
+    };
+
+  container = settings: {
     image = cfg.image;
     autoStart = false;
     environment.NO_PROXY = "127.0.0.1,localhost,.inner.imdomestic.com";
@@ -136,7 +191,9 @@
       "${cfg.modelDirectory}:/models:ro"
       "${cfg.logDirectory}:/logs"
       "${chatTemplate}:/chat-template.jinja:ro"
+      "${ninferConfig settings}:/config.toml:ro"
     ];
+    cmd = ["ninfer-serve" "--config" "/config.toml"];
     extraOptions = [
       "--device=nvidia.com/gpu=all"
       "--network=host"
@@ -148,9 +205,8 @@ in {
     enable = lib.mkEnableOption "Qwen3.8 27B NInfer inference gateway";
     image = lib.mkOption {
       type = lib.types.str;
-      # Artifact pins and measured residency: docs/incidents.md#b650-quasar-nvfp4-262k.
-      default = "localhost/ninfer:qwen38-quasar-bace20dc-vision48k";
-      description = "NInfer v3 image for QUASAR; built by scripts/build-qwen38-quasar.sh.";
+      default = "localhost/ninfer:qwen38-40dec5ff-vision48k";
+      description = "NInfer image for both Qwen3.8 artifacts; built by scripts/build-qwen38-quasar.sh.";
     };
     stateDirectory = lib.mkOption {
       type = lib.types.str;
@@ -166,7 +222,7 @@ in {
     };
     imageArchive = lib.mkOption {
       type = lib.types.str;
-      default = "${cfg.stateDirectory}/ninfer-quasar-bace20dc-vision48k.tar";
+      default = "${cfg.stateDirectory}/ninfer-qwen38-40dec5ff-vision48k.tar";
       description = "OCI archive imported on demand when the configured image is absent.";
     };
     gatewayPort = lib.mkOption {
@@ -189,126 +245,21 @@ in {
       oci-containers = {
         backend = "podman";
         containers = {
-          qwen38-abliterated =
-            commonContainer
-            // {
-              # Pins and 24 GB profile: docs/incidents.md#b650-swift15-abliterated.
-              cmd = [
-                "ninfer-serve"
-                "/models/qwen3_8_27b_swift15abl_nvfp4full-dflash2-d52441e7.ninfer"
-                "--model-id"
-                "qwen3.8-27b"
-                "--host"
-                "127.0.0.1"
-                "--port"
-                "8101"
-                "--max-context"
-                "262144"
-                "--default-max-tokens"
-                "32768"
-                "--kv-capacity"
-                "262144"
-                # Four active lanes share one pool: docs/incidents.md#b650-swift15-concurrency-four.
-                "--max-concurrency"
-                "4"
-                "--max-pending-requests"
-                "16"
-                "--pending-timeout-ms"
-                "600000"
-                "--prefill-chunk"
-                "1024"
-                "--kv-dtype"
-                "nvfp4"
-                "--device-state-slots"
-                "0"
-                "--host-state-slots"
-                "24"
-                "--host-kv-mib"
-                "8192"
-                "--max-private-continuations"
-                "8"
-                "--max-shared-prefixes"
-                "1"
-                "--max-long-anchors-per-continuation"
-                "1"
-                "--media-cache-mib"
-                "256"
-                "--media-live-mib"
-                "2048"
-                "--vision"
-                "--spec"
-                "mtp"
-                "--draft-tokens"
-                "3"
-                "--lm-head-draft"
-                "--preserve-thinking"
-                "--chat-template"
-                "/chat-template.jinja"
-                "--request-log-jsonl"
-                "/logs/qwen38-abliterated.jsonl"
-              ];
-            };
-          qwen38 =
-            commonContainer
-            // {
-              cmd = [
-                "ninfer-serve"
-                "/models/qwen3_8_27b_nvfp4qat-a45b9f5c.ninfer"
-                "--model-id"
-                "qwen3.8-27b-aligned"
-                "--host"
-                "127.0.0.1"
-                "--port"
-                "8100"
-                "--max-context"
-                "262144"
-                "--default-max-tokens"
-                "262144"
-                "--kv-capacity"
-                "262144"
-                # Four active lanes share this KV pool: docs/incidents.md#b650-quasar-concurrency-four.
-                "--max-concurrency"
-                "4"
-                # A queued request waits behind a full-length prefill, and the
-                # 30 s default expires it: docs/incidents.md#b650-ninfer-429-not-queued
-                "--max-pending-requests"
-                "16"
-                "--pending-timeout-ms"
-                "600000"
-                "--prefill-chunk"
-                "1024"
-                "--kv-dtype"
-                "nvfp4"
-                "--device-state-slots"
-                "0"
-                # Host state and KV are sized for one full checkpoint: docs/incidents.md#b650-ninfer-host-kv-undersized
-                "--host-state-slots"
-                "24"
-                "--host-kv-mib"
-                "8192"
-                "--max-private-continuations"
-                "8"
-                "--max-shared-prefixes"
-                "1"
-                "--max-long-anchors-per-continuation"
-                "1"
-                "--media-cache-mib"
-                "256"
-                "--media-live-mib"
-                "2048"
-                "--vision"
-                "--spec"
-                "mtp"
-                "--draft-tokens"
-                "3"
-                "--lm-head-draft"
-                "--preserve-thinking"
-                "--chat-template"
-                "/chat-template.jinja"
-                "--request-log-jsonl"
-                "/logs/qwen38.jsonl"
-              ];
-            };
+          # Pins: docs/incidents.md#b650-swift15-abliterated.
+          qwen38-abliterated = container {
+            name = "qwen38-abliterated";
+            artifact = "qwen3_8_27b_swift15abl_nvfp4full-dflash2-d52441e7.ninfer";
+            modelId = "qwen3.8-27b";
+            port = 8101;
+            maxTokens = 32768;
+          };
+          qwen38 = container {
+            name = "qwen38";
+            artifact = "qwen3_8_27b_nvfp4qat-a45b9f5c.ninfer";
+            modelId = "qwen3.8-27b-aligned";
+            port = 8100;
+            maxTokens = 262144;
+          };
         };
       };
     };
