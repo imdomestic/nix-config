@@ -138,18 +138,6 @@ in {
               contextWindow = 262144;
               maxTokens = 131072;
             }
-            {
-              id = "qwen3.8-27b-fast";
-              name = "Qwen3.8 27B · NVFP4 · 100K · Vision 8K · MTP3";
-              contextWindow = 100000;
-              maxTokens = 100000;
-            }
-            {
-              id = "qwen3.8-27b-aligned";
-              name = "qwen3.8-27b-aligned";
-              contextWindow = 262144;
-              maxTokens = 262144;
-            }
           ];
         };
         cliproxy = {

@@ -119,20 +119,15 @@ in {
           auth.type = "none";
           reviewer_model = "qwen3.8-27b";
           title_model = "qwen3.8-27b";
-          model_metadata = let
-            qwen = context: output: {
-              context_window = context;
-              max_output_tokens = output;
-              supports_vision = true;
-              reasoning_efforts = {
-                low.reasoning_effort = "low";
-                medium.reasoning_effort = "medium";
-                high.reasoning_effort = "xhigh";
-              };
+          model_metadata."qwen3.8-27b" = {
+            context_window = 262144;
+            max_output_tokens = 131072;
+            supports_vision = true;
+            reasoning_efforts = {
+              low.reasoning_effort = "low";
+              medium.reasoning_effort = "medium";
+              high.reasoning_effort = "xhigh";
             };
-          in {
-            "qwen3.8-27b" = qwen 262144 131072;
-            "qwen3.8-27b-aligned" = qwen 262144 131072;
           };
         };
         agy = {
