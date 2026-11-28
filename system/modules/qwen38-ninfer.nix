@@ -124,6 +124,10 @@
     '';
   };
 
+  # 制品自带的模板，另外合并全部 system/developer 消息、把 high 当 xhigh：
+  # docs/incidents.md#qwen-template-agent-requests。两个制品的模板相同。
+  chatTemplate = ./qwen38-chat-template.jinja;
+
   commonContainer = {
     image = cfg.image;
     autoStart = false;
@@ -131,6 +135,7 @@
     volumes = [
       "${cfg.modelDirectory}:/models:ro"
       "${cfg.logDirectory}:/logs"
+      "${chatTemplate}:/chat-template.jinja:ro"
     ];
     extraOptions = [
       "--device=nvidia.com/gpu=all"
@@ -237,6 +242,8 @@ in {
                 "3"
                 "--lm-head-draft"
                 "--preserve-thinking"
+                "--chat-template"
+                "/chat-template.jinja"
                 "--request-log-jsonl"
                 "/logs/qwen38-abliterated.jsonl"
               ];
@@ -296,6 +303,8 @@ in {
                 "3"
                 "--lm-head-draft"
                 "--preserve-thinking"
+                "--chat-template"
+                "/chat-template.jinja"
                 "--request-log-jsonl"
                 "/logs/qwen38.jsonl"
               ];

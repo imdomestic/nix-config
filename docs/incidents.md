@@ -4,6 +4,22 @@
 
 判据:如果一段注释回答的问题不是「读者盯着这行时会冒出来的」,它就该在这里。
 
+## 2026-11-28 · Qwen 内置模板拒绝 agent 的多条 system 消息和 `high` {#qwen-template-agent-requests}
+
+Max 的后台 agent（fx）调 `qwen3.8-27b` 都是 400。不带 `--effort` 时报
+`Unexpected reasoning effort high`：agent 默认的 effort 是 `high`，模板只认
+`xhigh`（默认）、`medium` 和 `low`。改成 `medium` 后报
+`System message must be at the beginning.`：抓到的请求是七条 system 消息加一条 user，
+模板只读 `messages[0]` 的 system，后面再有 system 就抛异常，`developer` 则是
+`Unexpected message role`。
+**误导线索：** 经 Max 转发、只带一条 system 的 curl 正常回答，看着像 fx 或 Max 的问题。
+
+`ninfer-serve --chat-template` 换成 `system/modules/qwen38-chat-template.jinja`：
+制品自带的模板（两个制品的相同），先把全部 system/developer 消息按顺序以空行拼成
+开头那一条，`high` 按 `xhigh` 处理，其余不变。原模板接受的请求渲染结果逐字相同
+（jinja2 比对 17 种组合）；fx 的形状等于一条合并后的 system 加 `xhigh`。
+Responses 的 `responsesSystemMessages` 过滤还在，换了模板后它只是提前做了同样的合并。
+
 ## 2026-11-25 · REALITY 的 dest 拨号被 dae 送回代理：r5s、h610 自己连自己 {#reality-dest-loop}
 
 现象：tank 上访问境外一阵好一阵坏。20:25 连测 6 次 `api.exa.ai` 都在 1 秒内，一分钟后
